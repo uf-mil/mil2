@@ -1,7 +1,7 @@
 import Jetson.GPIO as GPIO
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Empty
+from std_msgs.msg import String
 
 INPUT_PIN = 18
 
@@ -11,15 +11,21 @@ class SubjugatorReadSwitchNode(Node):
         super().__init__("subjugator_read_switch_node")
 
         self.timer_ = self.create_timer(0.1, self.check_gpio)
-        self.pub = self.create_publisher(Empty, "read_switch", 10)
+        self.pub = self.create_publisher(String, "read_switch", 10)
+        self.prev_value = False  # false = low, true = high
 
     def check_gpio(self):
         value = GPIO.input(INPUT_PIN)
-        if value == GPIO.HIGH:
-            print("high")
-            self.pub.publish(Empty())
-        else:
-            print("low")
+        msg_str = "high" if value == GPIO.HIGH else "low"
+        msg = String()
+        msg.data = msg_str
+        self.pub.publish(msg)
+
+        if self.prev_value and value == GPIO.LOW:
+            self.reset_sub()
+
+    def reset_sub(self):
+        pass
 
     def __del__(self):
         GPIO.cleanup()
