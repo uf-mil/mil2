@@ -34,12 +34,19 @@ BT::NodeStatus DetectTarget::tick()
         std::scoped_lock lk(ctx_->detections_mx);
         arr = ctx_->latest_detections;
     }
+
     if (!arr)
+    {
         return BT::NodeStatus::FAILURE;
+    }
 
     for (auto const& det : arr->detections)
+    {
         if (det.class_name == label && det.score >= min_conf)
+        {
             return BT::NodeStatus::SUCCESS;
+        }
+    }
 
     return BT::NodeStatus::FAILURE;
 }

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -21,9 +22,7 @@ BT::PortsList HoneBearing::providedPorts()
 {
     return { BT::InputPort<std::string>("label", "shark", "Target label (single)"),
              BT::InputPort<double>("offset_deg", 0.0, "Positive=left yaw bias, negative=right"),
-             BT::InputPort<double>("tolerance_deg", 3.0, "Acceptable error"),
-             BT::InputPort<double>("fov_deg", 90.0, "Horizontal FOV of camera"),
-             BT::InputPort<double>("max_step_deg", 10.0, "Max yaw per command"),
+             BT::InputPort<double>("fov_deg", 110.0, "Horizontal FOV of camera"),
              BT::InputPort<double>("min_conf", 0.30, "Minimum confidence"),
              BT::InputPort<std::shared_ptr<Context>>("ctx") };
 }
@@ -35,103 +34,129 @@ BT::NodeStatus HoneBearing::onStart()
         RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "HoneBearing: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
+    published_ = false;
     return BT::NodeStatus::RUNNING;
 }
 
 BT::NodeStatus HoneBearing::onRunning()
 {
+    if (published_)
+    {
+        return BT::NodeStatus::SUCCESS;
+    }
+
+    // Inputs
     std::string label;
-    double offset_deg = 0.0, tol = 3.0, fov = 90.0, max_step = 10.0, min_conf = 0.30;
+    double offset_deg = 0.0;
+    double fov = 110.0;
+    double min_conf = 0.30;
 
     (void)getInput("label", label);
     (void)getInput("offset_deg", offset_deg);
-    (void)getInput("tolerance_deg", tol);
     (void)getInput("fov_deg", fov);
-    (void)getInput("max_step_deg", max_step);
     (void)getInput("min_conf", min_conf);
 
-    // image size
+    // Get image width
     uint32_t W = 0;
     {
         std::scoped_lock lk(ctx_->img_mx);
         W = ctx_->img_width;
     }
+
     if (W == 0)
     {
-        RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000, "HoneBearing: image size unknown.");
-        return BT::NodeStatus::RUNNING;
+        RCLCPP_WARN(ctx_->logger(), "HoneBearing: image size unknown");
+        return BT::NodeStatus::FAILURE;
     }
 
-    // Find best detection with matching label
+    // Best detection
     std::optional<yolo_msgs::msg::DetectionArray> arr;
     {
         std::scoped_lock lk(ctx_->detections_mx);
         arr = ctx_->latest_detections;
     }
+
     if (!arr || arr->detections.empty())
-        return BT::NodeStatus::RUNNING;
+    {
+        return BT::NodeStatus::FAILURE;
+    }
 
     yolo_msgs::msg::Detection const* best = nullptr;
     double best_conf = 0.0;
-    for (auto const& det : arr->detections)
+    for (auto const& d : arr->detections)
     {
-        if (det.class_name == label && det.score >= min_conf && det.score > best_conf)
+        if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
         {
-            best = &det;
-            best_conf = det.score;
+            best = &d;
+            best_conf = d.score;
         }
     }
 
     if (!best)
-        return BT::NodeStatus::RUNNING;
+    {
+        return BT::NodeStatus::FAILURE;
+    }
 
-    // Pixel -> bearing (deg). Center=0, right positive.
+    // Pixel -> bearing (deg). Right positive.
     double cx = best->bbox.center.position.x;
-    double bearing = ((cx - (double)W / 2.0) / ((double)W / 2.0)) * (fov / 2.0);
+    double bearing = ((cx - static_cast<double>(W) / 2.0) / (static_cast<double>(W) / 2.0)) * (fov / 2.0);
 
-    double desired = offset_deg;
+    // Turn command (deg). Left positive.
+    double yaw_cmd_deg = offset_deg - bearing;
 
-    double err = desired - bearing;
-    if (std::fabs(err) <= tol)
-        return BT::NodeStatus::SUCCESS;
-
-    double yaw_delta = std::clamp(desired - bearing, -max_step, max_step);
-
-    // Publish relative yaw-only goal: q_new = q_cur * q_delta
+    // Compose absolute target orientation: q_out = q_cur * q_delta
     geometry_msgs::msg::Pose current{};
     {
         std::scoped_lock lk(ctx_->odom_mx);
         if (ctx_->latest_odom)
+        {
             current = ctx_->latest_odom->pose.pose;
+        }
     }
 
-    geometry_msgs::msg::Pose out = current;
-    double rad = yaw_delta * M_PI / 180.0;
+    double yaw_rad = yaw_cmd_deg * M_PI / 180.0;
 
-    geometry_msgs::msg::Pose delta;
-    delta.orientation.x = 0.0;
-    delta.orientation.y = 0.0;
-    delta.orientation.z = std::sin(rad / 2.0);
-    delta.orientation.w = std::cos(rad / 2.0);
+    geometry_msgs::msg::Quaternion delta_q{};
+    delta_q.x = 0.0;
+    delta_q.y = 0.0;
+    delta_q.z = std::sin(yaw_rad / 2.0);
+    delta_q.w = std::cos(yaw_rad / 2.0);
 
     auto const& c = current.orientation;
-    auto const& d = delta.orientation;
-    out.orientation.x = c.w * d.x + c.x * d.w + c.y * d.z - c.z * d.y;
-    out.orientation.y = c.w * d.y - c.x * d.z + c.y * d.w + c.z * d.x;
-    out.orientation.z = c.w * d.z + c.x * d.y - c.y * d.x + c.z * d.w;
-    out.orientation.w = c.w * d.w - c.x * d.x - c.y * d.y - c.z * d.z;
+    geometry_msgs::msg::Pose out = current;
+    auto& o = out.orientation;
+    o.x = c.w * delta_q.x + c.x * delta_q.w + c.y * delta_q.z - c.z * delta_q.y;
+    o.y = c.w * delta_q.y - c.x * delta_q.z + c.y * delta_q.w + c.z * delta_q.x;
+    o.z = c.w * delta_q.z + c.x * delta_q.y - c.y * delta_q.x + c.z * delta_q.w;
+    o.w = c.w * delta_q.w - c.x * delta_q.x - c.y * delta_q.y - c.z * delta_q.z;
 
+    // Normalize
+    double n = std::sqrt(o.x * o.x + o.y * o.y + o.z * o.z + o.w * o.w);
+    if (n < 1e-12)
+    {
+        o = geometry_msgs::msg::Quaternion{};
+        o.w = 1.0;
+    }
+    else
+    {
+        o.x /= n;
+        o.y /= n;
+        o.z /= n;
+        o.w /= n;
+    }
+
+    // Publish exactly once
     ctx_->goal_pub->publish(out);
     {
         std::scoped_lock lk(ctx_->last_goal_mx);
         ctx_->last_goal = out;
     }
+    published_ = true;
 
-    RCLCPP_INFO_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 500,
-                         "HoneBearing: bearing=%.1f°, desired=%.1f° (offset=%.1f°), yaw_delta=%.1f°", bearing, desired,
-                         offset_deg, yaw_delta);
+    RCLCPP_INFO(ctx_->logger(), "HoneBearing: bearing=%.1f°, offset=%.1f°, cmd=%.1f°", bearing, offset_deg,
+                yaw_cmd_deg);
 
-    return BT::NodeStatus::RUNNING;
+    return BT::NodeStatus::SUCCESS;
 }
 
 void HoneBearing::onHalted()
