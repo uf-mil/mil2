@@ -56,7 +56,8 @@ class SubjugatorCentroidsNode(Node):
             )
 
         # start camera
-        self.cap = cv2.VideoCapture(2)  # Use your webcam
+        cam_path = "/dev/v4l/by-id/usb-Chicony_Tech._Inc._Dell_Webcam_WB7022_4962D17A78D6-video-index0"
+        self.cap = cv2.VideoCapture(cam_path)
         if not self.cap.isOpened():
             self.get_logger().error("could not open camera")
             return

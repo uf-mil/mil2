@@ -1,7 +1,8 @@
-# this file isn't used and it's actaully just an example of how to use cv2 to find centroids
+# this file isn't used and it's just an example of how to use cv2 to find centroids
 
 import cv2
 import numpy as np
+
 
 def get_lime_green_centroid(image):
     """
@@ -47,15 +48,24 @@ def display_debug_image(image, mask, centroid):
     # Overlay centroid if it exists
     if centroid:
         cv2.circle(display_img, centroid, 5, (0, 0, 255), -1)
-        cv2.putText(display_img, f"Centroid: {centroid}", (centroid[0] + 10, centroid[1]),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        cv2.putText(
+            display_img,
+            f"Centroid: {centroid}",
+            (centroid[0] + 10, centroid[1]),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 0, 255),
+            2,
+        )
 
     # Show images
     cv2.imshow("Lime Green Detection", display_img)
     cv2.imshow("Mask", mask)
 
+
 def main():
-    cap = cv2.VideoCapture(0)  # Use your webcam
+    cam_path = "/dev/v4l/by-id/usb-Chicony_Tech._Inc._Dell_Webcam_WB7022_4962D17A78D6-video-index0"
+    cap = cv2.VideoCapture(cam_path)
 
     if not cap.isOpened():
         print("Cannot open camera")
@@ -70,11 +80,12 @@ def main():
         centroid, mask = get_lime_green_centroid(frame)
         display_debug_image(frame, mask, centroid)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()
