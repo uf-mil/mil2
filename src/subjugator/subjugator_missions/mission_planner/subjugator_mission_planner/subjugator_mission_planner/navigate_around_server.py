@@ -79,13 +79,17 @@ class NavigateAroundObjectServer(Node):
 
         # Find poses for completing orbit
 
-        x_movements = [1.0, 2.0, 1.0, 0.0]
-        y_movements = [-1.0, 0.0, 1.0, 0.0]
+        x_movements = [0.5, 1.0, 1.5, 2.0, 1.5, 1.0, 0.5, 0.0]
+        y_movements = [-0.5, -1.0, -0.5, 0.0, 0.5, 1.0, 0.5, 0.0]
 
         for leg in range(len(x_movements)):
             pose = Pose()
-            pose.position.x = x_movements[leg] * self.distance_to_orbit
-            pose.position.y = y_movements[leg] * self.distance_to_orbit
+            pose.position.x = (
+                currentPose.position.x + x_movements[leg] * self.distance_to_orbit
+            )
+            pose.position.y = (
+                currentPose.position.y + y_movements[leg] * self.distance_to_orbit
+            )
             pose.position.z = currentPose.position.z
             pose.orientation.w = 1.0
             poses.append(pose)
@@ -98,6 +102,9 @@ class NavigateAroundObjectServer(Node):
         z_dist = currentPose.position.z - goalPose.position.z
 
         distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
+        self.get_logger().info(
+            f"dist in around: {distance_to_goal}",
+        )
         return distance_to_goal < acceptableDist
 
     def execute_callback(self, goal_handle):
@@ -128,7 +135,11 @@ class NavigateAroundObjectServer(Node):
                 )
                 near_goal_pose = False
                 while not near_goal_pose:
-                    near_goal_pose = self.check_at_goal_pose(self.current_pose, pose)
+                    near_goal_pose = self.check_at_goal_pose(
+                        self.current_pose,
+                        pose,
+                        0.2,
+                    )
 
                     # slow down the loop
                     self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
