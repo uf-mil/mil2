@@ -57,6 +57,7 @@ class MovementServer(Node):
         z_dist = currentPose.position.z - goalPose.position.z
 
         distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
+        self.get_logger().info(f"dist: {distance_to_goal}")
         return distance_to_goal < acceptableDist
 
     def execute_callback(self, goal_handle):
@@ -71,7 +72,7 @@ class MovementServer(Node):
 
         near_goal_pose = False
         while not near_goal_pose:
-            near_goal_pose = self.check_at_goal_pose(self.current_pose, goal_pose)
+            near_goal_pose = self.check_at_goal_pose(self.current_pose, goal_pose, 0.2)
 
             # slow down the loop
             self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
