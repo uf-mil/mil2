@@ -9,6 +9,7 @@ from tf_transformations import euler_from_quaternion, quaternion_from_euler
 class CentroidYawTracker(Node):
     def __init__(self):
         super().__init__("centroid_yaw_tracker")
+        self.spotted = False
 
         self.odom_sub_ = self.create_subscription(
             Odometry,
@@ -36,15 +37,22 @@ class CentroidYawTracker(Node):
 
     def centroid_cb(self, msg: Centroid):
         self.last_centroid = msg
+        self.spotted = True
 
     def control_loop(self):
+        if not self.spotted:
+            return
+
         x_error_pixels = (
             self.last_centroid.image_width / 2 - self.last_centroid.centroid_x
         )
         kp = 2.5 / (2 * self.last_centroid.image_width)
 
+        print("---------")
         print(x_error_pixels)
         yaw_command = -x_error_pixels * kp
+        print(yaw_command)
+        print("---------")
 
         # Get current orientation from odometry
         current_quat = self.last_odom.pose.pose.orientation
@@ -62,7 +70,9 @@ class CentroidYawTracker(Node):
 
         # Create goal pose
         goal_pose = Pose()
-        goal_pose.position = self.last_odom.pose.pose.position
+        goal_pose.position.x = 0.0
+        goal_pose.position.y = 0.0
+        goal_pose.position.z = -0.1
         goal_pose.orientation.x = quat[0]
         goal_pose.orientation.y = quat[1]
         goal_pose.orientation.z = quat[2]
@@ -70,6 +80,7 @@ class CentroidYawTracker(Node):
 
         # Publish the goal pose
         self.goal_pose_pub.publish(goal_pose)
+        self.spotted = False
 
 
 def main():
