@@ -35,8 +35,10 @@ class GreenTracker(CentroidFinder):
         if not contours:
             return None
 
-        # Find the largest contour
+        # Find the largest contour (ignore small ones)
         largest = max(contours, key=cv2.contourArea)
+        if cv2.contourArea(largest) < 50:
+            return None
 
         # Compute centroid
         M = cv2.moments(largest)
@@ -45,4 +47,5 @@ class GreenTracker(CentroidFinder):
 
         cx = int(M["m10"] / M["m00"])
         cy = int(M["m01"] / M["m00"])
+
         return (cx, cy)
