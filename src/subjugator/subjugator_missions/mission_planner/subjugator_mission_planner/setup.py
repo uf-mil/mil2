@@ -39,10 +39,12 @@ setup(
             "movement_server = subjugator_mission_planner.movement_server:main",
             "wait_server = subjugator_mission_planner.wait_server:main",
             "start_gate_server = subjugator_mission_planner.start_gate_server:main",
+            "zytracker = subjugator_mission_planner.zy_tracker_server:main",
             "yawtracker = subjugator_mission_planner.yaw_tracker_server:main",
             "mechanisms_server = subjugator_mission_planner.mechanisms_server:main",
             "sonar_follower = subjugator_mission_planner.sonar_follower_server:main",
             "nav_channel_server = subjugator_mission_planner.nav_channel_server:main",
+            "sonar_survey_server = subjugator_mission_planner.sonar_survey_server:main",
         ],
     },
 )

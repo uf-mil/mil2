@@ -149,9 +149,8 @@ class MovementServer(Node):
             near_goal_pose = self.check_at_goal_pose(self.current_pose, goal_pose, 0.2)
 
             # slow down the loop
-            self.get_logger().warn("hi b4")
+
             self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
-            self.get_logger().warn("hi after")
 
         self.get_logger().info("Arrived at goal pose!")
 
@@ -161,6 +160,7 @@ class MovementServer(Node):
         result = Move.Result()
         result.success = True
         result.message = "Successfully moved to goal pose"
+        #        rclpy.spin_once(self,timeout_sec=1.0)
         time.sleep(1.0)
         self.get_logger().warn("very end of move")
         return result

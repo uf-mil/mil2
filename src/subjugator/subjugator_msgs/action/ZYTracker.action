@@ -1,6 +1,5 @@
 # Goal
-string idk
-float32 frequency
+string topic_name
 
 ---
 # Result

@@ -42,6 +42,8 @@ rosidl_generate_interfaces(
   "action/NavChannel.action"
   "action/Mechanism.action"
   "action/SonarFollower.action"
+  "action/ZYTracker.action"
+  "action/SonarSurvey.action"
   DEPENDENCIES
   geometry_msgs
   std_msgs

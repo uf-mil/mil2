@@ -82,7 +82,7 @@ class SonarFollowerNode(Node):
             rclpy.spin_once(self, timeout_sec=0.1)  # Allow callbacks while waiting
 
     def ping_cb(self, msg: ProcessedPing):
-        if abs(msg.frequency - self.freq) < 2500:
+        if True:  # abs(msg.frequency - self.freq) < 2500: # TODO remove
             self.last_ping = msg
             self.heard_ping = True
         else:
@@ -155,8 +155,8 @@ class SonarFollowerNode(Node):
 
             p = Pose()
             p.orientation.w = 1.0
-            p.position.x = x
-            p.position.y = y
+            p.position.x = 0.5 * x
+            p.position.y = 0.5 * y
             goal = Move.Goal()
             goal.type = "Relative"
             goal.goal_pose = p

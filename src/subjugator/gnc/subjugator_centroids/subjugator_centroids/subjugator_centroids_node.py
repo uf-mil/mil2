@@ -31,6 +31,7 @@ class SubjugatorCentroidsNode(Node):
             pub_already_exists: bool = class_id in self.topics
             if not pub_already_exists:
                 topic_name: str = "centroids/" + class_name
+                topic_name = topic_name.replace("-", "_")
                 self.topics[class_id] = self.create_publisher(Detection, topic_name, 10)
 
             self.topics[class_id].publish(detection)

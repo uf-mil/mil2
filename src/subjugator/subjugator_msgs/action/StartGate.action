@@ -6,6 +6,7 @@ float32 w
 ---
 # Result
 bool success
+string message
 
 ---
 # Feedback
