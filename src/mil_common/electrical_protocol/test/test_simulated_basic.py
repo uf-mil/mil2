@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-print('hi')
 
+import contextlib
 import os
 import pty
 import unittest
@@ -8,16 +8,16 @@ from dataclasses import dataclass
 from enum import Enum, IntEnum
 from threading import Thread
 
-import pytest
 import launch
 import launch_testing.actions
-from launch_ros.actions import Node
+import pytest
 import rclpy
-import rclpy.utilities
 import rclpy.callback_groups
 import rclpy.executors
-from rclpy.duration import Duration
+import rclpy.utilities
 from electrical_protocol import Packet
+from launch_ros.actions import Node
+from rclpy.duration import Duration
 from std_msgs.msg import Float32, String
 from std_srvs.srv import Empty
 
@@ -25,16 +25,16 @@ from std_srvs.srv import Empty
 @pytest.mark.launch_test
 def generate_test_description():
     calculator_device = Node(
-        package = 'electrical_protocol',
-        executable = 'calculator',
-        name = "calculator_device",
+        package="electrical_protocol",
+        executable="calculator",
+        name="calculator_device",
     )
 
     return launch.LaunchDescription(
         [
             calculator_device,
             launch_testing.actions.ReadyToTest(),
-        ]
+        ],
     )
 
 
@@ -95,19 +95,21 @@ class TestSimulatedBasic(unittest.TestCase):
         self.node = rclpy.create_node("test_simulated_basic")
 
         def executor_spin(executor):
-            try:
+            with contextlib.suppress(rclpy.executors.ExternalShutdownException):
                 executor.spin()
-            except rclpy.executors.ExternalShutdownException:
-                pass
 
         self.executor = rclpy.executors.MultiThreadedExecutor()
         self.executor.add_node(self.node)
-        self.executor_thread = Thread(target=executor_spin, args=(self.executor,), daemon=True)
+        self.executor_thread = Thread(
+            target=executor_spin,
+            args=(self.executor,),
+            daemon=True,
+        )
         self.executor_thread.start()
         self.reentrant_cbg = rclpy.callback_groups.MutuallyExclusiveCallbackGroup()
         self.port_publisher = self.node.create_publisher(
             String,
-            "/calculator_device/port", 
+            "/calculator_device/port",
             1,
         )
         self.answer_one_subscriber = self.node.create_subscription(
@@ -125,7 +127,7 @@ class TestSimulatedBasic(unittest.TestCase):
         self.count = 0
 
     def test_simulated(self):
-        print('starting test...')
+        print("starting test...")
         self.master, self.slave = pty.openpty()
         serial_name = os.ttyname(self.slave)
         print(serial_name)

@@ -5,10 +5,8 @@ import contextlib
 import threading
 from typing import Any, Generic, TypeVar, Union, cast, get_args, get_origin
 
-from rclpy.executors import MultiThreadedExecutor
-from rclpy.callback_groups import ReentrantCallbackGroup
-from rclpy.node import Node
 import serial
+from rclpy.node import Node
 
 from .packet import SYNC_CHAR_1, Packet
 
@@ -199,7 +197,10 @@ class SerialDeviceNode(Generic[SendPackets, RecvPackets], Node):
             self.get_logger().error(f"Error reading packet: {e}")
             return False
         except OSError:
-            self.get_logger().error("Cannot read from serial device.", throttle_duration_sec=1)
+            self.get_logger().error(
+                "Cannot read from serial device.",
+                throttle_duration_sec=1,
+            )
             return False
         if not self._correct_type(packet):
             self.get_logger().error(

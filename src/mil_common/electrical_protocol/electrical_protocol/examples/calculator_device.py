@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import rclpy
-from rclpy.duration import Duration
-
 from dataclasses import dataclass
 from enum import Enum, IntEnum
 from threading import Event
 from typing import Union
 
-from electrical_protocol import Packet, SerialDeviceNode
+import rclpy
+from rclpy.duration import Duration
 from std_msgs.msg import Float32, String
 from std_srvs.srv import Empty
+
+from electrical_protocol import Packet, SerialDeviceNode
 
 
 class CalculatorMode(IntEnum):
@@ -64,9 +64,22 @@ class CalculatorDevice(
 ):
     def __init__(self):
         super().__init__("calculator_device", None, 115200)
-        self.port_topic = self.create_subscription(String, "~/port", self.port_callback, 1)
-        self.start_one_service = self.create_service(Empty, "~/trigger_one", self.trigger)
-        self.start_two_service = self.create_service(Empty, "~/trigger_two", self.trigger_two)
+        self.port_topic = self.create_subscription(
+            String,
+            "~/port",
+            self.port_callback,
+            1,
+        )
+        self.start_one_service = self.create_service(
+            Empty,
+            "~/trigger_one",
+            self.trigger,
+        )
+        self.start_two_service = self.create_service(
+            Empty,
+            "~/trigger_two",
+            self.trigger_two,
+        )
         self.answer_one_topic = self.create_publisher(Float32, "~/answer_one", 10)
         self.answer_two_topic = self.create_publisher(Float32, "~/answer_two", 10)
         self.next_packet = Event()

@@ -1,0 +1,92 @@
+---
+default_language_version:
+  python: python3.12
+  node: lts
+
+ci:
+  autofix_prs: false
+  autoupdate_commit_msg: 'Update pre-commit hooks to latest versions'
+  autoupdate_schedule: monthly
+
+repos:
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v19.1.4
+    hooks:
+      - id: clang-format
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        args: [--remove-all-unused-imports, --ignore-init-module-imports]
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        # TODO fix this path (and other references)
+        exclude: ^NaviGator/simulation/VRX
+        args: [--severity=warning, --exclude=SC1090]
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.10.0-1
+    hooks:
+      - id: shfmt
+        exclude: ^NaviGator/simulation/VRX
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: 'v0.8.1'
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        exclude: ^NaviGator/simulation/VRX
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        args:
+          - --ignore-words-list=fpr,ser,wan,te,wan,ba,ned,ans,hist,nd,wronly,Voight,assertIn,flor
+          - --skip="./.*,*.csv,*.json"
+          - --quiet-level=2
+        exclude_types: [csv, json]
+        exclude: ^NaviGator/simulation/VRX
+        #   - repo: https://github.com/lsst-ts/pre-commit-xmllint
+        #     rev: v1.0.0
+        #     hooks:
+        #       - id: format-xmllint
+        #         files: '.*\.(xml|launch|test)'
+        #         exclude_types: [svg]
+        #         exclude: |
+        #           (?x)^(
+        #                  mil_common/perception/mil_mlp/ldp/labelbox2pascal/.*|
+        #                  mil_common/gnc/odometry_utils/nodelet.xml
+        #                )$
+  - repo: https://github.com/tier4/pre-commit-hooks-ros
+    rev: v0.10.0
+    hooks:
+      - id: prettier-xacro
+      - id: prettier-launch-xml
+      - id: prettier-package-xml
+      - id: sort-package-xml
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+        exclude_types: [markdown, rst]
+      - id: check-executables-have-shebangs
+      - id: check-symlinks
+      - id: check-json
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+      - id: no-commit-to-branch
+        args:
+          - --branch=master
