@@ -1,0 +1,143 @@
+---
+name: MIL2 CI
+
+# We do not trigger on the pull_request hook because it will have already been
+# triggered by the push hook!
+# yamllint disable-line rule:truthy
+on:
+  [push, workflow_dispatch]
+
+env:
+  # The version of caching we are using. This can be upgraded if we
+  # significantly change CI to the point where old caches become irrelevant.
+  CACHE_VERSION: 0
+  # Default Python version. Jazzy defaults to 3.12.
+  DEFAULT_PYTHON: 3.12
+  # Location of the pre-commit cache. This is set by pre-commit, not us!
+  PRE_COMMIT_CACHE: ~/.cache/pre-commit
+
+# Cancels this run if a new one referring to the same object and same workflow
+# is requested
+concurrency:
+  group: >
+    ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  avoid-duplicate-ci:
+    name: Check if CI has already be ran
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.check_skip.outputs.should_skip }}
+    steps:
+      - id: check_skip
+        uses: fkirc/skip-duplicate-actions@v5
+
+  super-ci:
+    name: Run tests and build docs
+    needs: avoid-duplicate-ci
+    if: needs.avoid-duplicate-ci.outputs.should_skip != 'true'
+    runs-on:
+      group: mala-lab-noble
+    steps:
+      - name: Configure catkin workspace folder structure
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/catkin_ws/src
+          sudo apt reinstall python3-pip
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup ROS2 Jazzy
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+      - name: Install pip dependencies
+        run: |
+          cd $GITHUB_WORKSPACE/mil2
+          pip3 install -r requirements.txt
+      # We want to run a full test suite in CI - this includes the BlueView
+      # tests!
+      # - name: Install BlueView Sonar SDK
+      #   run: |
+      #     cd $GITHUB_WORKSPACE/catkin_ws/src/mil
+      #     ./scripts/hw/install_bvtsdk --pass ${{ secrets.ZOBELISK_PASSWORD }}
+      #     ls mil_common/drivers/mil_blueview_driver
+      #     echo $PWD
+      - name: Install system dependencies
+        run: |
+          # Needed for /etc/update-manager/release-upgrades
+          sudo apt-get install -y ubuntu-release-upgrader-core
+          cd $GITHUB_WORKSPACE/mil2
+          rm -rf build install log
+          export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
+          ./scripts/install.sh
+      # - name: Run catkin_make
+      #   run: |
+      #     cd $GITHUB_WORKSPACE/catkin_ws
+      #     source /opt/ros/noetic/setup.bash
+      #     catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+      #                 -DPYTHON_INCLUDE_DIR=/usr/include/python3.8 \
+      #                 -j6
+      - name: Run colcon tests
+        run: |
+          export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
+          cd $GITHUB_WORKSPACE/mil2
+          source /opt/ros/jazzy/setup.bash
+          source devel/setup.bash
+          colcon test --event-handlers console_cohesion+ \
+            --executor sequential \
+            --return-code-on-test-failure
+      # - name: Build docs
+      #   run: |
+      #     export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
+      #     mkdir -p $HOME/.mil
+      #     source /opt/ros/noetic/setup.bash
+      #     source $GITHUB_WORKSPACE/catkin_ws/devel/setup.bash
+      #     cd $GITHUB_WORKSPACE/catkin_ws/src/mil
+      #     ./scripts/build_docs -s -d
+      # - name: Publish docs artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: docs-ci-html-${{ github.sha }}
+      #     path: ${{ github.workspace }}/.mil/docs/html
+
+      # deploy-docs:
+      #   name: Deploy docs from master
+      #   runs-on:
+      #     group: mala-lab-main
+      #   needs: super-ci
+      #   # https://github.com/actions/runner/issues/491#issuecomment-850884422
+      #   if: |
+      #     always() &&
+      #     (needs.super-ci.result == 'skipped'
+      #   || needs.super-ci.result == 'success') &&
+      #     github.ref == 'refs/heads/master'
+      #   steps:
+      #     - name: Checkout
+      #       uses: actions/checkout@v4
+
+      #     - name: Make folders
+      #       run: |
+      #         mkdir -p $GITHUB_WORKSPACE/build/docs
+
+      #     - name: Download artifact
+      #       uses: actions/download-artifact@v3
+      #       with:
+      #         name: docs-ci-html-${{ github.sha }}
+      #         path: ${{ github.workspace }}/build/docs
+
+      #     # Publish the artifact to the GitHub Pages branch
+      #     - name: Push docs to mil.ufl.edu
+      #       run: |
+      #         # Install sshpass
+      #         sudo apt-get install sshpass
+      #         # Upload contents of local folder to remote folder
+      #         sshpass -p ${{ secrets.MIL_UFL_SFTP_PASS }} \
+      #           sftp -o StrictHostKeyChecking=no \
+      #           -P ${{ secrets.MIL_UFL_SFTP_PORT }} mil@mil.ufl.edu << EOF
+      #         cd htdocs/docs
+      #         lcd ${{ github.workspace }}/build/docs
+      #         put -r .
+      #         exit
+      #         EOF
