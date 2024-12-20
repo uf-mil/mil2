@@ -54,7 +54,6 @@ jobs:
           required-ros-distributions: jazzy
       - name: Install pip dependencies
         run: |
-          cd $GITHUB_WORKSPACE/mil2
           pip3 install -r requirements.txt
       # We want to run a full test suite in CI - this includes the BlueView
       # tests!
@@ -68,7 +67,6 @@ jobs:
         run: |
           # Needed for /etc/update-manager/release-upgrades
           sudo apt-get install -y ubuntu-release-upgrader-core
-          cd $GITHUB_WORKSPACE/mil2
           rm -rf build install log
           export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
           ./scripts/install.sh
@@ -82,7 +80,6 @@ jobs:
       - name: Run colcon tests
         run: |
           export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
-          cd $GITHUB_WORKSPACE/mil2
           source /opt/ros/jazzy/setup.bash
           source devel/setup.bash
           colcon test --event-handlers console_cohesion+ \
