@@ -63,13 +63,13 @@ jobs:
       #     ./scripts/hw/install_bvtsdk --pass ${{ secrets.ZOBELISK_PASSWORD }}
       #     ls mil_common/drivers/mil_blueview_driver
       #     echo $PWD
-      - name: Install system dependencies
+      - name: Install system dependencies and build
         run: |
           # Needed for /etc/update-manager/release-upgrades
           sudo apt-get install -y ubuntu-release-upgrader-core
           rm -rf build install log
           export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
-          ./scripts/install.sh
+          ALLOW_NONSTANDARD_DIR=1 ./scripts/install.sh
       # - name: Run catkin_make
       #   run: |
       #     cd $GITHUB_WORKSPACE/catkin_ws
