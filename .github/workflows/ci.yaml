@@ -81,7 +81,7 @@ jobs:
         run: |
           export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
           source /opt/ros/jazzy/setup.bash
-          source devel/setup.bash
+          source install/setup.bash
           colcon test --event-handlers console_cohesion+ \
             --executor sequential \
             --return-code-on-test-failure
