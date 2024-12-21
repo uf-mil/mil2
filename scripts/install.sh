@@ -131,14 +131,12 @@ mil_system_install --no-install-recommends \
 	wget \
 	vim
 
-# Turn on breaking system packages in pip (set to 0 by default in noble)
+# Turn on breaking system packages 
 # Generally, our packages shouldn't break the system, but we will continue to monitor
 # this for the future. ROS2 and rosdep have a hard time with virtual environments,
 # and using system pip packages in the past has been fine.
-python3 -m pip config set global.break-system-packages true
-
 # Attempt to install vcstool using apt-get or pip if apt-get does not work
-sudo apt install -y python3-vcstool || sudo pip3 install -U vcstool
+sudo pip3 install -U vcstool --break-system-packages
 
 cat <<EOF
 $(color "$Pur")
