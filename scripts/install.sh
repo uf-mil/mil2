@@ -217,6 +217,9 @@ $(color "$Pur")Initializing rosdep...
 $(hash_header)$(color "$Res")
 EOF
 
+# Install Colcon
+sudo pip3 install -U colcon-common-extensions --break-system-packages
+
 # Initialize rosdep
 sudo apt-get install python3-rosdep
 
