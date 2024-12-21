@@ -221,7 +221,7 @@ EOF
 sudo pip3 install -U colcon-common-extensions --break-system-packages
 
 # Initialize rosdep
-sudo apt-get install python3-rosdep
+sudo apt-get install -y python3-rosdep
 
 # Update rosdep
 sudo rm -rf /etc/ros/rosdep/sources.list.d/* # Delete this file first - if not deleted, error could be thrown
