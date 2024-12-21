@@ -135,7 +135,6 @@ mil_system_install --no-install-recommends \
 # Generally, our packages shouldn't break the system, but we will continue to monitor
 # this for the future. ROS2 and rosdep have a hard time with virtual environments,
 # and using system pip packages in the past has been fine.
-# Attempt to install vcstool using apt-get or pip if apt-get does not work
 sudo pip3 install -U vcstool --break-system-packages
 
 cat <<EOF
