@@ -193,7 +193,7 @@ if which update-manager >/dev/null 2>&1; then
 fi
 
 # Install Python 3 dependencies
-sudo pip3 install -r requirements.txt --break-system-packages
+sudo pip3 install -r requirements.txt
 
 cat <<EOF
 $(color "$Pur")

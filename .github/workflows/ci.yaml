@@ -54,7 +54,8 @@ jobs:
           required-ros-distributions: jazzy
       - name: Install pip dependencies
         run: |
-          pip3 install -r requirements.txt --break-system-packages
+          python3 -m pip config set global.break-system-packages true
+          pip3 install -r requirements.txt
       # We want to run a full test suite in CI - this includes the BlueView
       # tests!
       # - name: Install BlueView Sonar SDK
