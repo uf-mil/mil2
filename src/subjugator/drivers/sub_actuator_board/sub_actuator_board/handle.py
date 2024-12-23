@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import rospy
+import rclpy
 from electrical_protocol import AckPacket
 from mil_usb_to_can.sub9 import CANDeviceHandle
 
+from rclpy import node, service, timer
+import rclpy.logging
+import rclpy.logging_service
+import rclpy.service
+import rclpy.time
+import rclpy.timer
+import rclpy.node
 from sub_actuator_board.srv import (
     GetValve,
     GetValveRequest,
@@ -19,7 +26,7 @@ from .packets import (
     ActuatorSetPacket,
 )
 
-
+# TODO: make the parent class inherit from node so we can have access to the clock
 class ActuatorBoard(CANDeviceHandle):
     """
     Device handle for the actuator board. Because this class implements a CAN device,
@@ -28,10 +35,11 @@ class ActuatorBoard(CANDeviceHandle):
 
     _recent_response: ActuatorPollResponsePacket | None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, node:rclpy.node.Node, *args, **kwargs): # TODO: once parent class is established remove node from argument
         super().__init__(*args, **kwargs)
-        self._set_service = rospy.Service("/set_valve", SetValve, self.set_valve)
-        self._get_service = rospy.Service("/get_valve", GetValve, self.get_valve)
+        self._set_service = rclpy.service.Service("/set_valve", SetValve, self.set_valve)
+        self._get_service = rclpy.service.Service("/get_valve", GetValve, self.get_valve)
+        self.observed_node = node
         self._recent_response = None
 
     def set_valve(self, req: SetValveRequest) -> dict:
@@ -48,18 +56,21 @@ class ActuatorBoard(CANDeviceHandle):
         # Send board command to open or close specified valve
         message = ActuatorSetPacket(address=req.actuator, open=req.opened)
         self.send_data(message)
-        rospy.loginfo(
+
+        self.observed_node.get_logger().info(
             "Set valve {} {}".format(
                 req.actuator,
                 "opened" if req.opened else "closed",
             ),
         )
         # Wait some time for board to process command
-        rospy.sleep(0.01)
+        rclpy.timer.Rate.sleep(0.01)
         # Request the status of the valve just commanded to ensure it worked
         self.send_data(ActuatorPollRequestPacket())
-        start = rospy.Time.now()
-        while rospy.Time.now() - start < rospy.Duration(2):
+
+        #TODO: Time acquisition is done by node and not globally anymore
+        start = self.observed_node.get_clock().now().to_msg().sec
+        while self.observed_node.get_clock().now().to_msg().sec - start < 2:
             if self._recent_response is not None:
                 break
 
@@ -76,8 +87,8 @@ class ActuatorBoard(CANDeviceHandle):
     def get_valve(self, req: GetValveRequest) -> GetValveResponse:
         message = ActuatorPollRequestPacket()
         self.send_data(message)
-        start = rospy.Time.now()
-        while rospy.Time.now() - start < rospy.Duration(10):
+        start = self.observed_node.get_clock().now().to_msg().sec
+        while self.observed_node.get_clock().now().to_msg().sec - start < 10:
             if self._recent_response is not None:
                 break
 
