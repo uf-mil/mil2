@@ -131,6 +131,12 @@ mil_system_install --no-install-recommends \
 	wget \
 	vim
 
+# Before installing with pip,
+# Check if pip is already installed and if not install pip.
+if ! command -v pip &> /dev/null; then
+   sudo apt-get update && sudo apt-get install -y python3-pip
+fi
+
 # Turn on breaking system packages in pip (set to 0 by default in noble)
 # Generally, our packages shouldn't break the system, but we will continue to monitor
 # this for the future. ROS2 and rosdep have a hard time with virtual environments,
