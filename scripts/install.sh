@@ -126,16 +126,11 @@ mil_system_install --no-install-recommends \
 	lsb-release \
 	neovim \
 	python3 \
+	python3-pip \
 	ruby \
 	tzdata \
 	wget \
 	vim
-
-# Before installing with pip,
-# Check if pip is already installed and if not install pip.
-if ! command -v pip &> /dev/null; then
-   sudo apt-get update && sudo apt-get install -y python3-pip
-fi
 
 # Turn on breaking system packages in pip (set to 0 by default in noble)
 # Generally, our packages shouldn't break the system, but we will continue to monitor
