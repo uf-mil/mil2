@@ -22,3 +22,8 @@ alias srcbrc="source ~/.bashrc"
 alias search_root='sudo find / ... | grep -i'
 alias search='find . -print | grep -i'
 alias fd="fdfind"
+
+# potentially borrowed from forrest
+autopush() {
+	git push origin +"${1:-HEAD}":refs/heads/autopush-cameron-"$(uuidgen --random | cut -c1-8)"-citmp
+}
