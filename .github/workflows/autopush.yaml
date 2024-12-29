@@ -4,6 +4,8 @@ name: Autopush
 # yamllint disable-line rule:truthy
 on:
   push:
+    branches:
+      - autopush-*
 
 # Cancels this run if a new one referring to the same object and same workflow
 # is requested
@@ -94,5 +96,5 @@ jobs:
           git checkout main
           git branch
           git merge --ff-only ${{ github.event.ref }}
-          # git push
-          # git push -d origin ${{ github.event.ref }}
+          git push
+          git push -d origin ${{ github.event.ref }}
