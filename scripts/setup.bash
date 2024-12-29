@@ -27,3 +27,31 @@ alias fd="fdfind"
 autopush() {
 	git push origin +"${1:-HEAD}":refs/heads/autopush-cameron-"$(uuidgen --random | cut -c1-8)"-citmp
 }
+
+# ssd utils
+mount_ssd() {
+	sudo mkdir -p /mnt/ssd
+	sudo mount -t exfat /dev/sda1 /mnt/ssd
+}
+
+unmount_ssd() {
+	sudo umount /mnt/ssd
+}
+
+prettycp() {
+	rsync --recursive --times --modify-window=2 --progress --verbose --itemize-changes --stats --human-readable "$1" "$2"
+}
+
+# uhhh maybe also borrowed from forrest
+cw() {
+	git add -u
+	git commit -m "work"
+}
+
+dmb() {
+	git diff "$(git merge-base --fork-point "$(git branch -l main master --format '%(refname:short)')" HEAD)"
+}
+
+subnet_ip() {
+	ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){2}37\.[0-9]*' | grep -v '127.0.0.1'
+}
