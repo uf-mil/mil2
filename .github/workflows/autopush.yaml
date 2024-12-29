@@ -90,8 +90,8 @@ jobs:
             "$(git --no-pager log --format=format:'%an' -n 1)"
           git config --global user.email \
             "$(git --no-pager log --format=format:'%ae' -n 1)"
-          git rebase origin/master
-          git checkout master
+          git rebase origin/main
+          git checkout main
           git branch
           git merge --ff-only ${{ github.event.ref }}
           # git push
