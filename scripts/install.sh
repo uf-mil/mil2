@@ -126,6 +126,7 @@ mil_system_install --no-install-recommends \
 	lsb-release \
 	neovim \
 	python3 \
+	python3-pip \
 	ruby \
 	tzdata \
 	wget \
