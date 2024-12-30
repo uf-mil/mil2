@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import random
 
-import rospy
+import rclpy
+from rclpy.node import Node
+
 from electrical_protocol import AckPacket
 from mil_usb_to_can.sub9 import SimulatedCANDeviceHandle
 
@@ -14,7 +16,7 @@ from .packets import (
 )
 
 
-class ActuatorBoardSimulation(SimulatedCANDeviceHandle):
+class ActuatorBoardSimulation(SimulatedCANDeviceHandle, Node):
     """
     Simulator for the communication of the actuator board.
 
@@ -27,6 +29,7 @@ class ActuatorBoardSimulation(SimulatedCANDeviceHandle):
         # Tracks the status of the 12 valves
         self.status = {i: False for i in range(4)}
         super().__init__(*args, **kwargs)
+        Node.__init__(self, "actuator_board_sim")
 
     def on_data(self, packet: ActuatorSetPacket | ActuatorPollRequestPacket) -> None:
         """
@@ -36,7 +39,7 @@ class ActuatorBoardSimulation(SimulatedCANDeviceHandle):
         """
         # If message is writing a valve, store this change in the internal dictionary
         if isinstance(packet, ActuatorSetPacket):
-            rospy.sleep(random.randrange(0, 1))  # Time to simluate opening of valves
+            self.create_rate(random.randrange(0, 1)).sleep()  # Time to simluate opening of valves
             self.status[packet.address] = packet.open
             self.send_data(bytes(AckPacket()))
 

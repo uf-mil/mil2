@@ -2,16 +2,12 @@
 from __future__ import annotations
 
 import rclpy
-from electrical_protocol import AckPacket
-from mil_usb_to_can.sub9 import CANDeviceHandle
+from rclpy.node import Node
+from rclpy.duration import Duration
 
-from rclpy import node, service, timer
-import rclpy.logging
-import rclpy.logging_service
-import rclpy.service
-import rclpy.time
-import rclpy.timer
-import rclpy.node
+from electrical_protocol import AckPacket
+from mil_usb_to_can.device import CANDeviceHandle
+
 from sub_actuator_board.srv import (
     GetValve,
     GetValveRequest,
@@ -27,7 +23,7 @@ from .packets import (
 )
 
 # TODO: make the parent class inherit from node so we can have access to the clock
-class ActuatorBoard(CANDeviceHandle):
+class ActuatorBoard(CANDeviceHandle, Node):
     """
     Device handle for the actuator board. Because this class implements a CAN device,
     it inherits from the :class:`CANDeviceHandle` class.
@@ -35,11 +31,12 @@ class ActuatorBoard(CANDeviceHandle):
 
     _recent_response: ActuatorPollResponsePacket | None
 
-    def __init__(self, node:rclpy.node.Node, *args, **kwargs): # TODO: once parent class is established remove node from argument
+    def __init__(self, *args, **kwargs): # TODO: once parent class is established remove node from argument
         super().__init__(*args, **kwargs)
-        self._set_service = rclpy.service.Service("/set_valve", SetValve, self.set_valve)
-        self._get_service = rclpy.service.Service("/get_valve", GetValve, self.get_valve)
-        self.observed_node = node
+        Node.__init__(self, "actuator_board")
+
+        self._set_service = self.create_service("/set_valve", SetValve, self.set_valve)
+        self._get_service = self.create_service("/get_valve", GetValve, self.get_valve)
         self._recent_response = None
 
     def set_valve(self, req: SetValveRequest) -> dict:
@@ -57,7 +54,7 @@ class ActuatorBoard(CANDeviceHandle):
         message = ActuatorSetPacket(address=req.actuator, open=req.opened)
         self.send_data(message)
 
-        self.observed_node.get_logger().info(
+        self.get_logger().info(
             "Set valve {} {}".format(
                 req.actuator,
                 "opened" if req.opened else "closed",
@@ -69,8 +66,8 @@ class ActuatorBoard(CANDeviceHandle):
         self.send_data(ActuatorPollRequestPacket())
 
         #TODO: Time acquisition is done by node and not globally anymore
-        start = self.observed_node.get_clock().now().to_msg().sec
-        while self.observed_node.get_clock().now().to_msg().sec - start < 2:
+        start = self.get_clock().now()
+        while self.get_clock().now() - start < Duration(seconds=2):
             if self._recent_response is not None:
                 break
 
@@ -87,8 +84,8 @@ class ActuatorBoard(CANDeviceHandle):
     def get_valve(self, req: GetValveRequest) -> GetValveResponse:
         message = ActuatorPollRequestPacket()
         self.send_data(message)
-        start = self.observed_node.get_clock().now().to_msg().sec
-        while self.observed_node.get_clock().now().to_msg().sec - start < 10:
+        start = self.node.get_clock().now()
+        while self.node.get_clock().now() - start < Duration(seconds=10):
             if self._recent_response is not None:
                 break
 

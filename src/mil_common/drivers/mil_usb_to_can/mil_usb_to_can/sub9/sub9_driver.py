@@ -8,13 +8,16 @@ from threading import Lock
 from typing import TYPE_CHECKING, Literal, overload
 
 import rclpy
+from rclpy.node import Node
+from rclpy.duration import Duration
+
 import serial
 from electrical_protocol import Packet
 from electrical_protocol.packet import SYNC_CHAR_1
-from mil_misc_tools.serial_tools import SimulatedSerial
+from utils.mil_tools.mil_misc_tools.serial_tools import SimulatedSerial
 from serial import SerialException
 
-from mil_usb_to_can.sub9.device import CANDeviceHandle, SimulatedCANDeviceHandle
+from mil_usb_to_can.device import CANDeviceHandle, SimulatedCANDeviceHandle
 
 if TYPE_CHECKING:
     HandlePacketListing = tuple[
@@ -23,7 +26,7 @@ if TYPE_CHECKING:
     ]
 
 
-class SimulatedUSBtoCANStream(SimulatedSerial):
+class SimulatedUSBtoCANStream(SimulatedSerial, Node):
     """
     Simulates the USB to CAN board. Is supplied with a dictionary of simulated
     CAN devices to simulate the behavior of the whole CAN network.
@@ -47,7 +50,8 @@ class SimulatedUSBtoCANStream(SimulatedSerial):
             devices = []
 
         self._devices = [device(self, packet_list) for device, packet_list in devices]
-        super().__init__()
+        super().__init__(node_name="usb_to_can_driver")
+        SimulatedSerial.__init__()
 
     def send_to_bus(self, data: bytes, *, from_mobo=False):
         """
@@ -72,7 +76,7 @@ class SimulatedUSBtoCANStream(SimulatedSerial):
                 sent = True
 
         if not sent and from_mobo:
-            rospy.logerr(
+            self.get_logger().error(
                 f"{sent}, {from_mobo}: Received packet of type {p.__class__.__qualname__} on simulated bus, but no one is listening for it...",
             )
 
@@ -83,7 +87,7 @@ class SimulatedUSBtoCANStream(SimulatedSerial):
         self.send_to_bus(data, from_mobo=True)
 
 
-class USBtoCANDriver:
+class USBtoCANDriver(Node):
     """
     ROS Driver which implements the USB to CAN board. Allow users to specify a dictionary of
     device handle classes to be loaded at runtime to handle communication with
@@ -96,15 +100,16 @@ class USBtoCANDriver:
     _inbound_listing: dict[type[Packet], CANDeviceHandle]
 
     def __init__(self):
-        port = rospy.get_param("~port", "/dev/tty0")
-        baud = rospy.get_param("~baudrate", 115200)
-        rospy.get_param("~can_id", 0)
-        simulation = rospy.get_param("/is_simulation", False)
+        super().__init__('usb_to_can_driver')
+        port = self.declare_parameter("port", "/dev/tty0")
+        baud = self.declare_parameter("baudrate", 115200)
+        self.declare_parameter("can_id", 0)
+        simulation = self.declare_parameter("is_simulation", False)
         self.lock = Lock()
         self._packet_deque = deque()
         # If simulation mode, load simulated devices
         if simulation:
-            rospy.logwarn(
+            self.get_logger().warn(
                 "CAN2USB driver in simulation! Will not talk to real hardware.",
             )
             devices = self.read_devices(simulated=True)
@@ -123,7 +128,7 @@ class USBtoCANDriver:
             for packet in device[1]:
                 self._inbound_listing[packet] = handle
 
-        self.timer = rospy.Timer(rospy.Duration(1.0 / 20.0), self.process_in_buffer)
+        self.timer = self.create_timer(1.0 / 20.0, self.process_in_buffer)
 
     def read_from_stream(self) -> bytes | None:
         # Read until SOF is encourntered in case buffer contains the end of a previous packet
@@ -167,14 +172,14 @@ class USBtoCANDriver:
             # rospy.logerr(f"raw: {hexify(packed_packet)}")
             packet = Packet.from_bytes(packed_packet)
         except SerialException as e:
-            rospy.logerr(f"Error reading packet: {e}")
+            self.get_logger().error(f"Error reading packet: {e}")
             return False
         if packet is None:
             return False
         if packet.__class__ in self._inbound_listing:
             self._inbound_listing[packet.__class__].on_data(packet)
         elif not self._packet_deque:
-            rospy.logwarn(
+            self.get_logger().warn(
                 f"Message of type {packet.__class__.__qualname__} received, but no device ready to accept",
             )
         else:
@@ -189,7 +194,7 @@ class USBtoCANDriver:
             try:
                 self.read_packet()
             except Exception as e:
-                rospy.logerr(f"Error when reading packets: {e}")
+                self.get_logger().error(f"Error when reading packets: {e}")
 
     def send_data(
         self,
@@ -209,7 +214,7 @@ class USBtoCANDriver:
                 self._packet_deque.append(handle)
             return None
         except SerialException as e:
-            rospy.logerr(f"Error writing packet: {e}")
+            self.get_logger().error(f"Error writing packet: {e}")
             return e
 
     @overload
@@ -249,9 +254,9 @@ class USBtoCANDriver:
             tuple[type[SimulatedCANDeviceHandle | CANDeviceHandle], list[type[Packet]]]
         ] = []
         if simulated:
-            d = rospy.get_param("~simulated_devices")
+            d = self.declare_parameter("simulated_devices")
         else:
-            d = rospy.get_param("~device_handles")
+            d = self.declare_parameter("device_handles")
 
         for module_name, packet_list in d.items():
             # Split module from class name, import module, and get class from module
@@ -272,6 +277,6 @@ class USBtoCANDriver:
 
 
 if __name__ == "__main__":
-    rospy.init_node("usb_to_can_driver")
+    rclpy.create_node("usb_to_can_driver")
     driver = USBtoCANDriver()
-    rospy.spin()
+    rclpy.spin(node=driver)
