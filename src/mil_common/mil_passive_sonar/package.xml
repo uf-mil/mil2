@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>mil_passive_sonar</name>
+  <version>2.0.0</version>
+  <description>MIL Passive Sonar</description>
+  <maintainer email="dvolya@ufl.edu">Daniel Volya</maintainer>
+  <license>BSD</license>
+  <author>Matthew Thompson</author>
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>ament_cmake_ros</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>message_runtime</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>tf</build_depend>
+  <!-- Dependencies needed after this package is compiled. -->
+  <exec_depend>tf</run_depend>
+  <exec_depend>rospy</run_depend>
+  <exec_depend>message_runtime</run_depend>
+  <exec_depend>message_generation</run_depend>
+  <exec_depend>std_msgs</run_depend>
+  <exec_depend>geometry_msgs</run_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+  <export>
+   <build_type>ament_cmake</build_type>
+  </export>
+</package>
