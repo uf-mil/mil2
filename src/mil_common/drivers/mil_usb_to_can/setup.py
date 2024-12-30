@@ -13,13 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='mil2',
+    maintainer='Daniel Parra',
     maintainer_email='daniel27parra@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            "sub9_driver = mil_usb_to_can.sub9.sub9_driver:main"
         ],
     },
 )

@@ -2,12 +2,14 @@
     "python.autoComplete.extraPaths": [
         "/home/daniel/mil2/install/sub_actuator_board/lib/python3.12/site-packages",
         "/home/daniel/mil2/install/mil_usb_to_can/lib/python3.12/site-packages",
+        "/home/daniel/mil2/install/mil_tools/lib/python3.12/site-packages",
         "/home/daniel/mil2/install/electrical_protocol/lib/python3.12/site-packages",
         "/opt/ros/jazzy/lib/python3.12/site-packages"
     ],
     "python.analysis.extraPaths": [
         "/home/daniel/mil2/install/sub_actuator_board/lib/python3.12/site-packages",
         "/home/daniel/mil2/install/mil_usb_to_can/lib/python3.12/site-packages",
+        "/home/daniel/mil2/install/mil_tools/lib/python3.12/site-packages",
         "/home/daniel/mil2/install/electrical_protocol/lib/python3.12/site-packages",
         "/opt/ros/jazzy/lib/python3.12/site-packages"
     ]

@@ -20,7 +20,7 @@ def generate_launch_description():
     # Define the node
     usb_to_can_driver_node = Node(
         package='mil_usb_to_can',
-        executable='sub9_driver.py',
+        executable='sub9_driver',
         name='usb_to_can_driver',
         parameters=[{
             'is_simulation': LaunchConfiguration('simulated'),

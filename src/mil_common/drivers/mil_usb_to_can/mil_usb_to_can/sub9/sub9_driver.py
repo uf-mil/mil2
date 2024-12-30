@@ -275,8 +275,11 @@ class USBtoCANDriver(Node):
             res.append((imported_class, packets))
         return res
 
-
-if __name__ == "__main__":
-    rclpy.create_node("usb_to_can_driver")
+def main(args=None):
+    rclpy.init(args=args)
     driver = USBtoCANDriver()
     rclpy.spin(node=driver)
+    rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
