@@ -16,6 +16,9 @@ _list_complete() {
 	done
 }
 
+# Use Cyclone DDS by default (it's super fast and amazing!)
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
 alias mil='cd $MIL_REPO'
 
 alias srcbrc="source ~/.bashrc"
