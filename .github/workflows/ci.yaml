@@ -83,6 +83,10 @@ jobs:
           export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
           source /opt/ros/jazzy/setup.bash
           source install/setup.bash
+          set +u
+          source scripts/setup.bash
+          set -u
+          echo $RMW_IMPLEMENTATION
           colcon test --event-handlers console_cohesion+ \
             --executor sequential \
             --return-code-on-test-failure
