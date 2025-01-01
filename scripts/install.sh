@@ -20,6 +20,22 @@ if [[ -z ${TERM} ]]; then
 	clear
 fi
 
+# Before even starting, check if using Ubuntu 20.04
+NAME=$(awk -F= '/^NAME/{print $2}' /etc/os-release)
+VERSION=$(awk -F'=' '/^VERSION=/{print $2}' /etc/os-release)
+if [[ $NAME != *"Ubuntu"* ]]; then
+	printf "${Red}This script is only supported on Ubuntu (you're using: ${NAME}). Please install Ubuntu 24.04.${Res}\n"
+	exit 1
+fi
+if [[ $VERSION != *"24.04"* ]]; then
+	printf "${Red}This script is only supported on Ubuntu 24.04 (you're using: ${VERSION}). Please install Ubuntu 24.04.${Res}\n"
+	exit 1
+fi
+if [[ $(grep -i Microsoft /proc/version) ]]; then
+	printf "${Red}Using WSL is not supported, due to graphical issues with our simulation environment. Please dual-boot your computer, or use a virtual machine.${Res}\n"
+	exit 1
+fi
+
 # Display header
 cat <<EOF
 $(color "$Pur")
@@ -110,6 +126,7 @@ mil_system_install --no-install-recommends \
 	lsb-release \
 	neovim \
 	python3 \
+	python3-pip \
 	ruby \
 	tzdata \
 	wget \
@@ -119,10 +136,9 @@ mil_system_install --no-install-recommends \
 # Generally, our packages shouldn't break the system, but we will continue to monitor
 # this for the future. ROS2 and rosdep have a hard time with virtual environments,
 # and using system pip packages in the past has been fine.
-python3 -m pip config set global.break-system-packages true
+sudo python3 -m pip config set global.break-system-packages true
 
-# Attempt to install vcstool using apt-get or pip if apt-get does not work
-sudo apt install -y python3-vcstool || sudo pip3 install -U vcstool
+sudo pip3 install -U vcstool
 
 cat <<EOF
 $(color "$Pur")
@@ -174,10 +190,12 @@ mil_system_install ros-jazzy-desktop-full gz-harmonic
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
 mil_system_install \
+	ros-jazzy-rmw-cyclonedds-cpp \
 	ros-jazzy-tf2-sensor-msgs \
 	ros-jazzy-geographic-msgs \
 	ros-jazzy-vision-msgs \
-	ros-jazzy-velodyne
+	ros-jazzy-velodyne \
+	python3-colcon-common-extensions
 
 cat <<EOF
 $(color "$Pur")
@@ -193,7 +211,7 @@ if which update-manager >/dev/null 2>&1; then
 fi
 
 # Install Python 3 dependencies
-sudo pip3 install -r requirements.txt --break-system-packages
+sudo pip3 install -r requirements.txt
 
 cat <<EOF
 $(color "$Pur")
@@ -203,8 +221,11 @@ $(color "$Pur")Initializing rosdep...
 $(hash_header)$(color "$Res")
 EOF
 
+# Install Colcon
+sudo pip3 install -U colcon-common-extensions
+
 # Initialize rosdep
-sudo apt-get install python3-rosdep
+sudo apt-get install -y python3-rosdep
 
 # Update rosdep
 sudo rm -rf /etc/ros/rosdep/sources.list.d/* # Delete this file first - if not deleted, error could be thrown
@@ -300,6 +321,7 @@ mil_user_install_dependencies
 mil_user_setup_rc
 set +u
 . /opt/ros/jazzy/setup.bash
+. "$SCRIPT_DIR/setup.bash"
 set -u
 
 cat <<EOF

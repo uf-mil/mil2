@@ -163,7 +163,6 @@ class TestSimulatedBasic(unittest.TestCase):
                 bytes(AnswerPacket(packet.number_one + packet.number_two)),
             )
             self.node.get_logger().info(f"finished {i}")
-            self.node.get_clock().sleep_for(Duration(seconds=0.005))
         self.node.get_clock().sleep_for(Duration(seconds=2))
         self.assertGreaterEqual(self.count, 900)
         self.trigger_two_service_caller = self.node.create_client(

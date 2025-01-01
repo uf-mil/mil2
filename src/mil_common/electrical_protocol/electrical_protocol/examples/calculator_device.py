@@ -8,7 +8,6 @@ from threading import Event
 from typing import Union
 
 import rclpy
-from rclpy.duration import Duration
 from std_msgs.msg import Float32, String
 from std_srvs.srv import Empty
 
@@ -94,7 +93,6 @@ class CalculatorDevice(
         self.send_packet(
             RequestAddPacket(number_one=self.num_one, number_two=self.num_two),
         )
-        self.get_clock().sleep_for(Duration(seconds=1))
         return response
 
     def trigger_two(self, _: Empty.Request, response: Empty.Response):
