@@ -194,7 +194,8 @@ mil_system_install \
 	ros-jazzy-tf2-sensor-msgs \
 	ros-jazzy-geographic-msgs \
 	ros-jazzy-vision-msgs \
-	ros-jazzy-velodyne
+	ros-jazzy-velodyne \
+	python3-colcon-common-extensions
 
 cat <<EOF
 $(color "$Pur")
