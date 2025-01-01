@@ -19,6 +19,14 @@ _list_complete() {
 # Use Cyclone DDS by default (it's super fast and amazing!)
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
+# Setup colcon_cd
+source "/usr/share/colcon_cd/function/colcon_cd.sh"
+export _colcon_cd_root=$MIL_REPO
+alias ccd="colcon_cd"
+
+# Setup colcon autocomplete
+source "/usr/share/colcon_cd/function/colcon_cd-argcomplete.bash"
+
 alias mil='cd $MIL_REPO'
 
 alias srcbrc="source ~/.bashrc"
