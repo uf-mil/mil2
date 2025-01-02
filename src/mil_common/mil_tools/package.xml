@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>mil_tools</name>
+  <version>2.0.0</version>
+  <description>Various tools for the great lab that is MIL</description>
+  <maintainer email="me@cbrxyz.com">Cameron Brown</maintainer>
+  <author email="kma1660@gmail.com">Kevin Allen</author>
+  <author email="dsoto@ufl.edu">David Soto</author>
+  <author email="mattlangford95@ufl.edu">Matthew Langford</author>
+  <license>MIT</license>
+
+  <build_export_depend>rclcpp</build_export_depend>
+
+  <buildtool_depend>ament</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>python3-pytest</test_depend>
+  <test_depend>rclcpp</test_depend>
+
+  <exec_depend>rclpy</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
