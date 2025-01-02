@@ -2,8 +2,8 @@
  * and publish it to ROS as a mil_passive_sonar/HydrophoneSamples message
  */
 #include <arpa/inet.h>
-#include <mil_passive_sonar/HydrophoneSamplesStamped.h>
-#include <ros/ros.h>
+#include "mil_passive_sonar/msg/hydrophone_samples_stamped.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 #include <boost/asio.hpp>
 
