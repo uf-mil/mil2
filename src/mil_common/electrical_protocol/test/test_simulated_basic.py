@@ -26,7 +26,7 @@ from std_srvs.srv import Empty
 def generate_test_description():
     calculator_device = Node(
         package="electrical_protocol",
-        executable="calculator",
+        executable="calculator_device.py",
         name="calculator_device",
     )
 
