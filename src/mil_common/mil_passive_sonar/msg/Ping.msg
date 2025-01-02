@@ -1,4 +1,4 @@
-Header header
+std_msgs/Header header
 int32 channels
 int32 samples
 int32 sample_rate
