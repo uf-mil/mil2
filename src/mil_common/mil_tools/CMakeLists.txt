@@ -15,6 +15,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 
 add_library(${PROJECT_NAME}
+    src/string.cpp
     src/fs/path.cpp
 )
 include_directories(include)
@@ -41,8 +42,12 @@ if(BUILD_TESTING)
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
   )
-  # ament_target_dependencies(${PROJECT_NAME}_fs_path_test
-  #   std_msgs
-  # )
-    target_link_libraries(${PROJECT_NAME}_fs_path_test ${PROJECT_NAME})
+  target_link_libraries(${PROJECT_NAME}_fs_path_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_string_test test/string.cpp)
+  target_include_directories(${PROJECT_NAME}_string_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_string_test ${PROJECT_NAME})
 endif()

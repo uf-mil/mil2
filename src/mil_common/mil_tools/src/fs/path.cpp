@@ -1,6 +1,6 @@
 #include "mil_tools/fs/path.hpp"
 
-namespace mil_tools::fs {
+namespace mil_tools::fs::path {
 
 std::optional<std::string> home() {
   const char *home = std::getenv("HOME");
@@ -18,4 +18,4 @@ std::string expanduser(std::string const &path) {
   return *home_opt + std::string(path).substr(1);
 }
 
-} // namespace mil_tools::fs
+} // namespace mil_tools::fs::path

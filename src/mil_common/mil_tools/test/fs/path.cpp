@@ -3,19 +3,20 @@
 
 #include "mil_tools/fs/path.hpp"
 
-TEST(mil_tools_fs, expanduser) {
-  EXPECT_EQ(mil_tools::fs::expanduser("~"), std::getenv("HOME"));
-  EXPECT_EQ(mil_tools::fs::expanduser("~/"), *mil_tools::fs::home() + "/");
-  EXPECT_EQ(mil_tools::fs::expanduser("~/foo"),
-            *mil_tools::fs::home() + "/foo");
-  EXPECT_EQ(mil_tools::fs::expanduser("/foo"), "/foo");
-  EXPECT_EQ(mil_tools::fs::expanduser(""), "");
+TEST(mil_tools_fs_path, expanduser) {
+  EXPECT_EQ(mil_tools::fs::path::expanduser("~"), std::getenv("HOME"));
+  EXPECT_EQ(mil_tools::fs::path::expanduser("~/"),
+            *mil_tools::fs::path::home() + "/");
+  EXPECT_EQ(mil_tools::fs::path::expanduser("~/foo"),
+            *mil_tools::fs::path::home() + "/foo");
+  EXPECT_EQ(mil_tools::fs::path::expanduser("/foo"), "/foo");
+  EXPECT_EQ(mil_tools::fs::path::expanduser(""), "");
 }
 
-TEST(mil_tools_fs, home) {
+TEST(mil_tools_fs_path, home) {
   const char *original_home = std::getenv("HOME");
   setenv("HOME", "/mock/home", 1);
-  EXPECT_EQ(*mil_tools::fs::home(), "/mock/home");
+  EXPECT_EQ(*mil_tools::fs::path::home(), "/mock/home");
   unsetenv("HOME");
   if (original_home)
     setenv("HOME", original_home, 1);

@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace mil_tools::fs {
+namespace mil_tools::fs::path {
 std::optional<std::string> home();
 std::string expanduser(std::string const &path);
-}; // namespace mil_tools::fs
+}; // namespace mil_tools::fs::path
