@@ -25,6 +25,7 @@ ament_python_install_package(${PROJECT_NAME})
 # install(PROGRAMS test/calculator_device.py DESTINATION bin)
 install(PROGRAMS
   test/calculator_device.py
+  test/calculator_device_noros.py
   DESTINATION lib/${PROJECT_NAME} )
 
 # Export package dependencies
@@ -38,6 +39,7 @@ if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   set(_pytest_tests
     test/test_simulated_basic.py
+    test/test_simulated_noros.py
   )
   foreach(_test_path ${_pytest_tests})
     get_filename_component(_test_name ${_test_path} NAME_WE)

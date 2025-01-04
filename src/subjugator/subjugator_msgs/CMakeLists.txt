@@ -39,7 +39,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 	"srv/Sonar.srv"
 	"srv/UpdateThrusterLayout.srv"
   DEPENDENCIES geometry_msgs std_msgs sensor_msgs
-  ADD_LINTER_TESTS
 )
 
 ament_package()
