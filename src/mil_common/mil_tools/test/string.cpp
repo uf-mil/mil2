@@ -64,6 +64,28 @@ TEST(mil_tools_string, strip)
   EXPECT_EQ(mil_tools::string::strip(""), "");
 }
 
+TEST(mil_tools_string, removeprefix)
+{
+  EXPECT_EQ(mil_tools::string::removeprefix("abc", "a"), "bc");
+  EXPECT_EQ(mil_tools::string::removeprefix("abc", "ab"), "c");
+  EXPECT_EQ(mil_tools::string::removeprefix("abc", "abc"), "");
+  EXPECT_EQ(mil_tools::string::removeprefix("abc", "zabc"), "abc");
+  EXPECT_EQ(mil_tools::string::removeprefix("abc", "b"), "abc");
+  EXPECT_EQ(mil_tools::string::removeprefix("abc", ""), "abc");
+  EXPECT_EQ(mil_tools::string::removeprefix("", ""), "");
+}
+
+TEST(mil_tools_string, removesuffix)
+{
+  EXPECT_EQ(mil_tools::string::removesuffix("abc", "c"), "ab");
+  EXPECT_EQ(mil_tools::string::removesuffix("abc", "bc"), "a");
+  EXPECT_EQ(mil_tools::string::removesuffix("abc", "abc"), "");
+  EXPECT_EQ(mil_tools::string::removesuffix("abc", "zabc"), "abc");
+  EXPECT_EQ(mil_tools::string::removesuffix("abc", "b"), "abc");
+  EXPECT_EQ(mil_tools::string::removesuffix("abc", ""), "abc");
+  EXPECT_EQ(mil_tools::string::removesuffix("", ""), "");
+}
+
 int main(int argc, char **argv)
 {
   testing::InitGoogleTest(&argc, argv);

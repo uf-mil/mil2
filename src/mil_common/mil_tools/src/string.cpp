@@ -54,4 +54,22 @@ std::string strip(std::string const &s)
 {
   return lstrip(rstrip(s));
 }
+
+std::string removeprefix(std::string const &s, std::string const &prefix)
+{
+  if (startswith(s, prefix))
+  {
+    return s.substr(prefix.size());
+  }
+  return s;
+}
+
+std::string removesuffix(std::string const &s, std::string const &suffix)
+{
+  if (endswith(s, suffix))
+  {
+    return s.substr(0, s.size() - suffix.size());
+  }
+  return s;
+}
 }  // namespace mil_tools::string
