@@ -8,7 +8,7 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-Wall -Wextra -Werror)
 endif()
 
 find_package(backward_ros REQUIRED)
@@ -16,8 +16,10 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 
 add_library(${PROJECT_NAME}
-    src/string.cpp
     src/fs/path.cpp
+    src/os.cpp
+    src/os/FileDescriptor.cpp
+    src/string.cpp
 )
 include_directories(include)
 ament_target_dependencies(${PROJECT_NAME} rclcpp)
@@ -51,4 +53,11 @@ if(BUILD_TESTING)
     $<INSTALL_INTERFACE:include>
   )
   target_link_libraries(${PROJECT_NAME}_string_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_os_test test/os.cpp)
+  target_include_directories(${PROJECT_NAME}_os_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_os_test ${PROJECT_NAME})
 endif()
