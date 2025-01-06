@@ -60,4 +60,11 @@ if(BUILD_TESTING)
     $<INSTALL_INTERFACE:include>
   )
   target_link_libraries(${PROJECT_NAME}_os_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_random_test test/random.cpp)
+  target_include_directories(${PROJECT_NAME}_random_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_random_test ${PROJECT_NAME})
 endif()

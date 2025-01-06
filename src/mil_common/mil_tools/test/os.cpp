@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "mil_tools/fs/path.hpp"
+#include "mil_tools/os/TemporaryFile.hpp"
 
 TEST(mil_tools_os, open)
 {
@@ -21,24 +22,21 @@ TEST(mil_tools_os, open)
 TEST(mil_tools_os, write)
 {
   // create file if not eist
-  std::ofstream(mil_tools::fs::path::expanduser("~/mil2/tmp.txt"));
-
-  // write with fd
-  std::string filename = mil_tools::fs::path::expanduser("~/mil2/tmp.txt");
-  auto fd = mil_tools::os::open(filename, O_RDWR | O_CREAT);
-  mil_tools::os::write(fd.get(), "hello");
-  fd.write(" world");
-  fd.close();
+  mil_tools::os::TemporaryFile tmpfile;
+  tmpfile.write("hello world");
 
   // check contents
-  std::ifstream file(filename);
+  std::ifstream file(tmpfile.path());
+  assert(file.is_open());
   std::string line;
   std::getline(file, line);
   EXPECT_EQ(line, "hello world");
   file.close();
+  tmpfile.close();
 
-  // delete file
-  std::remove(filename.c_str());
+  // ensure temp file was actually deleted
+  file.open(tmpfile.path());
+  EXPECT_FALSE(file.is_open());
 }
 
 int main(int argc, char **argv)
