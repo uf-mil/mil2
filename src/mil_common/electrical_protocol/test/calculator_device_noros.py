@@ -8,11 +8,11 @@ from threading import Event
 from typing import Union
 
 import rclpy
-from rclpy.duration import Duration
+from electrical_protocol import Packet
+from electrical_protocol.driver_noros import SerialDevice
+from rclpy.node import Node
 from std_msgs.msg import Float32, String
 from std_srvs.srv import Empty
-
-from electrical_protocol import Packet, SerialDeviceNode
 
 
 class CalculatorMode(IntEnum):
@@ -57,13 +57,14 @@ class EnumPacket(Packet, class_id=0x37, subclass_id=0x04, payload_format="<cb"):
 
 
 class CalculatorDevice(
-    SerialDeviceNode[
+    SerialDevice[
         Union[RequestAddPacket, RequestSubPacket, CharacterPacket],
         Union[AnswerPacket, EnumPacket],
     ],
+    Node,
 ):
     def __init__(self):
-        super().__init__("calculator_device", None, 115200)
+        Node.__init__(self, "calculator_device")
         self.port_topic = self.create_subscription(
             String,
             "~/port",
@@ -84,6 +85,7 @@ class CalculatorDevice(
         self.answer_two_topic = self.create_publisher(Float32, "~/answer_two", 10)
         self.next_packet = Event()
         self.i = 0
+        SerialDevice.__init__(self, None, 115200)
 
     def port_callback(self, msg: String):
         self.connect(msg.data, 115200)
@@ -94,7 +96,6 @@ class CalculatorDevice(
         self.send_packet(
             RequestAddPacket(number_one=self.num_one, number_two=self.num_two),
         )
-        self.get_clock().sleep_for(Duration(seconds=1))
         return response
 
     def trigger_two(self, _: Empty.Request, response: Empty.Response):
@@ -109,12 +110,8 @@ class CalculatorDevice(
             self.answer_two_topic.publish(Float32(data=packet.number.value))
 
 
-def main(args=None):
-    rclpy.init(args=args)
+if __name__ == "__main__":
+    rclpy.init()
     calculator_device = CalculatorDevice()
     rclpy.spin(calculator_device)
     rclpy.shutdown()
-
-
-if __name__ == "__main__":
-    main()

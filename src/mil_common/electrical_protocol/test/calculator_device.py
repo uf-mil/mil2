@@ -86,17 +86,17 @@ class CalculatorDevice(
     def port_callback(self, msg: String):
         self.connect(msg.data, 115200)
 
-    def trigger(self, _: Empty.Request, __: Empty.Response):
+    def trigger(self, _: Empty.Request, response: Empty.Response):
         self.num_one, self.num_two = self.i, 1000 - self.i
         self.i += 1
         self.send_packet(
             RequestAddPacket(number_one=self.num_one, number_two=self.num_two),
         )
-        return Empty.Response()
+        return response
 
-    def trigger_two(self, _: Empty.Request, __: Empty.Response):
+    def trigger_two(self, _: Empty.Request, response: Empty.Response):
         self.send_packet(CharacterPacket("a", "small"))
-        return Empty.Response()
+        return response
 
     def on_packet_received(self, packet) -> None:
         if isinstance(packet, AnswerPacket):

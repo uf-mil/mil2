@@ -126,6 +126,7 @@ mil_system_install --no-install-recommends \
 	lsb-release \
 	neovim \
 	python3 \
+	python3-pip \
 	ruby \
 	tzdata \
 	wget \
@@ -189,10 +190,13 @@ mil_system_install ros-jazzy-desktop-full gz-harmonic
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
 mil_system_install \
+	ros-jazzy-rmw-cyclonedds-cpp \
 	ros-jazzy-tf2-sensor-msgs \
 	ros-jazzy-geographic-msgs \
 	ros-jazzy-vision-msgs \
-	ros-jazzy-velodyne
+	ros-jazzy-velodyne \
+	ros-jazzy-backward-ros \
+	python3-colcon-common-extensions
 
 cat <<EOF
 $(color "$Pur")
@@ -318,6 +322,7 @@ mil_user_install_dependencies
 mil_user_setup_rc
 set +u
 . /opt/ros/jazzy/setup.bash
+. "$SCRIPT_DIR/setup.bash"
 set -u
 
 cat <<EOF
