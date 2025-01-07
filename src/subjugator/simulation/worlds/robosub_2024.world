@@ -1,19 +1,26 @@
 <?xml version="1.0"?>
 
-<sdf version="1.4">
+<sdf version="1.9">
         <world name="robosub_2024">
+    <!-- Scene-->
     <scene>
-
-    <ambient>0.0 1.0 1.0</ambient>  
-
-    <background>0.0 0.7 0.8</background>
-
-    <grid>false</grid>
+        <sky>
+            <clouds>
+            <speed>12</speed>
+            </clouds>
+        </sky>
+        <ambient>0.4 0.4 0.4 1</ambient>
+        <background>0.7 0.7 0.7 1</background>
+        <shadows>0</shadows>
+        <grid>false</grid>
     </scene>
+
             <physics name="1ms" type="ignored">
                 <max_step_size>0.001</max_step_size>
                 <real_time_factor>1.0</real_time_factor>
             </physics>
+
+            <!-- Plugins-->
             <plugin
                 filename="gz-sim-physics-system"
                 name="gz::sim::systems::Physics">
@@ -36,12 +43,40 @@
                 filename="gz-sim-dvl-system"
                 name="gz::sim::systems::DopplerVelocityLogSystem">
             </plugin>
+            <!-- Buoyancy Plugin -->
+            <!--
+                To alter a objects's buoyancy do one or both of the following:
+
+                1. Change the objects's inertia.
+                2. Change the `uniform_fluid_density` in the `buoyancy-system` plugin. 
+
+                Note: Graded Buoyancy does not work with collision objects other than box and sphere!
+            -->
+            <plugin
+                filename="gz-sim-buoyancy-system"
+                name="gz::sim::systems::Buoyancy">
+                <graded_buoyancy>
+                    <default_density>1000</default_density>
+                    <density_change>
+                    <above_depth>0</above_depth>
+                    <density>1</density>
+                    </density_change>
+                </graded_buoyancy>
+            </plugin>
             
-           <!-- Origin Placed Somewhere in the middle of the North Sea --> 
-           <spherical_coordinates>
-                <latitude_deg>56.71897669633431</latitude_deg> 
-                <longitude_deg>3.515625</longitude_deg>
-           </spherical_coordinates>
+            
+           <!-- Origin Placed in the middle of the woollet pool --> 
+            <spherical_coordinates>
+                <surface_model>EARTH_WGS84</surface_model>
+                <world_frame_orientation>ENU</world_frame_orientation>
+                <latitude_deg>33.70175</latitude_deg>
+                <longitude_deg>-117.78036</longitude_deg>
+                <elevation>0.4</elevation>
+                <heading_deg>100</heading_deg>
+            </spherical_coordinates>
+
+            <!-- Need to adjust -->
+            <magnetic_field>5e-06 2.4e-05 3.9e-05</magnetic_field>
            
            <!-- Global Light Source -->
            <light type="directional" name="sun1">
@@ -67,12 +102,30 @@
                 </uri>
                 <pose>0 0 0 0 0 0</pose>
            </include>
-           <!-- Sea Surface -->
-            <include>
-                <uri>
-                    https://fuel.gazebosim.org/1.0/OpenRobotics/models/Waves
-                </uri>
-            </include>
+           <!-- Pool Surface -->
+            <model name='Water'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <box>
+                                <size>25 52 0.02</size>
+                            </box>
+                        </geometry>
+                        <transparency>0.8</transparency>
+                        <cast_shadows>0</cast_shadows>
+                        <material>
+                            <ambient>0.2 0.2 0.9 1</ambient>
+                            <diffuse>0.2 0.2 0.9 1</diffuse>
+                            <specular>0.1 0.1 0.3 1</specular>
+                            <emissive>0 0 0 1</emissive>
+                        </material>
+                    </visual>
+                    <self_collide>false</self_collide>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>0 0 0.4 0 0 0</pose>
+                <static>true</static>
+            </model>
 
             <!-- Pool -->
             <model name='WoollettPool'>
@@ -107,7 +160,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>0 0 0 0 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
 
@@ -145,7 +198,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>7.57 22.28 -0.4 0 0 -1.57</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='PathMarker_A1'>
@@ -180,7 +233,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>6.85 22.36 -1.46 0 0 -1.86</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Buoy_A'>
@@ -215,7 +268,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>1.88 23.80 -0.5 3.14 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='PathMarker_A2'>
@@ -250,7 +303,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>1.37 22.84 -1.46 0 0 -0.55</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Bin_A'>
@@ -285,7 +338,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-1.02 18.10 -1.68 0 0 2.47</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Pinger_A1'>
@@ -300,6 +353,7 @@
                     </visual>
                 </link>
                 <pose>-1.65 23.80 -1.60 0 0 0</pose>
+                <static>true</static>
             </model>
             <model name='Torpedoes_A'>
                 <link name='link'>
@@ -333,7 +387,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-1.83 23.77 -1.01 0 0 2.85</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Pinger_A2'>
@@ -348,6 +402,7 @@
                     </visual>
                 </link>
                 <pose>-8.04 22.60 -1.60 0 0 0</pose>
+                <static>true</static>
             </model>
             <model name='Octagon_A'>
                 <link name='link'>
@@ -381,7 +436,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-8.04 22.60 0.43 0 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Table_A'>
@@ -416,114 +471,27 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-8.04 22.60 -0.73 0 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Tubeworm_A'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/tubeworm_2024/tubeworm.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/tubeworm_2024/tubeworm.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.17424 22.44345 -0.73 0 0 0</pose>
+            <include>
+                <name>Tubeworm_A</name>
+                <pose>-8.17424 22.44345 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
-            <model name='Nautilus_A'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/nautilus_2024/nautilus.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/nautilus_2024/nautilus.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.17424 22.66703 -0.73 0 0 0</pose>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Tubeworm</uri>
+            </include>
+            <include>
+                <name>Nautilus_A</name>
+                <pose>-8.17424 22.66703 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
-            <model name='Coral_A'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/coral_2024/coral.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/coral_2024/coral.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-7.8835 22.48817 -0.73 0 0 0</pose>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Nautilus</uri>
+            </include>
+            <include>
+                <name>Coral_A</name>
+                <pose>-7.8835 22.48817 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Coral</uri>
+            </include>
             <!-- LANE B-->
             <model name='StartGate_B'>
                 <link name='link'>
@@ -557,7 +525,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>7.24 7.36 -0.4 0 0 -1.57</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='PathMarker_B1'>
@@ -592,7 +560,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>6.74 7.79 -1.46 0 0 0.64</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Buoy_B'>
@@ -627,7 +595,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>3.42 10.94 -0.5 3.14 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='PathMarker_B2'>
@@ -662,7 +630,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>2.91 10.07 -1.46 0 0 -0.53</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Bin_B'>
@@ -697,7 +665,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>0.27 2.98 -1.68 0 0 -0.20</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Pinger_B1'>
@@ -712,6 +680,7 @@
                     </visual>
                 </link>
                 <pose>-3.91 9.60 -1.60 0 0 0</pose>
+                <static>true</static>
             </model>
             <model name='Torpedoes_B'>
                 <link name='link'>
@@ -745,7 +714,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-4.20 9.64 -1.01 0 0 2.91</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Pinger_B2'>
@@ -760,6 +729,7 @@
                     </visual>
                 </link>
                 <pose>-8.18 3.66 -1.60 0 0 0</pose>
+                <static>true</static>
             </model>
             <model name='Octagon_B'>
                 <link name='link'>
@@ -793,7 +763,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-8.18 3.66 0.43 0 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Table_B'>
@@ -828,114 +798,27 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-8.18 3.66 -0.73 0 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Tubeworm_B'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/tubeworm_2024/tubeworm.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/tubeworm_2024/tubeworm.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.31424 3.50345 -0.73 0 0 0</pose>
+            <include>
+                <name>Tubeworm_B</name>
+                <pose>-8.31424 3.50345 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
-            <model name='Nautilus_B'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/nautilus_2024/nautilus.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/nautilus_2024/nautilus.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.31424 3.72703 -0.73 0 0 0</pose>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Tubeworm</uri>
+            </include>
+            <include>
+                <name>Nautilus_B</name>
+                <pose>-8.31424 3.72703 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
-            <model name='Coral_B'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/coral_2024/coral.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/coral_2024/coral.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.0235 3.54817 -0.73 0 0 0</pose>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Nautilus</uri>
+            </include>
+            <include>
+                <name>Coral_B</name>
+                <pose>-8.0235 3.54817 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Coral</uri>
+            </include>
             <!-- LANE C-->
             <model name='StartGate_C'>
                 <link name='link'>
@@ -969,7 +852,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>7.5 -6.08 -0.4 0 0 -1.57</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='PathMarker_C1'>
@@ -1004,7 +887,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>6.79 -6.14 -1.46 0 0 -1.34</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Buoy_C'>
@@ -1039,7 +922,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>1.46 -7.18 -0.5 3.14 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='PathMarker_C2'>
@@ -1074,7 +957,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>0.95 -6.39 -1.46 0 0 -2.60</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Bin_C'>
@@ -1109,7 +992,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-1.13 -2.69 -1.46 0 0 -2.76</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Pinger_C1'>
@@ -1124,6 +1007,7 @@
                     </visual>
                 </link>
                 <pose>-3.64 -3.44 -1.60 0 0 0</pose>
+                <static>true</static>
             </model>
             <model name='Torpedoes_C'>
                 <link name='link'>
@@ -1157,7 +1041,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-3.85 -3.34 -1.01 0 0 3.02</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Pinger_C2'>
@@ -1172,6 +1056,7 @@
                     </visual>
                 </link>
                 <pose>-8.24 -10.19 -1.60 0 0 0</pose>
+                <static>true</static>
             </model>
             <model name='Octagon_C'>
                 <link name='link'>
@@ -1205,7 +1090,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-8.24 -10.19 0.43 0 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Table_C'>
@@ -1240,114 +1125,27 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-8.24 -10.19 -0.73 0 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Tubeworm_C'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/tubeworm_2024/tubeworm.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/tubeworm_2024/tubeworm.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.37324 -10.34655 -0.73 0 0 0</pose>
+            <include>
+                <name>Tubeworm_C</name>
+                <pose>-8.37324 -10.34655 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
-            <model name='Nautilus_C'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/nautilus_2024/nautilus.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/nautilus_2024/nautilus.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.37324 -10.12297 -0.73 0 0 0</pose>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Tubeworm</uri>
+            </include>
+            <include>
+                <name>Nautilus_C</name>
+                <pose>-8.37324 -10.12297 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
-            <model name='Coral_C'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/coral_2024/coral.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/coral_2024/coral.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.0835 -10.30183 -0.73 0 0 0</pose>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Nautilus</uri>
+            </include>
+            <include>
+                <name>Coral_C</name>
+                <pose>-8.0835 -10.30183 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Coral</uri>
+            </include>
             <!-- LANE D-->
             <model name='StartGate_D'>
                 <link name='link'>
@@ -1381,7 +1179,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>7.41 -17.84 -0.4 0 0 -1.57</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='PathMarker_D1'>
@@ -1416,7 +1214,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>6.90 -18.22 -1.46 0 0 -0.64</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Buoy_D'>
@@ -1451,7 +1249,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>2.27 -23.50 -0.5 3.14 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='PathMarker_D2'>
@@ -1486,7 +1284,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>2.06 -22.58 -1.46 0 0 -2.94</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Bin_D'>
@@ -1521,7 +1319,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>1.60 -16.43 -1.68 0 0 -0.23</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Pinger_D1'>
@@ -1536,6 +1334,7 @@
                     </visual>
                 </link>
                 <pose>-3.73 -17.61 -1.60 0 0 0</pose>
+                <static>true</static>
             </model>
             <model name='Torpedoes_D'>
                 <link name='link'>
@@ -1569,7 +1368,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-3.93 -17.74 -1.01 0 0 -3.14</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Pinger_D2'>
@@ -1584,6 +1383,7 @@
                     </visual>
                 </link>
                 <pose>-7.90 -23.22 -1.60 0 0 0</pose>
+                <static>true</static>
             </model>
             <model name='Octagon_D'>
                 <link name='link'>
@@ -1617,7 +1417,7 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-7.90 -23.22 0.43 0 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
             <model name='Table_D'>
@@ -1652,374 +1452,26 @@
                     <enable_wind>false</enable_wind>
                 </link>
                 <pose>-7.90 -23.22 -0.73 0 0 0</pose>
-                <static>false</static>
+                <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Tubeworm_D'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/tubeworm_2024/tubeworm.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/tubeworm_2024/tubeworm.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.03324 -23.37655 -0.73 0 0 0</pose>
+            <include>
+                <name>Tubeworm_D</name>
+                <pose>-8.03324 -23.37655 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
-            <model name='Nautilus_D'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/nautilus_2024/nautilus.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/nautilus_2024/nautilus.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-8.03324 -23.15297 -0.73 0 0 0</pose>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Tubeworm</uri>
+            </include>
+            <include>
+                <name>Nautilus_D</name>
+                <pose>-8.03324 -23.15297 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
-            <model name='Coral_D'>
-                <link name='link'>
-                    <visual name='visual'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/coral_2024/coral.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </visual>
-                    <collision name='collision'>
-                    <geometry>
-                        <mesh>
-                        <uri>file:///home/mil/mil2/src/subjugator/simulation/models/coral_2024/coral.dae</uri>
-                        </mesh>
-                    </geometry>
-                    </collision>
-                    <pose>0 0 0 0 0 0</pose>
-                    <inertial>
-                    <pose>0 0 0 0 0 0</pose>
-                    <mass>1</mass>
-                    <inertia>
-                        <ixx>1</ixx>
-                        <ixy>0</ixy>
-                        <ixz>0</ixz>
-                        <iyy>1</iyy>
-                        <iyz>0</iyz>
-                        <izz>1</izz>
-                    </inertia>
-                    </inertial>
-                    <enable_wind>false</enable_wind>
-                </link>
-                <pose>-7.7435 -23.33183 -0.73 0 0 0</pose>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Nautilus</uri>
+            </include>
+            <include>
+                <name>Coral_D</name>
+                <pose>-7.7435 -23.33183 -0.70 0 0 0</pose>
                 <static>false</static>
-                <self_collide>false</self_collide>
-            </model>
-
-
-
-            <!-- GUI Elements -->
-           <gui fullscreen="0">
-                <!-- 3D scene -->
-                <plugin filename="MinimalScene" name="3D View">
-                    <gz-gui>
-                        <title>3D View</title>
-                        <property type="bool" key="showTitleBar">false</property>
-                        <property type="string" key="state">docked</property>
-                    </gz-gui>
-
-                    <engine>ogre2</engine>
-                    <scene>scene</scene>
-                    <ambient_light>0.4 0.4 0.4</ambient_light>
-                    <background_color>0.8 0.8 0.8</background_color>
-                    <camera_pose>0 15 15 0 1.5708 0</camera_pose>
-                    <camera_clip>
-                        <near>0.25</near>
-                        <far>2500</far>
-                    </camera_clip>
-                </plugin>
-            <!-- Plugins that add functionality to the scene -->
-			<plugin filename="EntityContextMenuPlugin" name="Entity context menu">
-				<gz-gui>
-					<property key="state" type="string">floating</property>
-					<property key="width" type="double">5</property>
-					<property key="height" type="double">5</property>
-					<property key="showTitleBar" type="bool">false</property>
-				</gz-gui>
-			</plugin>
-			<plugin filename="GzSceneManager" name="Scene Manager">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="width" type="double">5</property>
-					<property key="height" type="double">5</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-				</gz-gui>
-			</plugin>
-			<plugin filename="InteractiveViewControl" name="Interactive view control">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="width" type="double">5</property>
-					<property key="height" type="double">5</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-				</gz-gui>
-			</plugin>
-			<plugin filename="CameraTracking" name="Camera Tracking">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="width" type="double">5</property>
-					<property key="height" type="double">5</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-				</gz-gui>
-			</plugin>
-			<plugin filename="MarkerManager" name="Marker manager">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="width" type="double">5</property>
-					<property key="height" type="double">5</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-				</gz-gui>
-			</plugin>
-			<plugin filename="SelectEntities" name="Select Entities">
-				<gz-gui>
-					<anchors target="Select entities">
-						<line own="right" target="right" />
-						<line own="top" target="top" />
-					</anchors>
-					<property key="resizable" type="bool">false</property>
-					<property key="width" type="double">5</property>
-					<property key="height" type="double">5</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-				</gz-gui>
-			</plugin>
-			<plugin filename="VisualizationCapabilities" name="Visualization Capabilities">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="width" type="double">5</property>
-					<property key="height" type="double">5</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-				</gz-gui>
-			</plugin>
-
-			<plugin filename="Spawn" name="Spawn Entities">
-				<gz-gui>
-					<anchors target="Select entities">
-						<line own="right" target="right" />
-						<line own="top" target="top" />
-					</anchors>
-					<property key="resizable" type="bool">false</property>
-					<property key="width" type="double">5</property>
-					<property key="height" type="double">5</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-				</gz-gui>
-			</plugin>
-
-			<!-- World control -->
-			<plugin filename="WorldControl" name="World control">
-				<gz-gui>
-					<title>World control</title>
-					<property type="bool" key="showTitleBar">false</property>
-					<property type="bool" key="resizable">false</property>
-					<property type="double" key="height">72</property>
-					<property type="double" key="width">121</property>
-					<property type="double" key="z">1</property>
-
-					<property type="string" key="state">floating</property>
-					<anchors target="3D View">
-						<line own="left" target="left" />
-						<line own="bottom" target="bottom" />
-					</anchors>
-				</gz-gui>
-
-				<play_pause>true</play_pause>
-				<step>true</step>
-				<start_paused>true</start_paused>
-				<use_event>true</use_event>
-
-			</plugin>
-
-			<!-- World statistics -->
-			<plugin filename="WorldStats" name="World stats">
-				<gz-gui>
-					<title>World stats</title>
-					<property type="bool" key="showTitleBar">false</property>
-					<property type="bool" key="resizable">false</property>
-					<property type="double" key="height">110</property>
-					<property type="double" key="width">290</property>
-					<property type="double" key="z">1</property>
-
-					<property type="string" key="state">floating</property>
-					<anchors target="3D View">
-						<line own="right" target="right" />
-						<line own="bottom" target="bottom" />
-					</anchors>
-				</gz-gui>
-
-				<sim_time>true</sim_time>
-				<real_time>true</real_time>
-				<real_time_factor>true</real_time_factor>
-				<iterations>true</iterations>
-			</plugin>
-
-			<!-- Insert simple shapes -->
-			<plugin filename="Shapes" name="Shapes">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="x" type="double">0</property>
-					<property key="y" type="double">0</property>
-					<property key="width" type="double">250</property>
-					<property key="height" type="double">50</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-					<property key="cardBackground" type="string">#666666</property>
-				</gz-gui>
-			</plugin>
-
-			<!-- Insert lights -->
-			<plugin filename="Lights" name="Lights">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="x" type="double">250</property>
-					<property key="y" type="double">0</property>
-					<property key="width" type="double">150</property>
-					<property key="height" type="double">50</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-					<property key="cardBackground" type="string">#666666</property>
-				</gz-gui>
-			</plugin>
-
-			<!-- Translate / rotate -->
-			<plugin filename="TransformControl" name="Transform control">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="x" type="double">0</property>
-					<property key="y" type="double">50</property>
-					<property key="width" type="double">250</property>
-					<property key="height" type="double">50</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-					<property key="cardBackground" type="string">#777777</property>
-				</gz-gui>
-			</plugin>
-
-			<!-- Screenshot -->
-			<plugin filename="Screenshot" name="Screenshot">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="x" type="double">250</property>
-					<property key="y" type="double">50</property>
-					<property key="width" type="double">50</property>
-					<property key="height" type="double">50</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-					<property key="cardBackground" type="string">#777777</property>
-				</gz-gui>
-			</plugin>
-
-			<!-- Video recorder -->
-			<plugin filename="VideoRecorder" name="VideoRecorder">
-				<gz-gui>
-					<property key="resizable" type="bool">false</property>
-					<property key="x" type="double">300</property>
-					<property key="y" type="double">50</property>
-					<property key="width" type="double">50</property>
-					<property key="height" type="double">50</property>
-					<property key="state" type="string">floating</property>
-					<property key="showTitleBar" type="bool">false</property>
-					<property key="cardBackground" type="string">#777777</property>
-				</gz-gui>
-
-				<record_video>
-					<use_sim_time>true</use_sim_time>
-					<lockstep>false</lockstep>
-					<bitrate>4000000</bitrate>
-				</record_video>
-			</plugin>
-
-			<!-- Inspector -->
-			<plugin filename="ComponentInspector" name="Component inspector">
-				<gz-gui>
-					<property type="string" key="state">docked_collapsed</property>
-				</gz-gui>
-			</plugin>
-
-			<!-- Entity tree -->
-			<plugin filename="EntityTree" name="Entity tree">
-				<gz-gui>
-					<property type="string" key="state">docked_collapsed</property>
-				</gz-gui>
-			</plugin>
-
-			<!-- View angle -->
-			<plugin filename="ViewAngle" name="View angle">
-				<gz-gui>
-					<property type="string" key="state">docked_collapsed</property>
-				</gz-gui>
-			</plugin>
-
-           </gui>
-    <plugin
-      filename="gz-sim-buoyancy-system"
-      name="gz::sim::systems::Buoyancy">
-      <graded_buoyancy>
-        <default_density>1025</default_density>
-        <density_change>
-          <above_depth>0</above_depth>
-          <density>1</density>
-        </density_change>
-      </graded_buoyancy>
-    </plugin>
+                <uri>file:///home/mil/mil2/src/subjugator/simulation/models/Coral</uri>
+            </include>
         </world>
 </sdf>
