@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import rclpy
-from rclpy.node import Node
-from rclpy.duration import Duration
-
 from electrical_protocol import AckPacket
-from mil_usb_to_can.device import CANDeviceHandle
 
-from sub_actuator_board.srv import (
-    GetValve,
-    GetValveRequest,
-    GetValveResponse,
-    SetValve,
-    SetValveRequest,
-)
+from mil_usb_to_can.sub9.device import CANDeviceHandle
+
+import rclpy
+from rclpy.duration import Duration
+from rclpy.node import Node
+
+
+from subjugator_msgs.srv import GetValve, SetValve
 
 from .packets import (
     ActuatorPollRequestPacket,
@@ -23,6 +19,7 @@ from .packets import (
 )
 
 # TODO: make the parent class inherit from node so we can have access to the clock
+
 class ActuatorBoard(CANDeviceHandle, Node):
     """
     Device handle for the actuator board. Because this class implements a CAN device,
@@ -35,11 +32,11 @@ class ActuatorBoard(CANDeviceHandle, Node):
         super().__init__(*args, **kwargs)
         Node.__init__(self, "actuator_board")
 
-        self._set_service = self.create_service("/set_valve", SetValve, self.set_valve)
-        self._get_service = self.create_service("/get_valve", GetValve, self.get_valve)
+        self._set_service = self.create_service(SetValve, "/set_valve", self.set_valve)
+        self._get_service = self.create_service(GetValve, "/get_valve", self.get_valve)
         self._recent_response = None
 
-    def set_valve(self, req: SetValveRequest) -> dict:
+    def set_valve(self, req: SetValve) -> dict:
         """
         Called when the ``/set_valve`` service is requested. Creates a message to
         control the valve and sends it through the inherited device handle.
@@ -81,7 +78,7 @@ class ActuatorBoard(CANDeviceHandle, Node):
         self._recent_response = None
         return response
 
-    def get_valve(self, req: GetValveRequest) -> GetValveResponse:
+    def get_valve(self, req: GetValve) -> GetValve:
         message = ActuatorPollRequestPacket()
         self.send_data(message)
         start = self.node.get_clock().now()
@@ -92,7 +89,7 @@ class ActuatorBoard(CANDeviceHandle, Node):
         if not self._recent_response:
             raise RuntimeError("No response from the board within 10 seconds.")
 
-        response = GetValveResponse(
+        response = GetValve(
             opened=self._recent_response.values & (1 << req.actuator),
         )
         self._recent_response = None
@@ -104,3 +101,12 @@ class ActuatorBoard(CANDeviceHandle, Node):
         """
         if isinstance(packet, ActuatorPollResponsePacket):
             self._recent_response = packet
+
+def main(args=None):
+    rclpy.init(args=args)
+    actuator_board = ActuatorBoard()
+    rclpy.spin(actuator_board)
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

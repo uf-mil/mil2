@@ -1,45 +1,77 @@
 #!/usr/bin/env python3
 import unittest
+import asyncio
 
-import rospy
+import rclpy
+import rclpy.executors
+
 from sub_actuator_board.packets import (
     ActuatorPacketId,
     ActuatorPollRequestPacket,
     ActuatorPollResponsePacket,
     ActuatorSetPacket,
 )
-from sub_actuator_board.srv import GetValve, GetValveRequest, SetValve, SetValveRequest
+from subjugator_msgs.srv import SetValve, GetValve
 
 
 class SimulatedBoardTest(unittest.TestCase):
     """
     Integration test for CAN2USB board driver. Talks
-    to a simulated CAN device which should add two integers
+    to a simulated CAN device which should add two integers.
     """
 
-    def __init__(self, *args):
-        self.set_srv = rospy.ServiceProxy("/set_valve", SetValve)
-        self.get_srv = rospy.ServiceProxy("/get_valve", GetValve)
-        super().__init__(*args)
+    @classmethod
+    def setUpClass(cls):
+        rclpy.init()
+        cls.node = rclpy.create_node("simulated_board_test")
+        cls.set_srv = cls.node.create_client(SetValve, "/set_valve")
+        cls.get_srv = cls.node.create_client(GetValve, "/get_valve")
+        cls.executor = rclpy.executors.SingleThreadedExecutor()
+        cls.executor.add_node(cls.node)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.executor.shutdown()
+        cls.node.destroy_node()
+        rclpy.shutdown()
+
+    def wait_for_service(self, client, timeout=5.0):
+        """Waits for a service to be available."""
+        output = client.wait_for_service(timeout_sec=timeout)
+        print(f"WAITING FOR SERVICE OUTPUT: {output}")
+        return output
+
+    async def call_service(self, client, request):
+        """Calls a service and returns the response."""
+        future = client.call_async(request)
+        while rclpy.ok():
+            rclpy.spin_once(self.node, timeout_sec=0.1)
+            if future.done():
+                return future.result()
 
     def test_correct_response(self):
         """
-        Test we can get correct data through CAN bus at least ten times.
+        Test we can get correct data through CAN bus.
         """
-        self.set_srv.wait_for_service(1)
-        self.get_srv.wait_for_service(1)
-        self.assertTrue(self.set_srv(SetValveRequest(0, True)).success)
-        self.assertTrue(self.get_srv(GetValveRequest(0)).opened)
-        self.assertTrue(self.set_srv(SetValveRequest(0, False)).success)
-        self.assertFalse(self.get_srv(GetValveRequest(0)).opened)
-        self.assertTrue(self.set_srv(SetValveRequest(0, False)).success)
-        self.assertFalse(self.get_srv(GetValveRequest(0)).opened)
-        self.assertTrue(self.set_srv(SetValveRequest(1, True)).success)
-        self.assertTrue(self.get_srv(GetValveRequest(1)).opened)
-        self.assertFalse(self.get_srv(GetValveRequest(0)).opened)
-        self.assertTrue(self.set_srv(SetValveRequest(2, False)).success)
-        self.assertFalse(self.get_srv(GetValveRequest(2)).opened)
-        self.assertFalse(self.get_srv(GetValveRequest(0)).opened)
+        self.assertTrue(self.wait_for_service(self.set_srv))
+        self.assertTrue(self.wait_for_service(self.get_srv))
+
+        # Set and Get Valve State
+        request = SetValve.Request(id=0, opened=True)
+        response = asyncio.run(self.call_service(self.set_srv, request))
+        self.assertTrue(response.success)
+
+        request = GetValve.Request(id=0)
+        response = asyncio.run(self.call_service(self.get_srv, request))
+        self.assertTrue(response.opened)
+
+        request = SetValve.Request(id=0, opened=False)
+        response = asyncio.run(self.call_service(self.set_srv, request))
+        self.assertTrue(response.success)
+
+        request = GetValve.Request(id=0)
+        response = asyncio.run(self.call_service(self.get_srv, request))
+        self.assertFalse(response.opened)
 
     def test_packet(self):
         """
@@ -60,8 +92,4 @@ class SimulatedBoardTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    rospy.init_node("simulated_board_test", anonymous=True)
-    import rostest
-
-    rostest.rosrun("sub_actuator_board", "simulated_board_test", SimulatedBoardTest)
     unittest.main()

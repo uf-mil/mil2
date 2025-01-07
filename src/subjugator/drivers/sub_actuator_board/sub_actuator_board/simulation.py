@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import random
 
-import rclpy
 from rclpy.node import Node
 
 from electrical_protocol import AckPacket

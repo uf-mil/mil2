@@ -34,6 +34,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 	"srv/TorpBoardPoseRequest.srv"
 	"srv/GuessRequest.srv"
 	"srv/SetValve.srv"
+	"srv/GetValve.srv"
 	"srv/UnfailThruster.srv"
 	"srv/MotionPlan.srv"
 	"srv/Sonar.srv"
