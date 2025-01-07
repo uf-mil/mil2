@@ -3,9 +3,9 @@
   <name>mil_passive_sonar</name>
   <version>2.0.0</version>
   <description>MIL Passive Sonar</description>
-  <maintainer email="dvolya@ufl.edu">Daniel Volya</maintainer>
+  <maintainer email="alexjohnson@ufl.edu">Alex Johnson</maintainer>
   <license>BSD</license>
-  <author>Matthew Thompson</author>
+  <author>Alex Johnson</author>
   <!-- Dependencies which this package needs to build itself. -->
   <buildtool_depend>ament_cmake_ros</buildtool_depend>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
