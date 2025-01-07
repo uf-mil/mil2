@@ -11,7 +11,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Werror)
 endif()
 
-find_package(backward_ros REQUIRED)
+# find_package(backward_ros REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 
@@ -37,6 +37,8 @@ install(
     DIRECTORY include
     DESTINATION include/${PROJECT_NAME}
 )
+
+ament_package()
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
