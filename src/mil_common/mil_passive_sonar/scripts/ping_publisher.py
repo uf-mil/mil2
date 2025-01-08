@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import contextlib
 import json
 import socket
 
@@ -17,7 +16,7 @@ def main():
 
     # Create a socket
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        pub = node.create_publisher(ProcessedPing, 'hydrophones/solved', 10)
+        pub = node.create_publisher(ProcessedPing, "hydrophones/solved", 10)
         s.connect((HOST, PORT))
         node.get_logger().info(
             f"\nping_publisher connected to {HOST}:{PORT}, forwarding TCP messages to {pub.topic_name}...",
@@ -69,7 +68,7 @@ if __name__ == "__main__":
     rclpy.init()
 
     # create publisher node
-    node = rclpy.create_node('pingpublisher')
+    node = rclpy.create_node("pingpublisher")
     rclpy.get_global_executor().add_node(node)
-    
+
     main()

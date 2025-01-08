@@ -36,7 +36,7 @@ alias fd="fdfind"
 
 # potentially borrowed from forrest
 autopush() {
-	git push origin +"${1:-HEAD}":refs/heads/autopush-cameron-"$(uuidgen --random | cut -c1-8)"-citmp
+	git push origin +"${1:-HEAD}":refs/heads/autopush-"$USER"-"$(uuidgen --random | cut -c1-8)"-citmp
 }
 
 # ssd utils

@@ -32,4 +32,3 @@ ament_export_dependencies(
 ament_package()
 
 install(PROGRAMS scripts/ping_publisher.py scripts/fakeping_pipeline.sh scripts/pipeline.sh DESTINATION lib/${PROJECT_NAME})
-
