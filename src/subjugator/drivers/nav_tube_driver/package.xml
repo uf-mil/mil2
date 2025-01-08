@@ -3,19 +3,19 @@
 <package format="3">
   <name>nav_tube_driver</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="daniel27parra@gmail.com">daniel</maintainer>
+  <description>Reads depth sensor data and combines it with odometry to compensate for motion induced pressure.</description>
+  <author>Andrew Knee</author>
+  <author>Cameron Brown</author>
+  <maintainer email="daniel27parra@gmail.com">Daniel Parra</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
 
   <exec_depend>mil_msgs</exec_depend>
-
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

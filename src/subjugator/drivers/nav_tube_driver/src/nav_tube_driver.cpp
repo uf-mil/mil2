@@ -62,7 +62,7 @@ public:
   void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
 };
 
-NavTubeDriver::NavTubeDriver()
+NavTubeDriver::NavTubeDriver():rclcpp::Node("nav_tube_driver")
 {
   pub_ = this->create_publisher<mil_msgs::msg::DepthStamped>("depth", 10);
   odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
@@ -139,32 +139,31 @@ void NavTubeDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
 {
   mil_msgs::msg::DepthStamped msg;
   msg.header.frame_id = frame_id_;
-  msg.header.seq = 0;
+  msg.header.stamp = rclcpp::Clock().now();
 
   uint8_t backing[10];
 
   auto buffer = boost::asio::buffer(backing, sizeof(backing));
 
   while (rclcpp::ok()) {
-    if (rclcpp::Clock().now().nanoseconds() - prev.nanoseconds() > acceptable_frequency) {
+    if (rclcpp::Clock().now().nanoseconds() - prev.nanoseconds() > static_cast<long>(acceptable_frequency)) {
       RCLCPP_WARN(this->get_logger(), "Depth sampling rate is falling behind.");
     }
 
     if (!boost::asio::buffer_size(buffer)) {
       // Bytes are out of sync so try and resync
       if (backing[0] != sync1 || backing[1] != sync2) {
-        for (int i = 0; i < (sizeof(backing) / sizeof(backing[0])) - 1; i++) {
+        for (int i = 0; i < int(sizeof(backing) / sizeof(backing[0])) - 1; i++) {
           backing[i] = backing[i + 1];
         }
         buffer = boost::asio::buffer(backing + (sizeof(backing) / sizeof(backing[0])) -
           sizeof(backing[0]), sizeof(backing[0]));
       } else {
-        ++msg.header.seq;
         msg.header.stamp = rclcpp::Clock().now();
 
         uint64_t bits = be64toh(*reinterpret_cast<uint64_t *>(&backing[2]));
         double pressure = *reinterpret_cast<double *>(&bits);
-        if (recent_odom_msg_.header.seq) {
+        if (recent_odom_msg_.header.stamp.sec > msg.header.stamp.sec) {
           // Accounts for the dynamic pressure applied to the pressure sensor
           // when the sub is moving forwards or backwards
           double velocity = recent_odom_msg_.twist.twist.linear.x;
@@ -202,7 +201,7 @@ void NavTubeDriver::run()
     } catch (boost::system::system_error const & e) {
       std::chrono::seconds wait_time(5);
       RCLCPP_WARN(this->get_logger(),
-        "Error with NavTube Depth driver TCP socket %s. Trying again in %f seconds",
+        "Error with NavTube Depth driver TCP socket %s. Trying again in %ld seconds",
         e.what(), wait_time.count());
 
       if (initialized) {
