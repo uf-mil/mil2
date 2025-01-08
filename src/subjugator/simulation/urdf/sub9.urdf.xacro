@@ -18,13 +18,13 @@
     <visual name="visual">
       <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
       <geometry>
-        <mesh filename="./meshes/Sub9"/>
+        <mesh filename="./meshes/sub9.dae"/>
       </geometry>
     </visual>
     <collision name="collision">
       <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
       <geometry>
-        <mesh filename="./meshes/Sub9"/>
+        <mesh filename="./meshes/sub9.dae"/>
       </geometry>
     </collision>
   </link>
