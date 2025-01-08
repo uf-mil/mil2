@@ -1,0 +1,1477 @@
+<?xml version="1.0"?>
+
+<sdf version="1.9">
+        <world name="robosub_2024">
+    <!-- Scene-->
+    <scene>
+        <sky>
+            <clouds>
+            <speed>12</speed>
+            </clouds>
+        </sky>
+        <ambient>0.4 0.4 0.4 1</ambient>
+        <background>0.7 0.7 0.7 1</background>
+        <shadows>0</shadows>
+        <grid>false</grid>
+    </scene>
+
+            <physics name="1ms" type="ignored">
+                <max_step_size>0.001</max_step_size>
+                <real_time_factor>1.0</real_time_factor>
+            </physics>
+
+            <!-- Plugins-->
+            <plugin
+                filename="gz-sim-physics-system"
+                name="gz::sim::systems::Physics">
+            </plugin>
+            <plugin
+                filename="gz-sim-user-commands-system"
+                name="gz::sim::systems::UserCommands">
+            </plugin>
+            <plugin
+                filename="gz-sim-scene-broadcaster-system"
+                name="gz::sim::systems::SceneBroadcaster">
+            </plugin>
+            
+            <plugin
+                filename="gz-sim-sensors-system"
+                name="gz::sim::systems::Sensors">
+                <render_engine>ogre2</render_engine>
+            </plugin>
+            <plugin
+                filename="gz-sim-dvl-system"
+                name="gz::sim::systems::DopplerVelocityLogSystem">
+            </plugin>
+            <!-- Buoyancy Plugin -->
+            <!--
+                To alter a objects's buoyancy do one or both of the following:
+
+                1. Change the objects's inertia.
+                2. Change the `uniform_fluid_density` in the `buoyancy-system` plugin. 
+
+                Note: Graded Buoyancy does not work with collision objects other than box and sphere!
+            -->
+            <plugin
+                filename="gz-sim-buoyancy-system"
+                name="gz::sim::systems::Buoyancy">
+                <graded_buoyancy>
+                    <default_density>1000</default_density>
+                    <density_change>
+                    <above_depth>0</above_depth>
+                    <density>1</density>
+                    </density_change>
+                </graded_buoyancy>
+            </plugin>
+            
+            
+           <!-- Origin Placed in the middle of the woollet pool --> 
+            <spherical_coordinates>
+                <surface_model>EARTH_WGS84</surface_model>
+                <world_frame_orientation>ENU</world_frame_orientation>
+                <latitude_deg>33.70175</latitude_deg>
+                <longitude_deg>-117.78036</longitude_deg>
+                <elevation>0.4</elevation>
+                <heading_deg>100</heading_deg>
+            </spherical_coordinates>
+
+            <!-- Need to adjust -->
+            <magnetic_field>5e-06 2.4e-05 3.9e-05</magnetic_field>
+           
+           <!-- Global Light Source -->
+           <light type="directional" name="sun1">
+                <pose>50 0 150 0 0 0 </pose> 
+                <diffuse>1 1 1 1</diffuse>
+                <specular>0.1 0.1 0.1 1</specular> 
+                <direction>0.3 0.3 -1</direction> 
+                <cast_shadows>false</cast_shadows>
+           </light>
+           <light type="directional" name="sun_diffuse_4">
+                <pose>20 0 -90 0 0 0 </pose> 
+                <diffuse>0.9 0.9 0.9 1</diffuse>
+                <specular>0.2 0.2 0.2 1</specular> 
+                <direction>-1 0 0</direction> 
+                <cast_shadows>false</cast_shadows>
+           </light>
+           
+           <!-- Models -->
+           <!-- Virtual north, east, and down frame -->
+           <include>
+                <uri>
+                    https://fuel.gazebosim.org/1.0/hmoyen/models/North East Down frame
+                </uri>
+                <pose>0 0 0 0 0 0</pose>
+           </include>
+           <!-- Pool Surface -->
+            <model name='Water'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <box>
+                                <size>25 52 0.02</size>
+                            </box>
+                        </geometry>
+                        <transparency>0.8</transparency>
+                        <cast_shadows>0</cast_shadows>
+                        <material>
+                            <ambient>0.2 0.2 0.9 1</ambient>
+                            <diffuse>0.2 0.2 0.9 1</diffuse>
+                            <specular>0.1 0.1 0.3 1</specular>
+                            <emissive>0 0 0 1</emissive>
+                        </material>
+                    </visual>
+                    <self_collide>false</self_collide>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>0 0 0.4 0 0 0</pose>
+                <static>true</static>
+            </model>
+
+            <!-- Pool -->
+            <model name='WoollettPool'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/woollett_pool_2024/WoollettPool.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/woollett_pool_2024/WoollettPool.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>0 0 0 0 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+
+            <!--__LANES__-->
+            <!-- LANE A-->
+            <model name='StartGate_A'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>7.57 22.28 -0.4 0 0 -1.57</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='PathMarker_A1'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>6.85 22.36 -1.46 0 0 -1.86</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Buoy_A'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/buoy_2024/buoy.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/buoy_2024/buoy.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>1.88 23.80 -0.5 3.14 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='PathMarker_A2'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>1.37 22.84 -1.46 0 0 -0.55</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Bin_A'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/bin_2024/bin.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/bin_2024/bin.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-1.02 18.10 -1.68 0 0 2.47</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Pinger_A1'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <cylinder>
+                            <radius>0.025</radius>
+                            <length>0.185</length>
+                            </cylinder>
+                        </geometry>
+                    </visual>
+                </link>
+                <pose>-1.65 23.80 -1.60 0 0 0</pose>
+                <static>true</static>
+            </model>
+            <model name='Torpedoes_A'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-1.83 23.77 -1.01 0 0 2.85</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Pinger_A2'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <cylinder>
+                            <radius>0.025</radius>
+                            <length>0.185</length>
+                            </cylinder>
+                        </geometry>
+                    </visual>
+                </link>
+                <pose>-8.04 22.60 -1.60 0 0 0</pose>
+                <static>true</static>
+            </model>
+            <model name='Octagon_A'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/octogon_2024/octogon.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/octogon_2024/octogon.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-8.04 22.60 0.43 0 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Table_A'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/collection_table_2024/collection_table.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/collection_table_2024/collection_table.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-8.04 22.60 -0.73 0 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <include>
+                <name>Tubeworm_A</name>
+                <pose>-8.17424 22.44345 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Tubeworm</uri>
+            </include>
+            <include>
+                <name>Nautilus_A</name>
+                <pose>-8.17424 22.66703 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Nautilus</uri>
+            </include>
+            <include>
+                <name>Coral_A</name>
+                <pose>-7.8835 22.48817 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Coral</uri>
+            </include>
+            <!-- LANE B-->
+            <model name='StartGate_B'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>7.24 7.36 -0.4 0 0 -1.57</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='PathMarker_B1'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>6.74 7.79 -1.46 0 0 0.64</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Buoy_B'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/buoy_2024/buoy.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/buoy_2024/buoy.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>3.42 10.94 -0.5 3.14 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='PathMarker_B2'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>2.91 10.07 -1.46 0 0 -0.53</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Bin_B'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/bin_2024/bin.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/bin_2024/bin.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>0.27 2.98 -1.68 0 0 -0.20</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Pinger_B1'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <cylinder>
+                            <radius>0.025</radius>
+                            <length>0.185</length>
+                            </cylinder>
+                        </geometry>
+                    </visual>
+                </link>
+                <pose>-3.91 9.60 -1.60 0 0 0</pose>
+                <static>true</static>
+            </model>
+            <model name='Torpedoes_B'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-4.20 9.64 -1.01 0 0 2.91</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Pinger_B2'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <cylinder>
+                            <radius>0.025</radius>
+                            <length>0.185</length>
+                            </cylinder>
+                        </geometry>
+                    </visual>
+                </link>
+                <pose>-8.18 3.66 -1.60 0 0 0</pose>
+                <static>true</static>
+            </model>
+            <model name='Octagon_B'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/octogon_2024/octogon.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/octogon_2024/octogon.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-8.18 3.66 0.43 0 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Table_B'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/collection_table_2024/collection_table.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/collection_table_2024/collection_table.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-8.18 3.66 -0.73 0 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <include>
+                <name>Tubeworm_B</name>
+                <pose>-8.31424 3.50345 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Tubeworm</uri>
+            </include>
+            <include>
+                <name>Nautilus_B</name>
+                <pose>-8.31424 3.72703 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Nautilus</uri>
+            </include>
+            <include>
+                <name>Coral_B</name>
+                <pose>-8.0235 3.54817 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Coral</uri>
+            </include>
+            <!-- LANE C-->
+            <model name='StartGate_C'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>7.5 -6.08 -0.4 0 0 -1.57</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='PathMarker_C1'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>6.79 -6.14 -1.46 0 0 -1.34</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Buoy_C'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/buoy_2024/buoy.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/buoy_2024/buoy.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>1.46 -7.18 -0.5 3.14 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='PathMarker_C2'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>0.95 -6.39 -1.46 0 0 -2.60</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Bin_C'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/bin_2024/bin.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/bin_2024/bin.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-1.13 -2.69 -1.46 0 0 -2.76</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Pinger_C1'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <cylinder>
+                            <radius>0.025</radius>
+                            <length>0.185</length>
+                            </cylinder>
+                        </geometry>
+                    </visual>
+                </link>
+                <pose>-3.64 -3.44 -1.60 0 0 0</pose>
+                <static>true</static>
+            </model>
+            <model name='Torpedoes_C'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-3.85 -3.34 -1.01 0 0 3.02</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Pinger_C2'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <cylinder>
+                            <radius>0.025</radius>
+                            <length>0.185</length>
+                            </cylinder>
+                        </geometry>
+                    </visual>
+                </link>
+                <pose>-8.24 -10.19 -1.60 0 0 0</pose>
+                <static>true</static>
+            </model>
+            <model name='Octagon_C'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/octogon_2024/octogon.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/octogon_2024/octogon.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-8.24 -10.19 0.43 0 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Table_C'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/collection_table_2024/collection_table.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/collection_table_2024/collection_table.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-8.24 -10.19 -0.73 0 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <include>
+                <name>Tubeworm_C</name>
+                <pose>-8.37324 -10.34655 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Tubeworm</uri>
+            </include>
+            <include>
+                <name>Nautilus_C</name>
+                <pose>-8.37324 -10.12297 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Nautilus</uri>
+            </include>
+            <include>
+                <name>Coral_C</name>
+                <pose>-8.0835 -10.30183 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Coral</uri>
+            </include>
+            <!-- LANE D-->
+            <model name='StartGate_D'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>7.41 -17.84 -0.4 0 0 -1.57</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='PathMarker_D1'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>6.90 -18.22 -1.46 0 0 -0.64</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Buoy_D'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/buoy_2024/buoy.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/buoy_2024/buoy.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>2.27 -23.50 -0.5 3.14 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='PathMarker_D2'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>2.06 -22.58 -1.46 0 0 -2.94</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Bin_D'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/bin_2024/bin.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/bin_2024/bin.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>1.60 -16.43 -1.68 0 0 -0.23</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Pinger_D1'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <cylinder>
+                            <radius>0.025</radius>
+                            <length>0.185</length>
+                            </cylinder>
+                        </geometry>
+                    </visual>
+                </link>
+                <pose>-3.73 -17.61 -1.60 0 0 0</pose>
+                <static>true</static>
+            </model>
+            <model name='Torpedoes_D'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-3.93 -17.74 -1.01 0 0 -3.14</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Pinger_D2'>
+                <link name='link'>
+                    <visual name='visual'>
+                        <geometry>
+                            <cylinder>
+                            <radius>0.025</radius>
+                            <length>0.185</length>
+                            </cylinder>
+                        </geometry>
+                    </visual>
+                </link>
+                <pose>-7.90 -23.22 -1.60 0 0 0</pose>
+                <static>true</static>
+            </model>
+            <model name='Octagon_D'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/octogon_2024/octogon.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/octogon_2024/octogon.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-7.90 -23.22 0.43 0 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <model name='Table_D'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/collection_table_2024/collection_table.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/collection_table_2024/collection_table.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-7.90 -23.22 -0.73 0 0 0</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
+            <include>
+                <name>Tubeworm_D</name>
+                <pose>-8.03324 -23.37655 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Tubeworm</uri>
+            </include>
+            <include>
+                <name>Nautilus_D</name>
+                <pose>-8.03324 -23.15297 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Nautilus</uri>
+            </include>
+            <include>
+                <name>Coral_D</name>
+                <pose>-7.7435 -23.33183 -0.70 0 0 0</pose>
+                <static>false</static>
+                <uri>package:://subjugator_description/models/Coral</uri>
+            </include>
+        </world>
+</sdf>

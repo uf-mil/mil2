@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="sub9">
+  <!-- Include macros -->
+  <xacro:include filename="./xacro/fixed_link.xacro"/>
+
+  <xacro:include filename="$(find mil_gazebo)/xacro/camera.xacro"/>
+
+
+  <!-- Base link of sub -->
+  <link name="base_link">
+    <inertial>
+      <!-- Rough estimate of RoboSub 2022 -->
+      <mass value="21.5"/>
+      <!-- Estimate of inertial tensor based on inertial tensor for rectangular prism -->
+      <!-- https://en.wikipedia.org/wiki/List_of_moments_of_inertia#List_of_3D_inertia_tensors -->
+      <inertia ixx="0.96105" ixy="0.003" ixz="-0.02" iyy="1.799" iyz="0.0003" izz="2.1286"/>
+    </inertial>
+    <visual name="visual">
+      <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
+      <geometry>
+        <mesh filename="./meshes/Sub9"/>
+      </geometry>
+    </visual>
+    <collision name="collision">
+      <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
+      <geometry>
+        <mesh filename="./meshes/Sub9"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Sensors -->
+  <xacro:mil_fixed_link name="front_stereo" parent="base_link" xyz="0.2559 0 0.1707" rpy="0 0 0"/>
+  <xacro:mil_camera name="front_left_cam" parent="front_stereo" namespace="/camera/front/left" xyz="0 0.0445 0" rpy="0 0 0"/>
+  <xacro:mil_camera name="front_right_cam" parent="front_stereo" namespace="/camera/front/right" xyz="0 -0.0445 0" rpy="0 0 0"/>
+  <xacro:mil_camera name="down_left_cam" parent="base_link" namespace="/camera/down" xyz="0.054 0.105 -0.256" rpy="0 1.57 1.57"/>
+
+  <!-- Other fixed frames -->
+  <xacro:mil_fixed_link name="blueview" parent="base_link" xyz="0.333 0 0.381" rpy="3.142 0 0"/>
+</robot>
