@@ -186,7 +186,7 @@ $(color "$Pur")Downloading ROS2 Jazzy Jalisco...
 $(hash_header)$(color "$Res")
 EOF
 
-mil_system_install ros-jazzy-desktop-full gz-harmonic
+mil_system_install ros-jazzy-desktop-full ros-jazzy-ros-gz
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
 mil_system_install \

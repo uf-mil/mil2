@@ -24,6 +24,9 @@ source "/usr/share/colcon_cd/function/colcon_cd.sh"
 export _colcon_cd_root=$MIL_REPO
 alias ccd="colcon_cd"
 
+# Setup up Gazebo
+export GZ_VERSION=harmonic
+
 # Setup colcon autocomplete
 source "/usr/share/colcon_cd/function/colcon_cd-argcomplete.bash"
 
