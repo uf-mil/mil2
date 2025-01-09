@@ -1,0 +1,53 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory
+
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
+
+from launch_ros.actions import Node
+
+import xacro
+
+def generate_launch_description():
+    # Configure ROS nodes for launch
+
+    # Setup project paths
+    pkg_project_bringup = get_package_share_directory('subjugator_bringup')
+    pkg_project_description = get_package_share_directory('subjugator_description')
+
+    # Load the URDF file from "description" package
+    xacro_file = os.path.join(pkg_project_description, 'urdf', 'sub9.urdf.xacro')
+    assert os.path.exists(xacro_file), "The sub9.urdf.xacro doesnt exist in " + str(xacro_file)
+
+    robot_description_config = xacro.process_file(xacro_file)
+    robot_desc = robot_description_config.toxml()
+
+    # Takes the description and joint angles as inputs and publishes the 3D poses of the robot links
+    robot_state_publisher_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='both',
+        parameters=[
+            {'use_sim_time': True},
+            {'robot_description': robot_desc},
+        ]
+    )
+
+    # Visualize in RViz
+    rviz = Node(
+       package='rviz2',
+       executable='rviz2',
+       arguments=['-d', os.path.join(pkg_project_bringup, 'config', 'subjugator.rviz')],
+       condition=IfCondition(LaunchConfiguration('rviz'))
+    )
+
+    return LaunchDescription([
+        DeclareLaunchArgument('rviz', default_value='true',
+                              description='Open RViz.'),
+        robot_state_publisher_node,
+        rviz
+    ])

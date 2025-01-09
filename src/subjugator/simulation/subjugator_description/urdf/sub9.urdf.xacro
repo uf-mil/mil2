@@ -1,0 +1,33 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="sub9">
+
+  <!-- Used for fixing robot to Gazebo 'base_link' -->
+  <link name="world"/>
+  <joint name="fixed" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+  </joint>
+
+
+  <link name="base_link">
+    <inertial>
+      <!-- Rough estimate of RoboSub 2022 -->
+      <mass value="21.5"/>
+      <!-- Estimate of inertial tensor based on inertial tensor for rectangular prism -->
+      <!-- https://en.wikipedia.org/wiki/List_of_moments_of_inertia#List_of_3D_inertia_tensors -->
+      <inertia ixx="0.96105" ixy="0.003" ixz="-0.02" iyy="1.799" iyz="0.0003" izz="2.1286"/>
+    </inertial>
+    <visual name="visual">
+      <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
+      <geometry>
+        <mesh filename="package://subjugator_description/urdf/meshes/sub9.dae"/>
+      </geometry>
+    </visual>
+    <collision name="collision">
+      <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
+      <geometry>
+        <mesh filename="package://subjugator_description/urdf/meshes/sub9.dae"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
