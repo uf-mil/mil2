@@ -1,18 +1,26 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
   <name>mil_poi</name>
-  <version>0.0.0</version>
+  <version>1.0.0</version>
   <description>Tools to create a list of points of interest</description>
   <maintainer email="kallen@todo.todo">kallen</maintainer>
   <license>MIT</license>
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
   <build_depend>geometry_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
   <build_depend>interactive_markers</build_depend>
   <build_depend>message_generation</build_depend>
-  <build_depend>rospy</build_depend>
+  <build_depend>rclpy</build_depend>
   <build_export_depend>interactive_markers</build_export_depend>
-  <build_export_depend>rospy</build_export_depend>
+  <build_export_depend>rclpy</build_export_depend>
   <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
   <exec_depend>interactive_markers</exec_depend>
-  <exec_depend>rospy</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>
