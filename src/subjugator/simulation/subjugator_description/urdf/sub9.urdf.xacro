@@ -1,15 +1,20 @@
 <?xml version="1.0" ?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="sub9">
 
-  <!-- Used for fixing robot to Gazebo 'base_link' -->
-  <link name="world"/>
+  <!-- XACRO INCLUDES -->
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/fixed_link.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
+
+
+  <!-- KDL Parser does not like inertial base links, so use a 'fake' massless root link -->
+  <link name="base_link"/>
   <joint name="fixed" type="fixed">
-    <parent link="world"/>
-    <child link="base_link"/>
+    <parent link="base_link"/>
+    <child link="link1"/>
   </joint>
 
-
-  <link name="base_link">
+  <!-- Base Link of the Sub -->
+  <link name="link1">
     <inertial>
       <!-- Rough estimate of RoboSub 2022 -->
       <mass value="21.5"/>
@@ -20,14 +25,22 @@
     <visual name="visual">
       <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
       <geometry>
-        <mesh filename="package://subjugator_description/urdf/meshes/sub9.dae"/>
+        <mesh filename="package://subjugator_description/urdf/meshes/sub9_redux.dae"/>
       </geometry>
     </visual>
     <collision name="collision">
-      <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
+    <!-- TODO: Need to add more accurate Collision Geometry -->
+    <origin rpy="0 0 0" xyz="-.05 0 0"/>
       <geometry>
-        <mesh filename="package://subjugator_description/urdf/meshes/sub9.dae"/>
+        <box size="0.8 0.3 0.36"/>
       </geometry>
     </collision>
   </link>
+
+  <!-- Sensors -->
+  <xacro:mil_fixed_link name="front_stereo" parent="base_link" xyz="0.2559 0 0.1707" rpy="0 0 0"/>
+  <xacro:mil_camera name="front_left_cam" parent="front_stereo" namespace="/camera/front/left" xyz="0 0.0445 0" rpy="0 0 0"/>
+  <!-- <xacro:mil_camera name="front_right_cam" parent="front_stereo" namespace="/camera/front/right" xyz="0 -0.0445 0" rpy="0 0 0"/>
+  <xacro:mil_camera name="down_left_cam" parent="base_link" namespace="/camera/down" xyz="0.054 0.105 -0.256" rpy="0 1.57 1.57"/> -->
+
 </robot>
