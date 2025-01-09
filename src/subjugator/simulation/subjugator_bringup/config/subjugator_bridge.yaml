@@ -1,1 +1,7 @@
----
+# ROS-Gazebo bridge configuration
+# Add topic bridges in this list, like:
+# - topic_name: "/example_topic"
+#   ros_type: "std_msgs/String"
+#   gz_type: "gz.msgs.StringMsg"
+
+[]

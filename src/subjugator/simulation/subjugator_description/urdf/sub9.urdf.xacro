@@ -16,11 +16,8 @@
   <!-- Base Link of the Sub -->
   <link name="link1">
     <inertial>
-      <!-- Rough estimate of RoboSub 2022 -->
       <mass value="21.5"/>
-      <!-- Estimate of inertial tensor based on inertial tensor for rectangular prism -->
-      <!-- https://en.wikipedia.org/wiki/List_of_moments_of_inertia#List_of_3D_inertia_tensors -->
-      <inertia ixx="0.96105" ixy="0.003" ixz="-0.02" iyy="1.799" iyz="0.0003" izz="2.1286"/>
+      <inertia ixx="0.96105" ixy="0" ixz="0" iyy="1.799" iyz="0" izz="2.1286"/>
     </inertial>
     <visual name="visual">
       <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
@@ -28,15 +25,41 @@
         <mesh filename="package://subjugator_description/urdf/meshes/sub9_redux.dae"/>
       </geometry>
     </visual>
-    <collision name="collision">
     <!-- TODO: Need to add more accurate Collision Geometry -->
-    <origin rpy="0 0 0" xyz="-.05 0 0"/>
+    <collision name="collision">
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <box size="0.8 0.3 0.36"/>
       </geometry>
     </collision>
   </link>
 
+  <gazebo>
+    <plugin
+        filename="gz-sim-hydrodynamics-system"
+        name="gz::sim::systems::Hydrodynamics">
+      <link_name>base_link</link_name>
+      <xDotU>-0.04876161</xDotU>
+      <yDotV>-1.26324739</yDotV>
+      <zDotW>-1.26324739</zDotW>
+      <kDotP>0</kDotP>
+      <mDotQ>-0.3346</mDotQ>
+      <nDotR>-0.3346</nDotR>
+      <xUabsU>-0.62282</xUabsU>
+      <xU>-5</xU>
+      <yVabsV>-60.127</yVabsV>
+      <yV>-5</yV>
+      <zWabsW>-6.0127</zWabsW>
+      <zW>-100</zW>
+      <kPabsP>-0.001916</kPabsP>
+      <kP>-1</kP>
+      <mQabsQ>-6.32698957</mQabsQ>
+      <mQ>-1</mQ>
+      <nRabsR>-6.32698957</nRabsR>
+      <nR>-1</nR>
+    </plugin>
+  </gazebo>
+  
   <!-- Sensors -->
   <xacro:mil_fixed_link name="front_stereo" parent="base_link" xyz="0.2559 0 0.1707" rpy="0 0 0"/>
   <xacro:mil_camera name="front_left_cam" parent="front_stereo" namespace="/camera/front/left" xyz="0 0.0445 0" rpy="0 0 0"/>
