@@ -1,0 +1,3 @@
+[submodule "src/mil_common/perception/vision_stack"]
+	path = src/mil_common/perception/vision_stack
+	url = https://github.com/uf-mil/vision_stack.git

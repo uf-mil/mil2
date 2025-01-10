@@ -68,3 +68,5 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${PROJECT_NAME}_random_test ${PROJECT_NAME})
 endif()
+
+ament_package()
