@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "dave_gz_sensor_plugins/UnderwaterCamera.hh"
+#include "UnderwaterCamera.hh"
 #include <gz/common/Console.hh>
 #include <gz/sim/Model.hh>
 #include <gz/sim/Util.hh>
@@ -109,7 +109,6 @@ void UnderwaterCamera::Configure(
     rclcpp::init(0, nullptr);
   }
 
-  this->ros_node_ = std::make_shared<rclcpp::Node>("underwater_camera_node");
 
   auto rgbdCamera = _ecm.Component<gz::sim::components::RgbdCamera>(_entity);
   if (!rgbdCamera)
@@ -142,6 +141,9 @@ void UnderwaterCamera::Configure(
   this->dataPtr->image_topic = this->dataPtr->topic + "/image";
   this->dataPtr->depth_image_topic = this->dataPtr->topic + "/depth_image";
   this->dataPtr->simulated_image_topic = this->dataPtr->topic + "/simulated_image";
+
+  std::string validName = sanitizeNodeName(this->dataPtr->topic + "_node");
+  this->ros_node_ = std::make_shared<rclcpp::Node>(validName);
 
   sdf::Camera * cameraSdf = sensorSdf.CameraSensor();
 
@@ -448,6 +450,24 @@ void UnderwaterCamera::PostUpdate(
       gzmsg << "dave_gz_sensor_plugins::UnderwaterCamera::PostUpdate" << std::endl;
     }
   }
+}
+
+// Function to sanitize a ROS node name
+std::string sanitizeNodeName(const std::string& name) {
+    std::string sanitized;
+    for (char c : name) {
+        // Replace invalid characters with '_'
+        if (std::isalnum(c) || c == '_') {
+            sanitized += c;
+        } else {
+            sanitized += '_';
+        }
+    }
+    // Ensure the name doesn't start with a digit
+    if (!sanitized.empty() && std::isdigit(sanitized[0])) {
+        sanitized = "_" + sanitized;
+    }
+    return sanitized;
 }
 
 }  // namespace dave_gz_sensor_plugins

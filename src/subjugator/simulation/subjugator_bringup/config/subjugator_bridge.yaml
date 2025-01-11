@@ -4,4 +4,9 @@
 #   ros_type: "std_msgs/String"
 #   gz_type: "gz.msgs.StringMsg"
 
-[]
+# IMU configuration.
+- topic_name: "/imu"
+  ros_type_name: "sensor_msgs/msg/Imu"
+  gz_type_name: "gz.msgs.IMU"
+  lazy: true
+  direction: GZ_TO_ROS

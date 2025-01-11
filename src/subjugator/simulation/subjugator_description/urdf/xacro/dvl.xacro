@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://ros.org/wiki/xacro">
+<robot xmlns:xacro="http://ros.org/wiki/xacro" xmlns:experimental="http://sdformat.org/schemas/experimental" xmlns:gz="http://gazebosim.org/schema">
   <!-- Macro for inserting a dvl -->
-  <xacro:macro name="mil_dvl" params="name:=dvl parent:='base_link' xyz:='0 0 0' rpy='0 0 0' gazebo_offset=:='0 0 0' rate:=1">
+  <xacro:macro name="mil_dvl" params="name='dvl' parent='base_link' xyz='0 0 0' rpy='0 0 0' gazebo_offset='0 0 0' rate='1'">
     <link name="${name}"/>
     <joint name="${name}_joint" type="fixed">
       <origin xyz="${xyz}" rpy="${rpy}"/>
@@ -9,28 +9,60 @@
       <child link="${name}"/>
     </joint>
     <gazebo reference="${name}">
-      <sensor type="ray" name="${name}_sensor">
-        <always_on>true</always_on>
-        <update_rate>${rate}</update_rate>
-        <ray>
-          <scan>
-            <horizontal>
-              <samples>1</samples>
-              <resolution>3</resolution>
-              <min_angle>-0.3</min_angle>
-              <max_angle>0.3</max_angle>
-            </horizontal>
-          </scan>
-          <range>
-            <min>0.05</min>
-            <max>200</max>
-          </range>
-        </ray>
-        <plugin name="${name}_plugin" filename="libmil_dvl_gazebo.so">
-          <frame_id>${name}</frame_id>
-          <offset>${gazebo_offset}</offset>
-        </plugin>
-      </sensor>
+      <experimental:params>
+        <sensor
+            name="teledyne_pathfinder_dvl"
+            type="custom" gz:type="dvl">
+          <pose>0 0 0 0 0 0</pose>
+          <always_on>1</always_on>
+          <update_rate>${rate}</update_rate>
+          <topic>/model/${parent}/dvl/velocity</topic>
+          <gz:dvl>
+            <type>phased_array</type>
+            <arrangement degrees="true">
+              <beam id="1">
+                <aperture>2</aperture>
+                <rotation>45</rotation>
+                <tilt>30</tilt>
+              </beam>
+              <beam>
+                <aperture>2</aperture>
+                <rotation>135</rotation>
+                <tilt>30</tilt>
+              </beam>
+              <beam>
+                <aperture>2</aperture>
+                <rotation>-45</rotation>
+                <tilt>30</tilt>
+              </beam>
+              <beam>
+                <aperture>2</aperture>
+                <rotation>-135</rotation>
+                <tilt>30</tilt>
+              </beam>
+            </arrangement>
+            <tracking>
+              <bottom_mode>
+                <when>best</when>
+                <noise type="gaussian">
+                  <!-- +/- 0.4 cm/s precision at 10 m/s within 2 stddevs -->
+                  <stddev>0.002</stddev>
+                </noise>
+                <visualize>false</visualize>
+              </bottom_mode>
+            </tracking>
+            <!-- Roughly 1 m resolution at a 100m -->
+            <resolution>0.01</resolution>
+            <maximum_range>100.</maximum_range>
+            <minimum_range>0.1</minimum_range>
+            <!-- ENU to SFM -->
+            <reference_frame>0 0 0 0 0 -1.570796</reference_frame>
+          </gz:dvl>
+          <plugin
+            filename="gz-sim-dvl-system"
+            name="gz::sim::systems::DopplerVelocityLogSystem"/>
+        </sensor>
+      </experimental:params>
     </gazebo>
   </xacro:macro>
 </robot>

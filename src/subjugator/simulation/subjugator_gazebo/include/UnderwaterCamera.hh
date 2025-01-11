@@ -63,6 +63,9 @@ private:
   struct PrivateData;
   std::unique_ptr<PrivateData> dataPtr;
 };
+
+  std::string sanitizeNodeName(const std::string& name);
+
 }  // namespace dave_gz_sensor_plugins
 
 #endif  // DAVE_GZ_SENSOR_PLUGINS__UNDERWATERCAMERA_HH_

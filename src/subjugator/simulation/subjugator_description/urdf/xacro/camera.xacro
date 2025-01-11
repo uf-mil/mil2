@@ -21,7 +21,7 @@
         <update_rate>${fps}</update_rate>
         <visualize>true</visualize>
         <always_on>1</always_on>
-        <topic>${namespace}/image_raw</topic>
+        <topic>${namespace}</topic>
         <camera>
           <horizontal_fov>${fov}</horizontal_fov>
           <image>
