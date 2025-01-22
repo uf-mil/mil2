@@ -23,13 +23,14 @@ def generate_launch_description():
 
     # Setup to launch the simulator and Gazebo world
     gz_sim = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')),
-        launch_arguments={'gz_args': PathJoinSubstitution([
-            pkg_project_gazebo,
-            'worlds',
-            'robosub_2024.world'
-        ])}.items(),
+        PythonLaunchDescriptionSource(os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')),
+        launch_arguments={
+            'gz_args': [PathJoinSubstitution([
+                pkg_project_gazebo,
+                'worlds',
+                'robosub_2024.world'
+            ]), ' --render-engine', ' ogre']
+        }.items(),
     )
 
     # Spawn in Subjugator
