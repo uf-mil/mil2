@@ -31,10 +31,6 @@ if [[ $VERSION != *"24.04"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu 24.04 (you're using: ${VERSION}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
-if [[ $(grep -i Microsoft /proc/version) ]]; then
-	printf "${Red}Using WSL is not supported, due to graphical issues with our simulation environment. Please dual-boot your computer, or use a virtual machine.${Res}\n"
-	exit 1
-fi
 
 # Display header
 cat <<EOF
@@ -185,6 +181,11 @@ $(color "$Gre")Set up sources for ROS distributions.
 $(color "$Pur")Downloading ROS2 Jazzy Jalisco...
 $(hash_header)$(color "$Res")
 EOF
+
+# Install MESA drivers for GZ
+sudo add-apt-repository ppa:kisak/kisak-mesa -y
+sudo apt update -y
+sudo apt upgrade -y
 
 mil_system_install ros-jazzy-desktop-full ros-jazzy-ros-gz
 # Install additional dependencies not bundled by default with ros
