@@ -294,6 +294,15 @@ mil_user_setup_rc() {
 			} >>~/.bashrc
 		fi
 	fi
+
+	# Copies bashrc to interactive login shells (like tmux)
+	echo 'if [ -n "$BASH_VERSION" ] && [ -n "$PS1" ]; then
+		# include .bashrc if it exists
+		if [ -f "$HOME/.bashrc" ]; then
+			. "$HOME/.bashrc"
+		fi
+	fi' >> ~/.profile
+
 }
 
 add_hosts_entry() {
