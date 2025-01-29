@@ -1,0 +1,3 @@
+[submodule "src/subjugator/drivers/vectornav"]
+	path = src/subjugator/drivers/vectornav
+	url = https://github.com/uf-mil/vectornav.git
