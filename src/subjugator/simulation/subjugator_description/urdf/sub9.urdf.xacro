@@ -6,8 +6,7 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/dvl.xacro"/>
-
-
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
 
   <!-- KDL Parser does not like inertial base links, so use a 'fake' massless root link -->
   <link name="base_link"/>
@@ -23,18 +22,14 @@
       <inertia ixx="0.96105" ixy="0" ixz="0" iyy="1.799" iyz="0" izz="2.1286"/>
     </inertial>
     <visual name="visual">
-      <origin rpy="${pi/2} 0 ${pi}" xyz="${(0.915/2-0.009)} ${-(0.606/2)} ${-(0.381/2)}"/>
+      <origin rpy="0 0 0" xyz="-0.1 0.0125 0"/>
       <geometry>
-        <mesh filename="package://subjugator_description/urdf/meshes/sub9_redux.dae"/>
+        <mesh filename="package://subjugator_description/urdf/meshes/sub9.dae"/>
       </geometry>
     </visual>
-    <!-- TODO: Need to add more accurate Collision Geometry -->
-    <collision name="collision">
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size="0.8 0.3 0.36"/>
-      </geometry>
-    </collision>
+
+    <!-- Imports subjugator's collisions from seperate XACRO -->
+    <xacro:collision />
   </link>
 
   <gazebo>
