@@ -296,7 +296,7 @@ mil_user_setup_rc() {
 		if [ -f "$HOME/.bashrc" ]; then
 			. "$HOME/.bashrc"
 		fi
-	fi' >> ~/.profile
+	fi' >>~/.profile
 
 }
 
