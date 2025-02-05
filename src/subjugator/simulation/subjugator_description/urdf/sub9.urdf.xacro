@@ -60,10 +60,9 @@
   
   <!-- Sensors -->
   <xacro:mil_fixed_link name="front_stereo" parent="base_link" xyz="0.2559 0 0.1707" rpy="0 0 0"/>
-  <xacro:mil_camera name="front_left_cam" parent="front_stereo" namespace="/camera/front/left" xyz="0 0.0445 0" rpy="0 0 0"/>
+  <xacro:mil_camera name="front_left_cam" parent="front_stereo" namespace="/camera/front/left" xyz="-0.65 0 -0.3" rpy="0 0 9.5"/>
   <!-- <xacro:mil_camera name="front_right_cam" parent="front_stereo" namespace="/camera/front/right" xyz="0 -0.0445 0" rpy="0 0 0"/>
   <xacro:mil_camera name="down_left_cam" parent="base_link" namespace="/camera/down" xyz="0.054 0.105 -0.256" rpy="0 1.57 1.57"/> -->
-
 
   <xacro:mil_imu_magnetometer
     name="imu"
@@ -79,7 +78,4 @@
     ly="0.08825985"
     lz="0.08825985"
   />
-  
-  <xacro:mil_dvl name="dvl" parent="base_link" xyz="0.0908 0 -0.2459" rpy="0 0 0.785" gazebo_offset="0 0 -1" rate="6.5"/>
-
 </robot>
