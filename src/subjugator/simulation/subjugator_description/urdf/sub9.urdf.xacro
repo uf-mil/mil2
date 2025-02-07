@@ -5,7 +5,7 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/fixed_link.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/dvl.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/new_dvl.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
 
   <!-- KDL Parser does not like inertial base links, so use a 'fake' massless root link -->
@@ -64,6 +64,14 @@
   <!-- <xacro:mil_camera name="front_right_cam" parent="front_stereo" namespace="/camera/front/right" xyz="0 -0.0445 0" rpy="0 0 0"/>
   <xacro:mil_camera name="down_left_cam" parent="base_link" namespace="/camera/down" xyz="0.054 0.105 -0.256" rpy="0 1.57 1.57"/> -->
 
+  <!-- DVL Sensor-->
+  <xacro:mil_dvl_sensor
+    name="dvl_sensor"
+    parent="base_link"
+    xyz="0.21236 0.00254 -0.10233"
+    rpy="0 0 0"
+  />
+
   <xacro:mil_imu_magnetometer
     name="imu"
     parent="base_link"
@@ -78,4 +86,5 @@
     ly="0.08825985"
     lz="0.08825985"
   />
+
 </robot>
