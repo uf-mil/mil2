@@ -10,14 +10,37 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
 
   <!-- KDL Parser does not like inertial base links, so use a 'fake' massless root link -->
-  <link name="base_link"/>
+  <!-- <link name="base_link"/>
   <joint name="fixed" type="fixed">
     <parent link="base_link"/>
     <child link="link1"/>
-  </joint>
+  </joint> -->
+
+
+<joint name="thrustjoint" type="revolute">
+  <origin xyz="0 0 1" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="thrusterer"/>
+    <!-- <gazebo> -->
+      <limit effort="1000" lower="0.0" upper="0.548" velocity="0.5"/>
+      <axis xyz="0 0 1"/> 
+    <!-- </gazebo>  -->
+</joint>
+
+<link name="thrusterer">
+    <pose>1 0 0 0 0 0</pose>
+    <inertial>
+      <pose>0 0 0 0 0 0</pose>
+      <mass value="0.1"/> 
+      <origin xyz="0 0 1" />
+      <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+</link>
+
+
 
   <!-- Base Link of the Sub -->
-  <link name="link1">
+  <link name="base_link">
     <inertial>
       <mass value="21.5"/>
       <inertia ixx="0.96105" ixy="0" ixz="0" iyy="1.799" iyz="0" izz="2.1286"/>
