@@ -1,3 +1,7 @@
+# VSCode WSL Fix
+code.sh
+code_data/
+
 # ROS 2 gitignore from https://github.com/RobotWebTools/rosbridge_suite/blob/ros2/.gitignore
 *.pyc
 *.iml
