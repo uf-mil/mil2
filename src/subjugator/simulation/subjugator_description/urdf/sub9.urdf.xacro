@@ -7,6 +7,7 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/new_dvl.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
 
   <!-- KDL Parser does not like inertial base links, so use a 'fake' massless root link -->
   <link name="base_link"/>
@@ -56,6 +57,17 @@
       <nRabsR>-6.32698957</nRabsR>
       <nR>-1</nR>
     </plugin>
+
+    <plugin
+      filename="gz-sim-thruster-system"
+      name="gz::sim::systems::Thruster">
+      <namespace>thrustme</namespace>
+      <use_angvel_cmd>0</use_angvel_cmd>
+      <joint_name>thrustjoint</joint_name>
+      <thrust_coefficient>0.004422</thrust_coefficient>
+      <fluid_density>1000</fluid_density>
+      <propeller_diameter>0.2</propeller_diameter>
+    </plugin>
   </gazebo>
   
   <!-- Sensors -->
@@ -86,5 +98,6 @@
     ly="0.08825985"
     lz="0.08825985"
   />
+
 
 </robot>

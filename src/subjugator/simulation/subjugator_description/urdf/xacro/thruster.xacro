@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="mil_thruster" params="name parent xyz rpy">
+    
+    <!-- Define the thruster link -->
+    <link name="${name}_link">
+      <inertial>
+        <mass value="0.1"/>  <!-- Add some mass to avoid physics issues -->
+        <origin xyz="0 0 0" />
+        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- Define the joint -->
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+
+    <!-- Define Gazebo plugin -->
+    <gazebo>
+      <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+        <namespace>${name}</namespace>
+        <use_angvel_cmd>0</use_angvel_cmd>
+        <joint_name>${name}_joint</joint_name>
+        <thrust_coefficient>0.004422</thrust_coefficient>
+        <fluid_density>1000</fluid_density>
+        <propeller_diameter>0.2</propeller_diameter>
+        <debug>true</debug>
+      </plugin>
+    </gazebo>
+
+  </xacro:macro>
+</robot>
