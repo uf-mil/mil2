@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.5)
 # Following directive defines the project name.
 project(subjugator_gazebo)
 
-
 # Following directives find required packages and load their configuration.
 # The 'set' directive defines a variable (e.g. 'GZ_PLUGIN_VER').
 # Such variables can be used lateron in the CMakeLists.txt file.
@@ -21,7 +20,6 @@ set(GZ_COMMON_VER ${gz-common5_VERSION_MAJOR})
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-
 # Harmonic
 if("$ENV{GZ_VERSION}" STREQUAL "harmonic")
   find_package(gz-sim8 REQUIRED)
@@ -34,6 +32,9 @@ else()
   message(STATUS "Compiling against Gazebo Garden")
 endif()
 
+#
+# Underwater Camera
+#
 
 # Following 'add_library' directive defines a library target.
 # The 'SHARED' keyword indicates that a shared library should be compiled, and
@@ -62,27 +63,11 @@ target_link_libraries(UnderwaterCamera
   ${OpenCV_LIBS}
 )
 
-
-# Specify dependancies using ament_target_dependencies
+# Specify dependencies using ament_target_dependencies
 ament_target_dependencies(UnderwaterCamera
   rclcpp
   sensor_msgs
 )
-
-# # Following directives similarly specify another target: 'FullSystem'.
-# add_library(FullSystem
-#   SHARED
-#   src/FullSystem.cc
-# )
-
-# target_include_directories(
-#   FullSystem PRIVATE include
-# )
-
-# target_link_libraries(FullSystem PRIVATE
-#   gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
-
-
 
 # Following 'install' directive ensures that the compiled libraries will be copied
 # to the subfolder 'lib/subjugator_gazebo' of the install directory.
@@ -92,11 +77,43 @@ install(
   DESTINATION lib/${PROJECT_NAME}
 )
 
+
+#
+# DVL Sensor
+#
+
+# Defines the DVLSensor as a library target
+# "SHARED" ensures it is compiled from the given directory
+add_library(DVLSensor 
+  SHARED 
+  src/DVLSensor.cc
+)
+
+# Ensures that the 'include' directory serves as the include directory for DVLSensor on compilation
+target_include_directories(
+  DVLSensor PRIVATE include
+)
+
+# Link the current version of gazebo simulator library to DVLSensor script
+target_link_libraries(DVLSensor
+  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+)
+
+# Install compiled libraries into subfolder 'lib/subjugator_gazebo' in the install directory
+install(
+  TARGETS
+    DVLSensor
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+#
+#
+#
+
 # Install headers
 install(DIRECTORY include/
   DESTINATION include/
 )
-
 
 # Following 'install' directive ensures that the 'worlds' subfolder
 # will be copied to the 'share/subjugator_gazebo/worlds'
@@ -106,13 +123,11 @@ install(
   DESTINATION share/${PROJECT_NAME}/worlds
 )
 
-
 # Following directives are used when testing.
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
-
 
 # Following hooks are used to ensure that the correct environment variables
 # will be set by exectuting 'sourece install/setup.bash' after compilation.
