@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://ros.org/wiki/xacro" xmlns:experimental="http://sdformat.org/schemas/experimental" xmlns:gz="http://gazebosim.org/schema">
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:macro
     name="mil_dvl_sensor"
     params="name parent xyz rpy"
@@ -10,57 +10,17 @@
       <parent link="${parent}"/>
       <child link="${name}"/>
     </joint>
-    
     <gazebo reference="${name}">
-    <experimental:params>
-      <sensor element_id = "${name}" action="add" name="${name}_dvl" type="custom" gz:type="dvl">
-      <pose degrees="true">-0.60 0 -0.16 0 0 180</pose>
+      <sensor name="${name}" type="imu">
         <always_on>true</always_on>
-        <update_rate>1</update_rate>
-        <topic>/dvl/velocity</topic>
-        <gz:dvl>
-          <type>phased_array</type>
-          <arrangement degrees="true">
-            <beam id="1">
-              <aperture>2</aperture>
-              <rotation>45</rotation>
-              <tilt>30</tilt>
-            </beam>
-            <beam>
-              <aperture>2</aperture>
-              <rotation>135</rotation>
-              <tilt>30</tilt>
-            </beam>
-            <beam>
-              <aperture>2</aperture>
-              <rotation>-45</rotation>
-              <tilt>30</tilt>
-            </beam>
-            <beam>
-              <aperture>2</aperture>
-              <rotation>-135</rotation>
-              <tilt>30</tilt>
-            </beam>
-          </arrangement>
-          <tracking>
-            <bottom_mode>
-              <when>best</when>
-              <noise type="gaussian">
-                <!-- boom comment idk-->
-                <stddev>0.002</stddev>
-              </noise>
-              <viasualize>false</viasualize>
-            </bottom_mode>
-          </tracking>
-          <!--roughly 1 m resolution blah blah blah-->
-          <resolution>0.01</resolution>
-          <maximum_range>100.0</maximum_range>
-          <minimum_range>0.1</minimum_range>
-          <!--enu to sfm dslkf; v hdsaoifd vdsjfa ;kdsl-->
-          <reference_frame>0 0 0 0 0 -1.570796</reference_frame>
-        </gz:dvl>
+
+        <!-- DVL Sensor Plugin -->
+          <plugin
+              filename="DVLSensor"
+              name="dvl_sensor::DVLSensor">
+          </plugin>
+
       </sensor>
-      </experimental:params>
     </gazebo>
     </xacro:macro>
 </robot>
