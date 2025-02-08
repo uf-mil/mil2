@@ -25,6 +25,13 @@ def generate_launch_description():
     robot_description_config = xacro.process_file(xacro_file)
     robot_desc = robot_description_config.toxml()
 
+    urdf_file = os.path.join(pkg_project_description, 'urdf', 'sub9.urdf')
+    with open(urdf_file, 'w') as urdf:
+        urdf.write(robot_desc)
+
+    print(f"Successfully converted {xacro_file} to {urdf_file}")
+
+
     # Takes the description and joint angles as inputs and publishes the 3D poses of the robot links
     robot_state_publisher_node = Node(
         package='robot_state_publisher',

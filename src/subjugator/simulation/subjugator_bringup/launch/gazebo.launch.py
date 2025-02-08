@@ -33,20 +33,6 @@ def generate_launch_description():
         }.items(),
     )
 
-    # Spawn in Subjugator
-    spawn = Node(
-        package='ros_gz_sim',
-        executable='create',
-        parameters=[{
-            'name' : 'sub9',
-            'x': 0.0,
-            'y': 0.0,
-            'z': 0.0,
-            'topic': '/robot_description'
-        }],
-        output='screen'
-    )
-
     # Include the Subjugator_Setup Launch file
     subjugator_setup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -68,6 +54,5 @@ def generate_launch_description():
     return LaunchDescription([
         gz_sim,
         subjugator_setup,
-        spawn,
         bridge,
     ])

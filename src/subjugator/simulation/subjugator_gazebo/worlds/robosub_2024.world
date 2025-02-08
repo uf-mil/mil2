@@ -37,6 +37,10 @@
                 name="gz::sim::systems::Sensors">
                 <render_engine>ogre2</render_engine>
             </plugin>
+            <plugin
+			    filename="gz-sim-dvl-system"
+			    name="gz::sim::systems::DopplerVelocityLogSystem">
+		    </plugin>
             <!-- Buoyancy Plugin -->
             <!--
                 To alter a objects's buoyancy do one or both of the following:
@@ -89,6 +93,10 @@
            </light>
            
            <!-- Models -->
+           <!-- Sub 9 -->
+           <include>
+                <uri>package:://subjugator_description/urdf/sub9.urdf</uri>
+            </include>
            <!-- Virtual north, east, and down frame -->
            <include>
                 <uri>

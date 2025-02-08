@@ -1,6 +1,5 @@
 #include <gz/plugin/Register.hh>
 #include "DVLSensor.hh"
-
 #include <iostream>
 
 // Add plugins to gazebo simulator alongside its dependencies
@@ -19,6 +18,13 @@ DVLSensor::DVLSensor()
 DVLSensor::~DVLSensor()
 {
 }
+
+void DVLSensor::Configure(
+  const gz::sim::Entity & _entity, const std::shared_ptr<const sdf::Element> & _sdf,
+  gz::sim::EntityComponentManager & _ecm, gz::sim::EventManager & _eventManager)
+{
+  // std::cout << "init done!" << std::endl;
+}
  
 void DVLSensor::PostUpdate(const gz::sim::UpdateInfo &_info,
     const gz::sim::EntityComponentManager &_ecm)
@@ -30,6 +36,6 @@ void DVLSensor::PostUpdate(const gz::sim::UpdateInfo &_info,
     // Code placed in here will be called every update
     //
 
-    std::cout << "Hey there" << std::endl;
+    // std::cout << "Hey there" << std::endl;
   }
 }
