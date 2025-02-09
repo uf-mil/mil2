@@ -20,6 +20,7 @@ add_library(${PROJECT_NAME}
     src/os.cpp
     src/os/FileDescriptor.cpp
     src/string.cpp
+    src/itertools.cpp
 )
 include_directories(include)
 ament_target_dependencies(${PROJECT_NAME} rclcpp)
