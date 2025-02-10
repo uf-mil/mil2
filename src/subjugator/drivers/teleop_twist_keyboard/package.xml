@@ -4,7 +4,7 @@
     <name>teleop_twist_keyboard</name>
     <version>0.0.1</version>
     <description>A teleoperation node that reads keyboard input and publishes Twist messages.</description>
-    <maintainer email="N/A">N/A</maintainer>
+    <maintainer email="rickyzhang@ufl.edu">Ricky Zhang</maintainer>
     <license>MIT</license>
 
     <buildtool_depend>ament_cmake</buildtool_depend>
