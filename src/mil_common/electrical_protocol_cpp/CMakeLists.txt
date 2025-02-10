@@ -13,7 +13,7 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_library(electrical_protocol_cpp src/driver.cpp src/packet.cpp)
+add_library(electrical_protocol_cpp src/driver.cpp)
 
 target_include_directories(electrical_protocol_cpp PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -38,16 +38,26 @@ install(TARGETS electrical_protocol_cpp
 # install(DIRECTORY include/
 #     DESTINATION include)
 
-# if(BUILD_TESTING)
-#   find_package(ament_lint_auto REQUIRED)
-#   # the following line skips the linter which checks for copyrights
-#   # comment the line when a copyright and license is added to all source files
-#   set(ament_cmake_copyright_FOUND TRUE)
-#   # the following line skips cpplint (only works in a git repo)
-#   # comment the line when this package is in a git repo and when
-#   # a copyright and license is added to all source files
-#   set(ament_cmake_cpplint_FOUND TRUE)
-#   ament_lint_auto_find_test_dependencies()
-# endif()
+if(BUILD_TESTING)
+  # find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # comment the line when a copyright and license is added to all source files
+  # set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # comment the line when this package is in a git repo and when
+  # a copyright and license is added to all source files
+  # set(ament_cmake_cpplint_FOUND TRUE)
+
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(${PROJECT_NAME}_packet_test test/packet.cpp)
+  target_include_directories(${PROJECT_NAME}_packet_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_packet_test ${PROJECT_NAME})
+
+  # ament_lint_auto_find_test_dependencies()
+endif()
 
 ament_package()
