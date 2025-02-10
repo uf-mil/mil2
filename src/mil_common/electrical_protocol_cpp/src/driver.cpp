@@ -126,9 +126,9 @@ namespace electrical_protocol
         return opened_;
     }
 
-    void SerialDevice::write(std::shared_ptr<PacketBase> packet)
+    void SerialDevice::write(std::shared_ptr<Packet> packet)
     {
-        if(packet == nullptr || packet->getDataSize() == 0)
+        if(packet == nullptr || packet->data_.size() == 0)
             onWrite(packet, EINVAL, 0);
         
         pthread_mutex_lock(&writeMutex_);
@@ -137,9 +137,9 @@ namespace electrical_protocol
         pthread_mutex_unlock(&writeMutex_);
     }
 
-    void SerialDevice::read(std::shared_ptr<PacketBase> packet)
+    void SerialDevice::read(std::shared_ptr<Packet> packet)
     {
-        if(packet == nullptr || packet->getDataSize() == 0)
+        if(packet == nullptr || packet->data_.size() == 0)
             onRead(packet, EINVAL, 0);
         
         pthread_mutex_lock(&readMutex_);
@@ -154,7 +154,7 @@ namespace electrical_protocol
 
         while(device->writeQueue_.size() > 0)
         {
-            std::shared_ptr<PacketBase> packet = device->writeQueue_.front();
+            std::shared_ptr<Packet> packet = device->writeQueue_.front();
             device->onWrite(packet, EINTR, 0);
             device->writeQueue_.pop();
         }
@@ -174,14 +174,14 @@ namespace electrical_protocol
                 pthread_cond_wait(&device->writeCond_, &device->writeMutex_);
             }
 
-            std::shared_ptr<PacketBase> packet = device->writeQueue_.front();
+            std::shared_ptr<Packet> packet = device->writeQueue_.front();
             device->writeQueue_.pop();
 
             pthread_mutex_unlock(&device->writeMutex_);
 
             uint16_t checkSum = device->calcCheckSum_(packet);
     
-            uint16_t dataLen = packet->getDataSize();
+            uint16_t dataLen = packet->data_.size();
     
             struct iovec iov[5];
             iov[0].iov_base = const_cast<uint8_t*>(header_.data());
@@ -193,7 +193,7 @@ namespace electrical_protocol
             iov[2].iov_base = &dataLen;
             iov[2].iov_len = sizeof(dataLen);
     
-            iov[3].iov_base = packet->getData();
+            iov[3].iov_base = packet->data_.data();
             iov[3].iov_len = dataLen;
     
             iov[4].iov_base = &checkSum;
@@ -211,7 +211,7 @@ namespace electrical_protocol
     
     }
 
-    void SerialDevice::readPacket_(std::shared_ptr<PacketBase> packet)
+    void SerialDevice::readPacket_(std::shared_ptr<Packet> packet)
     {
         ReadState state = ReadState::SYNC_1;
         int error = 0;
@@ -267,14 +267,14 @@ namespace electrical_protocol
                     break;
                 }
 
-                if(packet->getDataSize() != dataLen)
+                if(packet->data_.size() != dataLen)
                 {
                     error = EMSGSIZE; 
                     break;
                 }
 
                 uint16_t checkSum;
-                iov[0].iov_base = packet->getData();
+                iov[0].iov_base = packet->data_.data();
                 iov[0].iov_len = dataLen;
                 iov[1].iov_base = &checkSum;
                 iov[1].iov_len = sizeof(checkSum);
@@ -376,7 +376,7 @@ namespace electrical_protocol
         pthread_mutex_lock(&device->readMutex_);
         while(device->readQueue_.size() > 0)
         {
-            std::shared_ptr<PacketBase> packet = device->readQueue_.front();
+            std::shared_ptr<Packet> packet = device->readQueue_.front();
             device->onRead(packet, EINTR, 0);
             device->readQueue_.pop();
         }
@@ -391,7 +391,7 @@ namespace electrical_protocol
 
         while(1)
         {
-            std::shared_ptr<PacketBase> packet;
+            std::shared_ptr<Packet> packet;
             pthread_mutex_lock(&device->readMutex_);
 
             if(device->readQueue_.size() > 0)
@@ -419,7 +419,7 @@ namespace electrical_protocol
         return NULL;
     }
 
-    uint16_t SerialDevice::calcCheckSum_(std::shared_ptr<PacketBase> packet)
+    uint16_t SerialDevice::calcCheckSum_(std::shared_ptr<Packet> packet)
     {
         uint8_t sum[2] = {0, 0};
 
@@ -430,17 +430,16 @@ namespace electrical_protocol
         sum[1] = (sum[1] + sum[0]) % 255;
 
         // Process packet size (uint16_t, little-endian)
-        uint16_t size = packet->getDataSize();
+        uint16_t size = packet->data_.size();
         sum[0] = (sum[0] + (size & 0xFF)) % 255;
         sum[1] = (sum[1] + sum[0]) % 255;
         sum[0] = (sum[0] + ((size >> 8) & 0xFF)) % 255;
         sum[1] = (sum[1] + sum[0]) % 255;
 
         // Process packet data
-        uint8_t* data = packet->getData();
-        for (uint16_t i=0; i <size; i++)
+        for (auto byte: packet->data_)
         {
-            sum[0] = (sum[0] + data[i]) % 255;
+            sum[0] = (sum[0] + byte) % 255;
             sum[1] = (sum[1] + sum[0]) % 255;
         }
 
