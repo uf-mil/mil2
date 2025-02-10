@@ -33,11 +33,11 @@ class SerialDevice
     int setBaudrate(unsigned baudrate);
     void close();
     bool isOpened() const;
-    void write(std::shared_ptr<PacketBase> packet);
-    void read(std::shared_ptr<PacketBase> packet);
+    void write(std::shared_ptr<Packet> packet);
+    void read(std::shared_ptr<Packet> packet);
 
-    virtual void onWrite(std::shared_ptr<PacketBase> package, int errorCode ,size_t bytesWritten) = 0;
-    virtual void onRead(std::shared_ptr<PacketBase> package, int errorCode ,size_t bytesRead) = 0;
+    virtual void onWrite(std::shared_ptr<Packet> package, int errorCode ,size_t bytesWritten) = 0;
+    virtual void onRead(std::shared_ptr<Packet> package, int errorCode ,size_t bytesRead) = 0;
 
     private:
 
@@ -64,20 +64,20 @@ class SerialDevice
 
     pthread_mutex_t readMutex_ = PTHREAD_MUTEX_INITIALIZER;
 
-    std::queue<std::shared_ptr<PacketBase>> writeQueue_;
-    std::queue<std::shared_ptr<PacketBase>> readQueue_;
+    std::queue<std::shared_ptr<Packet>> writeQueue_;
+    std::queue<std::shared_ptr<Packet>> readQueue_;
  
     static void* readThreadFunc_(void* arg);
     static void* writeThreadFunc_(void* arg);
     static void readThreadCleanupFunc_(void* arg);
     static void writeThreadCleanupFunc_(void* arg);
 
-    void readPacket_(std::shared_ptr<PacketBase> packet);
+    void readPacket_(std::shared_ptr<Packet> packet);
     void readPacket_();
 
-    uint16_t calcCheckSum_(std::shared_ptr<PacketBase> data);
-    void writeData_(std::shared_ptr<PacketBase> data);
-    void readData_(std::shared_ptr<PacketBase> data);
+    uint16_t calcCheckSum_(std::shared_ptr<Packet> data);
+    void writeData_(std::shared_ptr<Packet> data);
+    void readData_(std::shared_ptr<Packet> data);
 };
 
 // class Subscriber
