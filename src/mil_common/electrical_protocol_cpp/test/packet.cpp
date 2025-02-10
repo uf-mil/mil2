@@ -4,7 +4,7 @@
 
 TEST(Packet, Test)
 {
-    electrical_protocol::Packet packet(1,1);
+    electrical_protocol::Packet packet(PY_STRING("Ifdhc5s?Q"), 1,1);
 
     unsigned ta = 42;
     float tb = 3.14;
@@ -15,8 +15,8 @@ TEST(Packet, Test)
     bool tg = true;
     uint64_t th = 987654321;
 
-    packet.pack(PY_STRING("Ifdhc5s?Q"), ta, tb, tc, td, te, tf, tg, th);
-    auto [ra, rb, rc, rd, re, rf, rg, rh] = packet.unpack(PY_STRING("Ifdhc5s?Q"));
+    packet.pack(ta, tb, tc, td, te, tf, tg, th);
+    auto [ra, rb, rc, rd, re, rf, rg, rh] = packet.unpack();
     
     EXPECT_EQ(ta, ra);
     EXPECT_EQ(tb, rb);

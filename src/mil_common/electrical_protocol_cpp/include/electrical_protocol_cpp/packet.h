@@ -11,11 +11,33 @@
 namespace electrical_protocol
 {
     class SerialDevice;
-    class Packet
+
+    class PacketBase
     {
         public:
         friend class SerialDevice;
-        Packet(uint8_t classId, uint8_t subClassId)
+        PacketBase()
+        {
+
+        }
+        ~PacketBase()
+        {
+            
+        }
+
+        virtual uint8_t* getData() = 0;
+        virtual size_t getDataSize() = 0;
+
+        protected:
+        uint16_t id_;
+
+    };
+
+    template<typename Fmt>
+    class Packet: private PacketBase
+    {
+        public:
+        Packet(Fmt, uint8_t classId, uint8_t subClassId)
         {
             id_ = (static_cast<uint16_t>(classId) << 8) + subClassId;
         }
@@ -24,32 +46,38 @@ namespace electrical_protocol
         {
 
         }
+
+        uint8_t* getData()
+        {
+            return data_.data();
+        }
+
+        size_t getDataSize()
+        {
+            return data_.size();
+        }
         
-        template <typename Fmt, typename... Args>
-        void pack(Fmt, Args&&... args)
+        template <typename... Args>
+        constexpr void pack(Args&&... args)
         {
             constexpr size_t itemCount = pystruct::countItems(Fmt{});
-            pack_<Fmt>(std::make_index_sequence<itemCount>(), std::forward<Args>(args)...);
+            pack_(std::make_index_sequence<itemCount>(), std::forward<Args>(args)...);
         }
 
-        template <typename Fmt>
-        constexpr auto unpack(Fmt)
+        constexpr auto unpack()
         {
-            return unpack_<Fmt>(std::make_index_sequence<countItems(Fmt{})>());
+            return unpack_(std::make_index_sequence<countItems(Fmt{})>());
         }
-
 
         private:
-        std::vector<uint8_t> data_;
-        uint16_t id_;
 
-        template <typename Fmt, size_t... Items, typename... Args>
-        inline void pack_(std::index_sequence<Items...>, Args&&... args)
+        std::array<uint8_t, pystruct::calcsize(Fmt{})> data_;
+
+        template <size_t... Items, typename... Args>
+        constexpr void pack_(std::index_sequence<Items...>, Args&&... args)
         {
             static_assert(sizeof...(args) == sizeof...(Items), "pack expected items for packing != sizeof...(args) passed");
             constexpr auto formatMode = pystruct::getFormatMode(Fmt{});
-            constexpr auto byteSize = pystruct::calcsize(Fmt{});
-            data_.resize(byteSize);
 
             constexpr pystruct::FormatType formats[] = { pystruct::getTypeOfItem<Items>(Fmt{})... };
             using Types = std::tuple<typename pystruct::RepresentedType<decltype(formatMode), formats[Items].formatChar> ...>;
@@ -62,8 +90,8 @@ namespace electrical_protocol
             (void)_; // _ is a dummy for pack expansion
         }
 
-        template <typename Fmt, size_t... Items>
-        inline auto unpack_(std::index_sequence<Items...>)
+        template <size_t... Items>
+        constexpr auto unpack_(std::index_sequence<Items...>)
         {
             constexpr auto formatMode = pystruct::getFormatMode(Fmt{});
 
