@@ -10,16 +10,16 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
 
   <!-- KDL Parser does not like inertial base links, so use a 'fake' massless root link -->
-  <!-- <link name="base_link"/>
+  <link name="base_link"/>
   <joint name="fixed" type="fixed">
     <parent link="base_link"/>
     <child link="link1"/>
-  </joint> -->
+  </joint>
 
 
 <joint name="thrustjoint" type="revolute">
   <origin xyz="0 0 1" rpy="0 0 0"/>
-    <parent link="base_link"/>
+    <parent link="link1"/>
     <child link="thrusterer"/>
     <!-- <gazebo> -->
       <limit effort="1000" lower="0.0" upper="0.548" velocity="0.5"/>
@@ -40,27 +40,32 @@
 
 
   <!-- Base Link of the Sub -->
-  <link name="base_link">
+  <link name="link1">
     <inertial>
       <mass value="21.5"/>
       <inertia ixx="0.96105" ixy="0" ixz="0" iyy="1.799" iyz="0" izz="2.1286"/>
     </inertial>
     <visual name="visual">
-      <origin rpy="0 0 0" xyz="-0.1 0.0125 0"/>
+      <origin rpy="0 0 0" xyz="-0.1 0.0125 -1"/>
       <geometry>
-        <mesh filename="package://subjugator_description/urdf/meshes/sub9.dae"/>
+        <mesh filename="package://subjugator_description/urdf/meshes/Sub9.dae"/>
       </geometry>
     </visual>
 
     <!-- Imports subjugator's collisions from seperate XACRO -->
-    <xacro:collision />
+    <collision name="main_collision">
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.945 0.35 0.4"/>
+      </geometry>
+    </collision>
   </link>
 
   <gazebo>
     <plugin
         filename="gz-sim-hydrodynamics-system"
         name="gz::sim::systems::Hydrodynamics">
-      <link_name>base_link</link_name>
+      <link_name>link1</link_name>
       <xDotU>-0.04876161</xDotU>
       <yDotV>-1.26324739</yDotV>
       <zDotW>-1.26324739</zDotW>
@@ -94,22 +99,22 @@
   </gazebo>
   
   <!-- Sensors -->
-  <xacro:mil_fixed_link name="front_stereo" parent="base_link" xyz="0.2559 0 0.1707" rpy="0 0 0"/>
-  <xacro:mil_camera name="front_left_cam" parent="front_stereo" namespace="/camera/front/left" xyz="-0.65 0 -0.3" rpy="0 0 9.5"/>
+  <xacro:mil_fixed_link name="front_stereo" parent="link1" xyz="0.2559 0 0.1707" rpy="0 0 0"/>
+  <!-- <xacro:mil_camera name="front_left_cam" parent="front_stereo" namespace="/camera/front/left" xyz="-0.65 0 -0.3" rpy="0 0 9.5"/> -->
   <!-- <xacro:mil_camera name="front_right_cam" parent="front_stereo" namespace="/camera/front/right" xyz="0 -0.0445 0" rpy="0 0 0"/>
   <xacro:mil_camera name="down_left_cam" parent="base_link" namespace="/camera/down" xyz="0.054 0.105 -0.256" rpy="0 1.57 1.57"/> -->
 
   <!-- DVL Sensor-->
   <xacro:mil_dvl_sensor
     name="dvl_sensor"
-    parent="base_link"
+    parent="link1"
     xyz="0.21236 0.00254 -0.10233"
     rpy="0 0 0"
   />
 
   <xacro:mil_imu_magnetometer
     name="imu"
-    parent="base_link"
+    parent="link1"
     imu_topic='/imu/data_raw'
     xyz="0.21236 0.00254 -0.10233"
     rpy="0 -1.571 0"

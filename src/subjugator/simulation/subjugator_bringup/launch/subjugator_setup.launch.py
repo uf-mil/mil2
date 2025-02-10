@@ -10,6 +10,8 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 import xacro
+import subprocess
+
 
 def generate_launch_description():
     # Configure ROS nodes for launch
@@ -31,6 +33,13 @@ def generate_launch_description():
 
     print(f"Successfully converted {xacro_file} to {urdf_file}")
 
+    # # Convert URDF to SDF using Gazebo's gz tool
+    # sdf_file = os.path.join(pkg_project_description, 'urdf', 'sub9.sdf')
+    # try:
+    #     subprocess.run(['gz', 'sdf', '-p', urdf_file], check=True, stdout=open(sdf_file, 'w'))
+    #     print(f"Successfully converted {urdf_file} to {sdf_file}")
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Error converting URDF to SDF: {e}")
 
     # Takes the description and joint angles as inputs and publishes the 3D poses of the robot links
     robot_state_publisher_node = Node(

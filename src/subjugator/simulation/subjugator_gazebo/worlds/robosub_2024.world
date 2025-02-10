@@ -12,8 +12,8 @@
 
             <!-- Physics Settings -->
             <physics name='default_physics' default='0' type='ode'>
-                <real_time_update_rate>100</real_time_update_rate>
-                <max_step_size>0.01</max_step_size>
+                <real_time_update_rate>200</real_time_update_rate>
+                <max_step_size>0.005</max_step_size>
                 <real_time_factor>1.0</real_time_factor>
             </physics>
             
@@ -35,7 +35,6 @@
             <plugin
                 filename="gz-sim-sensors-system"
                 name="gz::sim::systems::Sensors">
-                <render_engine>ogre2</render_engine>
             </plugin>
             <plugin
 			    filename="gz-sim-dvl-system"
@@ -64,20 +63,20 @@
             
             
            <!-- Origin Placed in the middle of the woollet pool --> 
-            <spherical_coordinates>
+            <!-- <spherical_coordinates>
                 <surface_model>EARTH_WGS84</surface_model>
                 <world_frame_orientation>ENU</world_frame_orientation>
                 <latitude_deg>33.70175</latitude_deg>
                 <longitude_deg>-117.78036</longitude_deg>
                 <elevation>0.4</elevation>
                 <heading_deg>100</heading_deg>
-            </spherical_coordinates>
+            </spherical_coordinates> -->
 
             <!-- Need to adjust -->
             <magnetic_field>5e-06 2.4e-05 3.9e-05</magnetic_field>
            
            <!-- Global Light Source -->
-           <light type="directional" name="sun1">
+           <!-- <light type="directional" name="sun1">
                 <pose>50 0 150 0 0 0 </pose> 
                 <diffuse>1 1 1 1</diffuse>
                 <specular>0.1 0.1 0.1 1</specular> 
@@ -90,12 +89,13 @@
                 <specular>0.2 0.2 0.2 1</specular> 
                 <direction>-1 0 0</direction> 
                 <cast_shadows>false</cast_shadows>
-           </light>
+           </light> -->
            
            <!-- Models -->
            <!-- Sub 9 -->
            <include>
                 <uri>package:://subjugator_description/urdf/sub9.urdf</uri>
+                <pose>0 0 0 0 0 0</pose>
             </include>
            <!-- Virtual north, east, and down frame -->
            <include>

@@ -58,14 +58,14 @@
               <noise type="gaussian">
                 <stddev>0.015</stddev>
               </noise>
-              <visualize>false</visualize>
+              <visualize>true</visualize>
             </water_mass_mode>
             <bottom_mode>
               <when>best</when>
               <noise type="gaussian">
                 <stddev>0.005</stddev>
               </noise>
-              <visualize>false</visualize>
+              <visualize>true</visualize>
             </bottom_mode>
           </tracking>
           <maximum_range>200.</maximum_range>
