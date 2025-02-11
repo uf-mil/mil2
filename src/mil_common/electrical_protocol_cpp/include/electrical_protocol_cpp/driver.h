@@ -83,7 +83,7 @@ class SerialDevice
 // class Subscriber
 // {
 //     public:
-//     friend class SerialTransfer;
+//     friend class ;
 //     Subscriber();
 //     ~Subscriber();
 //     private:
@@ -106,8 +106,8 @@ class SerialDevice
 //     SerialTransfer(std::string& portName, unsigned baudrate=9600);
 //     ~SerialTransfer();
 
-//     int advertise(Publisher& publisher, unsigned queueLen);
-//     int subscribe(Subscriber& subscriber, unsigned queueLen);
+//     int publish(, unsigned queueLen);
+//     int subscribe(, unsigned queueLen);
 
 //     private:
 //     pthread_t transferThread_;
