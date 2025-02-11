@@ -40,7 +40,7 @@ class BufferThread(threading.Thread):
         self.hz = hz
 
 
-class ROSSerialDevice(Generic[SendPackets, RecvPackets]):
+class SerialDevice(Generic[SendPackets, RecvPackets]):
     """
     Represents a generic serial device, which is expected to be the main component
     of an individual ROS node.
