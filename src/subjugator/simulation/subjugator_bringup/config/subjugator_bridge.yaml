@@ -1,8 +1,4 @@
 # ROS-Gazebo bridge configuration
-# Add topic bridges in this list, like:
-# - topic_name: "/example_topic"
-#   ros_type: "std_msgs/String"
-#   gz_type: "gz.msgs.StringMsg"
 
 # IMU configuration.
 - ros_topic_name: "/imu/data_raw/imu"
@@ -16,3 +12,59 @@
   ros_type_name: "sensor_msgs/msg/MagneticField"
   gz_type_name: "gz.msgs.Magnetometer"
   direction: GZ_TO_ROS
+
+  # Thruster configuration.
+- ros_topic_name: "/thruster/FLH"
+  gz_topic_name: "/model/FLH/joint/FLH_dir_joint/cmd_thrust"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/thruster/FRH"
+  gz_topic_name: "/model/FRH/joint/FRH_dir_joint/cmd_thrust"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/thruster/BLH"
+  gz_topic_name: "/model/BLH/joint/BLH_dir_joint/cmd_thrust"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/thruster/BRH"
+  gz_topic_name: "/model/BRH/joint/BRH_dir_joint/cmd_thrust"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/thruster/FLV"
+  gz_topic_name: "/model/FLV/joint/FLV_dir_joint/cmd_thrust"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/thruster/FRV"
+  gz_topic_name: "/model/FRV/joint/FRV_dir_joint/cmd_thrust"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/thruster/BLV"
+  gz_topic_name: "/model/BLV/joint/BLV_dir_joint/cmd_thrust"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/thruster/BRV"
+  gz_topic_name: "/model/BRV/joint/BRV_dir_joint/cmd_thrust"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: GZ_TO_ROS
+
+  # Camera configuration.
+- ros_topic_name: "/front_cam/image_raw"
+  gz_topic_name: "/front_cam/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/down_cam/image_raw"
+  gz_topic_name: "/down_cam/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+

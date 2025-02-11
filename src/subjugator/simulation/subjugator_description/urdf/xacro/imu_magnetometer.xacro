@@ -2,19 +2,39 @@
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:macro
     name="mil_imu_magnetometer"
-    params="name parent imu_topic xyz rpy rate ax ay az lx ly lz"
+    params="name namespace parent xyz rpy
+            rate ax ay az lx ly lz"
   >
-    <link name="${name}"/>
+
+   <!-- Imu link -->
+   <link name="${name}_link">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/> 
+        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- IMU joint -->
     <joint name="${name}_joint" type="fixed">
       <origin xyz="${xyz}" rpy="${rpy}"/>
       <parent link="${parent}"/>
-      <child link="${name}"/>
+      <child link="${name}_link"/>
     </joint>
-    <gazebo reference="${name}">
-      <sensor name="${name}_imu_sensor" type="imu">
+
+    <!-- This ensures that the fixed link is not simplified away -->
+    <gazebo reference="${name}_joint">
+      <disableFixedJointLumping>true</disableFixedJointLumping> 
+      <preserveFixedJoint>true</preserveFixedJoint>
+    </gazebo>
+
+    <!-- Sensor/Plugin Info-->
+    <gazebo reference="${name}_link">
+      <sensor name="VectorNav_IMU" type="imu">
         <always_on>true</always_on>
         <update_rate>${rate}</update_rate>
-        <topic>${imu_topic}/imu</topic>
+        <topic>${namespace}/data_raw</topic>
         <imu>
           <linear_acceleration>
             <x>
@@ -57,10 +77,10 @@
         </plugin>
 
       </sensor>
-      <sensor name="${name}_mag_sensor" type="magnetometer">
+      <sensor name="VectorNav_MAG" type="magnetometer">
         <always_on>true</always_on>
         <update_rate>${rate}</update_rate>
-        <topic>${imu_topic}/imu_mag</topic>
+        <topic>${namespace}/mag</topic>
         <plugin
             filename="gz-sim-magnetometer-system"
             name="gz::sim::systems::Magnetometer">
