@@ -82,8 +82,8 @@ def generate_launch_description():
             Node(
                 package="robot_localization",
                 namespace="subjugator_localization",
-                executable="ekf_localization_node",
-                name="ekf_node",
+                executable="ekf_node",
+                name="ekf_filter_node",
                 parameters=[asdict(p) for p in parameters],
             ),
         ],
