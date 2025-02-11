@@ -57,6 +57,13 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${PROJECT_NAME}_packet_test ${PROJECT_NAME})
 
+  # ament_add_gtest(${PROJECT_NAME}_driver_test test/driver.cpp)
+  # target_include_directories(${PROJECT_NAME}_driver_test PUBLIC
+  #   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  #   $<INSTALL_INTERFACE:include>
+  # )
+  # target_link_libraries(${PROJECT_NAME}_driver_test ${PROJECT_NAME})
+
   # ament_lint_auto_find_test_dependencies()
 endif()
 

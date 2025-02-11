@@ -267,11 +267,7 @@ namespace electrical_protocol
                     break;
                 }
 
-                if(packet->data_.size() != dataLen)
-                {
-                    error = EMSGSIZE; 
-                    break;
-                }
+                packet->data_.resize(dataLen);
 
                 uint16_t checkSum;
                 iov[0].iov_base = packet->data_.data();
