@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Macro for inserting a Thruster -->
+  <xacro:macro
+    name="mil_thruster" 
+    params="name parent xyz rpy
+            dir_rpy">
+    
+
+    <!-- Link for base of thruster (this is for TF) -->
+     <link name="${name}_link">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/> 
+        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- Thruster base Joint -->
+    <joint name="${name}_joint" type="fixed">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+    </joint>
+
+    <!-- This ensures that the fixed link is not simplified away -->
+    <gazebo reference="${name}_joint">
+      <disableFixedJointLumping>true</disableFixedJointLumping> 
+      <preserveFixedJoint>true</preserveFixedJoint>
+    </gazebo>
+
+    <!-- Thruster Direction link (this is for the plugin) -->
+    <!-- The plugin does not work with a fixed link -->
+    <link name="${name}_dir_link">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/> 
+        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- Thruster Direction joint -->
+    <joint name="${name}_dir_joint" type="revolute">
+      <origin xyz="0 0 1" rpy="${dir_rpy}"/>
+      <parent link="${name}_link"/>
+      <child link="${name}_dir_link"/>
+      <limit effort="1000" lower="0.0" upper="0.548" velocity="0.5"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <!-- Sensor/Plugin Info-->
+    <!-- For the thruster plugin this gazebo tag needs to be global-->
+    <!-- Don't give it a reference like the other plugins-->
+    <gazebo>
+      <plugin
+        filename="gz-sim-thruster-system"
+        name="gz::sim::systems::Thruster">
+        <namespace>${name}</namespace>
+        <use_angvel_cmd>0</use_angvel_cmd>
+        <joint_name>${name}_dir_joint</joint_name>
+        <thrust_coefficient>0.01407</thrust_coefficient>
+        <fluid_density>1000</fluid_density>
+        <propeller_diameter>0.2</propeller_diameter>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</robot>
