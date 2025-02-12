@@ -24,6 +24,9 @@ source "/usr/share/colcon_cd/function/colcon_cd.sh"
 export _colcon_cd_root=$MIL_REPO
 alias ccd="colcon_cd"
 
+# Setup up Gazebo
+export GZ_VERSION=harmonic
+
 # Setup colcon autocomplete
 source "/usr/share/colcon_cd/function/colcon_cd-argcomplete.bash"
 
@@ -36,7 +39,8 @@ alias fd="fdfind"
 
 # potentially borrowed from forrest
 autopush() {
-	git push origin +"${1:-HEAD}":refs/heads/autopush-"$USER"-"$(uuidgen --random | cut -c1-8)"-citmp
+  git push origin +"${1:-HEAD}":refs/heads/autopush-"$USER"-"$(uuidgen --random | cut -c1-8)"-citmp
+
 }
 
 # ssd utils
