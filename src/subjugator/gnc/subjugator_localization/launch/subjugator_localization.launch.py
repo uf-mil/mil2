@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
 from launch import LaunchDescription
 from launch_ros.actions import Node
@@ -11,12 +11,13 @@ class Parameter:
     name: str
     value: AvailableTypes
 
-    dict = asdict
+    def dict(self) -> dict[str, AvailableTypes]:
+        return {self.name: self.value}
 
 
 def generate_launch_description():
     parameters: list[Parameter] = [
-        Parameter("imu0", "/imu/data_raw/imu"),
+        Parameter("imu0", "/imu/data_raw"),
         Parameter(
             "imu0_config",
             [
@@ -37,34 +38,34 @@ def generate_launch_description():
                 True,
             ],
         ),
-        Parameter("imu0_differential", True),
+        Parameter("imu0_differential", False),
         Parameter("imu0_relative", True),
         Parameter("imu0_remove_gravitational_acceleration", True),
         Parameter("imu0_queue_size", 10),
-        Parameter("odom0", "/dvl/odom"),
-        Parameter(
-            "odom0_config",
-            [
-                True,
-                True,
-                False,
-                False,
-                False,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                True,
-                False,
-                False,
-                False,
-            ],
-        ),
-        Parameter("odom0_differential", True),
-        Parameter("odom0_relative", True),
-        Parameter("odom0_queue_size", 10),
+        #        Parameter("odom0", "/dvl/odom"),
+        #        Parameter(
+        #            "odom0_config",
+        #            [
+        #                True,
+        #                True,
+        #                False,
+        #                False,
+        #                False,
+        #                True,
+        #                True,
+        #                False,
+        #                False,
+        #                False,
+        #                False,
+        #                True,
+        #                False,
+        #                False,
+        #                False,
+        #            ],
+        #        ),
+        #        Parameter("odom0_differential", True),
+        #        Parameter("odom0_relative", True),
+        #        Parameter("odom0_queue_size", 10),
         #        Parameter("pose0", "/depth/pose"),
         #        Parameter("pose0_config", [False, False, True,
         #                                   False, False, False,
@@ -77,6 +78,9 @@ def generate_launch_description():
         Parameter("print_diagnostics", True),
         Parameter("publish_acceleration", True),
     ]
+    import rich
+
+    rich.print([p.dict() for p in parameters])
     return LaunchDescription(
         [
             Node(
@@ -84,7 +88,7 @@ def generate_launch_description():
                 namespace="subjugator_localization",
                 executable="ekf_node",
                 name="ekf_filter_node",
-                parameters=[asdict(p) for p in parameters],
+                parameters=[p.dict() for p in parameters],
             ),
         ],
     )
