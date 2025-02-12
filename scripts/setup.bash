@@ -70,3 +70,12 @@ dmb() {
 subnet_ip() {
 	ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){2}37\.[0-9]*' | grep -v '127.0.0.1'
 }
+
+# This will build the repository from wherever you are and take you back into the mil2 repo
+colbuild() {
+    local prev_dir=$(pwd)  # Store the current directory
+    cd $MIL_REPO || return  # Change to your workspace
+    colcon build --symlink-install  # Build the workspace
+    source ./install/setup.bash  # Source the install script
+    cd "$prev_dir"  # Return to the original directory
+}
