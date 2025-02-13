@@ -23,8 +23,6 @@ add_library(${PROJECT_NAME}
     src/pairedSerial.cpp
 )
 include_directories(include)
-ament_target_dependencies(${PROJECT_NAME} rclcpp)
-ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
 
 install(
   TARGETS ${PROJECT_NAME}
@@ -35,8 +33,8 @@ install(
 )
 
 install(
-    DIRECTORY include
-    DESTINATION include/${PROJECT_NAME}
+    DIRECTORY include/${PROJECT_NAME}
+    DESTINATION include
 )
 
 if(BUILD_TESTING)
@@ -90,3 +88,8 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${PROJECT_NAME}_pairedserial_test ${PROJECT_NAME})
 endif()
+
+ament_export_include_directories(include)
+ament_target_dependencies(${PROJECT_NAME} rclcpp)
+ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_package()

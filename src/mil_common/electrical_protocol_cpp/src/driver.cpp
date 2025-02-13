@@ -5,9 +5,9 @@
 
 namespace electrical_protocol
 {
-    SerialDevice::SerialDevice(const std::string& portName, unsigned baudrate)
+    SerialDevice::SerialDevice(const std::string& deviceName)
     {
-        this->open(portName, baudrate);
+        this->open(deviceName);
     }
 
     SerialDevice::SerialDevice()
@@ -46,14 +46,6 @@ namespace electrical_protocol
         }
         cfsetispeed(&options, speed);
         cfsetospeed(&options, speed);
-        options.c_cflag |= (CLOCAL | CREAD);
-        options.c_cflag &= ~CSIZE;
-        options.c_cflag |= CS8;
-        options.c_cflag &= ~PARENB;
-        options.c_cflag &= ~CSTOPB;
-        options.c_iflag &= ~(IXON | IXOFF | IXANY);
-        options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-        options.c_oflag &= ~OPOST;
         if (tcsetattr(serialFd_, TCSANOW, &options) < 0) 
         {
             return errno;
@@ -61,20 +53,32 @@ namespace electrical_protocol
         return 0;
     }
 
-    int SerialDevice::open(const std::string& portName, unsigned baudrate)
+    int SerialDevice::open(const std::string& deviceName)
     {
         int error = 0;
         if(opened_)
             goto ret;
 
-        serialFd_ = ::open(portName.c_str(), O_RDWR | O_NOCTTY);
+        serialFd_ = ::open(deviceName.c_str(), O_RDWR | O_NOCTTY);
         if(serialFd_ == -1)
         {
             error = errno;
             goto ret;
         }
 
-        setBaudrate(baudrate);
+        struct termios options;
+        if (tcgetattr(serialFd_, &options) != -1)
+        {
+            options.c_cflag |= (CLOCAL | CREAD);
+            options.c_cflag &= ~CSIZE;
+            options.c_cflag |= CS8;
+            options.c_cflag &= ~PARENB;
+            options.c_cflag &= ~CSTOPB;
+            options.c_iflag &= ~(IXON | IXOFF | IXANY);
+            options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+            options.c_oflag &= ~OPOST;
+            tcsetattr(serialFd_, TCSANOW, &options);
+        }
 
 
         error = pthread_create(&writeThread_, NULL, writeThreadFunc_, this);
@@ -173,11 +177,17 @@ namespace electrical_protocol
             {
                 pthread_cond_wait(&device->writeCond_, &device->writeMutex_);
             }
+            
+            pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+            std::cout << "Write lock acquired" << std::endl;
 
             std::shared_ptr<Packet> packet = device->writeQueue_.front();
             device->writeQueue_.pop();
 
             pthread_mutex_unlock(&device->writeMutex_);
+            
+            std::cout << "Write lock released" << std::endl;
+            pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
             uint16_t checkSum = device->calcCheckSum_(packet);
     
