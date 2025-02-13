@@ -7,7 +7,8 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# find_package(rclcpp REQUIRED)
+find_package(mil_tools REQUIRED)
+find_package(rclcpp REQUIRED)
 # find_package(std_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -18,12 +19,6 @@ add_library(electrical_protocol_cpp src/driver.cpp)
 target_include_directories(electrical_protocol_cpp PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
-
-# ament_target_dependencies(
-#   electrical_protocol_cpp
-#   "rclcpp"
-#   "std_msgs"
-# )
 
 # # Export the library
 # ament_export_targets(electrical_protocol_cpp HAS_LIBRARY_TARGET)
@@ -39,7 +34,7 @@ install(TARGETS electrical_protocol_cpp
 #     DESTINATION include)
 
 if(BUILD_TESTING)
-  # find_package(ament_lint_auto REQUIRED)
+  find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
   # set(ament_cmake_copyright_FOUND TRUE)
@@ -57,14 +52,15 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${PROJECT_NAME}_packet_test ${PROJECT_NAME})
 
-  # ament_add_gtest(${PROJECT_NAME}_driver_test test/driver.cpp)
-  # target_include_directories(${PROJECT_NAME}_driver_test PUBLIC
-  #   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  #   $<INSTALL_INTERFACE:include>
-  # )
-  # target_link_libraries(${PROJECT_NAME}_driver_test ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_driver_test test/driver.cpp)
+  target_include_directories(${PROJECT_NAME}_driver_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    ${mil_tools_INCLUDE_DIRS}
+  )
+  target_link_libraries(${PROJECT_NAME}_driver_test ${PROJECT_NAME} mil_tools::mil_tools)
 
-  # ament_lint_auto_find_test_dependencies()
+  ament_lint_auto_find_test_dependencies()
 endif()
 
 ament_package()

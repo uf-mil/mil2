@@ -25,19 +25,19 @@ class SerialDevice
 {
     public:
 
-    SerialDevice(const std::string& portName, unsigned baudrate=9600);
+    SerialDevice(const std::string& deviceName);
     SerialDevice();
     ~SerialDevice();
 
-    int open(const std::string& portName, unsigned baudrate=9600);
+    int open(const std::string& deviceName);
     int setBaudrate(unsigned baudrate);
     void close();
     bool isOpened() const;
     void write(std::shared_ptr<Packet> packet);
     void read(std::shared_ptr<Packet> packet);
 
-    virtual void onWrite(std::shared_ptr<Packet> package, int errorCode ,size_t bytesWritten) = 0;
-    virtual void onRead(std::shared_ptr<Packet> package, int errorCode ,size_t bytesRead) = 0;
+    virtual void onWrite(std::shared_ptr<Packet> packet, int errorCode ,size_t bytesWritten) = 0;
+    virtual void onRead(std::shared_ptr<Packet> packet, int errorCode ,size_t bytesRead) = 0;
 
     private:
 
