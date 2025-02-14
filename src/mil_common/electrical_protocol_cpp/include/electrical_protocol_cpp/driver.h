@@ -44,8 +44,8 @@ class SerialDevice
     {
         SYNC_1,
         SYNC_2,
-        ID,
         DATA,
+        CALLBACK,
     };
 
     static constexpr uint8_t SYNC_CHAR_1 = 0x37;

@@ -32,7 +32,7 @@ void readBytes(int fd, std::string& bytes)
     while(bytesRead < bytesToRead);
 }
 
-TEST(pairedSerial, test)
+TEST(pairedSerial, dataTransfer)
 {
     mil_tools::PairedSerial serial;
     std::string slave1;
@@ -73,3 +73,13 @@ TEST(pairedSerial, test)
     close(slave2Fd_);
     serial.close();
 }
+
+// TEST(pairedSerial, openClose)
+// {
+//     mil_tools::PairedSerial serial;
+//     std::string slave1;
+//     std::string slave2;
+//     EXPECT_EQ(serial.open(slave1, slave2), 0);
+//     serial.close();
+// }
+

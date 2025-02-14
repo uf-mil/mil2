@@ -155,8 +155,8 @@ namespace electrical_protocol
 
             pthread_mutex_unlock(&device->writeMutex_);
 
-            int bytesToWrite = packet->data_.size();
-            int bytesWritten = 0;
+            size_t bytesToWrite = packet->data_.size();
+            size_t bytesWritten = 0;
             int ret = 0;
             while(bytesWritten < bytesToWrite && ret != -1)
             {
@@ -164,6 +164,7 @@ namespace electrical_protocol
                 ret = ::write(device->serialFd_, packet->data_.data() + bytesWritten, bytesToWrite - bytesWritten);
             }
             
+            size_t dataLen = bytesToWrite - Packet::HEADER_LEN - Packet::TRAILER_LEN;
             device->onWrite(packet, errno, bytesWritten);
 
             pthread_testcancel();
@@ -193,106 +194,113 @@ namespace electrical_protocol
         pthread_cleanup_push(readThreadCleanupFunc_, device);
         ReadState state = ReadState::SYNC_1;
 
+        std::shared_ptr<Packet> packet = nullptr;
+        size_t bytesRead = 0;
+
         while(1)
         {
             if(state == ReadState::SYNC_1)
             {
                 uint8_t header = 0;
-                int bytesRead = ::read(device->serialFd_,&header,1);
-                if(bytesRead == -1)
+                int ret = ::read(device->serialFd_,&header,1);
+                if(ret == -1)
                 {
-                    device->onRead(nullptr, errno, 0);
+                    state = ReadState::CALLBACK;
                 }
-                else if(bytesRead == 1 && header == SYNC_CHAR_1)
+                else if(ret == 1 && header == SYNC_CHAR_1)
                 {
+                    bytesRead = 1;
                     state = ReadState::SYNC_2;
                 }
             }
             else if(state == ReadState::SYNC_2)
             {
                 uint8_t header = 0;
-                int bytesRead = ::read(device->serialFd_,&header,1);
-                if(bytesRead == -1)
+                int ret = ::read(device->serialFd_,&header,1);
+                if(ret == -1)
                 {
-                    state = ReadState::SYNC_1;
-                    device->onRead(nullptr, errno, 0);
+                    state = ReadState::CALLBACK;
                 }
-                else if(bytesRead == 1 && header == SYNC_CHAR_2)
+                else if(ret == 1)
                 {
-                    state = ReadState::ID;
-                }
-                else
-                {
-                    state = ReadState::SYNC_1;
+                    if(header == SYNC_CHAR_2)
+                    {
+                        bytesRead = 2;
+                        state = ReadState::DATA;
+                    }
+                    else
+                    {
+                        state = ReadState::SYNC_1;
+                    }
                 }
             }
             else if(state == ReadState::DATA)
             {
                 uint8_t idndataLen[4];
 
-                int bytesToRead = sizeof(idndataLen);
-                int bytesRead = 0;
+                size_t bytesToRead = Packet::HEADER_LEN;
                 int ret = 0;
                 while(bytesRead < bytesToRead && ret != -1)
                 {
                     bytesRead += ret;
-                    ret = ::read(device->serialFd_, idndataLen + bytesRead, bytesToRead - bytesRead);
+                    ret = ::read(device->serialFd_, idndataLen + (bytesRead - Packet::SYNC_LEN), bytesToRead - bytesRead);
                 }
 
                 if(ret == -1)
                 {
-                    state = ReadState::SYNC_1;
-                    device->onRead(nullptr, errno, 0);
+                    state = ReadState::CALLBACK;
                     continue;
                 }
 
-                std::shared_ptr<Packet> packet(nullptr);
                 pthread_mutex_lock(&device->readMutex_);
                 auto it = device->readQueues_.find({idndataLen[0], idndataLen[1]});
-                if(it != device->readQueues_.end())
+                if(it != device->readQueues_.end() && it->second.size() > 0)
                 {
                     packet = it->second.front();
                     it->second.pop();
                 }
                 pthread_mutex_unlock(&device->readMutex_);
 
-                uint16_t dataLen = *reinterpret_cast<uint16_t*>(&idndataLen[2]);
+                size_t dataLen = *reinterpret_cast<uint16_t*>(&idndataLen[2]);
+                bytesToRead += (dataLen + Packet::TRAILER_LEN);
+
                 if(packet == nullptr)
                 {
-                    uint8_t buffer[100];
-                    bytesToRead = dataLen + Packet::TRAILER_LEN;
-                    bytesRead = 0;
+                    constexpr size_t bufferLen = 100;
+                    uint8_t buffer[bufferLen];
+                    
                     ret = 0;
                     while(bytesRead < bytesToRead && ret != -1)
                     {
                         bytesRead += ret;
-                        ret = ::read(device->serialFd_, buffer + bytesRead % 100, std::min(100, bytesToRead - bytesRead));
+                        ret = ::read(device->serialFd_, buffer + (bytesRead - Packet::HEADER_LEN) % bufferLen, std::min(bufferLen, bytesToRead - bytesRead));
                     }
                     
-                    if(ret == -1)
-                    {
-                        device->onRead(nullptr, errno, 0);
-                    }
                 }
                 else
                 {
                     packet->data_.resize(Packet::HEADER_LEN + dataLen + Packet::TRAILER_LEN);
                     *reinterpret_cast<uint16_t*>(&packet->data_[4]) = dataLen;
-                    bytesToRead = dataLen + Packet::TRAILER_LEN;
-                    bytesRead = 0;
+
                     ret = 0;
                     while(bytesRead < bytesToRead && ret != -1)
                     {
                         bytesRead += ret;
-                        ret = ::read(device->serialFd_, &packet->data_[Packet::HEADER_LEN] + bytesRead, bytesToRead - bytesRead);
+                        ret = ::read(device->serialFd_, packet->data_.data() + bytesRead, bytesToRead - bytesRead);
                     }
 
-
-                    device->onRead(packet, errno, bytesRead);
                 }
 
-                state = ReadState::SYNC_1;
+                state = ReadState::CALLBACK;
 
+            }
+            else if(state == ReadState::CALLBACK)
+            {
+                device->onRead(packet, errno, bytesRead);
+                packet.reset();
+                bytesRead = 0;
+                errno = 0;
+                state = ReadState::SYNC_1;
             }
 
             pthread_testcancel();
