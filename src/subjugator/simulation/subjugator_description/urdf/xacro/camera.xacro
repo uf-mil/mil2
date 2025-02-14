@@ -4,7 +4,7 @@
   <xacro:macro
     name="mil_camera"
     params="name parent xyz rpy
-            use_image_processing=false
+            use_image_processing=true
             width=960 height=600 fov=1.047 fps=30"
   >
     <!-- Camera Link -->

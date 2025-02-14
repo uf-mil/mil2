@@ -33,7 +33,8 @@ namespace dave_gz_sensor_plugins
 {
 class UnderwaterCamera : public gz::sim::System,
                          public gz::sim::ISystemConfigure,
-                         public gz::sim::ISystemPostUpdate
+                         public gz::sim::ISystemPostUpdate,
+                         public gz::sim::ISystemReset
 {
 public:
   UnderwaterCamera();
@@ -45,6 +46,10 @@ public:
 
   void PostUpdate(
     const gz::sim::UpdateInfo & info, const gz::sim::EntityComponentManager & ecm) override;
+  
+  void Reset(
+    const gz::sim::UpdateInfo &_info,
+    gz::sim::EntityComponentManager &_ecm) override;
 
   void CameraCallback(const gz::msgs::Image & image);
 

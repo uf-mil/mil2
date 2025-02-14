@@ -72,12 +72,14 @@
     parent="base_link" 
     xyz="-0.32 -0.014274 -0.050" 
     rpy="0 0 3.14159"
+    use_image_processing="true"
   />
   <xacro:mil_camera 
     name="down_cam" 
     parent="base_link" 
     xyz="-0.15222 0.027913 -0.22" 
     rpy="0 1.57 0"
+    use_image_processing="true"
   />
 
 
