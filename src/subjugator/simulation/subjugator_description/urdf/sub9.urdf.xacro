@@ -67,8 +67,18 @@
   </gazebo>
   
   <!-- Cameras -->
-  <xacro:mil_camera name="front_cam" parent="base_link" xyz="-0.25 -0.014274 -0.018" rpy="0 0 3.14159"/>
-  <xacro:mil_camera name="down_cam" parent="base_link" xyz="-0.15222 0.027913 -0.16" rpy="0 1.57 0"/>
+  <xacro:mil_camera 
+    name="front_cam" 
+    parent="base_link" 
+    xyz="-0.32 -0.014274 -0.050" 
+    rpy="0 0 3.14159"
+  />
+  <xacro:mil_camera 
+    name="down_cam" 
+    parent="base_link" 
+    xyz="-0.15222 0.027913 -0.22" 
+    rpy="0 1.57 0"
+  />
 
 
   <!-- DVL Sensor -->
