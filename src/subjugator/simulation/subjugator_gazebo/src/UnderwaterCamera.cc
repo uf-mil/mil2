@@ -357,7 +357,6 @@ void UnderwaterCamera::CameraCallback(const gz::msgs::Image & msg)
     {
       this->dataPtr->lastImage = msg;
       this->dataPtr->firstImage = false;
-      this->dataPtr->isReset = false;
     }
     else
     {
@@ -371,6 +370,7 @@ void UnderwaterCamera::CameraCallback(const gz::msgs::Image & msg)
       cv::Mat output_image = this->ConvertGazeboToOpenCV(this->dataPtr->lastImage);
 
       // Simulate underwater
+      this->dataPtr->isReset = false;
       cv::Mat simulated_image = this->SimulateUnderwater(image, depth_image, output_image);
 
       // Publish simulated image
