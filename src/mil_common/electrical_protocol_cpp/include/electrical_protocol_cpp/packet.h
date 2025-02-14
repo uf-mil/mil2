@@ -32,9 +32,14 @@ namespace electrical_protocol
 
         }
 
-        std::pair<uint8_t, uint8_t> getId() const
+        inline std::pair<uint8_t, uint8_t> getId() const
         {
             return {data_[2], data_[3]};
+        }
+
+        inline size_t getTotalSize() const
+        {
+            return data_.size();
         }
         
         template <typename Fmt, typename... Args>
@@ -48,7 +53,7 @@ namespace electrical_protocol
         }
 
         template<typename Fmt>
-        auto unpack(Fmt)
+        auto unpack(Fmt) const
         {
             if(pystruct::calcsize(Fmt{}) + HEADER_LEN + TRAILER_LEN > data_.size())
                 throw std::out_of_range("No enough data");
@@ -66,6 +71,7 @@ namespace electrical_protocol
         static constexpr uint8_t SYNC_CHAR_2 = 0x01;
         static constexpr size_t HEADER_LEN = 6;
         static constexpr size_t TRAILER_LEN = 2;
+        static constexpr size_t SYNC_LEN = 2;
         std::vector<uint8_t> data_;
         // uint16_t id_;
 
@@ -87,7 +93,7 @@ namespace electrical_protocol
         }
 
         template <typename Fmt, size_t... Items>
-        constexpr auto unpack_(std::index_sequence<Items...>)
+        constexpr auto unpack_(std::index_sequence<Items...>) const
         {
             constexpr auto formatMode = pystruct::getFormatMode(Fmt{});
 
@@ -97,12 +103,12 @@ namespace electrical_protocol
 
             constexpr size_t offsets[] = { pystruct::getBinaryOffset<Items>(Fmt{})... };
             auto unpacked = std::make_tuple(pystruct::unpackElement<Items, std::tuple_element_t<Items, Types>>(
-            reinterpret_cast<char*>(data_.data()) + HEADER_LEN + offsets[Items], formats[Items].size, formatMode.isBigEndian())...);
+            reinterpret_cast<const char*>(data_.data()) + HEADER_LEN + offsets[Items], formats[Items].size, formatMode.isBigEndian())...);
 
             return unpacked;
         }
 
-        void calcCheckSum_(uint8_t* sum)
+        void calcCheckSum_(uint8_t* sum) const
         {
             // Process packet data
             for (auto it = data_.begin() + HEADER_LEN; it < data_.end() - TRAILER_LEN; it++)

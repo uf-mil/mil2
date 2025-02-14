@@ -76,6 +76,8 @@ namespace mil_tools
             if(pthread_create(&workThread2_, NULL, workThreadFunc2_,this) < 0)
                 goto cancelThread;
             
+            std::cout << "Slave pty 1 name: " << slave1Name << std::endl;
+            std::cout << "Slave pty 2 name: " << slave2Name << std::endl;
             goto ret;
 
         cancelThread:
@@ -91,11 +93,11 @@ namespace mil_tools
 
         void close()
         {
-            if(pthread_cancel(workThread1_) == 0)
-                pthread_join(workThread1_, NULL);
+            pthread_cancel(workThread1_);
+            pthread_join(workThread1_, NULL);
 
-            if(pthread_cancel(workThread2_) == 0)
-                pthread_join(workThread2_, NULL);
+            pthread_cancel(workThread2_);
+            pthread_join(workThread2_, NULL);
 
             ::close(master1Fd_);
             ::close(master2Fd_);
@@ -117,7 +119,7 @@ namespace mil_tools
         {
             int bytesRead = buffer.readFrom(inFd, -1);
             if(bytesRead <= 0)
-                return 0;
+                return bytesRead;
             
             return buffer.writeTo(outFd, bytesRead);
         }

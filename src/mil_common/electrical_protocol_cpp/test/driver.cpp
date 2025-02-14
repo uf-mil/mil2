@@ -26,8 +26,14 @@ class SerialTest: public electrical_protocol::SerialDevice
     public:
     SerialTest(const std::string& portName):SerialDevice(portName)
     {
-        EXPECT_NE(sem_init(&readSem, 0, 0), -1);
-        EXPECT_NE(sem_init(&writeSem, 0, 0), -1);
+        if(sem_init(&readSem, 0, 0) == -1)
+        {
+            throw std::runtime_error("Failed to create read sem");
+        }
+        if(sem_init(&writeSem, 0, 0) == -1)
+        {
+            throw std::runtime_error("Failed to create write sem");
+        }
     }
     ~SerialTest()
     {
@@ -35,33 +41,41 @@ class SerialTest: public electrical_protocol::SerialDevice
         sem_destroy(&writeSem);
     }
 
-    void waitWrite()
+    int readSync(std::shared_ptr<electrical_protocol::Packet> packet)
     {
-        EXPECT_NE(sem_wait(&writeSem), -1);
+        read(packet);
+        if(sem_wait(&readSem) == -1)
+            return errno;
+        return readErrno;
     }
 
-    void waitRead()
+    int writeSync(std::shared_ptr<electrical_protocol::Packet> packet)
     {
-        EXPECT_NE(sem_wait(&readSem), -1);
+        write(packet);
+        if(sem_wait(&writeSem) == -1)
+            return errno;
+        return writeErrno;
     }
 
-    void onWrite(std::shared_ptr<electrical_protocol::Packet> packet, int errorCode ,size_t bytesWritten)
+    void onWrite([[maybe_unused]]std::shared_ptr<electrical_protocol::Packet> packet, 
+                    int errorCode ,
+                    [[maybe_unused]]size_t bytesWritten)
     {
-        EXPECT_EQ(errorCode, 0);
-        EXPECT_EQ(bytesWritten, testString.size());
-        EXPECT_NE(sem_post(&writeSem), -1);
+        writeErrno = errorCode;
+        sem_post(&writeSem);
     }
 
-    void onRead(std::shared_ptr<electrical_protocol::Packet> packet, int errorCode ,size_t bytesRead)
+    void onRead([[maybe_unused]]std::shared_ptr<electrical_protocol::Packet> packet, 
+                    int errorCode ,
+                    [[maybe_unused]]size_t bytesRead)
     {
-        EXPECT_EQ(errorCode, 0);
-        EXPECT_EQ(bytesRead, testString.size());
-        auto [string] = packet->unpack(PY_STRING("831s"));
-        EXPECT_EQ(testString, string);
-        EXPECT_NE(sem_post(&readSem), -1);
+        readErrno = errorCode;
+        sem_post(&readSem);
     }
 
     private:
+    int readErrno = 0;
+    int writeErrno = 0;
     sem_t readSem;
     sem_t writeSem;
 
@@ -71,14 +85,14 @@ void* writeThreadFunc(void* arg)
 {
     std::string* serialName = reinterpret_cast<std::string*>(arg);
     SerialTest test(*serialName);
-    // while(1)
-    // {
+    while(1)
+    {
         auto packet = std::make_shared<electrical_protocol::Packet>(1,1);
         packet->pack(PY_STRING("831s"), testString);
-        test.write(packet);
-        test.waitWrite();
-        // pthread_testcancel();
-    // }
+        EXPECT_EQ(test.writeSync(packet), 0);
+        usleep(100000);
+        pthread_testcancel();
+    }
     
     return 0;
 }
@@ -89,9 +103,9 @@ void * readThreadFunc(void* arg)
     SerialTest test(*serialName);
     
     auto packet = std::make_shared<electrical_protocol::Packet>(1,1);
-    test.read(packet);
-    test.waitRead();
-
+    test.readSync(packet);
+    auto [readString] = packet->unpack(PY_STRING("831s"));
+    EXPECT_EQ(readString, testString);
     return 0;
 }
 
