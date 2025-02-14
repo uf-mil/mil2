@@ -5,9 +5,9 @@
 
 namespace electrical_protocol
 {
-    SerialDevice::SerialDevice(const std::string& deviceName)
+    SerialDevice::SerialDevice(const std::string& deviceName, speed_t baudrate)
     {
-        this->open(deviceName);
+        this->open(deviceName, baudrate);
     }
 
     SerialDevice::SerialDevice()
@@ -20,40 +20,7 @@ namespace electrical_protocol
         close();
     }
 
-    int SerialDevice::setBaudrate(unsigned baudrate) 
-    {
-        speed_t speed;
-        switch (baudrate)
-        {
-        case 1200: speed = B1200; break;
-        case 2400: speed = B2400; break;
-        case 4800: speed = B4800; break;
-        case 9600: speed = B9600; break;
-        case 19200: speed = B19200; break;
-        case 38400: speed = B38400; break;
-        case 57600: speed = B57600; break;
-        case 115200: speed = B115200; break;
-        case 230400: speed = B230400; break;
-        case 460800: speed = B460800; break;
-        case 921600: speed = B921600; break;
-        default: return EINVAL;
-        }
-        
-        struct termios options;
-        if (tcgetattr(serialFd_, &options) < 0)
-        {
-            return errno;
-        }
-        cfsetispeed(&options, speed);
-        cfsetospeed(&options, speed);
-        if (tcsetattr(serialFd_, TCSANOW, &options) < 0) 
-        {
-            return errno;
-        }
-        return 0;
-    }
-
-    int SerialDevice::open(const std::string& deviceName)
+    int SerialDevice::open(const std::string& deviceName, speed_t baudrate)
     {
         int error = 0;
         if(opened_)
@@ -69,14 +36,19 @@ namespace electrical_protocol
         struct termios options;
         if (tcgetattr(serialFd_, &options) != -1)
         {
-            options.c_cflag |= (CLOCAL | CREAD);
-            options.c_cflag &= ~CSIZE;
-            options.c_cflag |= CS8;
-            options.c_cflag &= ~PARENB;
-            options.c_cflag &= ~CSTOPB;
-            options.c_iflag &= ~(IXON | IXOFF | IXANY);
-            options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-            options.c_oflag &= ~OPOST;
+            cfmakeraw(&options);
+            cfsetispeed(&options, baudrate);
+            cfsetospeed(&options, baudrate);
+            options.c_cc[VMIN] = 0;
+            options.c_cc[VTIME] = 1;
+            // options.c_cflag |= (CLOCAL | CREAD);
+            // options.c_cflag &= ~CSIZE;
+            // options.c_cflag |= CS8;
+            // options.c_cflag &= ~PARENB;
+            // options.c_cflag &= ~CSTOPB;
+            // options.c_iflag &= ~(IXON | IXOFF | IXANY);
+            // options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+            // options.c_oflag &= ~OPOST;
             tcsetattr(serialFd_, TCSANOW, &options);
         }
 
@@ -153,16 +125,16 @@ namespace electrical_protocol
 
     void SerialDevice::writeThreadCleanupFunc_(void* arg)
     {
-        SerialDevice* device = reinterpret_cast<SerialDevice*>(arg);
-        pthread_mutex_lock(&device->writeMutex_);
+        // SerialDevice* device = reinterpret_cast<SerialDevice*>(arg);
+        // pthread_mutex_lock(&device->writeMutex_);
 
-        while(device->writeQueue_.size() > 0)
-        {
-            std::shared_ptr<Packet> packet = device->writeQueue_.front();
-            device->onWrite(packet, EINTR, 0);
-            device->writeQueue_.pop();
-        }
-        pthread_mutex_unlock(&device->writeMutex_);
+        // while(device->writeQueue_.size() > 0)
+        // {
+        //     std::shared_ptr<Packet> packet = device->writeQueue_.front();
+        //     device->onWrite(packet, EINTR, 0);
+        //     device->writeQueue_.pop();
+        // }
+        // pthread_mutex_unlock(&device->writeMutex_);
     }
 
     void* SerialDevice::writeThreadFunc_(void* arg)
@@ -177,17 +149,11 @@ namespace electrical_protocol
             {
                 pthread_cond_wait(&device->writeCond_, &device->writeMutex_);
             }
-            
-            pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-            std::cout << "Write lock acquired" << std::endl;
 
             std::shared_ptr<Packet> packet = device->writeQueue_.front();
             device->writeQueue_.pop();
 
             pthread_mutex_unlock(&device->writeMutex_);
-            
-            std::cout << "Write lock released" << std::endl;
-            pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
             uint16_t checkSum = device->calcCheckSum_(packet);
     
@@ -232,13 +198,14 @@ namespace electrical_protocol
             if(state == ReadState::SYNC_1)
             {
                 uint8_t header = 0;
-                if(::read(serialFd_,&header,1) != -1)
+                int bytesRead = ::read(serialFd_,&header,1);
+                if(bytesRead == -1)
                 {
                     error = errno;
                     break;
                 }
                 
-                if(header == SYNC_CHAR_1)
+                if(bytesRead == 1 && header == SYNC_CHAR_1)
                 {
                     state = ReadState::SYNC_2;
                 }
@@ -246,13 +213,14 @@ namespace electrical_protocol
             else if(state == ReadState::SYNC_2)
             {
                 uint8_t header = 0;
-                if(::read(serialFd_,&header,1) == -1)
+                int bytesRead = ::read(serialFd_,&header,1);
+                if(bytesRead == -1)
                 {
                     error = errno;
                     break;
                 }
 
-                if(header == SYNC_CHAR_2)
+                if(bytesRead == 1 && header == SYNC_CHAR_2)
                 {
                     state = ReadState::DATA;
                 }
@@ -315,12 +283,13 @@ namespace electrical_protocol
             if(state == ReadState::SYNC_1)
             {
                 uint8_t header = 0;
-                if(::read(serialFd_,&header,1) != -1)
+                int bytesRead = ::read(serialFd_,&header,1);
+                if(bytesRead == -1)
                 {
                     break;
                 }
                 
-                if(header == SYNC_CHAR_1)
+                if(bytesRead == 1 && header == SYNC_CHAR_1)
                 {
                     state = ReadState::SYNC_2;
                 }
@@ -328,12 +297,13 @@ namespace electrical_protocol
             else if(state == ReadState::SYNC_2)
             {
                 uint8_t header = 0;
-                if(::read(serialFd_,&header,1) == -1)
+                int bytesRead = ::read(serialFd_,&header,1);
+                if(bytesRead == -1)
                 {
                     break;
                 }
 
-                if(header == SYNC_CHAR_2)
+                if(bytesRead == 1 && header == SYNC_CHAR_2)
                 {
                     state = ReadState::DATA;
                 }
@@ -378,16 +348,16 @@ namespace electrical_protocol
 
     void SerialDevice::readThreadCleanupFunc_(void* arg)
     {
-        SerialDevice* device = reinterpret_cast<SerialDevice*>(arg);
-        pthread_mutex_lock(&device->readMutex_);
-        while(device->readQueue_.size() > 0)
-        {
-            std::shared_ptr<Packet> packet = device->readQueue_.front();
-            device->onRead(packet, EINTR, 0);
-            device->readQueue_.pop();
-        }
+        // SerialDevice* device = reinterpret_cast<SerialDevice*>(arg);
+        // pthread_mutex_lock(&device->readMutex_);
+        // while(device->readQueue_.size() > 0)
+        // {
+        //     std::shared_ptr<Packet> packet = device->readQueue_.front();
+        //     device->onRead(packet, EINTR, 0);
+        //     device->readQueue_.pop();
+        // }
 
-        pthread_mutex_unlock(&device->readMutex_);
+        // pthread_mutex_unlock(&device->readMutex_);
     }
 
     void* SerialDevice::readThreadFunc_(void* arg)

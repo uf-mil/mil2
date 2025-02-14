@@ -25,12 +25,11 @@ class SerialDevice
 {
     public:
 
-    SerialDevice(const std::string& deviceName);
+    SerialDevice(const std::string& deviceName, speed_t baudrate = B9600);
     SerialDevice();
     ~SerialDevice();
 
-    int open(const std::string& deviceName);
-    int setBaudrate(unsigned baudrate);
+    int open(const std::string& deviceName, speed_t baudrate);
     void close();
     bool isOpened() const;
     void write(std::shared_ptr<Packet> packet);

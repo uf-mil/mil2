@@ -20,7 +20,6 @@ add_library(${PROJECT_NAME}
     src/os.cpp
     src/os/FileDescriptor.cpp
     src/string.cpp
-    src/pairedSerial.cpp
 )
 include_directories(include)
 
