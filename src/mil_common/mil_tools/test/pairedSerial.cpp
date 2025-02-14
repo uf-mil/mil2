@@ -44,14 +44,14 @@ TEST(pairedSerial, test)
 
     struct termios term;
     tcgetattr(slave1Fd_, &term);
-    term.c_lflag &= ~(ICANON | ECHO);
+    cfmakeraw(&term);
     tcsetattr(slave1Fd_, TCSANOW, &term);
 
     int slave2Fd_ = open(slave2.c_str(), O_RDWR | O_NOCTTY);
     EXPECT_NE(slave2Fd_, -1);
 
     tcgetattr(slave2Fd_, &term);
-    term.c_lflag &= ~(ICANON | ECHO);
+    cfmakeraw(&term);
     tcsetattr(slave2Fd_, TCSANOW, &term);
 
     std::string in("This is a test string to test the PairedSerial class."
