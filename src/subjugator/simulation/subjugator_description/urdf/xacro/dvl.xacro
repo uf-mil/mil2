@@ -1,17 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro" xmlns:experimental="http://sdformat.org/schemas/experimental" xmlns:gz="http://gazebosim.org/schema">
   <!-- Macro for inserting a DVL -->
-  <xacro:macro
-    name="mil_dvl_sensor"
-    params="name parent xyz rpy"
-  >
-
+  <xacro:macro name="mil_dvl_sensor" params="name parent xyz rpy">
     <!-- DVL Link -->
-     <link name="${name}_link">
+    <link name="${name}_link">
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.1"/> 
+        <mass value="0.1"/>
         <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
     </link>
@@ -25,15 +21,13 @@
 
     <!-- This ensures that the fixed link is not simplified away -->
     <gazebo reference="${name}_joint">
-      <disableFixedJointLumping>true</disableFixedJointLumping> 
+      <disableFixedJointLumping>true</disableFixedJointLumping>
       <preserveFixedJoint>true</preserveFixedJoint>
     </gazebo>
-    
+
     <!-- Sensor/Plugin Info-->
     <gazebo reference="${name}_link">
-      <sensor
-        name="A50_Waterlinked" type="custom"
-        gz:type="dvl">
+      <sensor name="A50_Waterlinked" type="custom" gz:type="dvl">
         <pose>0 0 0 0 0 0</pose>
         <always_on>1</always_on>
         <update_rate>8</update_rate>
@@ -97,13 +91,10 @@
     </gazebo>
 
     <gazebo>
-        <plugin
-          filename="DVLBridge"
-          name="dave_ros_gz_plugins::DVLBridge">
-
-          <!-- Grabbed in DVL Bridge script -->
-          <topic>/dvl/velocity</topic>
-        </plugin>
-      </gazebo>
-    </xacro:macro>
+      <plugin filename="DVLBridge" name="dave_ros_gz_plugins::DVLBridge">
+        <!-- Grabbed in DVL Bridge script -->
+        <topic>/dvl/velocity</topic>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
 </robot>
