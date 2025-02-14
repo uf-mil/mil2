@@ -37,7 +37,7 @@ TEST(pairedSerial, test)
     mil_tools::PairedSerial serial;
     std::string slave1;
     std::string slave2;
-    serial.open(slave1, slave2);
+    EXPECT_EQ(serial.open(slave1, slave2), 0);
 
     int slave1Fd_ = open(slave1.c_str(), O_RDWR | O_NOCTTY);
     EXPECT_NE(slave1Fd_, -1);

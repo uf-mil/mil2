@@ -119,7 +119,7 @@ namespace electrical_protocol
             onRead(packet, EINVAL, 0);
         
         pthread_mutex_lock(&readMutex_);
-        readQueue_.push(packet);
+        readQueues_[packet->getId()].push(packet);
         pthread_mutex_unlock(&readMutex_);
     }
 
@@ -155,29 +155,15 @@ namespace electrical_protocol
 
             pthread_mutex_unlock(&device->writeMutex_);
 
-            uint16_t checkSum = device->calcCheckSum_(packet);
-    
-            uint16_t dataLen = packet->data_.size();
-    
-            struct iovec iov[5];
-            iov[0].iov_base = const_cast<uint8_t*>(header_.data());
-            iov[0].iov_len = header_.size();
-    
-            iov[1].iov_base = &packet->id_;
-            iov[1].iov_len = sizeof(packet->id_);
-    
-            iov[2].iov_base = &dataLen;
-            iov[2].iov_len = sizeof(dataLen);
-    
-            iov[3].iov_base = packet->data_.data();
-            iov[3].iov_len = dataLen;
-    
-            iov[4].iov_base = &checkSum;
-            iov[4].iov_len = sizeof(checkSum);
-    
-            ssize_t bytesWritten = writev(device->serialFd_, iov, 3);
-            if(bytesWritten < 0)
-                bytesWritten = 0;
+            int bytesToWrite = packet->data_.size();
+            int bytesWritten = 0;
+            int ret = 0;
+            while(bytesWritten < bytesToWrite && ret != -1)
+            {
+                bytesWritten += ret;
+                ret = ::write(device->serialFd_, packet->data_.data() + bytesWritten, bytesToWrite - bytesWritten);
+            }
+            
             device->onWrite(packet, errno, bytesWritten);
 
             pthread_testcancel();
@@ -185,165 +171,6 @@ namespace electrical_protocol
         pthread_cleanup_pop(1);
         return NULL;
     
-    }
-
-    void SerialDevice::readPacket_(std::shared_ptr<Packet> packet)
-    {
-        ReadState state = ReadState::SYNC_1;
-        int error = 0;
-        size_t bytesRead = 0;
-
-        while(1)
-        {
-            if(state == ReadState::SYNC_1)
-            {
-                uint8_t header = 0;
-                int bytesRead = ::read(serialFd_,&header,1);
-                if(bytesRead == -1)
-                {
-                    error = errno;
-                    break;
-                }
-                
-                if(bytesRead == 1 && header == SYNC_CHAR_1)
-                {
-                    state = ReadState::SYNC_2;
-                }
-            }
-            else if(state == ReadState::SYNC_2)
-            {
-                uint8_t header = 0;
-                int bytesRead = ::read(serialFd_,&header,1);
-                if(bytesRead == -1)
-                {
-                    error = errno;
-                    break;
-                }
-
-                if(bytesRead == 1 && header == SYNC_CHAR_2)
-                {
-                    state = ReadState::DATA;
-                }
-                else
-                {
-                    state = ReadState::SYNC_1;
-                }
-            }
-            else if(state == ReadState::DATA)
-            {
-                uint16_t dataLen = 0;
-
-                struct iovec iov[2];
-                iov[0].iov_base = &packet->id_;
-                iov[0].iov_len = sizeof(packet->id_);
-                iov[1].iov_base = &dataLen;
-                iov[1].iov_len = sizeof(dataLen);
-
-                if(::readv(serialFd_, iov, 2) == -1)
-                {
-                    error = errno;
-                    break;
-                }
-
-                packet->data_.resize(dataLen);
-
-                uint16_t checkSum;
-                iov[0].iov_base = packet->data_.data();
-                iov[0].iov_len = dataLen;
-                iov[1].iov_base = &checkSum;
-                iov[1].iov_len = sizeof(checkSum);
-
-                int ret = readv(serialFd_, iov, 2);
-                if(ret == -1)
-                {
-                    error = errno;
-                    break;
-                }
-
-                bytesRead = ret;
-
-                if(checkSum != calcCheckSum_(packet))
-                {
-                    error = EBADMSG;
-                }
-
-                break;
-            }
-        }
-        
-        onRead(packet, error, bytesRead);
-    }
-
-    void SerialDevice::readPacket_()
-    {
-        ReadState state = ReadState::SYNC_1;
-
-        while(1)
-        {
-            if(state == ReadState::SYNC_1)
-            {
-                uint8_t header = 0;
-                int bytesRead = ::read(serialFd_,&header,1);
-                if(bytesRead == -1)
-                {
-                    break;
-                }
-                
-                if(bytesRead == 1 && header == SYNC_CHAR_1)
-                {
-                    state = ReadState::SYNC_2;
-                }
-            }
-            else if(state == ReadState::SYNC_2)
-            {
-                uint8_t header = 0;
-                int bytesRead = ::read(serialFd_,&header,1);
-                if(bytesRead == -1)
-                {
-                    break;
-                }
-
-                if(bytesRead == 1 && header == SYNC_CHAR_2)
-                {
-                    state = ReadState::DATA;
-                }
-                else
-                {
-                    state = ReadState::SYNC_1;
-                }
-            }
-            else if(state == ReadState::DATA)
-            {
-                uint16_t dataLen = 0;
-                uint16_t id = 0;
-                struct iovec iov[2];
-                iov[0].iov_base = &id;
-                iov[0].iov_len = sizeof(id);
-                iov[1].iov_base = &dataLen;
-                iov[1].iov_len = sizeof(dataLen);
-
-                if(::readv(serialFd_, iov, 2) == -1)
-                {
-                    break;
-                }
-
-                std::vector<uint8_t> data(dataLen);
-
-                uint16_t checkSum;
-                iov[0].iov_base = data.data();
-                iov[0].iov_len = dataLen;
-                iov[1].iov_base = &checkSum;
-                iov[1].iov_len = sizeof(checkSum);
-
-                int ret = readv(serialFd_, iov, 2);
-                if(ret == -1)
-                {
-                    break;
-                }
-
-                break;
-            }
-        }
     }
 
     void SerialDevice::readThreadCleanupFunc_(void* arg)
@@ -364,27 +191,108 @@ namespace electrical_protocol
     {
         SerialDevice* device = reinterpret_cast<SerialDevice*>(arg);
         pthread_cleanup_push(readThreadCleanupFunc_, device);
+        ReadState state = ReadState::SYNC_1;
 
         while(1)
         {
-            std::shared_ptr<Packet> packet;
-            pthread_mutex_lock(&device->readMutex_);
+            if(state == ReadState::SYNC_1)
+            {
+                uint8_t header = 0;
+                int bytesRead = ::read(device->serialFd_,&header,1);
+                if(bytesRead == -1)
+                {
+                    device->onRead(nullptr, errno, 0);
+                }
+                else if(bytesRead == 1 && header == SYNC_CHAR_1)
+                {
+                    state = ReadState::SYNC_2;
+                }
+            }
+            else if(state == ReadState::SYNC_2)
+            {
+                uint8_t header = 0;
+                int bytesRead = ::read(device->serialFd_,&header,1);
+                if(bytesRead == -1)
+                {
+                    state = ReadState::SYNC_1;
+                    device->onRead(nullptr, errno, 0);
+                }
+                else if(bytesRead == 1 && header == SYNC_CHAR_2)
+                {
+                    state = ReadState::ID;
+                }
+                else
+                {
+                    state = ReadState::SYNC_1;
+                }
+            }
+            else if(state == ReadState::DATA)
+            {
+                uint8_t idndataLen[4];
 
-            if(device->readQueue_.size() > 0)
-            {
-                packet = device->readQueue_.front();
-                device->readQueue_.pop();
-            }
-            
-            pthread_mutex_unlock(&device->readMutex_);
-            
-            if(packet == nullptr)
-            {
-                device->readPacket_();
-            }
-            else
-            {
-                device->readPacket_(packet);
+                int bytesToRead = sizeof(idndataLen);
+                int bytesRead = 0;
+                int ret = 0;
+                while(bytesRead < bytesToRead && ret != -1)
+                {
+                    bytesRead += ret;
+                    ret = ::read(device->serialFd_, idndataLen + bytesRead, bytesToRead - bytesRead);
+                }
+
+                if(ret == -1)
+                {
+                    state = ReadState::SYNC_1;
+                    device->onRead(nullptr, errno, 0);
+                    continue;
+                }
+
+                std::shared_ptr<Packet> packet(nullptr);
+                pthread_mutex_lock(&device->readMutex_);
+                auto it = device->readQueues_.find({idndataLen[0], idndataLen[1]});
+                if(it != device->readQueues_.end())
+                {
+                    packet = it->second.front();
+                    it->second.pop();
+                }
+                pthread_mutex_unlock(&device->readMutex_);
+
+                uint16_t dataLen = *reinterpret_cast<uint16_t*>(&idndataLen[2]);
+                if(packet == nullptr)
+                {
+                    uint8_t buffer[100];
+                    bytesToRead = dataLen + Packet::TRAILER_LEN;
+                    bytesRead = 0;
+                    ret = 0;
+                    while(bytesRead < bytesToRead && ret != -1)
+                    {
+                        bytesRead += ret;
+                        ret = ::read(device->serialFd_, buffer + bytesRead % 100, std::min(100, bytesToRead - bytesRead));
+                    }
+                    
+                    if(ret == -1)
+                    {
+                        device->onRead(nullptr, errno, 0);
+                    }
+                }
+                else
+                {
+                    packet->data_.resize(Packet::HEADER_LEN + dataLen + Packet::TRAILER_LEN);
+                    *reinterpret_cast<uint16_t*>(&packet->data_[4]) = dataLen;
+                    bytesToRead = dataLen + Packet::TRAILER_LEN;
+                    bytesRead = 0;
+                    ret = 0;
+                    while(bytesRead < bytesToRead && ret != -1)
+                    {
+                        bytesRead += ret;
+                        ret = ::read(device->serialFd_, &packet->data_[Packet::HEADER_LEN] + bytesRead, bytesToRead - bytesRead);
+                    }
+
+
+                    device->onRead(packet, errno, bytesRead);
+                }
+
+                state = ReadState::SYNC_1;
+
             }
 
             pthread_testcancel();
@@ -393,34 +301,6 @@ namespace electrical_protocol
         pthread_cleanup_pop(1);
 
         return NULL;
-    }
-
-    uint16_t SerialDevice::calcCheckSum_(std::shared_ptr<Packet> packet)
-    {
-        uint8_t sum[2] = {0, 0};
-
-        // Process packet ID (uint16_t, little-endian)
-        sum[0] = (sum[0] + (packet->id_ & 0xFF)) % 255;
-        sum[1] = (sum[1] + sum[0]) % 255;
-        sum[0] = (sum[0] + ((packet->id_ >> 8) & 0xFF)) % 255;
-        sum[1] = (sum[1] + sum[0]) % 255;
-
-        // Process packet size (uint16_t, little-endian)
-        uint16_t size = packet->data_.size();
-        sum[0] = (sum[0] + (size & 0xFF)) % 255;
-        sum[1] = (sum[1] + sum[0]) % 255;
-        sum[0] = (sum[0] + ((size >> 8) & 0xFF)) % 255;
-        sum[1] = (sum[1] + sum[0]) % 255;
-
-        // Process packet data
-        for (auto byte: packet->data_)
-        {
-            sum[0] = (sum[0] + byte) % 255;
-            sum[1] = (sum[1] + sum[0]) % 255;
-        }
-
-        // Return the checksum as a uint16_t (little-endian)
-        return (sum[1] << 8) | sum[0];
     }
 
     // void SerialDevice::onRead(std::shared_ptr<Packet> packet, int errorCode ,size_t bytesRead)

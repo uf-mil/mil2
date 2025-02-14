@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/uio.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 
 #include <iostream>
 #include <string>
@@ -28,6 +29,8 @@ namespace mil_tools
         {
             char* slave1;
             char* slave2;
+            int slave1Fd;
+            int slave2Fd;
 
             master1Fd_ = posix_openpt(O_RDWR | O_NOCTTY);
             if(master1Fd_ == -1)
@@ -40,6 +43,13 @@ namespace mil_tools
             if(slave1 == nullptr)
                 goto close1;
 
+            slave1Fd = ::open(slave1, O_RDWR | O_NOCTTY, 0620);
+            if(slave1Fd == -1)
+                goto close1;
+            
+            ::close(slave1Fd);
+
+            slave1Name.assign(slave1);
 
             master2Fd_ = posix_openpt(O_RDWR | O_NOCTTY);
             if(master2Fd_ == -1)
@@ -51,15 +61,20 @@ namespace mil_tools
             slave2 = ptsname(master2Fd_);
             if(slave2 == nullptr)
                 goto close2;
+
+            slave2Fd = ::open(slave2, O_RDWR | O_NOCTTY, 0620);
+            if(slave2Fd == -1)
+                goto close2;
             
+            ::close(slave2Fd);
+
+            slave2Name.assign(slave2);
+
             if(pthread_create(&workThread1_, NULL, workThreadFunc1_,this) < 0)
                 goto close2;
             
             if(pthread_create(&workThread2_, NULL, workThreadFunc2_,this) < 0)
                 goto cancelThread;
-            
-            slave1Name.assign(slave1);
-            slave2Name.assign(slave2);
             
             goto ret;
 
@@ -93,6 +108,7 @@ namespace mil_tools
         pthread_t workThread1_;
         pthread_t workThread2_;
 
+
         static void* workThreadFunc1_(void* arg);
         static void* workThreadFunc2_(void* arg);
 
@@ -105,6 +121,28 @@ namespace mil_tools
             
             return buffer.writeTo(outFd, bytesRead);
         }
+
+        int waitConnection(int masterFd)
+        {
+            while (1)
+            {
+                struct pollfd pFd;
+                pFd.fd = masterFd;
+                pFd.events = POLLHUP;
+                if(poll(&pFd, 1, 0) < 0)
+                {
+                    return -1;
+                }
+                if(!(pFd.revents & POLLHUP))
+                {
+                    break;
+                }
+
+                usleep(10000);
+            }
+
+            return 0;
+        }
     };
 
     template<size_t BufferSize>
@@ -112,6 +150,10 @@ namespace mil_tools
     {
         PairedSerial* serial = reinterpret_cast<PairedSerial*>(arg);
         RingBuffer<BufferSize> buffer;
+
+        while(serial->waitConnection(serial->master1Fd_) == -1);
+
+        std::cout << "Slave pty 1 connected" << std::endl;
 
         while(1)
         {
@@ -128,6 +170,10 @@ namespace mil_tools
     {
         PairedSerial* serial = reinterpret_cast<PairedSerial*>(arg);
         RingBuffer<BufferSize> buffer;
+
+        while(serial->waitConnection(serial->master2Fd_) == -1);
+
+        std::cout << "Slave pty 2 connected" << std::endl;
 
         while(1)
         {

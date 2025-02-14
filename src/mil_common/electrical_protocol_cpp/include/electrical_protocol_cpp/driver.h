@@ -63,8 +63,16 @@ class SerialDevice
 
     pthread_mutex_t readMutex_ = PTHREAD_MUTEX_INITIALIZER;
 
+    struct IdHash
+    {
+        size_t operator()(const std::pair<uint8_t, uint8_t>& p) const
+        {
+            return static_cast<size_t>((static_cast<uint16_t>(p.first) << 8) + p.second);
+        }
+    };
+
     std::queue<std::shared_ptr<Packet>> writeQueue_;
-    std::queue<std::shared_ptr<Packet>> readQueue_;
+    std::unordered_map<std::pair<uint8_t, uint8_t>, std::queue<std::shared_ptr<Packet>>, IdHash> readQueues_;
  
     static void* readThreadFunc_(void* arg);
     static void* writeThreadFunc_(void* arg);
@@ -74,7 +82,6 @@ class SerialDevice
     void readPacket_(std::shared_ptr<Packet> packet);
     void readPacket_();
 
-    uint16_t calcCheckSum_(std::shared_ptr<Packet> data);
     void writeData_(std::shared_ptr<Packet> data);
     void readData_(std::shared_ptr<Packet> data);
 };
