@@ -20,6 +20,7 @@ std::string testString("The Machine Intelligence Laboratory (MIL) "
                         "autonomous air vehicles (AAVs including quadcopters and micro air vehicles, MAVs) , "
                         "swarm robots, humanoid robots, and autonomous household robots.");
 
+
 class SerialTest: public electrical_protocol::SerialDevice
 {
     public:
@@ -27,9 +28,6 @@ class SerialTest: public electrical_protocol::SerialDevice
     {
         EXPECT_NE(sem_init(&readSem, 0, 0), -1);
         EXPECT_NE(sem_init(&writeSem, 0, 0), -1);
-        auto packet = std::make_shared<electrical_protocol::Packet>(1,1);
-        packet->pack(PY_STRING("832s"), testString);
-        write(packet);
     }
     ~SerialTest()
     {
@@ -37,9 +35,13 @@ class SerialTest: public electrical_protocol::SerialDevice
         sem_destroy(&writeSem);
     }
 
-    void wait()
+    void waitWrite()
     {
         EXPECT_NE(sem_wait(&writeSem), -1);
+    }
+
+    void waitRead()
+    {
         EXPECT_NE(sem_wait(&readSem), -1);
     }
 
@@ -54,7 +56,7 @@ class SerialTest: public electrical_protocol::SerialDevice
     {
         EXPECT_EQ(errorCode, 0);
         EXPECT_EQ(bytesRead, testString.size());
-        auto [string] = packet->unpack(PY_STRING("832s"));
+        auto [string] = packet->unpack(PY_STRING("831s"));
         EXPECT_EQ(testString, string);
         EXPECT_NE(sem_post(&readSem), -1);
     }
@@ -65,6 +67,34 @@ class SerialTest: public electrical_protocol::SerialDevice
 
 };
 
+void* writeThreadFunc(void* arg)
+{
+    std::string* serialName = reinterpret_cast<std::string*>(arg);
+    SerialTest test(*serialName);
+    // while(1)
+    // {
+        auto packet = std::make_shared<electrical_protocol::Packet>(1,1);
+        packet->pack(PY_STRING("831s"), testString);
+        test.write(packet);
+        test.waitWrite();
+        // pthread_testcancel();
+    // }
+    
+    return 0;
+}
+
+void * readThreadFunc(void* arg)
+{
+    std::string* serialName = reinterpret_cast<std::string*>(arg);
+    SerialTest test(*serialName);
+    
+    auto packet = std::make_shared<electrical_protocol::Packet>(1,1);
+    test.read(packet);
+    test.waitRead();
+
+    return 0;
+}
+
 TEST(driver, Test)
 {
     mil_tools::PairedSerial pairedSerial;
@@ -73,9 +103,14 @@ TEST(driver, Test)
     std::string serial2Name;
     pairedSerial.open(serial1Name, serial2Name);
 
-    SerialTest serialTest1(serial1Name);
-    SerialTest serialTest2(serial2Name);
+    pthread_t readThread;
+    pthread_t writeThread;
 
-    serialTest1.wait();
-    serialTest2.wait();
+    EXPECT_NE(pthread_create(&readThread, NULL, readThreadFunc, &serial1Name), -1);
+    EXPECT_NE(pthread_create(&writeThread, NULL, writeThreadFunc, &serial2Name), -1);
+
+    pthread_join(readThread, NULL);
+
+    pthread_cancel(writeThread);
+    pthread_join(writeThread, NULL);
 }
