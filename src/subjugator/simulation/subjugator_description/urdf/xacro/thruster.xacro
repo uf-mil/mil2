@@ -3,8 +3,7 @@
   <!-- Macro for inserting a Thruster -->
   <xacro:macro
     name="mil_thruster" 
-    params="name parent xyz rpy
-            dir_rpy">
+    params="name parent xyz rpy">
     
 
     <!-- Link for base of thruster (this is for TF) -->
@@ -12,7 +11,7 @@
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.1"/> 
+        <mass value="0.01"/> 
         <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
     </link>
@@ -36,14 +35,14 @@
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.1"/> 
+        <mass value="0.01"/> 
         <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
     </link>
 
     <!-- Thruster Direction joint -->
     <joint name="${name}_dir_joint" type="revolute">
-      <origin xyz="0 0 1" rpy="${dir_rpy}"/>
+      <origin xyz="0 0 1" rpy="0 0 0"/>
       <parent link="${name}_link"/>
       <child link="${name}_dir_link"/>
       <limit effort="1000" lower="0.0" upper="0.548" velocity="0.5"/>
