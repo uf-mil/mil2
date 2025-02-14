@@ -95,5 +95,15 @@
         </gz:dvl>
       </sensor>
     </gazebo>
+
+    <gazebo>
+        <plugin
+          filename="DVLBridge"
+          name="dave_ros_gz_plugins::DVLBridge">
+
+          <!-- Grabbed in DVL Bridge script -->
+          <topic>/dvl/velocity</topic>
+        </plugin>
+      </gazebo>
     </xacro:macro>
 </robot>

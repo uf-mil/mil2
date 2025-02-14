@@ -7,6 +7,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 find_package(OpenCV REQUIRED)
 
@@ -34,48 +35,75 @@ include_directories(
   ${rclcpp_INCLUDE_DIRS}
 )
 
+#
 # Add Plugins Here
+#
+
+# Plugin 0: Example Plugin
+add_library(ExamplePlugin SHARED
+  src/ExamplePlugin.cc
+)
+
 # Plugin 1: Underwater Camera
 add_library(UnderwaterCamera SHARED
   src/UnderwaterCamera.cc
 )
 
-# Plugin 2: DVL
-add_library(DVLSensor SHARED
-  src/DVLSensor.cc
+# Plugin 2: DVL Bridge
+add_library(DVLBridge SHARED
+  src/DVLBridge.cc
 )
 
-# Link Libraries for each plugin
+# Ensures plugin can see include directory to access its header files
+target_include_directories(
+  ExamplePlugin PRIVATE include
+)
+
 target_include_directories(
   UnderwaterCamera PRIVATE include
 )
+
+target_include_directories(
+  DVLBridge PRIVATE include
+)
+
+# Add additional needed libraries
+target_link_libraries(ExamplePlugin
+  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}  # Links gazebo simulator version to your plugin.
+)
+
+# Link Libraries for Underwater Camera plugin
 target_link_libraries(UnderwaterCamera
   gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
   ${OpenCV_LIBS}
 )
 
-#
-target_include_directories(
-  DVLSensor PRIVATE include
-)
-target_link_libraries(DVLSensor
+# Link libraries for DVL Bridge plugin
+target_link_libraries(DVLBridge
   gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
-  ${OpenCV_LIBS}
 )
 
 # Specify dependencies using ament_target_dependencies
+ament_target_dependencies(ExamplePlugin
+  #
+  # Here is where you would place any dependencies for your plugin
+  #
+)
+
 ament_target_dependencies(UnderwaterCamera
   rclcpp
   sensor_msgs
 )
 
-ament_target_dependencies(DVLSensor
+ament_target_dependencies(DVLBridge
+  nav_msgs
   rclcpp
-  sensor_msgs
+  geometry_msgs
+  std_msgs
 )
 
 # Install the plugins
-install(TARGETS UnderwaterCamera DVLSensor
+install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge
 LIBRARY DESTINATION lib/${PROJECT_NAME}
 )
 

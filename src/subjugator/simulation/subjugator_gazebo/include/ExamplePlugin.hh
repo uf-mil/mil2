@@ -2,19 +2,18 @@
 #define DVL_SENSOR_HH_
 
 #include <gz/sim/System.hh>
-#include <rclcpp/rclcpp.hpp>
 
  
 namespace dvl_sensor
 {
-  class DVLSensor:
+  class ExamplePlugin:
     public gz::sim::System,
     public gz::sim::ISystemConfigure,
     public gz::sim::ISystemPostUpdate
   {
-    public: DVLSensor();
+    public: ExamplePlugin();
  
-    public: ~DVLSensor() override;
+    public: ~ExamplePlugin() override;
  
     /// \brief Configure the system
     /// \param[in] _entity The entity this plugin is attached to.

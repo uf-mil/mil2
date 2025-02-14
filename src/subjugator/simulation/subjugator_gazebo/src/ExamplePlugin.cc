@@ -1,32 +1,32 @@
 #include <gz/plugin/Register.hh>
-#include "DVLSensor.hh"
+#include "ExamplePlugin.hh"
 #include <iostream>
 
 // Add plugins to gazebo simulator alongside its dependencies
 GZ_ADD_PLUGIN(
-    dvl_sensor::DVLSensor,
+    dvl_sensor::ExamplePlugin,
     gz::sim::System,
-    dvl_sensor::DVLSensor::ISystemPostUpdate
+    dvl_sensor::ExamplePlugin::ISystemPostUpdate
 )
 
 using namespace dvl_sensor;
 
-DVLSensor::DVLSensor()
+ExamplePlugin::ExamplePlugin()
 {
 }
  
-DVLSensor::~DVLSensor()
+ExamplePlugin::~ExamplePlugin()
 {
 }
 
-void DVLSensor::Configure(
+void ExamplePlugin::Configure(
   const gz::sim::Entity & _entity, const std::shared_ptr<const sdf::Element> & _sdf,
   gz::sim::EntityComponentManager & _ecm, gz::sim::EventManager & _eventManager)
 {
   // std::cout << "init done!" << std::endl;
 }
  
-void DVLSensor::PostUpdate(const gz::sim::UpdateInfo &_info,
+void ExamplePlugin::PostUpdate(const gz::sim::UpdateInfo &_info,
     const gz::sim::EntityComponentManager &_ecm)
 {
   // Only runs code if the simulation is active
