@@ -16,7 +16,7 @@
                 <max_step_size>0.005</max_step_size>
                 <real_time_factor>1.0</real_time_factor>
             </physics>
-            
+
 
             <!-- Plugins-->
             <plugin
@@ -31,7 +31,7 @@
                 filename="gz-sim-scene-broadcaster-system"
                 name="gz::sim::systems::SceneBroadcaster">
             </plugin>
-            
+
             <plugin
                 filename="gz-sim-sensors-system"
                 name="gz::sim::systems::Sensors">
@@ -45,7 +45,7 @@
                 To alter a objects's buoyancy do one or both of the following:
 
                 1. Change the objects's inertia.
-                2. Change the `uniform_fluid_density` in the `buoyancy-system` plugin. 
+                2. Change the `uniform_fluid_density` in the `buoyancy-system` plugin.
 
                 Note: Graded Buoyancy does not work with collision objects other than box and sphere!
             -->
@@ -60,9 +60,9 @@
                     </density_change>
                 </graded_buoyancy>
             </plugin>
-            
-            
-           <!-- Origin Placed in the middle of the woollet pool --> 
+
+
+           <!-- Origin Placed in the middle of the woollet pool -->
             <!-- <spherical_coordinates>
                 <surface_model>EARTH_WGS84</surface_model>
                 <world_frame_orientation>ENU</world_frame_orientation>
@@ -74,23 +74,23 @@
 
             <!-- Need to adjust -->
             <magnetic_field>5e-06 2.4e-05 3.9e-05</magnetic_field>
-           
+
            <!-- Global Light Source -->
            <light type="directional" name="sun1">
-                <pose>50 0 150 0 0 0 </pose> 
+                <pose>50 0 150 0 0 0 </pose>
                 <diffuse>1 1 1 1</diffuse>
-                <specular>0.1 0.1 0.1 1</specular> 
-                <direction>0.3 0.3 -1</direction> 
+                <specular>0.1 0.1 0.1 1</specular>
+                <direction>0.3 0.3 -1</direction>
                 <cast_shadows>false</cast_shadows>
            </light>
            <light type="directional" name="sun_diffuse_4">
-                <pose>20 0 -90 0 0 0 </pose> 
+                <pose>20 0 -90 0 0 0 </pose>
                 <diffuse>0.9 0.9 0.9 1</diffuse>
-                <specular>0.2 0.2 0.2 1</specular> 
-                <direction>-1 0 0</direction> 
+                <specular>0.2 0.2 0.2 1</specular>
+                <direction>-1 0 0</direction>
                 <cast_shadows>false</cast_shadows>
            </light>
-           
+
            <!-- Models -->
            <!-- Sub 9 -->
            <include>

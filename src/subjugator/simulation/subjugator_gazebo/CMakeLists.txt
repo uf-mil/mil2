@@ -128,7 +128,7 @@ if(BUILD_TESTING)
 endif()
 
 # Following hooks are used to ensure that the correct environment variables
-# will be set by exectuting 'sourece install/setup.bash' after compilation.
+# will be set by executing 'sourece install/setup.bash' after compilation.
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.dsv.in")
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.sh.in")
 

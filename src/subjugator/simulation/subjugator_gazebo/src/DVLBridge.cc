@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-#include <iostream>
+#include "DVLBridge.hh"
 
 #include <gz/common/Console.hh>
 #include <gz/transport/Node.hh>
+#include <iostream>
 #include <rclcpp/rclcpp.hpp>
+
 #include "gz/plugin/Register.hh"
 
-#include "DVLBridge.hh"
-
-GZ_ADD_PLUGIN(
-  dave_ros_gz_plugins::DVLBridge, gz::sim::System, dave_ros_gz_plugins::DVLBridge::ISystemConfigure,
-  dave_ros_gz_plugins::DVLBridge::ISystemPostUpdate)
+GZ_ADD_PLUGIN(dave_ros_gz_plugins::DVLBridge, gz::sim::System, dave_ros_gz_plugins::DVLBridge::ISystemConfigure,
+              dave_ros_gz_plugins::DVLBridge::ISystemPostUpdate)
 
 namespace dave_ros_gz_plugins
 {
@@ -39,11 +38,12 @@ struct DVLBridge::PrivateData
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr dvl_pub;
 };
 
-DVLBridge::DVLBridge() : dataPtr(std::make_unique<PrivateData>()) {}
+DVLBridge::DVLBridge() : dataPtr(std::make_unique<PrivateData>())
+{
+}
 
-void DVLBridge::Configure(
-  const gz::sim::Entity & _entity, const std::shared_ptr<const sdf::Element> & _sdf,
-  gz::sim::EntityComponentManager & _ecm, gz::sim::EventManager & _eventManager)
+void DVLBridge::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf::Element const> const &_sdf,
+                          gz::sim::EntityComponentManager &_ecm, gz::sim::EventManager &_eventManager)
 {
   gzdbg << "dave_ros_gz_plugins::DVLBridge::Configure on entity: " << _entity << std::endl;
 
@@ -67,17 +67,16 @@ void DVLBridge::Configure(
   }
 
   // Gazebo subscriber
-  std::function<void(const gz::msgs::DVLVelocityTracking &)> callback =
-    std::bind(&DVLBridge::receiveGazeboCallback, this, std::placeholders::_1);
+  std::function<void(gz::msgs::DVLVelocityTracking const &)> callback =
+      std::bind(&DVLBridge::receiveGazeboCallback, this, std::placeholders::_1);
 
   this->dataPtr->gz_node.Subscribe(this->dataPtr->dvl_topic, callback);
 
   // ROS2 publisher
-  this->dataPtr->dvl_pub =
-    this->ros_node_->create_publisher<nav_msgs::msg::Odometry>(this->dataPtr->dvl_topic, 1);
+  this->dataPtr->dvl_pub = this->ros_node_->create_publisher<nav_msgs::msg::Odometry>(this->dataPtr->dvl_topic, 1);
 }
 
-void DVLBridge::receiveGazeboCallback(const gz::msgs::DVLVelocityTracking & msg)
+void DVLBridge::receiveGazeboCallback(gz::msgs::DVLVelocityTracking const &msg)
 {
   std::lock_guard<std::mutex> lock(this->dataPtr->mutex_);
 
@@ -86,29 +85,34 @@ void DVLBridge::receiveGazeboCallback(const gz::msgs::DVLVelocityTracking & msg)
   auto dvl_msg = nav_msgs::msg::Odometry();
   dvl_msg.header.stamp.sec = msg.header().stamp().sec();
   dvl_msg.header.stamp.nanosec = msg.header().stamp().nsec();
+  dvl_msg.header.frame_id = "base_link";
+  dvl_msg.child_frame_id = "dvl_sensor_link";
 
   dvl_msg.twist.twist.linear.x = msg.velocity().mean().x();
   dvl_msg.twist.twist.linear.y = msg.velocity().mean().y();
   dvl_msg.twist.twist.linear.z = msg.velocity().mean().z();
 
   // Simulated DVL does not produce a pose (at least not one we can use)
-  dvl_msg.pose.pose.position.x = -1;
-  dvl_msg.pose.pose.position.y = -1;
-  dvl_msg.pose.pose.position.z = -1;
+  dvl_msg.pose.pose.position.x = 0;
+  dvl_msg.pose.pose.position.y = 0;
+  dvl_msg.pose.pose.position.z = 0;
 
   // Limit to 9 so the output is not bloated with empty covariance values
   size_t covariance_size = msg.velocity().covariance().size();
 
-  for (size_t i = 0; i < covariance_size; i++)
+  // Only filling upper-left most 9 spaces in 6x6 matrix
+  for (size_t i = 0; i < 3; i++)
   {
-    dvl_msg.twist.covariance[i] = msg.velocity().covariance()[i];
+    for (size_t j = 0; j < 3; j++)
+    {
+      dvl_msg.twist.covariance[i * 6 + j] = msg.velocity().covariance()[i * 3 + j];
+    }
   }
 
   this->dataPtr->dvl_pub->publish(dvl_msg);
 }
 
-void DVLBridge::PostUpdate(
-  const gz::sim::UpdateInfo & _info, const gz::sim::EntityComponentManager & _ecm)
+void DVLBridge::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::EntityComponentManager const &_ecm)
 {
   if (!_info.paused)
   {

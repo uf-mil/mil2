@@ -19,32 +19,28 @@
 #define DAVE_ROS_GZ_PLUGINS__DVLBRIDGE_HH_
 
 #include <gz/msgs/dvl_velocity_tracking.pb.h>
+
 #include <gz/sim/System.hh>
 #include <memory>
 #include <mutex>
-#include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
-
+#include <rclcpp/rclcpp.hpp>
 
 namespace dave_ros_gz_plugins
 
 {
-class DVLBridge : public gz::sim::System,
-                  public gz::sim::ISystemConfigure,
-                  public gz::sim::ISystemPostUpdate
+class DVLBridge : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
 {
 public:
   DVLBridge();
   ~DVLBridge() override = default;
 
-  void Configure(
-    const gz::sim::Entity & entity, const std::shared_ptr<const sdf::Element> & sdf,
-    gz::sim::EntityComponentManager & ecm, gz::sim::EventManager & eventMgr) override;
+  void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
+                 gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) override;
 
-  void PostUpdate(
-    const gz::sim::UpdateInfo & info, const gz::sim::EntityComponentManager & ecm) override;
+  void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
 
-  void receiveGazeboCallback(const gz::msgs::DVLVelocityTracking & dvl_velocity_tracking);
+  void receiveGazeboCallback(gz::msgs::DVLVelocityTracking const &dvl_velocity_tracking);
 
 private:
   std::shared_ptr<rclcpp::Node> ros_node_;
