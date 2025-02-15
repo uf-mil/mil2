@@ -77,6 +77,9 @@ def generate_launch_description():
         #        Parameter("pose0_queue_size", 10),
         Parameter("print_diagnostics", True),
         Parameter("publish_acceleration", True),
+        # Parameter("debug", True),
+        # Parameter("debug_out_file", os.path.expanduser("~/debug.txt")),
+        Parameter("frequency", 10.0),
         # Parameter("initial_state", [0.0] * 15),
     ]
     import rich
@@ -87,8 +90,8 @@ def generate_launch_description():
             Node(
                 package="robot_localization",
                 namespace="subjugator_localization",
-                executable="ekf_node",
-                name="ekf_filter_node",
+                executable="ukf_node",
+                name="ukf_filter_node",
                 parameters=[p.dict() for p in parameters],
             ),
         ],

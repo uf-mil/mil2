@@ -86,7 +86,7 @@ void DVLBridge::receiveGazeboCallback(gz::msgs::DVLVelocityTracking const &msg)
   dvl_msg.header.stamp.sec = msg.header().stamp().sec();
   dvl_msg.header.stamp.nanosec = msg.header().stamp().nsec();
   dvl_msg.header.frame_id = "base_link";
-  dvl_msg.child_frame_id = "dvl_link";
+  dvl_msg.child_frame_id = "dvl_sensor_link";
 
   dvl_msg.twist.twist.linear.x = msg.velocity().mean().x();
   dvl_msg.twist.twist.linear.y = msg.velocity().mean().y();
@@ -100,9 +100,13 @@ void DVLBridge::receiveGazeboCallback(gz::msgs::DVLVelocityTracking const &msg)
   // Limit to 9 so the output is not bloated with empty covariance values
   size_t covariance_size = msg.velocity().covariance().size();
 
-  for (size_t i = 0; i < covariance_size; i++)
+  // Only filling upper-left most 9 spaces in 6x6 matrix
+  for (size_t i = 0; i < 3; i++)
   {
-    dvl_msg.twist.covariance[i] = msg.velocity().covariance()[i];
+    for (size_t j = 0; j < 3; j++)
+    {
+      dvl_msg.twist.covariance[i * 6 + j] = msg.velocity().covariance()[i * 3 + j];
+    }
   }
 
   this->dataPtr->dvl_pub->publish(dvl_msg);
