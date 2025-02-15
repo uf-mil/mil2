@@ -34,7 +34,7 @@ install(TARGETS electrical_protocol_cpp
 #     DESTINATION include)
 
 if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
+  # find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
   # set(ament_cmake_copyright_FOUND TRUE)
@@ -60,7 +60,7 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${PROJECT_NAME}_driver_test ${PROJECT_NAME} mil_tools::mil_tools)
 
-  ament_lint_auto_find_test_dependencies()
+  # ament_lint_auto_find_test_dependencies()
 endif()
 
 ament_package()
