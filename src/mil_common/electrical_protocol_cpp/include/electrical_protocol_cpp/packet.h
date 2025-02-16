@@ -22,43 +22,37 @@ namespace electrical_protocol
 
         }
         
-        Packet(uint8_t classId, uint8_t subClassId)
+        Packet(uint8_t classId, uint8_t subClassId):id_({classId, subClassId})
         {
-            data_[2] = classId;
-            data_[3] = subClassId;
         }
 
-        Packet(const std::pair<uint8_t, uint8_t>& Id)
+        Packet(const std::pair<uint8_t, uint8_t>& id):id_(id)
         {
-            data_[2] = Id.first;
-            data_[3] = Id.second;
         }
 
         Packet(Packet&& packet)
         {
-            std::vector<uint8_t> temp(std::move(data_));
             data_ = std::move(packet.data_);
-            packet.data_ = std::move(temp);
-            packet.data_.resize(HEADER_LEN + TRAILER_LEN);
+            id_ = packet.id_;
         }
 
         Packet(Packet& packet)
         {
             data_ = packet.data_;
+            id_ = packet.id_;
         }
 
         Packet& operator= (Packet&& packet)
         {
-            std::vector<uint8_t> temp(std::move(data_));
             data_ = std::move(packet.data_);
-            packet.data_ = std::move(temp);
-            packet.data_.resize(HEADER_LEN + TRAILER_LEN);
+            id_ = packet.id_;
             return *this;
         }
 
         Packet& operator= (Packet& packet)
         {
             data_ = packet.data_;
+            id_ = packet.id_;
             return *this;
         }
 
@@ -75,32 +69,37 @@ namespace electrical_protocol
             }
         };
 
-        inline void setId(const std::pair<uint8_t, uint8_t>& Id)
+        inline void setId(const std::pair<uint8_t, uint8_t>& id)
         {
-            data_[2] = Id.first;
-            data_[3] = Id.second;
+            id_.first = id.first;
+            id_.second = id.second;
         }
 
-        inline std::pair<uint8_t, uint8_t> getId() const
+        inline const std::pair<uint8_t, uint8_t>& getId() const
         {
-            return {data_[2], data_[3]};
+            return id_;
         }
 
         inline size_t size() const
         {
-            return data_.size()- HEADER_LEN - TRAILER_LEN;
-        }
+            if(data_.size() < (HEADER_LEN + TRAILER_LEN))
+                return 0;
 
-        inline uint8_t* data()
-        {
-            return &data_[HEADER_LEN];
+            return data_.size() - HEADER_LEN - TRAILER_LEN;
         }
         
         template <typename Fmt, typename... Args>
         void pack(Fmt, Args&&... args)
         {
-            data_.resize(pystruct::calcsize(Fmt{}) + HEADER_LEN + TRAILER_LEN);
-            *reinterpret_cast<uint16_t*>(&data_[4]) = pystruct::calcsize(Fmt{});
+            constexpr size_t dataLen = pystruct::calcsize(Fmt{});
+            data_.resize(dataLen + HEADER_LEN + TRAILER_LEN);
+
+            data_[0] = SYNC_CHAR_1;
+            data_[1] = SYNC_CHAR_2;
+            data_[2] = id_.first;
+            data_[3] = id_.second;
+            *reinterpret_cast<uint16_t*>(&data_[4]) = dataLen;
+
             constexpr size_t itemCount = pystruct::countItems(Fmt{});
             pack_<Fmt>(std::make_index_sequence<itemCount>(), std::forward<Args>(args)...);
             calcCheckSum_(&data_[data_.size() - TRAILER_LEN]);
@@ -109,10 +108,10 @@ namespace electrical_protocol
         template<typename Fmt>
         auto unpack(Fmt) const
         {
-            constexpr size_t expectSize = pystruct::calcsize(Fmt{}) + HEADER_LEN + TRAILER_LEN;
-            if(expectSize > data_.size())
-                throw std::out_of_range("No enough data expect " + std::to_string(expectSize)
-                                        + " get " + std::to_string(data_.size()));
+            constexpr size_t dataLen = pystruct::calcsize(Fmt{});
+            if(dataLen + HEADER_LEN + TRAILER_LEN > data_.size())
+                throw std::out_of_range("No enough data: expect " + std::to_string(dataLen)
+                                        + " has " + std::to_string(size()));
 
             uint8_t sum[2];
             calcCheckSum_(sum);
@@ -129,6 +128,7 @@ namespace electrical_protocol
         static constexpr size_t TRAILER_LEN = 2;
         static constexpr size_t SYNC_LEN = 2;
         std::vector<uint8_t> data_ = {SYNC_CHAR_1, SYNC_CHAR_2, 0, 0, 0, 0, 0, 0};
+        std::pair<uint8_t, uint8_t> id_;
         
         template <typename Fmt, size_t... Items, typename... Args>
         constexpr void pack_(std::index_sequence<Items...>, Args&&... args)
