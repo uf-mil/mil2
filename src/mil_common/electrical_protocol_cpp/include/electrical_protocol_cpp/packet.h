@@ -36,7 +36,10 @@ namespace electrical_protocol
 
         Packet(Packet&& packet)
         {
+            std::vector<uint8_t> temp(std::move(data_));
             data_ = std::move(packet.data_);
+            packet.data_ = std::move(temp);
+            packet.data_.resize(HEADER_LEN + TRAILER_LEN);
         }
 
         Packet(Packet& packet)
