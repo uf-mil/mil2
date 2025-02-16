@@ -63,14 +63,14 @@ class SerialTest: public electrical_protocol::SerialDevice
         return writeErrno;
     }
 
-    void onWrite([[maybe_unused]]electrical_protocol::Packet&& packet, int errorCode)
+    void onWrite(electrical_protocol::Packet& packet, int errorCode)
     {
         writeErrno = errorCode;
         writeQueue_.push(std::move(packet));
         sem_post(&writeSem);
     }
 
-    void onRead([[maybe_unused]]electrical_protocol::Packet&& packet, int errorCode)
+    void onRead(electrical_protocol::Packet& packet, int errorCode)
     {
         readErrno = errorCode;
         readQueue_.push(std::move(packet));
