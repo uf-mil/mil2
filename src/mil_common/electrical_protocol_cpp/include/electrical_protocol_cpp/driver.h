@@ -33,8 +33,8 @@ class SerialDevice
     void write(Packet&& packet);
     void read(Packet&& packet);
 
-    virtual void onWrite(Packet&& packet, int errorCode) = 0;
-    virtual void onRead(Packet&& packet, int errorCode) = 0;
+    virtual void onWrite(Packet& packet, int errorCode) = 0;
+    virtual void onRead(Packet& packet, int errorCode) = 0;
 
     private:
 

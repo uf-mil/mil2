@@ -98,13 +98,13 @@ namespace electrical_protocol
     {  
         if(packet.data_.size() == 0)
         {
-            onWrite(std::move(packet), EINVAL);
+            onWrite(packet, EINVAL);
             return;
         }
 
         if(!opened_)
         {
-            onWrite(std::move(packet), EACCES);
+            onWrite(packet, EACCES);
             return;
         }
          
@@ -118,7 +118,7 @@ namespace electrical_protocol
     {
         if(!opened_)
         {
-            onRead(std::move(packet), EACCES);
+            onRead(packet, EACCES);
             return;
         }
 
@@ -136,7 +136,7 @@ namespace electrical_protocol
         {
             Packet packet = std::move(device->writeQueue_.front());
             device->writeQueue_.pop();
-            device->onWrite(std::move(packet), EINTR);
+            device->onWrite(packet, EINTR);
         }
     }
 
@@ -170,7 +170,7 @@ namespace electrical_protocol
                 ret = ::write(device->serialFd_, packet.data_.data() + bytesWritten, bytesToWrite - bytesWritten);
             }
 
-            device->onWrite(std::move(packet), errno);
+            device->onWrite(packet, errno);
 
             pthread_testcancel();
         }
@@ -189,7 +189,7 @@ namespace electrical_protocol
             {
                 Packet packet = std::move(pair.second.front());
                 pair.second.pop();
-                device->onRead(std::move(packet), EINTR);
+                device->onRead(packet, EINTR);
             }
         }
         device->readQueues_.clear();
@@ -201,6 +201,7 @@ namespace electrical_protocol
         pthread_cleanup_push(readThreadCleanupFunc_, device);
         ReadState state = ReadState::SYNC_1;
 
+        Packet dummy(0,0);
         size_t bytesRead = 0;
 
         while(1)
@@ -211,7 +212,7 @@ namespace electrical_protocol
                 int ret = ::read(device->serialFd_,&header,1);
                 if(ret == -1)
                 {
-                    device->onRead(Packet(0,0), errno);
+                    device->onRead(dummy, errno);
                     errno = 0;
                 }
                 else if(ret == 1 && header == SYNC_CHAR_1)
@@ -226,7 +227,7 @@ namespace electrical_protocol
                 int ret = ::read(device->serialFd_,&header,1);
                 if(ret == -1)
                 {
-                    device->onRead(Packet(0,0), errno);
+                    device->onRead(dummy, errno);
                     errno = 0;
                     bytesRead = 0;
                     state = ReadState::SYNC_1;
@@ -258,7 +259,7 @@ namespace electrical_protocol
 
                 if(ret == -1)
                 {
-                    device->onRead(Packet(0,0), errno);
+                    device->onRead(dummy, errno);
                     errno = 0;
                     state = ReadState::SYNC_1;
                     continue;
@@ -312,7 +313,7 @@ namespace electrical_protocol
                     if(sum[0] != packet.data_[packet.data_.size()-2] || sum[1] != packet.data_[packet.data_.size()-1])
                         errno = EBADMSG;
 
-                    device->onRead(std::move(packet), errno);
+                    device->onRead(packet, errno);
                     bytesRead = 0;
                     errno = 0;
                     state = ReadState::SYNC_1;
