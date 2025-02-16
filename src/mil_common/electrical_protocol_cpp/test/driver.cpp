@@ -41,35 +41,41 @@ class SerialTest: public electrical_protocol::SerialDevice
         sem_destroy(&writeSem);
     }
 
-    int readSync(std::shared_ptr<electrical_protocol::Packet> packet)
+    int readSync(electrical_protocol::Packet& packet)
     {
-        read(packet);
+        read(std::move(packet));
         if(sem_wait(&readSem) == -1)
             return errno;
+        
+        packet = std::move(readPacket);
         return readErrno;
     }
 
-    int writeSync(std::shared_ptr<electrical_protocol::Packet> packet)
+    int writeSync(electrical_protocol::Packet& packet)
     {
-        write(packet);
+        write(std::move(packet));
         if(sem_wait(&writeSem) == -1)
             return errno;
+
+        packet = std::move(writePacket);
         return writeErrno;
     }
 
-    void onWrite([[maybe_unused]]std::shared_ptr<electrical_protocol::Packet> packet, 
+    void onWrite([[maybe_unused]]electrical_protocol::Packet&& packet, 
                     int errorCode ,
                     [[maybe_unused]]size_t bytesWritten)
     {
         writeErrno = errorCode;
+        writePacket = std::move(packet);
         sem_post(&writeSem);
     }
 
-    void onRead([[maybe_unused]]std::shared_ptr<electrical_protocol::Packet> packet, 
+    void onRead([[maybe_unused]]electrical_protocol::Packet&& packet, 
                     int errorCode ,
                     [[maybe_unused]]size_t bytesRead)
     {
         readErrno = errorCode;
+        readPacket = std::move(packet);
         sem_post(&readSem);
     }
 
@@ -78,7 +84,8 @@ class SerialTest: public electrical_protocol::SerialDevice
     int writeErrno = 0;
     sem_t readSem;
     sem_t writeSem;
-
+    electrical_protocol::Packet readPacket;
+    electrical_protocol::Packet writePacket;
 };
 
 void* writeThreadFunc(void* arg)
@@ -87,8 +94,8 @@ void* writeThreadFunc(void* arg)
     SerialTest test(*serialName);
     while(1)
     {
-        auto packet = std::make_shared<electrical_protocol::Packet>(1,1);
-        packet->pack(PY_STRING("831s"), testString);
+        electrical_protocol::Packet packet(1,1);
+        packet.pack(PY_STRING("831s"), testString);
         EXPECT_EQ(test.writeSync(packet), 0);
         usleep(100000);
         pthread_testcancel();
@@ -102,9 +109,9 @@ void * readThreadFunc(void* arg)
     std::string* serialName = reinterpret_cast<std::string*>(arg);
     SerialTest test(*serialName);
     
-    auto packet = std::make_shared<electrical_protocol::Packet>(1,1);
+    electrical_protocol::Packet packet(1,1);
     test.readSync(packet);
-    auto [readString] = packet->unpack(PY_STRING("831s"));
+    auto [readString] = packet.unpack(PY_STRING("831s"));
     EXPECT_EQ(readString, testString);
     return 0;
 }

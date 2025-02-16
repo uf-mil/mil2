@@ -41,14 +41,6 @@ namespace electrical_protocol
             cfsetospeed(&options, baudrate);
             options.c_cc[VMIN] = 0;
             options.c_cc[VTIME] = 1;
-            // options.c_cflag |= (CLOCAL | CREAD);
-            // options.c_cflag &= ~CSIZE;
-            // options.c_cflag |= CS8;
-            // options.c_cflag &= ~PARENB;
-            // options.c_cflag &= ~CSTOPB;
-            // options.c_iflag &= ~(IXON | IXOFF | IXANY);
-            // options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-            // options.c_oflag &= ~OPOST;
             tcsetattr(serialFd_, TCSANOW, &options);
         }
 
@@ -102,24 +94,18 @@ namespace electrical_protocol
         return opened_;
     }
 
-    void SerialDevice::write(std::shared_ptr<Packet> packet)
-    {
-        if(packet == nullptr || packet->data_.size() == 0)
-            onWrite(packet, EINVAL, 0);
-        
+    void SerialDevice::write(Packet&& packet)
+    {   
         pthread_mutex_lock(&writeMutex_);
-        writeQueue_.push(packet);
+        writeQueue_.push(std::move(packet));
         pthread_cond_signal(&writeCond_);
         pthread_mutex_unlock(&writeMutex_);
     }
 
-    void SerialDevice::read(std::shared_ptr<Packet> packet)
+    void SerialDevice::read(Packet&& packet)
     {
-        if(packet == nullptr || packet->data_.size() == 0)
-            onRead(packet, EINVAL, 0);
-        
         pthread_mutex_lock(&readMutex_);
-        readQueues_[packet->getId()].push(packet);
+        readQueues_[packet.getId()].push(std::move(packet));
         pthread_mutex_unlock(&readMutex_);
     }
 
@@ -150,22 +136,22 @@ namespace electrical_protocol
                 pthread_cond_wait(&device->writeCond_, &device->writeMutex_);
             }
 
-            std::shared_ptr<Packet> packet = device->writeQueue_.front();
+            Packet packet = std::move(device->writeQueue_.front());
             device->writeQueue_.pop();
 
             pthread_mutex_unlock(&device->writeMutex_);
 
-            size_t bytesToWrite = packet->data_.size();
+            size_t bytesToWrite = packet.data_.size();
             size_t bytesWritten = 0;
             int ret = 0;
             while(bytesWritten < bytesToWrite && ret != -1)
             {
                 bytesWritten += ret;
-                ret = ::write(device->serialFd_, packet->data_.data() + bytesWritten, bytesToWrite - bytesWritten);
+                ret = ::write(device->serialFd_, packet.data_.data() + bytesWritten, bytesToWrite - bytesWritten);
             }
             
             size_t dataLen = bytesToWrite - Packet::HEADER_LEN - Packet::TRAILER_LEN;
-            device->onWrite(packet, errno, bytesWritten);
+            device->onWrite(std::move(packet), errno, bytesWritten);
 
             pthread_testcancel();
         }
@@ -194,8 +180,8 @@ namespace electrical_protocol
         pthread_cleanup_push(readThreadCleanupFunc_, device);
         ReadState state = ReadState::SYNC_1;
 
-        std::shared_ptr<Packet> packet = nullptr;
         size_t bytesRead = 0;
+        Packet packet;
 
         while(1)
         {
@@ -252,19 +238,21 @@ namespace electrical_protocol
                     continue;
                 }
 
+                bool findPacket = false;
                 pthread_mutex_lock(&device->readMutex_);
                 auto it = device->readQueues_.find({idndataLen[0], idndataLen[1]});
                 if(it != device->readQueues_.end() && it->second.size() > 0)
                 {
-                    packet = it->second.front();
+                    packet = std::move(it->second.front());
                     it->second.pop();
+                    findPacket = true;
                 }
                 pthread_mutex_unlock(&device->readMutex_);
 
                 size_t dataLen = *reinterpret_cast<uint16_t*>(&idndataLen[2]);
                 bytesToRead += (dataLen + Packet::TRAILER_LEN);
 
-                if(packet == nullptr)
+                if(!findPacket)
                 {
                     constexpr size_t bufferLen = 100;
                     uint8_t buffer[bufferLen];
@@ -275,29 +263,30 @@ namespace electrical_protocol
                         bytesRead += ret;
                         ret = ::read(device->serialFd_, buffer + (bytesRead - Packet::HEADER_LEN) % bufferLen, std::min(bufferLen, bytesToRead - bytesRead));
                     }
-                    
+
+                    bytesRead = 0;
+                    errno = 0;
+                    state = ReadState::SYNC_1;
                 }
                 else
                 {
-                    packet->data_.resize(Packet::HEADER_LEN + dataLen + Packet::TRAILER_LEN);
-                    *reinterpret_cast<uint16_t*>(&packet->data_[4]) = dataLen;
+                    packet.data_.resize(Packet::HEADER_LEN + dataLen + Packet::TRAILER_LEN);
+                    *reinterpret_cast<uint16_t*>(&packet.data_[4]) = dataLen;
 
                     ret = 0;
                     while(bytesRead < bytesToRead && ret != -1)
                     {
                         bytesRead += ret;
-                        ret = ::read(device->serialFd_, packet->data_.data() + bytesRead, bytesToRead - bytesRead);
+                        ret = ::read(device->serialFd_, packet.data_.data() + bytesRead, bytesToRead - bytesRead);
                     }
 
+                    state = ReadState::CALLBACK;
                 }
-
-                state = ReadState::CALLBACK;
 
             }
             else if(state == ReadState::CALLBACK)
             {
-                device->onRead(packet, errno, bytesRead);
-                packet.reset();
+                device->onRead(std::move(packet), errno, bytesRead);
                 bytesRead = 0;
                 errno = 0;
                 state = ReadState::SYNC_1;
