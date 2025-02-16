@@ -16,6 +16,8 @@ TEST(packet, packunpack)
     bool tg = true;
     uint64_t th = 987654321;
 
+    EXPECT_THROW(packet.unpack(PY_STRING("Ifdhc5s?Q")), std::out_of_range);
+
     packet.pack(PY_STRING("Ifdhc5s?Q"), ta, tb, tc, td, te, tf, tg, th);
     auto [ra, rb, rc, rd, re, rf, rg, rh] = packet.unpack(PY_STRING("Ifdhc5s?Q"));
     
@@ -27,6 +29,8 @@ TEST(packet, packunpack)
     EXPECT_EQ(tf, rf);
     EXPECT_EQ(tg, rg);
     EXPECT_EQ(th, rh);
+
+    EXPECT_THROW(packet.unpack(PY_STRING("Ifdhc5s?QQ")), std::out_of_range);
 
 }
 
