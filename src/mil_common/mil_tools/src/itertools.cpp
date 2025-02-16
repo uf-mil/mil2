@@ -4,8 +4,8 @@ namespace mil_tools::itertools
 {
 // https://www.reedbeta.com/blog/python-like-enumerate-in-cpp17/
 template <typename T,
-    typename TIter = decltype(std::begin(std::declval<T>())),
-    typename = decltype(std::end(std::declval<T>()))>
+          typename TIter,
+          typename>
 constexpr auto enumerate(T && iterable)
 {
     struct iterator
