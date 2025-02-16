@@ -47,7 +47,8 @@ class SerialTest: public electrical_protocol::SerialDevice
         if(sem_wait(&readSem) == -1)
             return errno;
         
-        packet = std::move(readPacket);
+        packet = std::move(readQueue_.front());
+        readQueue_.pop();
         return readErrno;
     }
 
@@ -57,25 +58,22 @@ class SerialTest: public electrical_protocol::SerialDevice
         if(sem_wait(&writeSem) == -1)
             return errno;
 
-        packet = std::move(writePacket);
+        packet = std::move(writeQueue_.front());
+        writeQueue_.pop();
         return writeErrno;
     }
 
-    void onWrite([[maybe_unused]]electrical_protocol::Packet&& packet, 
-                    int errorCode ,
-                    [[maybe_unused]]size_t bytesWritten)
+    void onWrite([[maybe_unused]]electrical_protocol::Packet&& packet, int errorCode)
     {
         writeErrno = errorCode;
-        writePacket = std::move(packet);
+        writeQueue_.push(std::move(packet));
         sem_post(&writeSem);
     }
 
-    void onRead([[maybe_unused]]electrical_protocol::Packet&& packet, 
-                    int errorCode ,
-                    [[maybe_unused]]size_t bytesRead)
+    void onRead([[maybe_unused]]electrical_protocol::Packet&& packet, int errorCode)
     {
         readErrno = errorCode;
-        readPacket = std::move(packet);
+        readQueue_.push(std::move(packet));
         sem_post(&readSem);
     }
 
@@ -84,18 +82,18 @@ class SerialTest: public electrical_protocol::SerialDevice
     int writeErrno = 0;
     sem_t readSem;
     sem_t writeSem;
-    electrical_protocol::Packet readPacket;
-    electrical_protocol::Packet writePacket;
+    std::queue<electrical_protocol::Packet> readQueue_;
+    std::queue<electrical_protocol::Packet> writeQueue_;
 };
 
 void* writeThreadFunc(void* arg)
 {
     std::string* serialName = reinterpret_cast<std::string*>(arg);
     SerialTest test(*serialName);
+    electrical_protocol::Packet packet(1,1);
+    packet.pack(PY_STRING("831s"), testString);
     while(1)
     {
-        electrical_protocol::Packet packet(1,1);
-        packet.pack(PY_STRING("831s"), testString);
         EXPECT_EQ(test.writeSync(packet), 0);
         usleep(100000);
         pthread_testcancel();

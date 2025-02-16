@@ -96,8 +96,17 @@ namespace electrical_protocol
 
     void SerialDevice::write(Packet&& packet)
     {  
+        if(packet.data_.size() == 0)
+        {
+            onWrite(std::move(packet), EINVAL);
+            return;
+        }
+
         if(!opened_)
-            onRead(std::move(packet), EACCES, 0);
+        {
+            onWrite(std::move(packet), EACCES);
+            return;
+        }
          
         pthread_mutex_lock(&writeMutex_);
         writeQueue_.push(std::move(packet));
@@ -108,10 +117,13 @@ namespace electrical_protocol
     void SerialDevice::read(Packet&& packet)
     {
         if(!opened_)
-            onRead(std::move(packet), EACCES, 0);
+        {
+            onRead(std::move(packet), EACCES);
+            return;
+        }
 
         pthread_mutex_lock(&readMutex_);
-        readQueues_[packet.getId()].push(std::move(packet));
+        readQueues_[packet.id_].push(std::move(packet));
         pthread_mutex_unlock(&readMutex_);
     }
 
@@ -124,7 +136,7 @@ namespace electrical_protocol
         {
             Packet packet = std::move(device->writeQueue_.front());
             device->writeQueue_.pop();
-            device->onWrite(std::move(packet), EINTR, 0);
+            device->onWrite(std::move(packet), EINTR);
         }
     }
 
@@ -146,6 +158,9 @@ namespace electrical_protocol
 
             pthread_mutex_unlock(&device->writeMutex_);
 
+            *reinterpret_cast<uint16_t*>(&packet.data_[4]) = packet.size();
+            packet.calcCheckSum_(&packet.data_[packet.data_.size() - Packet::TRAILER_LEN]);
+
             size_t bytesToWrite = packet.data_.size();
             size_t bytesWritten = 0;
             int ret = 0;
@@ -155,7 +170,7 @@ namespace electrical_protocol
                 ret = ::write(device->serialFd_, packet.data_.data() + bytesWritten, bytesToWrite - bytesWritten);
             }
 
-            device->onWrite(std::move(packet), errno, bytesWritten);
+            device->onWrite(std::move(packet), errno);
 
             pthread_testcancel();
         }
@@ -174,7 +189,7 @@ namespace electrical_protocol
             {
                 Packet packet = std::move(pair.second.front());
                 pair.second.pop();
-                device->onRead(std::move(packet), EINTR, 0);
+                device->onRead(std::move(packet), EINTR);
             }
         }
         device->readQueues_.clear();
@@ -187,7 +202,6 @@ namespace electrical_protocol
         ReadState state = ReadState::SYNC_1;
 
         size_t bytesRead = 0;
-        Packet packet;
 
         while(1)
         {
@@ -197,7 +211,8 @@ namespace electrical_protocol
                 int ret = ::read(device->serialFd_,&header,1);
                 if(ret == -1)
                 {
-                    state = ReadState::CALLBACK;
+                    device->onRead(Packet(0,0), errno);
+                    errno = 0;
                 }
                 else if(ret == 1 && header == SYNC_CHAR_1)
                 {
@@ -211,7 +226,10 @@ namespace electrical_protocol
                 int ret = ::read(device->serialFd_,&header,1);
                 if(ret == -1)
                 {
-                    state = ReadState::CALLBACK;
+                    device->onRead(Packet(0,0), errno);
+                    errno = 0;
+                    bytesRead = 0;
+                    state = ReadState::SYNC_1;
                 }
                 else if(ret == 1)
                 {
@@ -240,10 +258,13 @@ namespace electrical_protocol
 
                 if(ret == -1)
                 {
-                    state = ReadState::CALLBACK;
+                    device->onRead(Packet(0,0), errno);
+                    errno = 0;
+                    state = ReadState::SYNC_1;
                     continue;
                 }
 
+                Packet packet(idndataLen[0], idndataLen[1]);
                 bool findPacket = false;
                 pthread_mutex_lock(&device->readMutex_);
                 auto it = device->readQueues_.find({idndataLen[0], idndataLen[1]});
@@ -276,7 +297,7 @@ namespace electrical_protocol
                 }
                 else
                 {
-                    packet.data_.resize(Packet::HEADER_LEN + dataLen + Packet::TRAILER_LEN);
+                    packet.resize(dataLen);
                     *reinterpret_cast<uint16_t*>(&packet.data_[4]) = dataLen;
 
                     ret = 0;
@@ -286,16 +307,17 @@ namespace electrical_protocol
                         ret = ::read(device->serialFd_, packet.data_.data() + bytesRead, bytesToRead - bytesRead);
                     }
 
-                    state = ReadState::CALLBACK;
+                    uint8_t sum[2];
+                    packet.calcCheckSum_(sum);
+                    if(sum[0] != packet.data_[packet.data_.size()-2] || sum[1] != packet.data_[packet.data_.size()-1])
+                        errno = EBADMSG;
+
+                    device->onRead(std::move(packet), errno);
+                    bytesRead = 0;
+                    errno = 0;
+                    state = ReadState::SYNC_1;
                 }
 
-            }
-            else if(state == ReadState::CALLBACK)
-            {
-                device->onRead(std::move(packet), errno, bytesRead);
-                bytesRead = 0;
-                errno = 0;
-                state = ReadState::SYNC_1;
             }
 
             pthread_testcancel();
@@ -305,61 +327,6 @@ namespace electrical_protocol
 
         return NULL;
     }
-
-    // void SerialDevice::onRead(std::shared_ptr<Packet> packet, int errorCode ,size_t bytesRead)
-    // {
-    //     return;
-    // }
-
-    // void SerialDevice::onWrite(std::shared_ptr<Packet> packet, int errorCode ,size_t bytesWritten)
-    // {
-    //     return;
-    // }
-
-    // SerialTransfer::SerialTransfer(std::string& portName, unsigned baudrate=9600):
-    //     portName_(portName),
-    //     baudrate_(baudrate)
-    // {
-    //     transferThread_;
-    //     int ret = pthread_create(&transferThread_, NULL, transferThreadFunc_, this);
-    //     if(ret < 0)
-    //     {
-    //         throw std::runtime_error("Failed to create transfer thread for serial port" + std::string(strerror(ret)));
-    //     }
-    // }
-
-    // SerialTransfer::~SerialTransfer()
-    // {
-    //     if(pthread_cancel(transferThread_) == 0)
-    //     {
-    //         pthread_join(transferThread_, NULL);
-    //     }
-    // }
-
-    // void* SerialTransfer::transferThreadFunc_(void* arg)
-    // {
-    //     SerialTransfer* transfer = reinterpret_cast<SerialTransfer*>(arg);
-    //     enum class State
-    //     {
-    //         CLOSED,
-    //         OPENED
-    //     };
-
-    //     State state = State::CLOSED;
-    //     while(1)
-    //     {
-    //         if(state == State::CLOSED)
-    //         {
-    //             transfer->open(transfer->portName_, transfer->baudrate_);
-    //             if(transfer->isOpened())
-    //                 state == State::OPENED;
-    //         }
-    //         else if(state == State::OPENED)
-    //         {
-
-    //         }
-    //     }
-    // }
 
 } 
 
