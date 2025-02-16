@@ -59,14 +59,22 @@ TEST(packet, size)
 
 TEST(packet, id)
 {
-    electrical_protocol::Packet packet(1,1);
-    std::pair<uint8_t, uint8_t> id = packet.getId();
-    EXPECT_EQ(id.first, 1);
-    EXPECT_EQ(id.second, 1);
-    packet.setId({2,2});
-    id = packet.getId();
-    EXPECT_EQ(id.first, 2);
-    EXPECT_EQ(id.second, 2);
+    electrical_protocol::Packet packet1(1,1);
+    EXPECT_EQ(packet1.id().first, 1);
+    EXPECT_EQ(packet1.id().second, 1);
+
+    electrical_protocol::Packet packet2(packet1);
+    EXPECT_EQ(packet2.id().first, 1);
+    EXPECT_EQ(packet2.id().second, 1);
+
+    electrical_protocol::Packet packet3(std::move(packet1));
+    EXPECT_EQ(packet3.id().first, 1);
+    EXPECT_EQ(packet3.id().second, 1);
+
+    electrical_protocol::Packet packet4(2,2);
+
+    EXPECT_THROW(packet4 = packet1, std::runtime_error);
+    EXPECT_THROW(packet4 = std::move(packet1), std::runtime_error);
 }
 
 TEST(packet, move)
@@ -91,6 +99,19 @@ TEST(packet, copy)
     electrical_protocol::Packet packet2 = packet1;
     EXPECT_EQ(packet1.size(), 831);
     EXPECT_EQ(packet2.size(), 831);
+}
+
+TEST(packet, randomAccess)
+{
+    electrical_protocol::Packet packet(1,1);
+    EXPECT_THROW(packet[1], std::out_of_range);
+
+    packet.resize(10);
+    EXPECT_NO_THROW(packet[3] = packet[2] = 10);
+    EXPECT_THROW(packet[10], std::out_of_range);
+
+    uint8_t a = packet[3];
+    EXPECT_EQ(a, 10);
 }
 
 
