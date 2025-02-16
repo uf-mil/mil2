@@ -2,7 +2,8 @@
 
 #include <gtest/gtest.h>
 
-TEST(Packet, common)
+
+TEST(packet, packunpack)
 {
     electrical_protocol::Packet packet(1,1);
 
@@ -44,13 +45,49 @@ std::string testString("The Machine Intelligence Laboratory (MIL) "
                         "autonomous air vehicles (AAVs including quadcopters and micro air vehicles, MAVs) , "
                         "swarm robots, humanoid robots, and autonomous household robots.");
 
-TEST(Packet, size)
+TEST(packet, size)
 {
     electrical_protocol::Packet packet(1,1);
     packet.pack(PY_STRING("831s"), testString);
+    EXPECT_EQ(packet.size(), 831);
     EXPECT_THROW(packet.unpack(PY_STRING("832s")), std::out_of_range);
 }
 
+TEST(packet, id)
+{
+    electrical_protocol::Packet packet(1,1);
+    std::pair<uint8_t, uint8_t> id = packet.getId();
+    EXPECT_EQ(id.first, 1);
+    EXPECT_EQ(id.second, 1);
+    packet.setId({2,2});
+    id = packet.getId();
+    EXPECT_EQ(id.first, 2);
+    EXPECT_EQ(id.second, 2);
+}
+
+TEST(packet, move)
+{
+    electrical_protocol::Packet packet1(1,1);
+    packet1.pack(PY_STRING("831s"), testString);
+
+    electrical_protocol::Packet packet2 = std::move(packet1);
+    EXPECT_EQ(packet2.size(), 831);
+    EXPECT_EQ(packet1.size(), 0);
+
+    packet1 = std::move(packet2);
+    EXPECT_EQ(packet1.size(), 831);
+    EXPECT_EQ(packet2.size(), 0);
+}
+
+TEST(packet, copy)
+{
+    electrical_protocol::Packet packet1(1,1);
+    packet1.pack(PY_STRING("831s"), testString);
+
+    electrical_protocol::Packet packet2 = packet1;
+    EXPECT_EQ(packet1.size(), 831);
+    EXPECT_EQ(packet2.size(), 831);
+}
 
 
 

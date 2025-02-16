@@ -27,7 +27,7 @@ class RingBuffer
 
         size_t freeSpace = (realWritePtr - realReadPtr + bufferSize) % bufferSize;
 
-        // If realReadPtr - realWritePtr, the buffer may be empty or full.
+        // If realReadPtr == realWritePtr, the buffer may be empty or full.
         if(freeSpace == 0)
         {
             if((readPtr_ < bufferSize && writePtr_ < bufferSize) || (readPtr_ >= bufferSize && writePtr_ >= bufferSize))
@@ -38,25 +38,6 @@ class RingBuffer
 
         return freeSpace;
     }
-
-    // inline size_t getFreeWriteSpace()
-    // {
-    //     size_t realReadPtr = readPtr_ % bufferSize;
-    //     size_t realWritePtr = writePtr_ % bufferSize;
-
-    //     size_t freeWriteSpace = (realReadPtr - realWritePtr + bufferSize) % bufferSize;
-
-    //     // If realReadPtr - realWritePtr, the buffer may be empty or full.
-    //     if(freeWriteSpace == 0)
-    //     {
-    //         if((readPtr_ < bufferSize && writePtr_ >= bufferSize) || (readPtr_ >= bufferSize && writePtr_ < bufferSize))
-    //         {
-    //             freeWriteSpace = bufferSize;
-    //         }
-    //     }
-
-    //     return freeWriteSpace;
-    // }
 
     int readFrom(int readFd, int bytesToRead)
     {
