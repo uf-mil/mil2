@@ -1,8 +1,5 @@
 #pragma once
 
-#include <boost/asio/serial_port.hpp>
-#include <boost/asio.hpp>
-
 #include <string>
 #include <queue>
 #include <array>
@@ -12,6 +9,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <pthread.h>
+#include <fcntl.h>
 
 #include <electrical_protocol_cpp/packet.h>
 
@@ -32,11 +30,11 @@ class SerialDevice
     int open(const std::string& deviceName, speed_t baudrate);
     void close();
     bool isOpened() const;
-    void write(std::shared_ptr<Packet> packet);
-    void read(std::shared_ptr<Packet> packet);
+    void write(Packet&& packet);
+    void read(Packet&& packet);
 
-    virtual void onWrite(std::shared_ptr<Packet> packet, int errorCode ,size_t bytesWritten) = 0;
-    virtual void onRead(std::shared_ptr<Packet> packet, int errorCode ,size_t bytesRead) = 0;
+    virtual void onWrite(Packet&& packet, int errorCode ,size_t bytesWritten) = 0;
+    virtual void onRead(Packet&& packet, int errorCode ,size_t bytesRead) = 0;
 
     private:
 
@@ -63,65 +61,13 @@ class SerialDevice
 
     pthread_mutex_t readMutex_ = PTHREAD_MUTEX_INITIALIZER;
 
-    struct IdHash
-    {
-        size_t operator()(const std::pair<uint8_t, uint8_t>& p) const
-        {
-            return static_cast<size_t>((static_cast<uint16_t>(p.first) << 8) + p.second);
-        }
-    };
-
-    std::queue<std::shared_ptr<Packet>> writeQueue_;
-    std::unordered_map<std::pair<uint8_t, uint8_t>, std::queue<std::shared_ptr<Packet>>, IdHash> readQueues_;
+    std::queue<Packet> writeQueue_;
+    std::unordered_map<std::pair<uint8_t, uint8_t>, std::queue<Packet>, Packet::IdHash> readQueues_;
  
     static void* readThreadFunc_(void* arg);
     static void* writeThreadFunc_(void* arg);
     static void readThreadCleanupFunc_(void* arg);
     static void writeThreadCleanupFunc_(void* arg);
-
-    void readPacket_(std::shared_ptr<Packet> packet);
-    void readPacket_();
-
-    void writeData_(std::shared_ptr<Packet> data);
-    void readData_(std::shared_ptr<Packet> data);
 };
-
-// class Subscriber
-// {
-//     public:
-//     friend class ;
-//     Subscriber();
-//     ~Subscriber();
-//     private:
-// };
-
-// class Publisher
-// {
-//     public:
-//     friend class SerialTransfer;
-//     Publisher();
-//     ~Publisher();
-//     private:
-//     std::queue<std::shared_ptr<std::vector<uint8_t>>> dataQueue_;
-// };
-
-// class SerialTransfer: private SerialDevice
-// {
-//     public:
-//     SerialTransfer() = delete;
-//     SerialTransfer(std::string& portName, unsigned baudrate=9600);
-//     ~SerialTransfer();
-
-//     int publish(, unsigned queueLen);
-//     int subscribe(, unsigned queueLen);
-
-//     private:
-//     pthread_t transferThread_;
-
-//     static void* transferThreadFunc_(void* arg);
-
-//     unsigned baudrate_;
-//     std::string portName_;
-// };
 
 }
