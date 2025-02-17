@@ -16,22 +16,58 @@
 namespace electrical_protocol
 {
 
-class SerialDevice;
-// class SerialTransfer;
-
 class SerialDevice
 {
     public:
 
     SerialDevice(const std::string& deviceName, speed_t baudrate = B9600);
     SerialDevice();
-    ~SerialDevice();
+    virtual ~SerialDevice();
 
     int open(const std::string& deviceName, speed_t baudrate);
     void close();
     bool isOpened() const;
-    void write(Packet&& packet);
-    void read(Packet&& packet);
+
+    template<typename T>
+    void write(T&& packet)
+    {  
+        static_assert(std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, Packet>, "Only Packet is allowed in SerialDevice::write");
+
+        if(packet.data_.size() == 0)
+        {
+            Packet cpacket(std::forward<T>(packet));
+            onWrite(cpacket, EINVAL);
+            return;
+        }
+
+        if(!opened_)
+        {
+            Packet cpacket(std::forward<T>(packet));
+            onWrite(cpacket, EACCES);
+            return;
+        }
+         
+        pthread_mutex_lock(&writeMutex_);
+        writeQueue_.push(std::forward<T>(packet));
+        pthread_cond_signal(&writeCond_);
+        pthread_mutex_unlock(&writeMutex_);
+    }
+
+    template<typename T>
+    void read(T&& packet)
+    {
+        static_assert(std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, Packet>, "Only Packet is allowed in SerialDevice::read");
+
+        if(!opened_)
+        {
+            onRead(packet, EACCES);
+            return;
+        }
+
+        pthread_mutex_lock(&readMutex_);
+        readQueues_[packet.id_].push(std::forward<T>(packet));
+        pthread_mutex_unlock(&readMutex_);
+    }
 
     virtual void onWrite(Packet& packet, int errorCode) = 0;
     virtual void onRead(Packet& packet, int errorCode) = 0;
@@ -63,11 +99,13 @@ class SerialDevice
 
     std::queue<Packet> writeQueue_;
     std::unordered_map<std::pair<uint8_t, uint8_t>, std::queue<Packet>, Packet::IdHash> readQueues_;
- 
+
     static void* readThreadFunc_(void* arg);
     static void* writeThreadFunc_(void* arg);
     static void readThreadCleanupFunc_(void* arg);
     static void writeThreadCleanupFunc_(void* arg);
+
+    void close_();
 };
 
 }

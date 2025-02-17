@@ -17,7 +17,7 @@ namespace electrical_protocol
 
     SerialDevice::~SerialDevice()
     {
-        close();
+        close_();
     }
 
     int SerialDevice::open(const std::string& deviceName, speed_t baudrate)
@@ -69,11 +69,8 @@ namespace electrical_protocol
         return error;
     }
 
-    void SerialDevice::close()
-    {
-        if(!opened_)
-            return;
-        
+    void SerialDevice::close_()
+    {   
         if(pthread_cancel(writeThread_) == 0)
         {
             pthread_join(writeThread_, NULL);
@@ -85,6 +82,32 @@ namespace electrical_protocol
         }
 
         ::close(serialFd_);
+    }
+
+    void SerialDevice::close()
+    {
+        if(!opened_)
+            return;
+        
+        close_();
+
+        while(writeQueue_.size() > 0)
+        {
+            Packet packet = std::move(writeQueue_.front());
+            writeQueue_.pop();
+            onWrite(packet, EINTR);
+        }
+
+        for(auto& pair : readQueues_)
+        {
+            while(pair.second.size() > 0)
+            {
+                Packet packet = std::move(pair.second.front());
+                pair.second.pop();
+                onRead(packet, EINTR);
+            }
+        }
+        readQueues_.clear();
 
         opened_ = false;
     }
@@ -94,50 +117,10 @@ namespace electrical_protocol
         return opened_;
     }
 
-    void SerialDevice::write(Packet&& packet)
-    {  
-        if(packet.data_.size() == 0)
-        {
-            onWrite(packet, EINVAL);
-            return;
-        }
-
-        if(!opened_)
-        {
-            onWrite(packet, EACCES);
-            return;
-        }
-         
-        pthread_mutex_lock(&writeMutex_);
-        writeQueue_.push(std::move(packet));
-        pthread_cond_signal(&writeCond_);
-        pthread_mutex_unlock(&writeMutex_);
-    }
-
-    void SerialDevice::read(Packet&& packet)
-    {
-        if(!opened_)
-        {
-            onRead(packet, EACCES);
-            return;
-        }
-
-        pthread_mutex_lock(&readMutex_);
-        readQueues_[packet.id_].push(std::move(packet));
-        pthread_mutex_unlock(&readMutex_);
-    }
-
     void SerialDevice::writeThreadCleanupFunc_(void* arg)
     {
         SerialDevice* device = reinterpret_cast<SerialDevice*>(arg);
         pthread_mutex_unlock(&device->writeMutex_);
-
-        while(device->writeQueue_.size() > 0)
-        {
-            Packet packet = std::move(device->writeQueue_.front());
-            device->writeQueue_.pop();
-            device->onWrite(packet, EINTR);
-        }
     }
 
     void* SerialDevice::writeThreadFunc_(void* arg)
@@ -183,16 +166,6 @@ namespace electrical_protocol
     {
         SerialDevice* device = reinterpret_cast<SerialDevice*>(arg);
         pthread_mutex_unlock(&device->readMutex_);
-        for(auto& pair : device->readQueues_)
-        {
-            while(pair.second.size() > 0)
-            {
-                Packet packet = std::move(pair.second.front());
-                pair.second.pop();
-                device->onRead(packet, EINTR);
-            }
-        }
-        device->readQueues_.clear();
     }
 
     void* SerialDevice::readThreadFunc_(void* arg)

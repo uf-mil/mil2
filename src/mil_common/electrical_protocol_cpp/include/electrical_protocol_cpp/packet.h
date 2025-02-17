@@ -36,7 +36,7 @@ namespace electrical_protocol
             data_ = std::move(packet.data_);
         }
 
-        Packet(Packet& packet) noexcept : id_(packet.id_)
+        Packet(const Packet& packet) noexcept : id_(packet.id_)
         {
             data_ = packet.data_;
         }

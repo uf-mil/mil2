@@ -114,7 +114,7 @@ void * readThreadFunc(void* arg)
     return 0;
 }
 
-TEST(driver, Test)
+TEST(driver, dataTransfer)
 {
     mil_tools::PairedSerial pairedSerial;
 
@@ -132,4 +132,61 @@ TEST(driver, Test)
 
     pthread_cancel(writeThread);
     pthread_join(writeThread, NULL);
+}
+
+class SerialFWTest: public electrical_protocol::SerialDevice
+{
+    public:
+    SerialFWTest(const std::string& portName):SerialDevice(portName)
+    {
+       
+    }
+    ~SerialFWTest()
+    {
+
+    }
+
+    void onWrite([[maybe_unused]]electrical_protocol::Packet& packet, [[maybe_unused]]int errorCode)
+    {
+        
+    }
+
+    void onRead([[maybe_unused]]electrical_protocol::Packet& packet, [[maybe_unused]]int errorCode)
+    {
+        
+    }
+
+    private:
+};
+
+TEST(driver, forward)
+{
+    electrical_protocol::Packet packet1(1,1);
+    packet1.pack(PY_STRING("831s"), testString);
+    electrical_protocol::Packet packet2(2,2);
+    packet2.pack(PY_STRING("831s"), testString);
+    const electrical_protocol::Packet packet3(packet2);
+
+    mil_tools::PairedSerial pairedSerial;
+
+    std::string serial1Name;
+    std::string serial2Name;
+    pairedSerial.open(serial1Name, serial2Name);
+    SerialFWTest serialtest1(serial1Name);
+    SerialFWTest serialtest2(serial2Name);
+
+    electrical_protocol::Packet packet4(1,1);
+    serialtest1.write(packet1);
+    serialtest2.read(packet4);
+    EXPECT_NO_THROW(packet1.unpack(PY_STRING("831s")));
+
+    serialtest1.write(std::move(packet2));
+    serialtest2.read(electrical_protocol::Packet(2,2));
+    EXPECT_THROW(packet2.unpack(PY_STRING("831s")), std::out_of_range);
+
+    serialtest1.write(packet3);
+    serialtest2.read(electrical_protocol::Packet(2,2));
+
+    serialtest1.close();
+    serialtest2.close();
 }
