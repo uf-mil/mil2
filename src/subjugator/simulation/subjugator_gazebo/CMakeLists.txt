@@ -7,6 +7,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(mil_msgs REQUIRED)
 
 find_package(OpenCV REQUIRED)
 
@@ -45,6 +46,12 @@ add_library(DVLSensor SHARED
   src/DVLSensor.cc
 )
 
+# Plugin 3: DepthSensor
+add_library(DepthSensor SHARED
+  src/DepthSensor.cc
+)
+set_property(TARGET DepthSensor PROPERTY CXX_STANDARD 17)
+
 # Link Libraries for each plugin
 target_include_directories(
   UnderwaterCamera PRIVATE include
@@ -62,6 +69,16 @@ target_link_libraries(DVLSensor
   ${OpenCV_LIBS}
 )
 
+target_include_directories(
+  DepthSensor PRIVATE include
+)
+target_link_libraries(DepthSensor
+  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+  gz-common${GZ_COMMON_VER}::gz-common${GZ_COMMON_VER}
+  gz-plugin${GZ_PLUGIN_VER}::gz-plugin${GZ_PLUGIN_VER}
+  ${OpenCV_LIBS}
+)
+
 # Specify dependencies using ament_target_dependencies
 ament_target_dependencies(UnderwaterCamera
   rclcpp
@@ -73,8 +90,14 @@ ament_target_dependencies(DVLSensor
   sensor_msgs
 )
 
+ament_target_dependencies(DepthSensor
+  rclcpp
+  sensor_msgs
+  mil_msgs
+)
+
 # Install the plugins
-install(TARGETS UnderwaterCamera DVLSensor
+install(TARGETS UnderwaterCamera DVLSensor DepthSensor
 LIBRARY DESTINATION lib/${PROJECT_NAME}
 )
 

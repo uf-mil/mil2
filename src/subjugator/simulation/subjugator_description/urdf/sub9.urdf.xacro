@@ -8,6 +8,7 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/new_dvl.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/depth.xacro"/>
 
   <!-- KDL Parser does not like inertial base links, so use a 'fake' massless root link -->
   <link name="base_link"/>
@@ -126,6 +127,18 @@
     ly="0.08825985"
     lz="0.08825985"
   />
+
+  <!--Depth Sensor-->
+  <xacro:mil_depth_sensor
+    name="depth_sensor"
+    namespace="/depth"
+    parent="base_link"
+    xyz="0 0 -0.2"
+    rpy="0 0 0"
+    update_rate="10"
+    frame_id="depth_sensor_frame"
+  />
+
 
 
 </robot>

@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <!--
+    Example Xacro Macro for a Depth Sensor plugin.
+    Usage in your main URDF/Xacro file (for example):
+    
+      <xacro:include filename="$(find subjugator_description)/xacro/depth.xacro" />
+      
+      <xacro:mil_depth_sensor
+        name="depth_sensor"
+        namespace="/depth"
+        parent="base_link"
+        xyz="0 0 -0.2"
+        rpy="0 0 0"
+        update_rate="10"
+        frame_id="depth_sensor_frame"
+      />
+  -->
+
+  <xacro:macro
+    name="mil_depth_sensor"
+    params="
+      name
+      namespace='/depth'
+      parent='base_link'
+      xyz='0 0 0'
+      rpy='0 0 0'
+      update_rate='10'
+      frame_id='depth_sensor_frame'
+    "
+  >
+    <!-- Create a link for the depth sensor -->
+    <link name="${name}_link"></link>
+
+    <!-- Attach the link to the specified parent with a fixed joint -->
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+
+    <!-- Insert the DepthSensor plugin into Gazebo -->
+    <gazebo reference="${name}_plugin">
+        <sensor type="depth_sensor" name="depth">
+            <topic>/depth</topic>
+            <plugin name="depth_sensor::DepthSensor" filename="DepthSensor">
+                <!-- SDF parameters for your DepthSensor plugin -->
+                <frame_id>${frame_id}</frame_id>
+                <offset>0 0 0 0 0 0</offset>
+                <update_rate>${update_rate}</update_rate>
+            </plugin>
+        </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>
