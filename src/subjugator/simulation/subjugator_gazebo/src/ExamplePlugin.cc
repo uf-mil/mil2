@@ -6,6 +6,7 @@
 GZ_ADD_PLUGIN(
     example_plugin::ExamplePlugin,
     gz::sim::System,
+    example_plugin::ExamplePlugin::ISystemConfigure,
     example_plugin::ExamplePlugin::ISystemPostUpdate
 )
 
