@@ -6,6 +6,7 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/dvl.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/active_sonar.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
 
@@ -70,7 +71,6 @@
   <xacro:mil_camera name="front_cam" parent="base_link" xyz="-0.25 -0.014274 -0.018" rpy="0 0 3.14159"/>
   <xacro:mil_camera name="down_cam" parent="base_link" xyz="-0.15222 0.027913 -0.16" rpy="0 1.57 0"/>
 
-
   <!-- DVL Sensor -->
   <xacro:mil_dvl_sensor
     name="dvl_sensor"
@@ -79,7 +79,17 @@
     rpy="0 0 0"
   />
 
-   <!-- IMU, Magnetometer -->
+  <!-- Active Sonar -->
+
+  <!-- Set proper position on xyz -->
+  <xacro:mil_active_sonar
+    name="mil_active_sonar"
+    parent="base_link"
+    xyz="0 0 0"
+    rpy="0 0 0"
+  />
+
+  <!-- IMU, Magnetometer -->
   <xacro:mil_imu_magnetometer
     name="imu"
     namespace='/imu'

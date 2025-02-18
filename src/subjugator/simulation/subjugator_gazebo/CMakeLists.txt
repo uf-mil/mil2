@@ -54,6 +54,11 @@ add_library(DVLBridge SHARED
   src/DVLBridge.cc
 )
 
+# Plugin 3: Active Sonar Plugin
+add_library(ActiveSonar SHARED
+  src/ActiveSonar.cc
+)
+
 # Ensures plugin can see include directory to access its header files
 target_include_directories(
   ExamplePlugin PRIVATE include
@@ -65,6 +70,10 @@ target_include_directories(
 
 target_include_directories(
   DVLBridge PRIVATE include
+)
+
+target_include_directories(
+  ActiveSonar PRIVATE include
 )
 
 # Add additional needed libraries
@@ -80,6 +89,11 @@ target_link_libraries(UnderwaterCamera
 
 # Link libraries for DVL Bridge plugin
 target_link_libraries(DVLBridge
+  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+)
+
+# Link libraries for Active Sonar plugin
+target_link_libraries(ActiveSonar
   gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
 )
 
@@ -102,8 +116,14 @@ ament_target_dependencies(DVLBridge
   std_msgs
 )
 
+ament_target_dependencies(ActiveSonar
+  #
+  # Here is where you would place any dependencies for Active Sonar
+  #
+)
+
 # Install the plugins
-install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge
+install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge ActiveSonar
 LIBRARY DESTINATION lib/${PROJECT_NAME}
 )
 
