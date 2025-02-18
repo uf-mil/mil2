@@ -4,12 +4,12 @@
 
 // Add plugins to gazebo simulator alongside its dependencies
 GZ_ADD_PLUGIN(
-    dvl_sensor::ExamplePlugin,
+    example_plugin::ExamplePlugin,
     gz::sim::System,
-    dvl_sensor::ExamplePlugin::ISystemPostUpdate
+    example_plugin::ExamplePlugin::ISystemPostUpdate
 )
 
-using namespace dvl_sensor;
+using namespace example_plugin;
 
 ExamplePlugin::ExamplePlugin()
 {

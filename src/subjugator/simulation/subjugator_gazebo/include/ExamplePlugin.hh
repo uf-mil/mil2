@@ -1,10 +1,10 @@
-#ifndef DVL_SENSOR_HH_
-#define DVL_SENSOR_HH_
+#ifndef EXAMPLE_PLUGIN_HH_
+#define EXAMPLE_PLUGIN_HH_
 
 #include <gz/sim/System.hh>
 
  
-namespace dvl_sensor
+namespace example_plugin
 {
   class ExamplePlugin:
     public gz::sim::System,
