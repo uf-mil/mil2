@@ -4,16 +4,25 @@
   <xacro:macro
     name="mil_active_sonar"
     params="name parent xyz rpy"
-  >
-
+  > 
     <!-- Sonar Link -->
      <link name="${name}_link">
       <origin xyz="0 0 0" rpy="0 0 0"/>
+
+      <!-- Inertial Properties - necessary for collider to exist -->
       <inertial>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.1"/> 
-        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value="1"/>
+        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       </inertial>
+
+      <collision name="${name}_collision">
+        <!-- This collision is for calculating the buoyant forces-->
+        <origin rpy="0 0 0" xyz="0 0 -0.6"/>
+        <geometry>
+          <box size="0.05 0.05 1"/>
+        </geometry>
+      </collision>
     </link>
 
     <!-- Sonar Joint -->
