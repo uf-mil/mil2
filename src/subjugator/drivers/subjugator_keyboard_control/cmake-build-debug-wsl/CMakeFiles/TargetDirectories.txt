@@ -1,0 +1,10 @@
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/uninstall.dir
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/subjugator_keyboard_control_uninstall.dir
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/subjugator_keyboard_control.dir
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/test.dir
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/edit_cache.dir
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/rebuild_cache.dir
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/list_install_components.dir
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/install.dir
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/install/local.dir
+/home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl/CMakeFiles/install/strip.dir

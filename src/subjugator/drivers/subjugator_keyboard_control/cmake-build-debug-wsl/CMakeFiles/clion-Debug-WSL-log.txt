@@ -1,0 +1,15 @@
+/usr/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=/opt/ros/jazzy -DAMENT_PREFIX_PATH=/opt/ros/jazzy -DPYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages -G "Unix Makefiles" -S /home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control -B /home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl
+-- Found ament_cmake: 2.5.3 (/opt/ros/jazzy/share/ament_cmake/cmake)
+-- Found rclcpp: 28.1.6 (/opt/ros/jazzy/share/rclcpp/cmake)
+-- Found rosidl_generator_c: 4.6.5 (/opt/ros/jazzy/share/rosidl_generator_c/cmake)
+-- Found rosidl_generator_cpp: 4.6.5 (/opt/ros/jazzy/share/rosidl_generator_cpp/cmake)
+-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+-- Found rmw_implementation_cmake: 7.3.1 (/opt/ros/jazzy/share/rmw_implementation_cmake/cmake)
+-- Found rmw_fastrtps_cpp: 8.4.1 (/opt/ros/jazzy/share/rmw_fastrtps_cpp/cmake)
+-- Using RMW implementation 'rmw_fastrtps_cpp' as default
+-- Found geometry_msgs: 5.3.5 (/opt/ros/jazzy/share/geometry_msgs/cmake)
+-- Found nav_msgs: 5.3.5 (/opt/ros/jazzy/share/nav_msgs/cmake)
+-- Configuring done (1.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/ricky/mil2/src/subjugator/drivers/subjugator_keyboard_control/cmake-build-debug-wsl
