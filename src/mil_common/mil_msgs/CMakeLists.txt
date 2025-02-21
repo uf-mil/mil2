@@ -19,6 +19,7 @@ set(action_files
   "action/BagOnline.action"
 )
 
+# File name is in CamelCase, but must import in snake_case
 set(msg_files
   "msg/DepthStamped.msg"
   "msg/ObjectInImage.msg"
@@ -31,6 +32,7 @@ set(msg_files
   "msg/RangeStamped.msg"
   "msg/VelocityMeasurements.msg"
   "msg/VelocityMeasurement.msg"
+  "msg/ProcessedPing.msg"
 )
 
 set(srv_files

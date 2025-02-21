@@ -6,13 +6,11 @@
 #include <gz/sim/System.hh>           // For gz::sim::System
 #include <gz/sim/components/Pose.hh>  // For gz::sim::components::Pose
 #include <memory>
-#include <mil_msgs/msg/depth_stamped.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sdf/sdf.hh>
 #include <string>
 
-namespace hydrophone
-{
+#include "mil_msgs/msg/processed_ping.hpp"
 
 class Hydrophone : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
 {
@@ -31,23 +29,26 @@ private:
   gz::sim::Entity modelEntity_{ gz::sim::kNullEntity };
 
   // ROS node + publisher
-  // rclcpp::Node::SharedPtr rosNode_;
-  // rclcpp::Publisher<mil_msgs::msg::DepthStamped>::SharedPtr depthPub_;
+  // Message Type: Vector3d origin_direction_body
+  //                int frequency
+  //                float origin_distance_m
+  rclcpp::Node::SharedPtr rosNode_;
+  rclcpp::Publisher<mil_msgs::msg::ProcessedPing>::SharedPtr pingPub_;
 
   // Hydrophone Pose
   gz::math::Pose3d pose_{ gz::math::Pose3d::Zero };
 
-  // // Pose offset
-  // gz::math::Pose3d offset_{gz::math::Pose3d::Zero};
+  // Pinger count
+  int pingerCount_;
 
-  // // Frame name
-  // std::string frameName_{"depth_sensor_frame"};
+  // Pinger locations
+  std::vector<gz::math::Pose3d> pingerLocations_;
 
-  // // Time bookkeeping in seconds
-  // double lastPubTime_{0.0};
-  // double updatePeriod_{0.1}; // default = 10 Hz
+  // Pinger frequency
+  std::vector<double> pingerFrequencies_;
+
+  // Difference Vectors - Where the pinger is relative to the hydrophone
+  std::vector<gz::math::Vector3d> pingerDiffs_;
 };
-
-}  // namespace hydrophone
 
 #endif

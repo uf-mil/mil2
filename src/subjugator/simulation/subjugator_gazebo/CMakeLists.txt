@@ -12,6 +12,7 @@ find_package(nav_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 
 find_package(subjugator_description REQUIRED)
+find_package(mil_msgs REQUIRED)
 
 find_package(gz-cmake3 REQUIRED)
 find_package(gz-plugin2 REQUIRED COMPONENTS register)
@@ -54,6 +55,11 @@ add_library(DVLBridge SHARED
   src/DVLBridge.cc
 )
 
+# Plugin 3: Hydrophone
+add_library(Hydrophone SHARED
+  src/Hydrophone.cc
+)
+
 # Ensures plugin can see include directory to access its header files
 target_include_directories(
   ExamplePlugin PRIVATE include
@@ -65,6 +71,10 @@ target_include_directories(
 
 target_include_directories(
   DVLBridge PRIVATE include
+)
+
+target_include_directories(
+  Hydrophone PRIVATE include
 )
 
 # Add additional needed libraries
@@ -80,6 +90,11 @@ target_link_libraries(UnderwaterCamera
 
 # Link libraries for DVL Bridge plugin
 target_link_libraries(DVLBridge
+  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+)
+
+# Link libraries for Hydrophone plugin
+target_link_libraries(Hydrophone
   gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
 )
 
@@ -102,8 +117,14 @@ ament_target_dependencies(DVLBridge
   std_msgs
 )
 
+ament_target_dependencies(Hydrophone
+  rclcpp
+  geometry_msgs
+  mil_msgs
+)
+
 # Install the plugins
-install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge
+install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge Hydrophone
 LIBRARY DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -128,7 +149,7 @@ if(BUILD_TESTING)
 endif()
 
 # Following hooks are used to ensure that the correct environment variables
-# will be set by exectuting 'sourece install/setup.bash' after compilation.
+# will be set by executing 'sourece install/setup.bash' after compilation.
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.dsv.in")
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.sh.in")
 

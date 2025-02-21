@@ -8,18 +8,18 @@
   <license>Apache 2.0</license>
   <author>Keith Khadar</author>
 
+  <depend>geometry_msgs</depend>
+  <depend>mil_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
   <depend>subjugator_description</depend>
+  <depend>subjugator_msgs</depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <test_depend>ament_lint_auto</test_depend>
-
-  <depend>rclcpp</depend>
-  <depend>sensor_msgs</depend>
-  <depend>subjugator_msgs</depend>
-  <depend>nav_msgs</depend>
-  <depend>std_msgs</depend>
-  <depend>geometry_msgs</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
