@@ -5,7 +5,7 @@
 
 namespace electrical_protocol
 {
-    SerialDevice::SerialDevice(const std::string& deviceName, speed_t baudrate)
+    SerialDevice::SerialDevice(std::string const& deviceName, speed_t baudrate)
     {
         this->open(deviceName, baudrate);
     }
@@ -20,7 +20,7 @@ namespace electrical_protocol
         close_();
     }
 
-    int SerialDevice::open(const std::string& deviceName, speed_t baudrate)
+    int SerialDevice::open(std::string const& deviceName, speed_t baudrate)
     {
         int error = 0;
         if(opened_)

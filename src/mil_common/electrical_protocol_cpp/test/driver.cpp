@@ -24,7 +24,7 @@ std::string testString("The Machine Intelligence Laboratory (MIL) "
 class SerialTest: public electrical_protocol::SerialDevice
 {
     public:
-    SerialTest(const std::string& portName):SerialDevice(portName)
+    SerialTest(std::string const& portName):SerialDevice(portName)
     {
         if(sem_init(&readSem, 0, 0) == -1)
         {

@@ -11,7 +11,7 @@
 #include <pthread.h>
 #include <fcntl.h>
 
-#include <electrical_protocol_cpp/packet.h>
+#include "electrical_protocol_cpp/packet.h"
 
 namespace electrical_protocol
 {
@@ -20,11 +20,11 @@ class SerialDevice
 {
     public:
 
-    SerialDevice(const std::string& deviceName, speed_t baudrate = B9600);
+    SerialDevice(std::string const& deviceName, speed_t baudrate = B9600);
     SerialDevice();
     virtual ~SerialDevice();
 
-    int open(const std::string& deviceName, speed_t baudrate);
+    int open(std::string const& deviceName, speed_t baudrate);
     void close();
     bool isOpened() const;
 

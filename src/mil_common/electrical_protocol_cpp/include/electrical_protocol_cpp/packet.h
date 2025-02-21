@@ -6,7 +6,7 @@
 #include <deque>
 #include <exception>
 
-#include <cppystruct.h>
+#include "cppystruct.h"
 // #include <cppystruct/format.h>
 
 namespace electrical_protocol
@@ -36,7 +36,7 @@ namespace electrical_protocol
             data_ = std::move(packet.data_);
         }
 
-        Packet(const Packet& packet) noexcept : id_(packet.id_)
+        Packet(Packet const& packet) noexcept : id_(packet.id_)
         {
             data_ = packet.data_;
         }
@@ -50,7 +50,7 @@ namespace electrical_protocol
             return *this;
         }
 
-        inline Packet& operator= (Packet& packet)
+        inline Packet& operator= (Packet const& packet)
         {
             if(id_ != packet.id_)
                 throw std::runtime_error("= between two packets with different id is impossiable");
