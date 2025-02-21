@@ -11,9 +11,18 @@
 
       <!-- Inertial Properties - necessary for collider to exist -->
       <inertial>
+        <!-- The following tags DO NOT work to rotate the collider and exist
+             so that work does not have to be repeated -->
+        <!-- <pose>-0.15 0 -0.05 0 0 0</pose>
+        <axis>
+          <xyz>0 1 0</xyz>
+        </axis> -->
+        <!-- End test tags -->
         <origin rpy="0 0 0" xyz="0 0 0"/>
         <mass value="1"/>
-        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        <inertia ixx="1.0" ixy="0.0" ixz="0.0"
+                 iyy="1.0" iyz="0.0"
+                 izz="1.0"/>
       </inertial>
 
       <collision name="${name}_collision">
