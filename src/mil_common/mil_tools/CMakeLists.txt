@@ -22,8 +22,6 @@ add_library(${PROJECT_NAME}
     src/string.cpp
 )
 include_directories(include)
-ament_target_dependencies(${PROJECT_NAME} rclcpp)
-ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
 
 install(
   TARGETS ${PROJECT_NAME}
@@ -34,8 +32,8 @@ install(
 )
 
 install(
-    DIRECTORY include
-    DESTINATION include/${PROJECT_NAME}
+    DIRECTORY include/${PROJECT_NAME}
+    DESTINATION include
 )
 
 if(BUILD_TESTING)
@@ -74,4 +72,23 @@ if(BUILD_TESTING)
     $<INSTALL_INTERFACE:include>
   )
   target_link_libraries(${PROJECT_NAME}_overloaded_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_ringbuffer_test test/ringBuffer.cpp)
+  target_include_directories(${PROJECT_NAME}_ringbuffer_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_ringbuffer_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_pairedserial_test test/pairedSerial.cpp)
+  target_include_directories(${PROJECT_NAME}_pairedserial_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_pairedserial_test ${PROJECT_NAME})
 endif()
+
+ament_export_include_directories(include)
+ament_target_dependencies(${PROJECT_NAME} rclcpp)
+ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_package()
