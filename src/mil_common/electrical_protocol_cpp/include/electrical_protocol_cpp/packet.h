@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "cppystruct.h
+#include "cppystruct.h"
 
 namespace electrical_protocol
 {
