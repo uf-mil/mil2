@@ -22,17 +22,19 @@ int main()
     // since we might change our CPU or components.
     while ((chip = sensors_get_detected_chips(nullptr, &chip_nr)) != nullptr) 
     {
+	std::cout << "Entered loop\n";
         // Get all features (sensors) of the chip
         const sensors_feature *feature;
         int feature_nr = 0;
         
         while ((feature = sensors_get_features(chip, &feature_nr))) 
         {
+	    std::cout << "Entered second loop" << std::endl;
             // We only care about temperature readings so any feature that's not temp we can skip
-            if (feature->type != SENSORS_FEATURE_TEMP) 
+            /*if (feature->type != SENSORS_FEATURE_TEMP) 
             {
                 continue;
-            }
+            }*/
 
             // Get temperature reading
             double temp;
