@@ -1,6 +1,30 @@
 #!/bin/bash
 set -euo pipefail
 
+# Parse arguments
+POSITIONAL_ARGS=()
+
+# Whether to install ROS2 from source (especially useful when installing on an OS other
+# than Ubuntu 24.04) instead of installing from apt.
+FROM_SOURCE=false
+
+while [[ $# -gt 0 ]]; do
+	case $1 in
+		--from-source)
+			FROM_SOURCE=true
+			shift
+			;;
+		-*|--*)
+			echo "Unknown option $1"
+			exit 1
+			;;
+		*)
+			POSITIONAL_ARGS+=("$1")
+			shift
+			;;
+	esac
+done
+
 Res='\e[0;0m'
 # shellcheck disable=SC2034
 Red='\e[0;31m'
@@ -20,17 +44,24 @@ if [[ -z ${TERM} ]]; then
 	clear
 fi
 
+# Whether we can only use Ubuntu 24.04
+ONLY_24=true
+if "$FROM_SOURCE" ; then
+	ONLY_24=false
+fi
+
 # Before even starting, check if using Ubuntu 20.04
 NAME=$(awk -F= '/^NAME/{print $2}' /etc/os-release)
 VERSION=$(awk -F'=' '/^VERSION=/{print $2}' /etc/os-release)
-if [[ $NAME != *"Ubuntu"* ]]; then
-	printf "${Red}This script is only supported on Ubuntu (you're using: ${NAME}). Please install Ubuntu 24.04.${Res}\n"
-	exit 1
-fi
-if [[ $VERSION != *"24.04"* ]]; then
-	printf "${Red}This script is only supported on Ubuntu 24.04 (you're using: ${VERSION}). Please install Ubuntu 24.04.${Res}\n"
-	exit 1
-fi
+
+# if [[ $NAME != *"Ubuntu"* ]] && [[ "$ONLY_24" = true ]] ; then
+# 	printf "${Red}This script is only supported on Ubuntu (you're using: ${NAME}). Please install Ubuntu 24.04.${Res}\n"
+# 	exit 1
+# fi
+# if [[ $VERSION != *"24.04"* ]] && [[ "$ONLY_24" = true ]] ; then
+# 	printf "${Red}This script is only supported on Ubuntu 24.04 (you're using: ${VERSION}). Please install Ubuntu 24.04.${Res}\n"
+# 	exit 1
+# fi
 
 # Display header
 cat <<EOF
@@ -70,6 +101,9 @@ This script will help to get your system installed with the needed dependencies.
 You shouldn't need to do much - sit back and watch the magic happen before your
 eyes!$(color "$Res")
 EOF
+if [[ "$FROM_SOURCE" = true ]]; then
+	echo -e "\n$(color "$Red")!!!! This installation will be from source."
+fi
 
 sleep 1
 
@@ -163,6 +197,7 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-a
 # Install Gazebo apt source
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list >/dev/null
 
+install_ros_apt() {
 # Pull ROS apt key
 sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 # Pull gazebo apt key
@@ -198,6 +233,132 @@ mil_system_install \
 	ros-jazzy-velodyne \
 	ros-jazzy-backward-ros \
 	python3-colcon-common-extensions
+}
+
+install_ros_src() {
+#####################################
+# Install ROS2 from source
+#####################################
+
+# Install development tools
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+$(color "$Pur")Installing ROS2 development tools...
+$(hash_header)$(color "$Res")
+EOF
+sudo apt update && sudo apt install -y \
+  python3-flake8-blind-except \
+  python3-flake8-class-newline \
+  python3-flake8-deprecated \
+  python3-mypy \
+  python3-pip \
+  python3-pytest \
+  python3-pytest-cov \
+  python3-pytest-mock \
+  python3-pytest-repeat \
+  python3-pytest-rerunfailures \
+  python3-pytest-runner \
+  python3-pytest-timeout \
+  ros-dev-tools
+
+# Get ROS 2 code
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+$(color "$Pur")Fetching ROS2 Jazzy source...
+$(hash_header)$(color "$Res")
+EOF
+mkdir -p ~/ros2_jazzy/src
+cd ~/ros2_jazzy
+vcs import --input https://raw.githubusercontent.com/ros2/ros2/jazzy/ros2.repos src
+
+# Install dependencies using rosdep
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+$(color "$Pur")Installing ROS2 dependencies...
+$(hash_header)$(color "$Res")
+EOF
+sudo apt upgrade
+sudo rosdep init
+rosdep update
+rosdep install --from-paths src --ignore-src -y --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers"
+
+# Build code
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+$(color "$Pur")Building ROS2...
+$(hash_header)$(color "$Res")
+EOF
+cd ~/ros2_jazzy/
+colcon build --symlink-install
+
+# Source
+. ~/ros2_jazzy/install/local_setup.bash
+
+#####################################
+# Install Gazebo from source
+#####################################
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+$(color "$Pur")Fetching Gazebo dependencies...
+$(hash_header)$(color "$Res")
+EOF
+mil_system_install python3-pip python3-venv lsb-release gnupg curl git
+
+# vcstool and colcon from pip
+python3 -m venv $HOME/vcs_colcon_installation
+. $HOME/vcs_colcon_installation/bin/activate
+pip3 install vcstool colcon-common-extensions
+
+# Getting the sources
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+$(color "$Pur")Getting Gazebo sources...
+$(hash_header)$(color "$Res")
+EOF
+mkdir -p ~/gazebo_ws/src
+cd ~/gazebo_ws/src
+curl -O https://raw.githubusercontent.com/gazebo-tooling/gazebodistro/master/collection-harmonic.yaml
+vcs import < collection-harmonic.yaml
+
+# Install all Gazebo dependencies
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+$(color "$Pur")Installing Gazebo dynamic apt dependencies...
+$(hash_header)$(color "$Res")
+EOF
+cd ~/workspace/src
+sudo apt -y install \
+  $(sort -u $(find . -iname 'packages-'`lsb_release -cs`'.apt' -o -iname 'packages.apt' | grep -v '/\.git/') | sed '/gz\|sdf/d' | tr '\n' ' ')
+
+# Building the Gazebo Libraries
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+$(color "$Pur")Building Gazebo...
+$(hash_header)$(color "$Res")
+EOF
+cd ~/gazebo_ws/
+colcon graph
+colcon build --cmake-args ' -DBUILD_TESTING=OFF' --merge-install
+
+# Source
+. ~/gazebo_ws/install/setup.bash
+}
+
+if [[ "$FROM_SOURCE" = true ]]; then
+	echo "$(color "$Pur")Installing ROS2 and Gazebo from source..."
+	install_ros_src
+else
+	echo "$(color "$Pur")Installing ROS2 and Gazebo from apt..."
+	install_ros_apt
+fi
 
 cat <<EOF
 $(color "$Pur")
