@@ -1,9 +1,19 @@
 MIL_REPO="$HOME/mil2"
 
 if [[ $(ps -p $$ | tail -n 1 | awk '{ print $4 }') == "zsh" ]]; then
-	source /opt/ros/jazzy/setup.zsh
+	if [ -d "~/ros2_jazzy" ]; then
+		echo "Using ros 2 jazzy stuff"
+		source ~/ros2_jazzy/install/local_setup.zsh
+	else
+		source /opt/ros/jazzy/setup.zsh
+	fi
 else
-	source /opt/ros/jazzy/setup.bash
+	if [ -d "/home/${USER}/ros2_jazzy" ]; then
+		echo "Using ros 2 jazzy stuff"
+		source ~/ros2_jazzy/install/local_setup.bash
+	else
+		source /opt/ros/jazzy/setup.bash
+	fi
 fi
 
 _list_complete() {

@@ -25,6 +25,15 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+# If this script is not ~/mil2/scripts/install.sh, throw an error to prevent members
+# from installing the repo in the wrong location. Setting ALLOW_NONSTANDARD_DIR=1
+# will bypass this check.
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+if [[ $SCRIPT_DIR != "$HOME/mil2/scripts" && -z ${ALLOW_NONSTANDARD_DIR:-} ]]; then
+	echo "${Red}Error: This script must be located in ~/mil2/scripts/install.sh. Please review the installation guide and try again.${Res}"
+	exit 1
+fi
+
 Res='\e[0;0m'
 # shellcheck disable=SC2034
 Red='\e[0;31m'
@@ -280,7 +289,9 @@ $(hash_header)
 $(color "$Pur")Installing ROS2 dependencies...
 $(hash_header)$(color "$Res")
 EOF
-sudo apt upgrade
+sudo apt upgrade -y
+# If the sources are already there, delete them so that rosdep does not complain
+sudo rm -f "/etc/ros/rosdep/sources.list.d/20-default.list"
 sudo rosdep init
 rosdep update
 rosdep install --from-paths src --ignore-src -y --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers"
@@ -293,10 +304,7 @@ $(color "$Pur")Building ROS2...
 $(hash_header)$(color "$Res")
 EOF
 cd ~/ros2_jazzy/
-colcon build --symlink-install
-
-# Source
-. ~/ros2_jazzy/install/local_setup.bash
+# colcon build --symlink-install
 
 #####################################
 # Install Gazebo from source
@@ -333,7 +341,7 @@ $(hash_header)
 $(color "$Pur")Installing Gazebo dynamic apt dependencies...
 $(hash_header)$(color "$Res")
 EOF
-cd ~/workspace/src
+cd ~/gazebo_ws/src
 sudo apt -y install \
   $(sort -u $(find . -iname 'packages-'`lsb_release -cs`'.apt' -o -iname 'packages.apt' | grep -v '/\.git/') | sed '/gz\|sdf/d' | tr '\n' ' ')
 
@@ -349,7 +357,9 @@ colcon graph
 colcon build --cmake-args ' -DBUILD_TESTING=OFF' --merge-install
 
 # Source
-. ~/gazebo_ws/install/setup.bash
+# . ~/gazebo_ws/install/setup.bash
+
+cd "$HOME/mil2"
 }
 
 if [[ "$FROM_SOURCE" = true ]]; then
@@ -395,14 +405,6 @@ sudo rm -rf /etc/ros/rosdep/sources.list.d/* # Delete this file first - if not d
 sudo rosdep init
 sudo rosdep update
 
-# If this script is not ~/mil2/scripts/install.sh, throw an error to prevent members
-# from installing the repo in the wrong location. Setting ALLOW_NONSTANDARD_DIR=1
-# will bypass this check.
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-if [[ $SCRIPT_DIR != "$HOME/mil2/scripts" && -z ${ALLOW_NONSTANDARD_DIR:-} ]]; then
-	echo "${Red}Error: This script must be located in ~/mil2/scripts/install.sh. Please review the installation guide and try again.${Res}"
-	exit 1
-fi
 # COLCON_SOURCE_DIR="$HOME/src"
 
 # Clone repository
@@ -492,7 +494,11 @@ EOF
 mil_user_install_dependencies
 mil_user_setup_rc
 set +u
-. /opt/ros/jazzy/setup.bash
+if "$FROM_SOURCE" ; then
+	. ~/ros2_jazzy/install/setup.bash
+else
+	. /opt/ros/jazzy/setup.bash
+fi
 . "$SCRIPT_DIR/setup.bash"
 set -u
 
