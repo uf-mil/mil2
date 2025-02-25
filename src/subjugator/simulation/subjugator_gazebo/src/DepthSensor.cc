@@ -103,15 +103,9 @@ void DepthSensor::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::EntityCo
         if (this->noiseStdDev_ > 0.0){
             double noise = this->noiseDist_(this->randomEngine_);
             
-            // This keeps the std the same, avoids "clamping"
-            // Does not "Clamp" values given by distribution
-            if (depth < std::abs(noise)){
-                depth = 0.0;
-            }
-            else{
-                depth += static_cast<float>(noise);
-            }
-        } 
+            // Ensure depth never goes negative
+            depth = std::max(0.0f, depth + static_cast<float>(noise));
+        }
             
         //64 bit int for large Nanosecond Values
         int64_t simTimeNS = std::chrono::duration_cast<std::chrono::nanoseconds>(_info.simTime).count();
