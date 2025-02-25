@@ -97,7 +97,7 @@
     update_rate="5"
     frame_id="depth_sensor_frame"
     noise_mean="0.0"
-    noise_stddev="0.5"
+    noise_stddev="0"
   />
 
   <!-- Thrusters -->
