@@ -34,8 +34,9 @@
       </collision>
     </link>
 
+
     <!-- Sonar Joint -->
-    <joint name="${name}_joint" type="fixed">
+    <joint name="${name}_joint" type="continuous">
       <origin xyz="${xyz}" rpy="${rpy}"/>
       <parent link="${parent}"/>
       <child link="${name}_link"/>
