@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  
   <xacro:macro
     name="mil_depth_sensor"
     params="
@@ -12,16 +11,16 @@
       update_rate='10'
       frame_id='depth_sensor_frame'
       noise_mean='0.0'
-      noise_stddev='0.0' 
+      noise_stddev='0.0'
     "
   >
     <link name="${name}_link">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <inertial>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
-            <mass value="0.1"/>
-            <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
-        </inertial>
+        <mass value="0.1"/>
+        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
     </link>
     <!-- DepthSensor Joint -->
     <joint name="${name}_joint" type="fixed">
@@ -36,18 +35,16 @@
       <preserveFixedJoint>true</preserveFixedJoint>
     </gazebo>
 
-    <gazebo >
-
-        <plugin name="depth_sensor::DepthSensor" filename="DepthSensor">
-            <!-- SDF parameters -->
-            <frame_id>${frame_id}</frame_id>
-            <offset>0 0 0 0 0 0</offset>
-            <topic>/depth</topic>
-            <update_rate>${update_rate}</update_rate>
-            <noise_mean>${noise_mean}</noise_mean>
-            <noise_stddev>${noise_stddev}</noise_stddev>
-        </plugin>
-
+    <gazebo>
+      <plugin name="depth_sensor::DepthSensor" filename="DepthSensor">
+        <!-- SDF parameters -->
+        <frame_id>${frame_id}</frame_id>
+        <offset>0 0 0 0 0 0</offset>
+        <topic>/depth</topic>
+        <update_rate>${update_rate}</update_rate>
+        <noise_mean>${noise_mean}</noise_mean>
+        <noise_stddev>${noise_stddev}</noise_stddev>
+      </plugin>
     </gazebo>
   </xacro:macro>
 </robot>
