@@ -5,6 +5,7 @@
 #include <gz/math/Pose3.hh>  // For gz::math::Pose3d
 #include <gz/sim/EntityComponentManager.hh>
 #include <gz/sim/InstallationDirectories.hh>
+#include <gz/sim/Model.hh>
 #include <gz/sim/System.hh>           // For gz::sim::System
 #include <gz/sim/components/Name.hh>  // For gz::sim::components::Name
 #include <gz/sim/components/Pose.hh>  // For gz::sim::components::Pose
@@ -49,6 +50,9 @@ private:
 
   // Pinger frequency
   std::vector<double> pingerFrequencies_;
+
+  // Pinger names
+  std::vector<std::string> pingerNames_;
 
   // Difference Vectors - Where the pinger is relative to the hydrophone
   std::vector<gz::math::Vector3d> pingerDiffs_;

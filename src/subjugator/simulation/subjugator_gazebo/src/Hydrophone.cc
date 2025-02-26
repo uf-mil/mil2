@@ -15,8 +15,22 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
                            gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr)
 {
   this->modelEntity_ = entity;
-
   std::string pingerPrefix = "Pinger_";
+
+  // Create copy of the SDF element to perform modifications due to const
+  std::shared_ptr<sdf::Element> sdfCopy = sdf->Clone();
+
+  // Iterate through sdf file, getting all <frequency> elements
+  auto frequencyElement = sdfCopy->GetElement("frequency");
+  while (frequencyElement)
+  {
+    // Get and store frequency
+    double frequency = frequencyElement->Get<double>();
+    pingerFrequencies_.push_back(frequency);
+
+    // Move to the next <frequency> element
+    frequencyElement = frequencyElement->GetNextElement("frequency");
+  }
 
   // Iterate through all entities that have a Pose component
   ecm.Each<gz::sim::components::Pose, gz::sim::components::Name>(
@@ -32,9 +46,39 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
         // Check if name starts with "Pinger_"
         if (entityName.find(pingerPrefix) == 0)
         {
+          // Store the pose of the pinger
           this->pingerLocations_.push_back(pose->Data());  // Store Pose
-          this->pingerFrequencies_.this->pingerCount_++;   // Increment counter
-          gzdbg << "[Hydrophone] Found pinger [" << entityName << "] at pose [" << pose->Data() << "]\n";
+          this->pingerCount_++;                            // Increment counter
+
+          // Store the name of the pinger
+          this->pingerNames_.push_back(entityName);  // Store name
+
+          // Assign the extracted frequencies
+          for (double freq : pingerFrequencies_)
+          {
+            this->pingerFrequencies_.push_back(freq);
+            gzdbg << "[Hydrophone] Found pinger [" << entityName << "] with frequency [" << freq << "] at pose ["
+                  << pose->Data() << "]\n";
+          }
+
+          // // Iterate over all <frequency> elements
+          // auto frequencyElement = sdfCopy->GetElement("frequency");
+          // while (frequencyElement)
+          // {
+          //   // Get and store the frequency
+          //   double frequency = frequencyElement->Get<double>("frequency");
+          //   this->pingerFrequencies_.push_back(frequency);  // Store frequency
+
+          //   // Store the name of the pinger
+          //   this->pingerNames_.push_back(entityName);  // Store name
+
+          //   // Send out Gazebo Debug message
+          //   gzdbg << "[Hydrophone] Found pinger [" << entityName << "] with frequency ["
+          //         << frequency << "] at pose [" << pose->Data() << "]\n";
+
+          //   // Move to the next <frequency> element
+          //   frequencyElement = frequencyElement->GetNextElement("frequency");
+          // }
         }
 
         return true;  // Continue iteration
@@ -81,6 +125,7 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
   // Iterate over all pinger locations and compute difference vectors
   for (auto const &pingerPose : this->pingerLocations_)
   {
+    int i = 0;
     // Compute difference vector (pinger - hydrophone)
     gz::math::Vector3d diffVector = pingerPose.Pos() - hydroPose.Pos();
     this->pingerDiffs_.push_back(diffVector);
@@ -93,7 +138,7 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
     msg.origin_direction_body.z = diffVector.Z();
 
     // Msg for Pinger Frequency
-    msg.frequency = 1000;  // Example frequency, replace with actual value
+    msg.frequency = this->pingerFrequencies_.at(i);
 
     // Msg for Origin Distance
     msg.origin_distance_m = diffVector.Length();
@@ -101,7 +146,10 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
     // Publish message
     this->pingPub_->publish(msg);
 
-    gzdbg << "[Hydrophone] Pinger at [" << pingerPose.Pos() << "] -> Difference vector: [" << diffVector << "]\n";
+    gzdbg << "[Hydrophone] Pinger at [" << pingerPose.Pos() << "] -> Difference vector: [" << diffVector << "]"
+          << "with frequency [" << this->pingerFrequencies_.at(i) << "]\n";
+
+    i++;
   }
 }
 
