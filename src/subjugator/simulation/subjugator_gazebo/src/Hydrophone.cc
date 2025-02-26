@@ -33,7 +33,7 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
         if (entityName.find(pingerPrefix) == 0)
         {
           this->pingerLocations_.push_back(pose->Data());  // Store Pose
-          this->pingerCount_++;                            // Increment counter
+          this->pingerFrequencies_.this->pingerCount_++;   // Increment counter
           gzdbg << "[Hydrophone] Found pinger [" << entityName << "] at pose [" << pose->Data() << "]\n";
         }
 
@@ -46,7 +46,7 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
     rclcpp::init(0, nullptr);
 
   this->rosNode_ = rclcpp::Node::make_shared("hydrophone_node");
-  this->depthPub_ = this->rosNode_->create_publisher<mil_msgs::msg::DepthStamped>("/depth", 10);
+  this->pingPub_ = this->rosNode_->create_publisher<mil_msgs::msg::ProcessedPing>("/ping", 10);
 
   gzdbg << "[Hydrophone] Configure() done." << "\n"
         << "Entity = " << entity << "\n"
@@ -106,4 +106,4 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
 }
 
 // Register plugin so Gazebo can see it
-GZ_ADD_PLUGIN(hydrophone::Hydrophone, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)
+GZ_ADD_PLUGIN(Hydrophone, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)

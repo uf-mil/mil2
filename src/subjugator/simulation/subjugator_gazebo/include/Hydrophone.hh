@@ -2,8 +2,11 @@
 #define HYDROPHONE_HPP
 
 #include <chrono>
-#include <gz/math/Pose3.hh>           // For gz::math::Pose3d
+#include <gz/math/Pose3.hh>  // For gz::math::Pose3d
+#include <gz/sim/EntityComponentManager.hh>
+#include <gz/sim/InstallationDirectories.hh>
 #include <gz/sim/System.hh>           // For gz::sim::System
+#include <gz/sim/components/Name.hh>  // For gz::sim::components::Name
 #include <gz/sim/components/Pose.hh>  // For gz::sim::components::Pose
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
