@@ -45,6 +45,7 @@ DVLBridge::DVLBridge() : dataPtr(std::make_unique<PrivateData>())
 void DVLBridge::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf::Element const> const &_sdf,
                           gz::sim::EntityComponentManager &_ecm, gz::sim::EventManager &_eventManager)
 {
+  std::cout << "testing" << std::endl;
   gzdbg << "dave_ros_gz_plugins::DVLBridge::Configure on entity: " << _entity << std::endl;
 
   if (!rclcpp::ok())
