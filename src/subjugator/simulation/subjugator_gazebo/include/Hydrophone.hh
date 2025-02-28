@@ -1,5 +1,5 @@
-#ifndef HYDROPHONE_HH
-#define HYDROPHONE_HH
+#ifndef HYDROPHONE__HH_
+#define HYDROPHONE__HH_
 
 #include <chrono>
 #include <gz/math/Pose3.hh>  // For gz::math::Pose3d

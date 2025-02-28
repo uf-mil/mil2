@@ -25,8 +25,8 @@
       <preserveFixedJoint>true</preserveFixedJoint>
     </gazebo>
 
-    <gazebo reference="${name}_link">
-      <plugin filename="DVLBridge" name="dave_ros_gz_plugins::DVLBridge">
+    <gazebo>
+      <plugin filename="Hydrophone" name="hydrophone::Hydrophone">
         <topic>${name}</topic>
       </plugin>
     </gazebo>

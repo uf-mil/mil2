@@ -356,7 +356,7 @@
                 </link>
                 <pose>-1.65 23.80 -1.60 0 0 0</pose>
                 <static>true</static>
-                <!-- <frequency>10000</frequency> -->
+                <frequency>10000</frequency>
             </model>
             <model name='Torpedoes_A'>
                 <link name='link'>
@@ -406,7 +406,7 @@
                 </link>
                 <pose>-8.04 22.60 -1.60 0 0 0</pose>
                 <static>true</static>
-                <!-- <frequency>15000</frequency> -->
+                <frequency>15000</frequency>
             </model>
             <model name='Octagon_A'>
                 <link name='link'>
@@ -685,7 +685,7 @@
                 </link>
                 <pose>-3.91 9.60 -1.60 0 0 0</pose>
                 <static>true</static>
-                <!-- <frequency>20000</frequency> -->
+                <frequency>20000</frequency>
             </model>
             <model name='Torpedoes_B'>
                 <link name='link'>
@@ -735,7 +735,7 @@
                 </link>
                 <pose>-8.18 3.66 -1.60 0 0 0</pose>
                 <static>true</static>
-                <!-- <frequency>25000</frequency> -->
+                <frequency>25000</frequency>
             </model>
             <model name='Octagon_B'>
                 <link name='link'>
@@ -1014,7 +1014,7 @@
                 </link>
                 <pose>-3.64 -3.44 -1.60 0 0 0</pose>
                 <static>true</static>
-                <!-- <frequency>30000</frequency> -->
+                <frequency>30000</frequency>
             </model>
             <model name='Torpedoes_C'>
                 <link name='link'>
@@ -1064,7 +1064,7 @@
                 </link>
                 <pose>-8.24 -10.19 -1.60 0 0 0</pose>
                 <static>true</static>
-                <!-- <frequency>35000</frequency> -->
+                <frequency>35000</frequency>
             </model>
             <model name='Octagon_C'>
                 <link name='link'>
@@ -1343,7 +1343,7 @@
                 </link>
                 <pose>-3.73 -17.61 -1.60 0 0 0</pose>
                 <static>true</static>
-                <!-- <frequency>40000</frequency> -->
+                <frequency>40000</frequency>
             </model>
             <model name='Torpedoes_D'>
                 <link name='link'>
@@ -1393,7 +1393,7 @@
                 </link>
                 <pose>-7.90 -23.22 -1.60 0 0 0</pose>
                 <static>true</static>
-                <!-- <frequency>45000</frequency> -->
+                <frequency>45000</frequency>
             </model>
             <model name='Octagon_D'>
                 <link name='link'>
