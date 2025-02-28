@@ -33,9 +33,11 @@
 #include "gz/sim/components/Name.hh"
 #include "gz/sim/components/World.hh"
 
-GZ_ADD_PLUGIN(dave_gz_sensor_plugins::UnderwaterCamera, gz::sim::System,
-              dave_gz_sensor_plugins::UnderwaterCamera::ISystemConfigure,
-              dave_gz_sensor_plugins::UnderwaterCamera::ISystemPostUpdate)
+GZ_ADD_PLUGIN(
+  dave_gz_sensor_plugins::UnderwaterCamera, gz::sim::System,
+  dave_gz_sensor_plugins::UnderwaterCamera::ISystemConfigure,
+  dave_gz_sensor_plugins::UnderwaterCamera::ISystemPostUpdate,
+  dave_gz_sensor_plugins::UnderwaterCamera::ISystemReset)
 
 namespace dave_gz_sensor_plugins
 {
@@ -54,6 +56,9 @@ struct UnderwaterCamera::PrivateData
   std::string simulated_image_topic;
   std::string camera_info_topic;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_pub;
+  
+  // Locking variable for stopping simulateunderwater() when resetting gazebo
+  bool isReset;
 
   /// \brief Width of the image.
   unsigned int width;
@@ -363,6 +368,7 @@ void UnderwaterCamera::CameraCallback(gz::msgs::Image const &msg)
       cv::Mat output_image = this->ConvertGazeboToOpenCV(this->dataPtr->lastImage);
 
       // Simulate underwater
+      this->dataPtr->isReset = false;
       cv::Mat simulated_image = this->SimulateUnderwater(image, depth_image, output_image);
 
       // Publish simulated image
@@ -405,6 +411,10 @@ cv::Mat UnderwaterCamera::SimulateUnderwater(cv::Mat const &_inputImage, cv::Mat
 
     for (int col = 0; col < this->dataPtr->width; col++)
     {
+      // Check to see if gazebo sim reset
+      if(this->dataPtr->isReset){
+        return _inputImage;
+      }
       // Convert depth to range using the depth2range LUT
       float r = *(lutPtr++) * depthrow[col];
 
@@ -445,6 +455,12 @@ void UnderwaterCamera::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::Ent
       gzmsg << "dave_gz_sensor_plugins::UnderwaterCamera::PostUpdate" << std::endl;
     }
   }
+}
+
+void UnderwaterCamera::Reset(const gz::sim::UpdateInfo &_info,
+  gz::sim::EntityComponentManager &_ecm)
+{
+  this->dataPtr->isReset = true;
 }
 
 // Function to sanitize a ROS node name
