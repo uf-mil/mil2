@@ -17,6 +17,7 @@ find_package(rclcpp REQUIRED)
 
 add_library(${PROJECT_NAME}
     src/fs/path.cpp
+    src/itertools.cpp
     src/os.cpp
     src/os/FileDescriptor.cpp
     src/string.cpp
@@ -74,4 +75,11 @@ if(BUILD_TESTING)
     $<INSTALL_INTERFACE:include>
   )
   target_link_libraries(${PROJECT_NAME}_overloaded_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_itertools_test test/itertools.cpp)
+  target_include_directories(${PROJECT_NAME}_itertools_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_itertools_test ${PROJECT_NAME})
 endif()
