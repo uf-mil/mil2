@@ -1,0 +1,9 @@
+so 
+
+colcon build after every change
+
+and source install/setup.bash
+
+ros2 run my_joy_listener joy_handsome
+
+also run `ros2 run joy joy_node` in another term b4
