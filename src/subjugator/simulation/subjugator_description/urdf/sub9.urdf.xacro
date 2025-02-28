@@ -165,8 +165,8 @@
   <xacro:mil_hydrophone
     name="hydrophone_sensor"
     parent="base_link"
-    xyz="-0.32 -0.044274 -0.050"
-    rpy="0 1.57 0"
+    xyz="0.10 -0.034274 -0.22"
+    rpy="0 1.57 .7853981634"
   />
 
 
