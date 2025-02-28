@@ -239,7 +239,7 @@ sudo rosdep update
 # will bypass this check.
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 if [[ $SCRIPT_DIR != "$HOME/mil2/scripts" && -z ${ALLOW_NONSTANDARD_DIR:-} ]]; then
-	echo "${Red}Error: This script must be located in ~/mil2/scripts/install.sh. Please review the installation guide and try again.${Res}"
+	echo "${Red}Error: This script must be located in ~/mil2/scripts/install.sh. You do not need to nest it in catkin_ws/src, as that is only for ROS2. Please review the installation guide and try again.${Res}"
 	exit 1
 fi
 # COLCON_SOURCE_DIR="$HOME/src"
