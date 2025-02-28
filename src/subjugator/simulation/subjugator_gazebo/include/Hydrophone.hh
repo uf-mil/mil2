@@ -13,8 +13,11 @@
 #include <iostream>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
+#include <sdf/Root.hh>
+#include <sdf/World.hh>
 #include <sdf/sdf.hh>
 #include <string>
+#include <vector>
 
 #include "mil_msgs/msg/processed_ping.hpp"
 

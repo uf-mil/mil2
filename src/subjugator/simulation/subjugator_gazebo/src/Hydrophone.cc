@@ -26,11 +26,14 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
   std::shared_ptr<sdf::Element> sdfCopy = sdf->Clone();
 
   // Iterate through sdf file, getting all <frequency> elements
+  // !! Does not enter Loop !!
   auto frequencyElement = sdfCopy->GetElement("frequency");
+  std::cout << "Frequency Element: " << frequencyElement << std::endl;
   while (frequencyElement)
   {
     // Get and store frequency
     double frequency = frequencyElement->Get<double>();
+    std::cout << "Frequency: " << frequency << std::endl;
     pingerFrequencies_.push_back(frequency);
 
     // Move to the next <frequency> element
@@ -47,13 +50,16 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
           return true;  // Skip if either component is missing
         }
         std::string entityName = name->Data();  // Get entity name
-
+        std::cout << "Entity Name: " << entityName << std::endl;
         // Check if name starts with "Pinger_"
         if (entityName.find(pingerPrefix) == 0)
         {
           // Store the pose of the pinger
           this->pingerLocations_.push_back(pose->Data());  // Store Pose
-          this->pingerCount_++;                            // Increment counter
+          std::cout << "Pinger Pose X: " << pose->Data().Pos().X() << std::endl;
+          std::cout << "Pinger Pose Y: " << pose->Data().Pos().Y() << std::endl;
+          std::cout << "Pinger Pose Z: " << pose->Data().Pos().Z() << std::endl;
+          this->pingerCount_++;  // Increment counter
 
           // Store the name of the pinger
           this->pingerNames_.push_back(entityName);  // Store name
@@ -62,8 +68,8 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
           for (double freq : pingerFrequencies_)
           {
             this->pingerFrequencies_.push_back(freq);
-            gzdbg << "[Hydrophone] Found pinger [" << entityName << "] with frequency [" << freq << "] at pose ["
-                  << pose->Data() << "]\n";
+            std::cout << "[Hydrophone] Found pinger [" << entityName << "] with frequency [" << freq << "] at pose ["
+                      << pose->Data() << "]" << std::endl;
           }
         }
 
@@ -76,30 +82,26 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
   {
     rclcpp::init(0, nullptr);
   }
-  std::cout << "Trying to make node" << std::endl;
   this->rosNode_ = std::make_shared<rclcpp::Node>("hydrophone_node");
-  std::cout << "Node Made" << std::endl;
   this->pingPub_ = this->rosNode_->create_publisher<mil_msgs::msg::ProcessedPing>("/ping", 1);
-  std::cout << "Publisher Made" << std::endl;
 
-  gzdbg << "[Hydrophone] Configure() done." << "\n"
-        << "Entity = " << entity << "\n"
-        << "Pose = " << this->pose_ << "\n";
+  std::cout << "[Hydrophone] Configure() done." << "\n"
+            << "Entity = " << entity << "\n"
+            << "Pose = " << this->pose_ << std::endl;
 }
 
 void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm)
 {
-  std::cout << "Post Update" << std::endl;
+  std::cout << "Post Update Entered" << std::endl;
   // Check if the simulation is paused
   if (info.paused)
   {
+    std::cout << "Simulation is paused" << std::endl;
     return;
   }
 
   // Spin the ROS node to process incoming messages
-  std::cout << "Try to spin" << std::endl;
   rclcpp::spin_some(this->rosNode_);
-  std::cout << "Spun" << std::endl;
 
   // Update values of hydrophones on update
   auto poseComp = ecm.Component<gz::sim::components::Pose>(this->modelEntity_);
@@ -139,8 +141,8 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
     // Publish message
     this->pingPub_->publish(msg);
 
-    gzdbg << "[Hydrophone] Pinger at [" << pingerPose.Pos() << "] -> Difference vector: [" << diffVector << "]"
-          << "with frequency [" << this->pingerFrequencies_.at(i) << "]\n";
+    std::cout << "[Hydrophone] Pinger at [" << pingerPose.Pos() << "] -> Difference vector: [" << diffVector << "]"
+              << "with frequency [" << this->pingerFrequencies_.at(i) << "]" << std::endl;
 
     i++;
   }
