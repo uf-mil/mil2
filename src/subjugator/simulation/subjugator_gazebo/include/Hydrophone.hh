@@ -1,5 +1,5 @@
-#ifndef HYDROPHONE_HPP
-#define HYDROPHONE_HPP
+#ifndef HYDROPHONE_HH
+#define HYDROPHONE_HH
 
 #include <chrono>
 #include <gz/math/Pose3.hh>  // For gz::math::Pose3d
@@ -9,6 +9,8 @@
 #include <gz/sim/System.hh>           // For gz::sim::System
 #include <gz/sim/components/Name.hh>  // For gz::sim::components::Name
 #include <gz/sim/components/Pose.hh>  // For gz::sim::components::Pose
+#include <gz/transport/Node.hh>
+#include <iostream>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <sdf/sdf.hh>
@@ -16,18 +18,20 @@
 
 #include "mil_msgs/msg/processed_ping.hpp"
 
+namespace hydrophone
+{
 class Hydrophone : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
 {
 public:
   Hydrophone();
-  ~Hydrophone() override;
+  ~Hydrophone();
 
   // System Configure
   void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
-                 gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) /* no override */;
+                 gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) override;
 
   // System PostUpdate
-  void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) /* no override */;
+  void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
 
 private:
   gz::sim::Entity modelEntity_{ gz::sim::kNullEntity };
@@ -36,7 +40,7 @@ private:
   // Message Type: Vector3d origin_direction_body
   //                int frequency
   //                float origin_distance_m
-  rclcpp::Node::SharedPtr rosNode_;
+  std::shared_ptr<rclcpp::Node> rosNode_;
   rclcpp::Publisher<mil_msgs::msg::ProcessedPing>::SharedPtr pingPub_;
 
   // Hydrophone Pose
@@ -58,4 +62,5 @@ private:
   std::vector<gz::math::Vector3d> pingerDiffs_;
 };
 
-#endif
+}  // namespace hydrophone
+#endif  // HYDROPHONE_HH

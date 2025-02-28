@@ -1,7 +1,11 @@
 #include "Hydrophone.hh"
 
 #include <gz/common/Console.hh>
-#include <gz/plugin/Register.hh>  // For GZ_ADD_PLUGIN
+
+#include "gz/plugin/Register.hh"  // For GZ_ADD_PLUGIN
+
+namespace hydrophone
+{
 
 Hydrophone::Hydrophone()
 {
@@ -14,6 +18,7 @@ Hydrophone::~Hydrophone()
 void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                            gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr)
 {
+  std::cout << "Entered Configure" << std::endl;
   this->modelEntity_ = entity;
   std::string pingerPrefix = "Pinger_";
 
@@ -60,25 +65,6 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
             gzdbg << "[Hydrophone] Found pinger [" << entityName << "] with frequency [" << freq << "] at pose ["
                   << pose->Data() << "]\n";
           }
-
-          // // Iterate over all <frequency> elements
-          // auto frequencyElement = sdfCopy->GetElement("frequency");
-          // while (frequencyElement)
-          // {
-          //   // Get and store the frequency
-          //   double frequency = frequencyElement->Get<double>("frequency");
-          //   this->pingerFrequencies_.push_back(frequency);  // Store frequency
-
-          //   // Store the name of the pinger
-          //   this->pingerNames_.push_back(entityName);  // Store name
-
-          //   // Send out Gazebo Debug message
-          //   gzdbg << "[Hydrophone] Found pinger [" << entityName << "] with frequency ["
-          //         << frequency << "] at pose [" << pose->Data() << "]\n";
-
-          //   // Move to the next <frequency> element
-          //   frequencyElement = frequencyElement->GetNextElement("frequency");
-          // }
         }
 
         return true;  // Continue iteration
@@ -87,10 +73,14 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
   );
 
   if (!rclcpp::ok())
+  {
     rclcpp::init(0, nullptr);
-
-  this->rosNode_ = rclcpp::Node::make_shared("hydrophone_node");
-  this->pingPub_ = this->rosNode_->create_publisher<mil_msgs::msg::ProcessedPing>("/ping", 10);
+  }
+  std::cout << "Trying to make node" << std::endl;
+  this->rosNode_ = std::make_shared<rclcpp::Node>("hydrophone_node");
+  std::cout << "Node Made" << std::endl;
+  this->pingPub_ = this->rosNode_->create_publisher<mil_msgs::msg::ProcessedPing>("/ping", 1);
+  std::cout << "Publisher Made" << std::endl;
 
   gzdbg << "[Hydrophone] Configure() done." << "\n"
         << "Entity = " << entity << "\n"
@@ -99,6 +89,7 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
 
 void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm)
 {
+  std::cout << "Post Update" << std::endl;
   // Check if the simulation is paused
   if (info.paused)
   {
@@ -106,7 +97,9 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
   }
 
   // Spin the ROS node to process incoming messages
+  std::cout << "Try to spin" << std::endl;
   rclcpp::spin_some(this->rosNode_);
+  std::cout << "Spun" << std::endl;
 
   // Update values of hydrophones on update
   auto poseComp = ecm.Component<gz::sim::components::Pose>(this->modelEntity_);
@@ -153,5 +146,7 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
   }
 }
 
+}  // namespace hydrophone
+
 // Register plugin so Gazebo can see it
-GZ_ADD_PLUGIN(Hydrophone, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)
+GZ_ADD_PLUGIN(hydrophone::Hydrophone, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)

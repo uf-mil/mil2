@@ -1,16 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro" xmlns:experimental="http://sdformat.org/schemas/experimental" xmlns:gz="http://gazebosim.org/schema">
   <!-- Macro for inserting a Hydrophone -->
-  <xacro:macro
-    name="mil_hydrophone"
-    params="name parent xyz rpy"
-  >
+  <xacro:macro name="mil_hydrophone" params="name parent xyz rpy">
     <!-- Hydrophone Link -->
-     <link name="${name}_link">
+    <link name="${name}_link">
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.1"/> 
+        <mass value="0.1"/>
         <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
     </link>
@@ -24,16 +21,14 @@
 
     <!-- This ensures that the fixed link is not simplified away -->
     <gazebo reference="${name}_joint">
-      <disableFixedJointLumping>true</disableFixedJointLumping> 
+      <disableFixedJointLumping>true</disableFixedJointLumping>
       <preserveFixedJoint>true</preserveFixedJoint>
     </gazebo>
 
     <gazebo reference="${name}_link">
-      <plugin
-            filename="Hydrophone"
-            name="hydrophone::Hydrophone">
-            <topic>${name}</topic>
-        </plugin>
+      <plugin filename="DVLBridge" name="dave_ros_gz_plugins::DVLBridge">
+        <topic>${name}</topic>
+      </plugin>
     </gazebo>
   </xacro:macro>
 </robot>
