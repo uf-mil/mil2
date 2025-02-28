@@ -7,10 +7,10 @@ In practice, this means that variables that are set in that folder are set when 
 These are populated and installed as part of these function calls:
 
 ```txt
- # The following hooks are used to ensure that the correct environment variables 
- # will be set by executing 'source install/setup.bash' after compilation. 
- # When using this template for your project, change the filenames of the 
- # files in the 'hooks' folder, to correspond to your project name. 
+ # The following hooks are used to ensure that the correct environment variables
+ # will be set by executing 'source install/setup.bash' after compilation.
+ # When using this template for your project, change the filenames of the
+ # files in the 'hooks' folder, to correspond to your project name.
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.dsv.in")
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.sh.in")
 ```

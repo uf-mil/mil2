@@ -15,6 +15,7 @@
  */
 
 #include "UnderwaterCamera.hh"
+
 #include <gz/common/Console.hh>
 #include <gz/sim/Model.hh>
 #include <gz/sim/Util.hh>
@@ -24,6 +25,7 @@
 #include <gz/sim/components/Sensor.hh>
 #include <gz/transport/Node.hh>
 #include <sdf/Camera.hh>
+
 #include "gz/plugin/Register.hh"
 #include "gz/sim/EntityComponentManager.hh"
 #include "gz/sim/components/Link.hh"
@@ -77,7 +79,7 @@ struct UnderwaterCamera::PrivateData
   gz::msgs::Image lastImage;
 
   /// \brief Depth to range lookup table (LUT)
-  float * depth2rangeLUT;
+  float *depth2rangeLUT;
 
   /// \brief Attenuation constants per channel (RGB)
   float attenuation[3];
@@ -91,7 +93,9 @@ struct UnderwaterCamera::PrivateData
   float max_range;
 };
 
-UnderwaterCamera::UnderwaterCamera() : dataPtr(std::make_unique<PrivateData>()) {}
+UnderwaterCamera::UnderwaterCamera() : dataPtr(std::make_unique<PrivateData>())
+{
+}
 
 UnderwaterCamera::~UnderwaterCamera()
 {
@@ -101,18 +105,15 @@ UnderwaterCamera::~UnderwaterCamera()
   }
 }
 
-void UnderwaterCamera::Configure(
-  const gz::sim::Entity & _entity, const std::shared_ptr<const sdf::Element> & _sdf,
-  gz::sim::EntityComponentManager & _ecm, gz::sim::EventManager & _eventManager)
+void UnderwaterCamera::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf::Element const> const &_sdf,
+                                 gz::sim::EntityComponentManager &_ecm, gz::sim::EventManager &_eventManager)
 {
-  gzdbg << "dave_gz_sensor_plugins::UnderwaterCamera::Configure on entity: " << _entity
-        << std::endl;
+  gzdbg << "dave_gz_sensor_plugins::UnderwaterCamera::Configure on entity: " << _entity << std::endl;
 
   if (!rclcpp::ok())
   {
     rclcpp::init(0, nullptr);
   }
-
 
   auto rgbdCamera = _ecm.Component<gz::sim::components::RgbdCamera>(_entity);
   if (!rgbdCamera)
@@ -149,7 +150,7 @@ void UnderwaterCamera::Configure(
   std::string validName = sanitizeNodeName(this->dataPtr->topic + "_node");
   this->ros_node_ = std::make_shared<rclcpp::Node>(validName);
 
-  sdf::Camera * cameraSdf = sensorSdf.CameraSensor();
+  sdf::Camera *cameraSdf = sensorSdf.CameraSensor();
 
   // get camera intrinsics
   this->dataPtr->width = cameraSdf->ImageWidth();
@@ -193,14 +194,12 @@ void UnderwaterCamera::Configure(
     this->dataPtr->cy = this->dataPtr->height / 2;
   }
 
-  gzmsg << "Camera intrinsics: fx=" << this->dataPtr->fx << ", fy=" << this->dataPtr->fy
-        << ", cx=" << this->dataPtr->cx << ", cy=" << this->dataPtr->cy << std::endl;
+  gzmsg << "Camera intrinsics: fx=" << this->dataPtr->fx << ", fy=" << this->dataPtr->fy << ", cx=" << this->dataPtr->cx
+        << ", cy=" << this->dataPtr->cy << std::endl;
 
-  gzmsg << "Image size: width=" << this->dataPtr->width << ", height=" << this->dataPtr->height
-        << std::endl;
+  gzmsg << "Image size: width=" << this->dataPtr->width << ", height=" << this->dataPtr->height << std::endl;
 
-  gzmsg << "Min range: " << this->dataPtr->min_range << ", Max range: " << this->dataPtr->max_range
-        << std::endl;
+  gzmsg << "Min range: " << this->dataPtr->min_range << ", Max range: " << this->dataPtr->max_range << std::endl;
 
   // Free previous LUT memory if it was already allocated
   if (this->dataPtr->depth2rangeLUT)
@@ -210,7 +209,7 @@ void UnderwaterCamera::Configure(
 
   // Allocate memory for the new LUT
   this->dataPtr->depth2rangeLUT = new float[this->dataPtr->width * this->dataPtr->height];
-  float * lutPtr = this->dataPtr->depth2rangeLUT;
+  float *lutPtr = this->dataPtr->depth2rangeLUT;
 
   // Fill depth2range LUT
   for (int v = 0; v < this->dataPtr->height; v++)
@@ -282,23 +281,23 @@ void UnderwaterCamera::Configure(
   }
 
   // Gazebo camera subscriber
-  std::function<void(const gz::msgs::Image &)> camera_callback =
-    std::bind(&UnderwaterCamera::CameraCallback, this, std::placeholders::_1);
+  std::function<void(gz::msgs::Image const &)> camera_callback =
+      std::bind(&UnderwaterCamera::CameraCallback, this, std::placeholders::_1);
 
   this->dataPtr->gz_node.Subscribe(this->dataPtr->image_topic, camera_callback);
 
   // Gazebo depth image subscriber
-  std::function<void(const gz::msgs::Image &)> depth_callback =
-    std::bind(&UnderwaterCamera::DepthImageCallback, this, std::placeholders::_1);
+  std::function<void(gz::msgs::Image const &)> depth_callback =
+      std::bind(&UnderwaterCamera::DepthImageCallback, this, std::placeholders::_1);
 
   this->dataPtr->gz_node.Subscribe(this->dataPtr->depth_image_topic, depth_callback);
 
   // ROS2 publisher
-  this->dataPtr->image_pub = this->ros_node_->create_publisher<sensor_msgs::msg::Image>(
-    this->dataPtr->simulated_image_topic, 1);
+  this->dataPtr->image_pub =
+      this->ros_node_->create_publisher<sensor_msgs::msg::Image>(this->dataPtr->simulated_image_topic, 1);
 }
 
-cv::Mat UnderwaterCamera::ConvertGazeboToOpenCV(const gz::msgs::Image & gz_image)
+cv::Mat UnderwaterCamera::ConvertGazeboToOpenCV(gz::msgs::Image const &gz_image)
 {
   int cv_type;
   switch (gz_image.pixel_format_type())
@@ -323,9 +322,8 @@ cv::Mat UnderwaterCamera::ConvertGazeboToOpenCV(const gz::msgs::Image & gz_image
   }
 
   // Create OpenCV Mat header that uses the same memory as the Gazebo image data
-  cv::Mat cv_image(
-    gz_image.height(), gz_image.width(), cv_type,
-    const_cast<void *>(reinterpret_cast<const void *>(gz_image.data().data())));
+  cv::Mat cv_image(gz_image.height(), gz_image.width(), cv_type,
+                   const_cast<void *>(reinterpret_cast<void const *>(gz_image.data().data())));
 
   // Optionally convert color space if needed (e.g., RGB to BGR)
   if (gz_image.pixel_format_type() == gz::msgs::PixelFormatType::RGB_INT8)
@@ -340,7 +338,7 @@ cv::Mat UnderwaterCamera::ConvertGazeboToOpenCV(const gz::msgs::Image & gz_image
   return cv_image;
 }
 
-void UnderwaterCamera::CameraCallback(const gz::msgs::Image & msg)
+void UnderwaterCamera::CameraCallback(gz::msgs::Image const &msg)
 {
   std::lock_guard<std::mutex> lock(this->dataPtr->mutex_);
 
@@ -382,8 +380,7 @@ void UnderwaterCamera::CameraCallback(const gz::msgs::Image & msg)
       ros_image.is_bigendian = false;
       ros_image.step = msg.width() * 3;
       ros_image.data = std::vector<unsigned char>(
-        simulated_image.data,
-        simulated_image.data + simulated_image.total() * simulated_image.elemSize());
+          simulated_image.data, simulated_image.data + simulated_image.total() * simulated_image.elemSize());
 
       this->dataPtr->image_pub->publish(ros_image);
 
@@ -393,7 +390,7 @@ void UnderwaterCamera::CameraCallback(const gz::msgs::Image & msg)
   }
 }
 
-void UnderwaterCamera::DepthImageCallback(const gz::msgs::Image & msg)
+void UnderwaterCamera::DepthImageCallback(gz::msgs::Image const &msg)
 {
   std::lock_guard<std::mutex> lock(this->dataPtr->mutex_);
 
@@ -402,15 +399,15 @@ void UnderwaterCamera::DepthImageCallback(const gz::msgs::Image & msg)
   this->dataPtr->lastDepth = msg;
 }
 
-cv::Mat UnderwaterCamera::SimulateUnderwater(
-  const cv::Mat & _inputImage, const cv::Mat & _inputDepth, cv::Mat & _outputImage)
+cv::Mat UnderwaterCamera::SimulateUnderwater(cv::Mat const &_inputImage, cv::Mat const &_inputDepth,
+                                             cv::Mat &_outputImage)
 {
-  const float * lutPtr = this->dataPtr->depth2rangeLUT;
+  float const *lutPtr = this->dataPtr->depth2rangeLUT;
   for (unsigned int row = 0; row < this->dataPtr->height; row++)
   {
-    const cv::Vec3b * inrow = _inputImage.ptr<cv::Vec3b>(row);
-    const float * depthrow = _inputDepth.ptr<float>(row);
-    cv::Vec3b * outrow = _outputImage.ptr<cv::Vec3b>(row);
+    cv::Vec3b const *inrow = _inputImage.ptr<cv::Vec3b>(row);
+    float const *depthrow = _inputDepth.ptr<float>(row);
+    cv::Vec3b *outrow = _outputImage.ptr<cv::Vec3b>(row);
 
     for (int col = 0; col < this->dataPtr->width; col++)
     {
@@ -421,8 +418,8 @@ cv::Mat UnderwaterCamera::SimulateUnderwater(
       // Convert depth to range using the depth2range LUT
       float r = *(lutPtr++) * depthrow[col];
 
-      const cv::Vec3b & in = inrow[col];
-      cv::Vec3b & out = outrow[col];
+      cv::Vec3b const &in = inrow[col];
+      cv::Vec3b &out = outrow[col];
 
       if (r < this->dataPtr->min_range)
       {
@@ -447,8 +444,7 @@ cv::Mat UnderwaterCamera::SimulateUnderwater(
   return _outputImage;
 }
 
-void UnderwaterCamera::PostUpdate(
-  const gz::sim::UpdateInfo & _info, const gz::sim::EntityComponentManager & _ecm)
+void UnderwaterCamera::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::EntityComponentManager const &_ecm)
 {
   if (!_info.paused)
   {
@@ -468,21 +464,27 @@ void UnderwaterCamera::Reset(const gz::sim::UpdateInfo &_info,
 }
 
 // Function to sanitize a ROS node name
-std::string sanitizeNodeName(const std::string& name) {
-    std::string sanitized;
-    for (char c : name) {
-        // Replace invalid characters with '_'
-        if (std::isalnum(c) || c == '_') {
-            sanitized += c;
-        } else {
-            sanitized += '_';
-        }
+std::string sanitizeNodeName(std::string const &name)
+{
+  std::string sanitized;
+  for (char c : name)
+  {
+    // Replace invalid characters with '_'
+    if (std::isalnum(c) || c == '_')
+    {
+      sanitized += c;
     }
-    // Ensure the name doesn't start with a digit
-    if (!sanitized.empty() && std::isdigit(sanitized[0])) {
-        sanitized = "_" + sanitized;
+    else
+    {
+      sanitized += '_';
     }
-    return sanitized;
+  }
+  // Ensure the name doesn't start with a digit
+  if (!sanitized.empty() && std::isdigit(sanitized[0]))
+  {
+    sanitized = "_" + sanitized;
+  }
+  return sanitized;
 }
 
 }  // namespace dave_gz_sensor_plugins

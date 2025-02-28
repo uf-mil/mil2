@@ -20,6 +20,7 @@
 
 #include <gz/msgs/camera_info.pb.h>
 #include <gz/msgs/image.pb.h>
+
 #include <gz/math/Angle.hh>
 #include <gz/sim/System.hh>
 #include <memory>
@@ -40,9 +41,8 @@ public:
   UnderwaterCamera();
   ~UnderwaterCamera();
 
-  void Configure(
-    const gz::sim::Entity & entity, const std::shared_ptr<const sdf::Element> & sdf,
-    gz::sim::EntityComponentManager & ecm, gz::sim::EventManager & eventMgr) override;
+  void Configure(gz::sim::Entity const& entity, std::shared_ptr<sdf::Element const> const& sdf,
+                 gz::sim::EntityComponentManager& ecm, gz::sim::EventManager& eventMgr) override;
 
   void PostUpdate(
     const gz::sim::UpdateInfo & info, const gz::sim::EntityComponentManager & ecm) override;
@@ -51,16 +51,15 @@ public:
     const gz::sim::UpdateInfo &_info,
     gz::sim::EntityComponentManager &_ecm) override;
 
-  void CameraCallback(const gz::msgs::Image & image);
+  void CameraCallback(gz::msgs::Image const& image);
 
-  void CameraInfoCallback(const gz::msgs::CameraInfo & cameraInfo);
+  void CameraInfoCallback(gz::msgs::CameraInfo const& cameraInfo);
 
-  void DepthImageCallback(const gz::msgs::Image & image);
+  void DepthImageCallback(gz::msgs::Image const& image);
 
-  cv::Mat ConvertGazeboToOpenCV(const gz::msgs::Image & gz_image);
+  cv::Mat ConvertGazeboToOpenCV(gz::msgs::Image const& gz_image);
 
-  cv::Mat SimulateUnderwater(
-    const cv::Mat & _inputImage, const cv::Mat & _inputDepth, cv::Mat & _outputImage);
+  cv::Mat SimulateUnderwater(cv::Mat const& _inputImage, cv::Mat const& _inputDepth, cv::Mat& _outputImage);
 
 private:
   std::shared_ptr<rclcpp::Node> ros_node_;
@@ -69,7 +68,7 @@ private:
   std::unique_ptr<PrivateData> dataPtr;
 };
 
-  std::string sanitizeNodeName(const std::string& name);
+std::string sanitizeNodeName(std::string const& name);
 
 }  // namespace dave_gz_sensor_plugins
 

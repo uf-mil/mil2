@@ -8,6 +8,7 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(mil_msgs REQUIRED)
 
 find_package(OpenCV REQUIRED)
 
@@ -54,6 +55,11 @@ add_library(DVLBridge SHARED
   src/DVLBridge.cc
 )
 
+# Plugin 3: DepthSensor
+add_library(DepthSensor SHARED
+  src/DepthSensor.cc
+)
+
 # Ensures plugin can see include directory to access its header files
 target_include_directories(
   ExamplePlugin PRIVATE include
@@ -67,22 +73,30 @@ target_include_directories(
   DVLBridge PRIVATE include
 )
 
+target_include_directories(
+  DepthSensor PRIVATE include
+)
+
 # Add additional needed libraries
 target_link_libraries(ExamplePlugin
-  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}  # Links gazebo simulator version to your plugin.
+gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}  # Links gazebo simulator version to your plugin.
 )
 
 # Link Libraries for Underwater Camera plugin
 target_link_libraries(UnderwaterCamera
-  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
-  ${OpenCV_LIBS}
+gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+${OpenCV_LIBS}
 )
 
 # Link libraries for DVL Bridge plugin
 target_link_libraries(DVLBridge
-  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
 )
 
+# Link libraries for DepthSensor plugin
+target_link_libraries(DepthSensor
+  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+)
 # Specify dependencies using ament_target_dependencies
 ament_target_dependencies(ExamplePlugin
   #
@@ -102,8 +116,14 @@ ament_target_dependencies(DVLBridge
   std_msgs
 )
 
+ament_target_dependencies(DepthSensor
+  rclcpp
+  mil_msgs
+  sensor_msgs
+)
+
 # Install the plugins
-install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge
+install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge DepthSensor
 LIBRARY DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -128,7 +148,7 @@ if(BUILD_TESTING)
 endif()
 
 # Following hooks are used to ensure that the correct environment variables
-# will be set by exectuting 'sourece install/setup.bash' after compilation.
+# will be set by executing 'sourece install/setup.bash' after compilation.
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.dsv.in")
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.sh.in")
 

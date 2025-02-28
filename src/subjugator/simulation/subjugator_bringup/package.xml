@@ -9,7 +9,6 @@
   <author>Keith Khadar</author>
 
   <depend>joint_state_publisher_gui</depend>
-
   <depend>ros_gz</depend>
   <depend>sdformat_urdf</depend>
   <depend>subjugator_description</depend>
