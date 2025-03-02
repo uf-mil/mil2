@@ -33,6 +33,48 @@ jobs:
       - id: check_skip
         uses: fkirc/skip-duplicate-actions@v5
 
+  pre-commit:
+    name: Run pre-commit
+    needs: avoid-duplicate-ci
+    runs-on:
+      group: mala-lab-pre-commit
+    if: needs.avoid-duplicate-ci.outputs.should_skip != 'true'
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          cache: "pip"
+      - name: Install pre-commit hooks
+        run: |
+          python --version
+          pip install "$(cat requirements.txt | grep pre-commit)"
+      - name: Generate pre-commit cache key
+        id: pre-commit_cache_key
+        run: >
+          echo "::set-output
+          name=key::${{ env.CACHE_VERSION }}-${{ env.DEFAULT_PYTHON }}-${{
+          hashFiles('.pre-commit-config.yaml') }}"
+      - name: Restore base pre-commit environment
+        id: cache-pre-commmit
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PRE_COMMIT_CACHE }}
+          key: >
+            ${{ runner.os
+            }}-pre-commit-${{ steps.pre-commit_cache_key.outputs.key }}
+      - name: Install pre-commit dependencies if no cache
+        if: steps.cache-precommit.outputs.cache-hit != 'true'
+        run: |
+          pre-commit install-hooks
+      - name: Run pre-commit
+        run: |
+          pre-commit run --all-files --show-diff-on-failure
+
   super-ci:
     name: Run tests and build docs
     needs: avoid-duplicate-ci
