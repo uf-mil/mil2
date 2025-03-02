@@ -47,7 +47,7 @@ public:
     keyboard_thread_  = thread(&SubjugatorKeyboardControl::keyboardLoop, this);
     publisher_thread_ = thread(&SubjugatorKeyboardControl::publishLoop, this);
 
-    cout << R"(Subjugator Keyboard Control:
+        cout << R"(Subjugator Keyboard Control:
       Up          : +x force
       Down        : -x force
       Right       : +y force
@@ -63,6 +63,7 @@ public:
       Space       : Stop all motion
       q           : Quit
     )" << '\n';
+  }
 
   ~SubjugatorKeyboardControl() override {
     running_ = false;
@@ -224,7 +225,13 @@ private:
   }
 };
 
-int main(const int argc, char** argv) {
+int main(const int argc, char** argv)
+{
+//  while (true) {
+//    int ch = getchar();
+//    std::cout << "Key code: " << ch << std::endl;
+//  }
+//  return 0;
   rclcpp::init(argc, argv);
   auto node = std::make_shared<SubjugatorKeyboardControl>();
   rclcpp::spin(node);

@@ -1,6 +1,6 @@
 # Keyboard Control Package
 
-It's like teleop_keyboard, but better!
+It's like teleop_twist_keyboard, but better!
 
 - Build with ```colcon build --packages-select subjugator_keyboard_control```
 - Run with ```ros2 run subjugator_keyboard_control subjugator_keyboard_control```
