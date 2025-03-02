@@ -52,18 +52,17 @@ public:
       Down        : -x force
       Right       : +y force
       Left        : -y force
-      w           : +z force
-      s           : -z force
+      Shift + Up  : +z force
+      Shift + Down: -z force
+      w           : +roll (torque x)
+      s           : -roll (torque x)
       a           : -yaw (torque z)
       d           : +yaw (torque z)
-      r           : +roll (torque x)
-      f           : -roll (torque x)
-      t           : +pitch (torque y)
-      g           : -pitch (torque y)
+      Shift + w   : +pitch (torque y)
+      Shift + s   : -pitch (torque y)
       Space       : Stop all motion
       q           : Quit
     )" << '\n';
-  }
 
   ~SubjugatorKeyboardControl() override {
     running_ = false;
@@ -105,30 +104,31 @@ private:
 
   void keyboardLoop() {
     KeyState arrow_up, arrow_down, arrow_left, arrow_right;
-    KeyState key_w, key_s, key_a, key_d, key_r, key_f, key_t, key_g;
+    KeyState arrow_up_shift, arrow_down_shift;
+    KeyState key_w, key_s, key_a, key_d, key_shift_w, key_shift_s;
 
-    double current_force_x = 0.0,  current_force_y = 0.0,  current_force_z = 0.0;
+    double current_force_x = 0.0, current_force_y = 0.0, current_force_z = 0.0;
     double current_torque_x = 0.0, current_torque_y = 0.0, current_torque_z = 0.0;
 
     std::vector<KeyState*> keys = {
       &arrow_up, &arrow_down, &arrow_left, &arrow_right,
-      &key_w, &key_s, &key_a, &key_d,
-      &key_r, &key_f, &key_t, &key_g
+      &arrow_up_shift, &arrow_down_shift,
+      &key_w, &key_s, &key_a, &key_d, &key_shift_w, &key_shift_s
     };
 
     AxisEffect letter_effects[] = {
-      { &arrow_up,     base_linear_, &current_force_x },
-      { &arrow_down,  -base_linear_, &current_force_x },
-      { &arrow_right,  base_linear_, &current_force_y },
-      { &arrow_left,  -base_linear_, &current_force_y },
-      { &key_w,  base_linear_,  &current_force_z },
-      { &key_s, -base_linear_,  &current_force_z },
-      { &key_d,  base_angular_, &current_torque_z },
-      { &key_a, -base_angular_, &current_torque_z },
-      { &key_r,  base_angular_, &current_torque_x },
-      { &key_f, -base_angular_, &current_torque_x },
-      { &key_t,  base_angular_, &current_torque_y },
-      { &key_g, -base_angular_, &current_torque_y }
+      { &arrow_up,         base_linear_,  &current_force_x },
+      { &arrow_down,      -base_linear_,  &current_force_x },
+      { &arrow_right,      base_linear_,  &current_force_y },
+      { &arrow_left,      -base_linear_,  &current_force_y },
+      { &arrow_up_shift,   base_linear_,  &current_force_z },
+      { &arrow_down_shift, -base_linear_,  &current_force_z },
+      { &key_w,    base_angular_, &current_torque_x },
+      { &key_s,   -base_angular_, &current_torque_x },
+      { &key_a,   -base_angular_, &current_torque_z },
+      { &key_d,    base_angular_, &current_torque_z },
+      { &key_shift_w,    base_angular_, &current_torque_y },
+      { &key_shift_s,   -base_angular_, &current_torque_y }
     };
     const auto timeout = milliseconds(150);
 
@@ -141,23 +141,27 @@ private:
       }
 
       // Reset every time
-      current_force_x = 0.0,  current_force_y = 0.0,  current_force_z = 0.0;
+      current_force_x = 0.0, current_force_y = 0.0, current_force_z = 0.0;
       current_torque_x = 0.0, current_torque_y = 0.0, current_torque_z = 0.0;
 
       int ch = getchar();
       if (ch == -1) {
         // Do nothing. Avoids additional nesting or use of goto
       } else if (ch == 27) {  // Possible arrow key escape sequence
-        int ch2 = getchar();
-        if (ch2 == 91) {
+        if (getchar() == 91) {
           int ch3 = getchar();
-          if (ch3 == 'A') { arrow_up.pressed = true; arrow_up.last_time = now; }
+          if (ch3 == '1') { // Possibly a shifted arrow key
+            if (getchar() == ';' && getchar() == '2') {
+                int ch6 = getchar();
+                if (ch6 == 'A') { arrow_up_shift.pressed = true; arrow_up_shift.last_time = now; }
+                else if (ch6 == 'B') { arrow_down_shift.pressed = true; arrow_down_shift.last_time = now; }
+                else { cout << "Unknown shift arrow sequence\n"; }
+            }
+          } else if (ch3 == 'A') { arrow_up.pressed = true; arrow_up.last_time = now; }
           else if (ch3 == 'B') { arrow_down.pressed = true; arrow_down.last_time = now; }
           else if (ch3 == 'C') { arrow_right.pressed = true; arrow_right.last_time = now; }
           else if (ch3 == 'D') { arrow_left.pressed = true; arrow_left.last_time = now; }
-          else {
-            cout << "Unknown escape sequence\n";
-          }
+          else { cout << "Unknown escape sequence\n"; }
         }
       } else {
         // Process normal keys:
@@ -166,14 +170,13 @@ private:
           case 's': key_s.pressed = true; key_s.last_time = now; break;
           case 'a': key_a.pressed = true; key_a.last_time = now; break;
           case 'd': key_d.pressed = true; key_d.last_time = now; break;
-          case 'r': key_r.pressed = true; key_r.last_time = now; break;
-          case 'f': key_f.pressed = true; key_f.last_time = now; break;
-          case 't': key_t.pressed = true; key_t.last_time = now; break;
-          case 'g': key_g.pressed = true; key_g.last_time = now; break;
-          case ' ': // Stop all motion: clear all key states
+          case 'W': key_shift_w.pressed = true; key_shift_w.last_time = now; break;
+          case 'S': key_shift_s.pressed = true; key_shift_s.last_time = now; break;
+          case ' ':
             arrow_up.pressed = arrow_down.pressed = arrow_left.pressed = arrow_right.pressed = false;
+            arrow_up_shift.pressed = arrow_down_shift.pressed = false;
             key_w.pressed = key_s.pressed = key_a.pressed = key_d.pressed = false;
-            key_r.pressed = key_f.pressed = key_t.pressed = key_g.pressed = false;
+            key_shift_w.pressed = key_shift_s.pressed = false;
             break;
           case 'q':
             running_ = false;
@@ -203,6 +206,7 @@ private:
     }
   }
 
+
   void publishLoop() const {
     rclcpp::Rate rate(PUBLISH_RATE);
     while (rclcpp::ok() && running_) {
@@ -220,8 +224,7 @@ private:
   }
 };
 
-int main(const int argc, char** argv)
-{
+int main(const int argc, char** argv) {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<SubjugatorKeyboardControl>();
   rclcpp::spin(node);
