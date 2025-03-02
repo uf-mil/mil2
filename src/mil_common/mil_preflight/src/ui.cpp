@@ -13,6 +13,8 @@
 
 using namespace ftxui;
 
+auto screen = ScreenInteractive::Fullscreen();
+
 int main(int argc, char* argv[]) 
 {
     // Get the configuration file name from cmd line args
@@ -38,9 +40,6 @@ int main(int argc, char* argv[])
     boost::json::value data = boost::json::parse(file);
 
     file.close();
-
-
-    auto screen = ScreenInteractive::Fullscreen();
 
     /*--------------------The page head-----------------------*/
     int currentPage = 0;
@@ -73,25 +72,21 @@ int main(int argc, char* argv[])
     };
 
     int selectedIndex = 0;
-    auto menu = Menu(&menuItems, &selectedIndex);
-
-    auto menuHandler = CatchEvent(menu, [&](Event event) {
-        if (event == Event::Return) {  // Press Enter
-            if (selectedIndex == 3)
-            {
-                screen.Exit();
-            }
-            else
-            {
-                currentPage = selectedIndex + 1;
-            }
-            return true;
+    MenuOption menuOption = MenuOption::Vertical();
+    menuOption.on_enter = [&]() 
+    {
+        if (selectedIndex == 3)
+        {
+            screen.Exit();
         }
-        return false; // Continue processing events
-    });
-
+        else
+        {
+            currentPage = selectedIndex + 1;
+        }
+    };
+    auto menu = Menu(&menuItems, &selectedIndex, menuOption);
     // Layout using vbox (vertical layout)
-    auto mainLayout = Container::Vertical({introduction,menuHandler});
+    auto mainLayout = Container::Vertical({introduction, menu});
 
     auto mainTab = Renderer(mainLayout, [&] {
         return vbox({
@@ -102,11 +97,11 @@ int main(int argc, char* argv[])
     });
 
     /*--------------------The test Tab-----------------------*/
-    mil_preflight::JobWidget job(data);
+    std::shared_ptr<mil_preflight::JobPanel> job = std::make_shared<mil_preflight::JobPanel>(data);
 
     auto backButton1 = Button("<", [&] { currentPage = 0;}, ButtonOption::Ascii());
 
-    auto testsTab = job.getCompoent() | flex;
+    auto testsTab = job | flex;
     
     // auto testsPage = Container::Vertical({head1, Renderer([&]{return separator();}) ,jobContainer | flex});
     // auto testsPage = Renderer(pageContainer, [&] {

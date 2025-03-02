@@ -9,7 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(Boost REQUIRED COMPONENTS json)
+find_package(Boost REQUIRED COMPONENTS json thread chrono)
 
 include(FetchContent)
 
@@ -26,19 +26,21 @@ endif()
 
 FetchContent_MakeAvailable(ftxui)
 
-add_executable(${PROJECT_NAME} src/ui.cpp)
+add_executable(${PROJECT_NAME} src/ui.cpp src/widgets.cpp)
 include_directories(include ${ftxui_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
 
-# ament_target_dependencies(${PROJECT_NAME} 
-#   rclcpp
-#   std_msgs
-# )
+# # ament_target_dependencies(${PROJECT_NAME} 
+# #   rclcpp
+# #   std_msgs
+# # )
 
 target_link_libraries(${PROJECT_NAME}
   PRIVATE ftxui::screen
   PRIVATE ftxui::dom
   PRIVATE ftxui::component
   Boost::json
+  Boost::thread
+  Boost::chrono
 )
 
 install(TARGETS ${PROJECT_NAME}
@@ -55,6 +57,13 @@ target_link_libraries(ftxui_test
   PRIVATE ftxui::screen
   PRIVATE ftxui::dom
   PRIVATE ftxui::component
+  Boost::json
+  Boost::thread
+  Boost::chrono
+)
+
+install(TARGETS ftxui_test
+  DESTINATION bin  # Install to install/bin/
 )
 
 if(BUILD_TESTING)

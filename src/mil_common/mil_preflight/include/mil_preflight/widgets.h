@@ -1,259 +1,140 @@
 #include <ftxui/component/component.hpp>
+#include <ftxui/dom/elements.hpp>
 
 #include <boost/json.hpp>
 
+#include <atomic>
+#include <stack>
+
 #include "mil_preflight/job.h"
+
+using namespace ftxui;
 
 namespace mil_preflight
 {
-    using namespace ftxui;
 
-    class ActionWidget: public Action
+class ActionBox: public ComponentBase, public Action
+{
+    public:
+    // friend class TestPage;
+    ActionBox(boost::json::key_value_pair const& pair);
+    ~ActionBox();
+
+    bool isChecked() const { return checked_; }
+    void check() { checked_ = true; }
+    void uncheck() { checked_ = false; }
+
+    private:
+
+    enum class State
     {
-        public:
-        friend class TestWidget;
-        ActionWidget() = delete;
-        ActionWidget(boost::json::key_value_pair const& pair):
-            impl(std::make_shared<ActionImpl>())
-        {
-            impl -> enable = false;
-            impl -> name = pair.key();
-            impl -> parameters = pair.value().as_string();
-            impl -> state = State::SUCCESS;
-            auto checkbox = Checkbox(impl->name, &impl->enable);
-            component = Renderer(checkbox, [checkbox, impl = impl]{
-                const char* stateInd;
-                switch (impl->state)
-                {
-                case State::RUNNING:
-                    stateInd = "-";
-                    break;
-                case State::SUCCESS:
-                    stateInd = "✔";
-                    break;
-                case State::FAILED:
-                    stateInd = "✘";
-                    break;
-                default:
-                    stateInd =" ";
-                    break;
-                }
-
-                return hbox({checkbox->Render() | flex ,text(stateInd) | align_right});
-            });
-        }
-        ~ActionWidget()
-        {
-
-        }
-
-        ActionWidget(ActionWidget&& action)
-        {
-            impl = std::move(action.impl);
-            component = std::move(action.component);
-        }
-
-        ActionWidget& operator=(ActionWidget&& action) noexcept {
-            if (this == &action) return *this; 
-
-            impl = std::move(action.impl);
-            component = std::move(action.component);
-
-            return *this;
-        }
-
-        Component getComponent() const
-        {
-            return component;
-        }
-
-        private:
-
-        enum class State
-        {
-            NONE,
-            RUNNING,
-            SUCCESS,
-            FAILED
-        };
-
-        struct ActionImpl
-        {
-            std::string name;
-            std::string parameters;
-            bool enable;
-            State state;
-        };
-        
-        std::shared_ptr<ActionImpl> impl;
-        Component component;
+        NONE,
+        RUNNING,
+        SUCCESS,
+        FAILED
     };
 
-    class TestWidget//: public Test
-    {
-        public:
-        TestWidget(boost::json::key_value_pair const& pair): impl(std::make_shared<TestImpl>())
-        {
-            impl -> enable = false;
-            impl -> name = pair.key();
-            const boost::json::object& obj = pair.value().as_object();
-            impl -> plugin = obj.at("plugin").as_string();
+    bool checked_ = false;
+    bool forceCheck_ = false;
+    bool hovered_ = false;
+    Box box_;
+    std::atomic<State> state_ = State::NONE;
 
-            Components comps;
+    Element Render() final;
+    bool OnEvent(Event event) final;
+    inline bool OnMouseEvent(Event event);
+    bool Focusable() const final;
 
-            for(const auto& actionPair: obj.at("actions").as_object())
-            {
-                impl -> actions.push_back(ActionWidget(actionPair));
-                comps.push_back(impl -> actions.back().getComponent());
-            }
+    void onStart() final;
+    void onSuccess(std::string const& info) final;
+    void onFail(std::string const& info) final;
 
-            container = Container::Vertical(comps) | vscroll_indicator | frame;
-            checkbox = Checkbox(impl->name, &impl -> enable, 
-                                CheckboxOption{.on_change=[impl=impl]{
-                                    for(auto& action: impl->actions)
-                                    {
-                                        action.impl->enable = impl->enable;
-                                    }
-                                 }});
-        }
-        ~TestWidget()
-        {
-            
-        }
+};
 
-        TestWidget(TestWidget&& test)
-        {
-            container = std::move(test.container);
-            checkbox = std::move(test.checkbox);
-            impl = std::move(test.impl);
-        }
+class TestPage: public ComponentBase, public Test
+{
+  public:
+  using History = std::pair<size_t, bool>;
 
-        TestWidget& operator=(TestWidget&& test) noexcept {
-            if (this == &test) return *this; // Self-assignment check
+  TestPage(boost::json::key_value_pair const& pair);
+  ~TestPage();
 
-            container = std::move(test.container);
-            checkbox = std::move(test.checkbox);
-            impl = std::move(test.impl);
+  size_t actionCount() {return ChildAt(0)->ChildCount();}
 
-            return *this;
-        }
+  size_t isChecked();
+  inline void saveAndCheck(std::stack<History>& historys);
+  inline void saveAndUncheck(std::stack<History>& historys);
+  inline void restore(std::stack<History>& historys);
+  inline void check();
+  inline void uncheck();
 
-        // Action* nextAction()
-        // {
-        //     return 
-        // }
+  private:
+  int selector_ = 0;
+  bool checked_ = 0;
+  std::atomic<size_t> currentAction_ = 0;
+  Box box_;
 
-        Component getContianer() const
-        {
-            return container;
-        }
+  std::shared_ptr<Action> nextAction() final;
+  void onFinish() final;
 
-        Component getComponent() const
-        {
-            return checkbox;
-        }
+};
 
-        private:
+class TestTab: public ComponentBase
+{
+  public:
+  enum class State
+  {
+    Checked,
+    Indeterminate,
+    Unchecked
+  };
 
-        struct TestImpl
-        {
-            std::string name;
-            std::string plugin;
-            std::vector<ActionWidget> actions;
-            bool enable;
+  TestTab(std::shared_ptr<TestPage> test):test_(test){}
+  ~TestTab(){}
 
-            // void onChange()
-            // {
-            //     for(auto& action: actions)
-            //     {
-            //         action.impl->enable = enable;
-            //     }
-            // }
+  State getState() const {return state_;}
 
-        };
+  private:
 
-        Component container;
-        Component checkbox;
-        std::shared_ptr<TestImpl> impl;    
-    };
+  bool hovered_ = false;
+  State state_ = State::Unchecked;
+  bool toggle_ = false;
+  std::shared_ptr<TestPage> test_;
+  std::stack<TestPage::History> historys_;
+  Box box_;
 
-    class JobWidget
-    {
-        public:
-        JobWidget(boost::json::value const& value):
-            impl(std::make_unique<JobImpl>()),
-            render(std::bind(&JobWidget::onRender, this))
-        {
-            Components comps;
-            Components conts;
-            for(const auto& testPair: value.as_object())
-            {
-                impl -> tests.push_back(TestWidget(testPair));
-                comps.push_back(impl -> tests.back().getComponent());
-                conts.push_back(impl -> tests.back().getContianer());
-            }
+  Element Render() final;
+  bool OnEvent(Event event) final;
+  bool OnMouseEvent(Event event);
 
-            auto right = Container::Tab(conts, &impl->currentPage);
-            auto left = Container::Vertical(comps, &impl->selectedItem);
-            auto runButton = Button("Run", [&] {}, ButtonOption::Border());
+  inline void nextState();
 
-            container = Renderer(Container::Vertical({Container::Horizontal({left, right}), runButton}), [=]{
-                return vbox({
-                    hbox({
-                        left->Render() | vscroll_indicator | frame,
-                        separator(),  // 🔹 Vertical line between left & right panels
-                        right->Render() | flex,
-                    }) | flex,
-                    separator(),
-                    runButton->Render() | align_right
-                });
-            });
-        }
-        ~JobWidget()
-        {
+  bool Focusable() const final { return true; } 
 
-        }
+};
 
-        JobWidget(JobWidget&& job)
-        {
-            container = std::move(job.container);
-            render = std::bind(&JobWidget::onRender, this);
-            impl = std::move(job.impl);
-        }
+class JobPanel: public ComponentBase, public Job, public std::enable_shared_from_this<Job>
+{
+  public:
+  JobPanel(boost::json::value const& value);
+  ~JobPanel();
 
-        JobWidget& operator= (JobWidget&& job)
-        {
-            if(this == &job) return *this;
+  private:
 
-            container = std::move(job.container);
-            render = std::bind(&JobWidget::onRender, this);
-            impl = std::move(job.impl);
+  Component tabsContainer_;
+  Component pagesContainer_;
 
-            return *this;
-        }
+  int selector_ = 0;
+  bool selectAll_ = false;
+  size_t currentTest_ = 0;
+  std::atomic<bool> running_ = false;
 
-        Component getCompoent() const
-        {
-            return Renderer(container, render);
-        }
+  const std::string buttonLabels_[4] = {" Run ", " ·   ", "  ·  ", "   · "};
+  JobRunner runner_;
+  size_t ticker_ = 0;
 
-        private:
+  std::shared_ptr<Test> nextTest() final;
+  void onFinish() final;
 
-        struct JobImpl
-        {
-            int currentPage;
-            int selectedItem;
-            std::vector<TestWidget> tests;
-        };
-
-        std::unique_ptr<JobImpl> impl;
-        std::function<Element()> render;
-        Component container;
-
-        Element onRender()
-        {
-            impl->currentPage = impl->selectedItem;
-            return container->Render();
-        }
-    };
+};
 }
