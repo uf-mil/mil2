@@ -1,13 +1,10 @@
 #include "mil_tools/hardware/cpu_temp.hpp"
+#include "mil_tools/hardware/system_info.hpp"
+
 #include <sensors/sensors.h>
 
 namespace mil_tools::hardware::cpu_temp
 {
-    /**
-     * @brief Overloaded version of get_cpu_temperatures that takes a reference to a cpu_temperatures struct object to modify instead of returning a copy.
-     * 
-     * @param object 
-     */
     void get_cpu_temperatures(cpu_temperatures& object)
     {
         // Initialize sensors, none-zero returned value means there was an error during initialization
