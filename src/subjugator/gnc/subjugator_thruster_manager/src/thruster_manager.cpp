@@ -51,7 +51,7 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
   }
 
   wrench_subscription_ = this->create_subscription<geometry_msgs::msg::Wrench>(
-      "wrench", 1, [this](geometry_msgs::msg::Wrench::SharedPtr const msg) -> void { this->wrench_callback(msg); });
+      "cmd_wrench", 1, [this](geometry_msgs::msg::Wrench::SharedPtr const msg) -> void { this->wrench_callback(msg); });
 
   thrust_publisher_ = this->create_publisher<subjugator_msgs::msg::ThrusterEfforts>("thruster_efforts", 1);
   RCLCPP_INFO(this->get_logger(), "Publishing to: %s", thrust_publisher_->get_topic_name());

@@ -10,7 +10,6 @@ def generate_launch_description():
         [
             Node(
                 package="subjugator_thruster_manager",
-                namespace="subjugator",
                 executable="thruster_manager",
                 name="thruster_manager",
                 parameters=[
