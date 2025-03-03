@@ -44,12 +44,9 @@ public:
   void Configure(gz::sim::Entity const& entity, std::shared_ptr<sdf::Element const> const& sdf,
                  gz::sim::EntityComponentManager& ecm, gz::sim::EventManager& eventMgr) override;
 
-  void PostUpdate(
-    const gz::sim::UpdateInfo & info, const gz::sim::EntityComponentManager & ecm) override;
-  
-  void Reset(
-    const gz::sim::UpdateInfo &_info,
-    gz::sim::EntityComponentManager &_ecm) override;
+  void PostUpdate(gz::sim::UpdateInfo const& info, gz::sim::EntityComponentManager const& ecm) override;
+
+  void Reset(gz::sim::UpdateInfo const& _info, gz::sim::EntityComponentManager& _ecm) override;
 
   void CameraCallback(gz::msgs::Image const& image);
 

@@ -33,11 +33,10 @@
 #include "gz/sim/components/Name.hh"
 #include "gz/sim/components/World.hh"
 
-GZ_ADD_PLUGIN(
-  dave_gz_sensor_plugins::UnderwaterCamera, gz::sim::System,
-  dave_gz_sensor_plugins::UnderwaterCamera::ISystemConfigure,
-  dave_gz_sensor_plugins::UnderwaterCamera::ISystemPostUpdate,
-  dave_gz_sensor_plugins::UnderwaterCamera::ISystemReset)
+GZ_ADD_PLUGIN(dave_gz_sensor_plugins::UnderwaterCamera, gz::sim::System,
+              dave_gz_sensor_plugins::UnderwaterCamera::ISystemConfigure,
+              dave_gz_sensor_plugins::UnderwaterCamera::ISystemPostUpdate,
+              dave_gz_sensor_plugins::UnderwaterCamera::ISystemReset)
 
 namespace dave_gz_sensor_plugins
 {
@@ -56,7 +55,7 @@ struct UnderwaterCamera::PrivateData
   std::string simulated_image_topic;
   std::string camera_info_topic;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_pub;
-  
+
   // Locking variable for stopping simulateunderwater() when resetting gazebo
   bool isReset;
 
@@ -412,7 +411,8 @@ cv::Mat UnderwaterCamera::SimulateUnderwater(cv::Mat const &_inputImage, cv::Mat
     for (int col = 0; col < this->dataPtr->width; col++)
     {
       // Check to see if gazebo sim reset
-      if(this->dataPtr->isReset){
+      if (this->dataPtr->isReset)
+      {
         return _inputImage;
       }
       // Convert depth to range using the depth2range LUT
@@ -457,8 +457,7 @@ void UnderwaterCamera::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::Ent
   }
 }
 
-void UnderwaterCamera::Reset(const gz::sim::UpdateInfo &_info,
-  gz::sim::EntityComponentManager &_ecm)
+void UnderwaterCamera::Reset(gz::sim::UpdateInfo const &_info, gz::sim::EntityComponentManager &_ecm)
 {
   this->dataPtr->isReset = true;
 }
