@@ -1,18 +1,17 @@
-#include <memory>
-#include <chrono>
-#include <limits>
-#include <mutex>
-#include <thread>
-#include <string>
-
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/empty.hpp"
-#include "mil_msgs/msg/depth_stamped.hpp"
-#include "nav_msgs/msg/odometry.hpp"
-
 #include <boost/asio.hpp>
 #include <boost/smart_ptr/make_shared.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
+#include <chrono>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+
+#include "mil_msgs/msg/depth_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/empty.hpp"
 
 using tcp = boost::asio::ip::tcp;
 
@@ -40,8 +39,8 @@ private:
 
   bool initialized = false;
 
-  static const uint8_t sync1 = 0x37;
-  static const uint8_t sync2 = 0x01;
+  static uint8_t const sync1 = 0x37;
+  static uint8_t const sync2 = 0x01;
 
   uint8_t heartbeat_packet[2 + sizeof(hz_)];
 
@@ -59,10 +58,10 @@ public:
   ~NavTubeDriver();
 
   void run();
-  void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
+  void odom_callback(nav_msgs::msg::Odometry::SharedPtr const msg);
 };
 
-NavTubeDriver::NavTubeDriver():rclcpp::Node("nav_tube_driver")
+NavTubeDriver::NavTubeDriver() : rclcpp::Node("nav_tube_driver")
 {
   pub_ = this->create_publisher<mil_msgs::msg::DepthStamped>("depth", 10);
   odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
@@ -74,7 +73,8 @@ NavTubeDriver::NavTubeDriver():rclcpp::Node("nav_tube_driver")
 
   int hz__ = this->declare_parameter<int>("hz", 20);
 
-  if (hz__ > std::numeric_limits<uint16_t>::max()) {
+  if (hz__ > std::numeric_limits<uint16_t>::max())
+  {
     RCLCPP_WARN(this->get_logger(), "Depth polling frequency is greater than 16 bits!");
   }
 
@@ -97,7 +97,7 @@ NavTubeDriver::~NavTubeDriver()
   timer_thread.join();
 }
 
-void NavTubeDriver::odom_callback(const nav_msgs::msg::Odometry::SharedPtr ptr)
+void NavTubeDriver::odom_callback(nav_msgs::msg::Odometry::SharedPtr const ptr)
 {
   recent_odom_msg_ = *ptr;
 }
@@ -118,20 +118,25 @@ boost::shared_ptr<tcp::socket> NavTubeDriver::connect()
 
 void NavTubeDriver::send_heartbeat(boost::shared_ptr<tcp::socket> socket)
 {
-  try {
-    while (rclcpp::ok()) {
+  try
+  {
+    while (rclcpp::ok())
+    {
       boost::asio::write(*socket, boost::asio::buffer(heartbeat_packet));
 
       {
         std::lock_guard<std::mutex> lock(m);
-        if (!running) {
+        if (!running)
+        {
           return;
         }
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
-  } catch (boost::system::system_error const & e) {
+  }
+  catch (boost::system::system_error const &e)
+  {
   }
 }
 
@@ -145,31 +150,41 @@ void NavTubeDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
 
   auto buffer = boost::asio::buffer(backing, sizeof(backing));
 
-  while (rclcpp::ok()) {
-    if (rclcpp::Clock().now().nanoseconds() - prev.nanoseconds() > static_cast<long>(acceptable_frequency)) {
+  while (rclcpp::ok())
+  {
+    if (rclcpp::Clock().now().nanoseconds() - prev.nanoseconds() > static_cast<long>(acceptable_frequency))
+    {
       RCLCPP_WARN(this->get_logger(), "Depth sampling rate is falling behind.");
     }
 
-    if (!boost::asio::buffer_size(buffer)) {
+    if (!boost::asio::buffer_size(buffer))
+    {
       // Bytes are out of sync so try and resync
-      if (backing[0] != sync1 || backing[1] != sync2) {
-        for (int i = 0; i < int(sizeof(backing) / sizeof(backing[0])) - 1; i++) {
+      if (backing[0] != sync1 || backing[1] != sync2)
+      {
+        for (int i = 0; i < int(sizeof(backing) / sizeof(backing[0])) - 1; i++)
+        {
           backing[i] = backing[i + 1];
         }
-        buffer = boost::asio::buffer(backing + (sizeof(backing) / sizeof(backing[0])) -
-          sizeof(backing[0]), sizeof(backing[0]));
-      } else {
+        buffer = boost::asio::buffer(backing + (sizeof(backing) / sizeof(backing[0])) - sizeof(backing[0]),
+                                     sizeof(backing[0]));
+      }
+      else
+      {
         msg.header.stamp = rclcpp::Clock().now();
 
         uint64_t bits = be64toh(*reinterpret_cast<uint64_t *>(&backing[2]));
         double pressure = *reinterpret_cast<double *>(&bits);
-        if (recent_odom_msg_.header.stamp.sec > msg.header.stamp.sec) {
+        if (recent_odom_msg_.header.stamp.sec > msg.header.stamp.sec)
+        {
           // Accounts for the dynamic pressure applied to the pressure sensor
           // when the sub is moving forwards or backwards
           double velocity = recent_odom_msg_.twist.twist.linear.x;
           double vel_effect = (abs(velocity) * velocity) / (1000 * 9.81);
           msg.depth = pressure + vel_effect;
-        } else {
+        }
+        else
+        {
           msg.depth = pressure;
         }
 
@@ -189,8 +204,10 @@ void NavTubeDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
 
 void NavTubeDriver::run()
 {
-  while (rclcpp::ok()) {
-    try {
+  while (rclcpp::ok())
+  {
+    try
+    {
       prev = rclcpp::Clock().now();
       boost::shared_ptr<tcp::socket> socket;
 
@@ -198,13 +215,15 @@ void NavTubeDriver::run()
       timer_thread = std::thread(&NavTubeDriver::send_heartbeat, this, socket);
       initialized = true;
       read_messages(socket);
-    } catch (boost::system::system_error const & e) {
+    }
+    catch (boost::system::system_error const &e)
+    {
       std::chrono::seconds wait_time(5);
-      RCLCPP_WARN(this->get_logger(),
-        "Error with NavTube Depth driver TCP socket %s. Trying again in %ld seconds",
-        e.what(), wait_time.count());
+      RCLCPP_WARN(this->get_logger(), "Error with NavTube Depth driver TCP socket %s. Trying again in %ld seconds",
+                  e.what(), wait_time.count());
 
-      if (initialized) {
+      if (initialized)
+      {
         timer_thread.join();
       }
       initialized = false;
@@ -213,7 +232,7 @@ void NavTubeDriver::run()
   }
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
 
