@@ -17,7 +17,6 @@ find_package(rclcpp REQUIRED)
 
 add_library(${PROJECT_NAME}
     src/fs/path.cpp
-    src/itertools.cpp
     src/os.cpp
     src/os/FileDescriptor.cpp
     src/string.cpp
