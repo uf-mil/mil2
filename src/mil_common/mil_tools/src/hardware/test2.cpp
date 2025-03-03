@@ -6,7 +6,7 @@ using namespace std;
 
 int main()
 {
-sensors::subfeature temp {"/sys/class/thermal/hwmon0/temp1_input"};
+sensors::subfeature temp {"/sys/devices/virtual/thermal/thermal_zone0/temp"};
 
 cout << temp.read() << '\n';
 
