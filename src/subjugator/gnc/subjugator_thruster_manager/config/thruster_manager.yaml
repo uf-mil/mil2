@@ -1,5 +1,5 @@
 ---
-/subjugator/thruster_manager:
+/thruster_manager:
   ros__parameters:
     # Columns correspond to each thruster in order:
     # FRH, FLH, BRH, BLH, FRV, FLV, BRV, BLV
