@@ -25,7 +25,7 @@
   },
   "nodes" : 
   {
-    "plugin" : "nodes_plugin",
+    "plugin" : "node_plugin",
     "actions" : 
     {
       "/odom_estimator" : "/odom_estimator",

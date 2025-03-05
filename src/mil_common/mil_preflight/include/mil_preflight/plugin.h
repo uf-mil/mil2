@@ -13,8 +13,8 @@ namespace mil_preflight
     class PluginBase: public rclcpp::Node
     {
         public:
-        PluginBase(std::string const& name):
-            rclcpp::Node(name),
+        PluginBase():
+            rclcpp::Node("mil_preflight_node"),
             workThread_(boost::bind(&PluginBase::runTest, this))
         {
 

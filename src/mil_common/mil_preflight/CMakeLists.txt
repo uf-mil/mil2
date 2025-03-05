@@ -27,14 +27,7 @@ endif()
 FetchContent_MakeAvailable(ftxui)
 
 add_executable(${PROJECT_NAME} src/ui.cpp src/widgets.cpp)
-add_executable(mil_preflight_backend src/backend.cpp)
 include_directories(include ${ftxui_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
-
-ament_target_dependencies(mil_preflight_backend
-  rclcpp
-  std_msgs
-  Boost
-)
 
 target_link_libraries(${PROJECT_NAME}
   PRIVATE ftxui::screen
@@ -47,6 +40,14 @@ target_link_libraries(${PROJECT_NAME}
   Boost::system
 )
 
+add_executable(mil_preflight_backend src/backend.cpp)
+
+ament_target_dependencies(mil_preflight_backend
+  rclcpp
+  std_msgs
+  Boost
+)
+
 install(TARGETS ${PROJECT_NAME} mil_preflight_backend
   DESTINATION bin  # Install to install/bin/
 )
@@ -55,20 +56,30 @@ install(FILES cfg/config.json
   DESTINATION cfg
 )
 
+add_library(topic_plugin SHARED src/plugins/topic_plugin.cpp)
 
-add_executable(ftxui_test src/test.cpp)
-target_link_libraries(ftxui_test
-  PRIVATE ftxui::screen
-  PRIVATE ftxui::dom
-  PRIVATE ftxui::component
-  Boost::json
-  Boost::thread
-  Boost::chrono
+ament_target_dependencies(topic_plugin
+  rclcpp
+  Boost
 )
 
-install(TARGETS ftxui_test
-  DESTINATION bin  # Install to install/bin/
+install(TARGETS topic_plugin
+  LIBRARY DESTINATION lib
 )
+
+# add_executable(ftxui_test src/test.cpp)
+# target_link_libraries(ftxui_test
+#   PRIVATE ftxui::screen
+#   PRIVATE ftxui::dom
+#   PRIVATE ftxui::component
+#   Boost::json
+#   Boost::thread
+#   Boost::chrono
+# )
+
+# install(TARGETS ftxui_test
+#   DESTINATION bin  # Install to install/bin/
+# )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

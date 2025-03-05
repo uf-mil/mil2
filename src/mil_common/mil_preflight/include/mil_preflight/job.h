@@ -83,6 +83,7 @@ namespace mil_preflight
 
         void jobThreadFunc(std::shared_ptr<Job> job)
         {
+            // boost::interprocess::message_queue messageQueue(boost::interprocess::create_only, "mil_preflight_message_queue", 10, sizeof(int));
             while(true)
             {
                 std::shared_ptr<Test> test = job->nextTest();
