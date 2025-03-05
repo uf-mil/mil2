@@ -1,5 +1,11 @@
+#pragma once
+
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
+#include <boost/process.hpp>
+#include <boost/interprocess/ipc/message_queue.hpp>
+
+#include <filesystem>
 
 namespace mil_preflight
 {
@@ -15,6 +21,8 @@ namespace mil_preflight
         protected:
         std::string name_;
         std::string parameters_;
+        std::vector<std::string> stdouts_;
+        std::vector<std::string> stderrs_;
 
         virtual void onStart() = 0;
         virtual void onSuccess(std::string const& info) = 0;
@@ -55,7 +63,7 @@ namespace mil_preflight
         public:
         JobRunner()
         {
-
+            binPath_ = std::filesystem::canonical("/proc/self/exe").parent_path();
         }
         ~JobRunner()
         {
@@ -71,6 +79,7 @@ namespace mil_preflight
 
         private:
         boost::thread jobThread_;
+        std::filesystem::path binPath_;
 
         void jobThreadFunc(std::shared_ptr<Job> job)
         {
@@ -79,8 +88,18 @@ namespace mil_preflight
                 std::shared_ptr<Test> test = job->nextTest();
                 if(test == nullptr)
                     break;
-                
-                // Create process here
+
+                boost::process::ipstream childOut;
+                boost::process::ipstream childErr;                 
+                boost::process::opstream childIn;
+                std::vector<std::string> args;
+                // args.push_back(test->plugin_);
+
+                boost::process::child backend((binPath_ / "mil_preflight_backend").string(), test->plugin_, 
+                                                boost::process::std_in < childIn, 
+                                                boost::process::std_out > childOut,
+                                                boost::process::std_err > childErr);
+
                 while(true)
                 {
                     std::shared_ptr<Action> action = test->nextAction();
@@ -88,12 +107,46 @@ namespace mil_preflight
                         break;
 
                     action->onStart();
-                    boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
-                    // Send the action to the process
-                    // Wait for the process run the action
-                    action->onFail("Failed");
+                    childIn << action->parameters_ << std::endl;
+                    
+                    // boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
+
+                    std::vector<std::string> stdouts;
+                    std::vector<std::string> stderrs;
+                    std::string line;
+
+                    bool success = true;
+                    while(std::getline(childOut, line))
+                    {
+                        if(line[0] == char(0x06))
+                        {
+                            success = true;
+                            break;
+                        }
+                        else if(line[0] == char(0x15))
+                        {
+                            success = false;
+                            break;
+                        }
+                        
+                        stdouts.push_back(std::move(line));
+                    }
+
+                    while(std::getline(childErr, line))
+                    {
+                        if(line[0] == char(0x04))
+                            break;
+                        stderrs.push_back(std::move(line));
+                    }
+
+                    if(success)
+                        action->onSuccess("Success");
+                    else
+                        action->onFail("Failed");
                 }
 
+                childIn << char(0x04) << std::endl;
+                backend.join();
                 test->onFinish();
             }
 

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 
@@ -8,11 +10,9 @@
 
 #include "mil_preflight/job.h"
 
-using namespace ftxui;
-
 namespace mil_preflight
 {
-
+using namespace ftxui;
 class ActionBox: public ComponentBase, public Action
 {
     public:

@@ -9,7 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(Boost REQUIRED COMPONENTS json thread chrono)
+find_package(Boost REQUIRED COMPONENTS json thread chrono filesystem system)
 
 include(FetchContent)
 
@@ -27,12 +27,14 @@ endif()
 FetchContent_MakeAvailable(ftxui)
 
 add_executable(${PROJECT_NAME} src/ui.cpp src/widgets.cpp)
+add_executable(mil_preflight_backend src/backend.cpp)
 include_directories(include ${ftxui_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
 
-# # ament_target_dependencies(${PROJECT_NAME} 
-# #   rclcpp
-# #   std_msgs
-# # )
+ament_target_dependencies(mil_preflight_backend
+  rclcpp
+  std_msgs
+  Boost
+)
 
 target_link_libraries(${PROJECT_NAME}
   PRIVATE ftxui::screen
@@ -41,9 +43,11 @@ target_link_libraries(${PROJECT_NAME}
   Boost::json
   Boost::thread
   Boost::chrono
+  Boost::filesystem
+  Boost::system
 )
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME} mil_preflight_backend
   DESTINATION bin  # Install to install/bin/
 )
 

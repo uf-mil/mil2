@@ -1,21 +1,20 @@
-// #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/rclcpp.hpp>
 
-namespace mil_preflight
+#include <filesystem>
+
+#include "mil_preflight/plugin.h"
+
+
+int main(int argc, char* argv[])
 {
-    class Backend
-    {
-        public:
-        Backend()
-        {
+    rclcpp::init(argc - 1, argv);
 
-        }
+    std::filesystem::path binPath = std::filesystem::canonical("/proc/self/exe").parent_path();
+    std::filesystem::path pluginPath = binPath/".."/"lib"/ argv[argc-1];
 
-        ~Backend()
-        {
+    std::shared_ptr<rclcpp::Node> node = std::make_shared<mil_preflight::PluginBase>(argv[argc - 1]);
+    rclcpp::spin(node);
+    rclcpp::shutdown();
 
-        }
-
-        private:
-
-    };
+    return 0;
 }
