@@ -31,22 +31,22 @@ namespace dave_ros_gz_plugins
 {
 class DVLBridge : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
 {
-public:
-  DVLBridge();
-  ~DVLBridge() override = default;
+  public:
+    DVLBridge();
+    ~DVLBridge() override = default;
 
-  void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
-                 gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) override;
+    void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
+                   gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) override;
 
-  void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
+    void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
 
-  void receiveGazeboCallback(gz::msgs::DVLVelocityTracking const &dvl_velocity_tracking);
+    void receiveGazeboCallback(gz::msgs::DVLVelocityTracking const &dvl_velocity_tracking);
 
-private:
-  std::shared_ptr<rclcpp::Node> ros_node_;
+  private:
+    std::shared_ptr<rclcpp::Node> ros_node_;
 
-  struct PrivateData;
-  std::unique_ptr<PrivateData> dataPtr;
+    struct PrivateData;
+    std::unique_ptr<PrivateData> dataPtr;
 };
 }  // namespace dave_ros_gz_plugins
 

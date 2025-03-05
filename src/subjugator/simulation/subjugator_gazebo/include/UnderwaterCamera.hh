@@ -37,32 +37,32 @@ class UnderwaterCamera : public gz::sim::System,
                          public gz::sim::ISystemPostUpdate,
                          public gz::sim::ISystemReset
 {
-public:
-  UnderwaterCamera();
-  ~UnderwaterCamera();
+  public:
+    UnderwaterCamera();
+    ~UnderwaterCamera();
 
-  void Configure(gz::sim::Entity const& entity, std::shared_ptr<sdf::Element const> const& sdf,
-                 gz::sim::EntityComponentManager& ecm, gz::sim::EventManager& eventMgr) override;
+    void Configure(gz::sim::Entity const& entity, std::shared_ptr<sdf::Element const> const& sdf,
+                   gz::sim::EntityComponentManager& ecm, gz::sim::EventManager& eventMgr) override;
 
-  void PostUpdate(gz::sim::UpdateInfo const& info, gz::sim::EntityComponentManager const& ecm) override;
+    void PostUpdate(gz::sim::UpdateInfo const& info, gz::sim::EntityComponentManager const& ecm) override;
 
-  void Reset(gz::sim::UpdateInfo const& _info, gz::sim::EntityComponentManager& _ecm) override;
+    void Reset(gz::sim::UpdateInfo const& _info, gz::sim::EntityComponentManager& _ecm) override;
 
-  void CameraCallback(gz::msgs::Image const& image);
+    void CameraCallback(gz::msgs::Image const& image);
 
-  void CameraInfoCallback(gz::msgs::CameraInfo const& cameraInfo);
+    void CameraInfoCallback(gz::msgs::CameraInfo const& cameraInfo);
 
-  void DepthImageCallback(gz::msgs::Image const& image);
+    void DepthImageCallback(gz::msgs::Image const& image);
 
-  cv::Mat ConvertGazeboToOpenCV(gz::msgs::Image const& gz_image);
+    cv::Mat ConvertGazeboToOpenCV(gz::msgs::Image const& gz_image);
 
-  cv::Mat SimulateUnderwater(cv::Mat const& _inputImage, cv::Mat const& _inputDepth, cv::Mat& _outputImage);
+    cv::Mat SimulateUnderwater(cv::Mat const& _inputImage, cv::Mat const& _inputDepth, cv::Mat& _outputImage);
 
-private:
-  std::shared_ptr<rclcpp::Node> ros_node_;
+  private:
+    std::shared_ptr<rclcpp::Node> ros_node_;
 
-  struct PrivateData;
-  std::unique_ptr<PrivateData> dataPtr;
+    struct PrivateData;
+    std::unique_ptr<PrivateData> dataPtr;
 };
 
 std::string sanitizeNodeName(std::string const& name);
