@@ -1,0 +1,16 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/aarush-tripathi/mil2/install/subjugator_msgs/lib/python3.12/site-packages",
+        "/home/aarush-tripathi/mil2/install/mil_passive_sonar/lib/python3.12/site-packages",
+        "/home/aarush-tripathi/mil2/install/mil_msgs/lib/python3.12/site-packages",
+        "/home/aarush-tripathi/mil2/install/electrical_protocol/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/aarush-tripathi/mil2/install/subjugator_msgs/lib/python3.12/site-packages",
+        "/home/aarush-tripathi/mil2/install/mil_passive_sonar/lib/python3.12/site-packages",
+        "/home/aarush-tripathi/mil2/install/mil_msgs/lib/python3.12/site-packages",
+        "/home/aarush-tripathi/mil2/install/electrical_protocol/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ]
+}
