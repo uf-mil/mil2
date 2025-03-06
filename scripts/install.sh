@@ -197,7 +197,10 @@ mil_system_install \
 	ros-jazzy-vision-msgs \
 	ros-jazzy-velodyne \
 	ros-jazzy-backward-ros \
-	python3-colcon-common-extensions
+	python3-colcon-common-extensions \
+	ros-jazzy-marine-acoustic-msgs \
+	ros-jazzy-generate-parameter-library \
+	nlohmann-json3-dev
 
 cat <<EOF
 $(color "$Pur")
