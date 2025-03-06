@@ -11,6 +11,9 @@
 
   <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
+  <build_depend>ncurses</build_depend>
+  <exec_depend>ncurses</exec_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>

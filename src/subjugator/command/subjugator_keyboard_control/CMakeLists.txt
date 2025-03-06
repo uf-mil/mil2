@@ -9,7 +9,13 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
+# Add new package - Curses
+find_package(Curses REQUIRED)
+
 add_executable(subjugator_keyboard_control src/subjugator_keyboard_control.cpp)
+
+include_directories(${CURSES_INCLUDE_DIR})
+target_link_libraries(subjugator_keyboard_control ${CURSES_LIBRARIES})
 
 target_include_directories(subjugator_keyboard_control PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

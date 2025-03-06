@@ -7,6 +7,8 @@
 #include <iostream>
 #include <thread>
 
+#include <ncurses.h>
+
 #include "geometry_msgs/msg/wrench.hpp"
 #include "rclcpp/rclcpp.hpp"
 
@@ -15,7 +17,7 @@ using namespace std::chrono;
 using std::atomic;
 using std::thread;
 
-constexpr int PUBLISH_RATE = 10;  // Hertz
+constexpr int PUBLISH_RATE = 10; // Magic number
 
 // May be used elsewhere if similar logic?
 struct KeyState
@@ -35,12 +37,8 @@ class SubjugatorKeyboardControl final : public rclcpp::Node
 public:
   SubjugatorKeyboardControl()
     : Node("subjugator_keyboard_control")
-    , force_x_(0.0)
-    , force_y_(0.0)
-    , force_z_(0.0)
-    , torque_x_(0.0)
-    , torque_y_(0.0)
-    , torque_z_(0.0)
+    , force_x_(0.0), force_y_(0.0), force_z_(0.0)
+    , torque_x_(0.0), torque_y_(0.0), torque_z_(0.0)
     , running_(true)
   {
     publisher_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", PUBLISH_RATE);
@@ -93,20 +91,13 @@ private:
   thread publisher_thread_;
   atomic<bool> running_;
 
-  termios old_terminal_settings_{};
+  // HERE: Removed old termios settings, using ncurses instead
   bool terminal_initialized_{ false };
-
   void initTerminal()
   {
-    tcgetattr(STDIN_FILENO, &old_terminal_settings_);
-    termios new_settings = old_terminal_settings_;
-    new_settings.c_lflag &= ~(ICANON | ECHO);
-    new_settings.c_cc[VMIN] = 0;   // Set non-blocking input
-    new_settings.c_cc[VTIME] = 1;  // 0.1 second timeout
-    // These flags are necessary so doesn't always return -1
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
+    initscr(); cbreak(); noecho();
+    nodelay(stdscr, TRUE); // Set non-blocking input
+    keypad(stdscr, TRUE);  // Enable function and arrow keys
     terminal_initialized_ = true;
   }
 
@@ -114,7 +105,7 @@ private:
   {
     if (terminal_initialized_)
     {
-      tcsetattr(STDIN_FILENO, TCSANOW, &old_terminal_settings_);
+      endwin();
     }
   }
 
@@ -137,7 +128,7 @@ private:
       { &key_a, base_linear_, &current_force_y },          { &key_d, -base_linear_, &current_force_y },
       { &key_x, base_linear_, &current_force_z },          { &key_z, -base_linear_, &current_force_z },
     };
-    auto const timeout = milliseconds(150);
+    auto const timeout = milliseconds(150); // Magic number
 
     while (running_)
     {
@@ -154,41 +145,30 @@ private:
       current_force_x = 0.0, current_force_y = 0.0, current_force_z = 0.0;
       current_torque_x = 0.0, current_torque_y = 0.0, current_torque_z = 0.0;
 
-      int ch = getchar();
-      if (ch == -1)
+      int ch = getch();
+      if (ch == ERR)
       {
         // Do nothing. Avoids additional nesting or use of goto
       }
-      else if (ch == 27)
-      {  // Possible arrow key escape sequence
-        if (getchar() == 91)
-        {
-          int ch3 = getchar();
-          if (ch3 == 'A')
-          {
-            arrow_up.pressed = true;
-            arrow_up.last_time = now;
-          }
-          else if (ch3 == 'B')
-          {
-            arrow_down.pressed = true;
-            arrow_down.last_time = now;
-          }
-          else if (ch3 == 'C')
-          {
-            arrow_right.pressed = true;
-            arrow_right.last_time = now;
-          }
-          else if (ch3 == 'D')
-          {
-            arrow_left.pressed = true;
-            arrow_left.last_time = now;
-          }
-          else
-          {
-            RCLCPP_INFO(this->get_logger(), "Unknown escape sequence");
-          }
-        }
+      else if (ch == KEY_UP)
+      {
+        arrow_up.pressed = true;
+        arrow_up.last_time = now;
+      }
+      else if (ch == KEY_DOWN)
+      {
+        arrow_down.pressed = true;
+        arrow_down.last_time = now;
+      }
+      else if (ch == KEY_RIGHT)
+      {
+        arrow_right.pressed = true;
+        arrow_right.last_time = now;
+      }
+      else if (ch == KEY_LEFT)
+      {
+        arrow_left.pressed = true;
+        arrow_left.last_time = now;
       }
       else
       {
@@ -237,10 +217,8 @@ private:
         }
       }
 
-      for (auto& effect : letter_effects)
-      {
-        if (effect.key->pressed)
-        {
+      for (auto& effect : letter_effects) {
+        if (effect.key->pressed) {
           *(effect.target) += effect.multiplier;
         }
       }
@@ -257,11 +235,9 @@ private:
     }
   }
 
-  void publishLoop() const
-  {
+  void publishLoop() const {
     rclcpp::Rate rate(PUBLISH_RATE);
-    while (rclcpp::ok() && running_)
-    {
+    while (rclcpp::ok() && running_) {
       auto current_msg = geometry_msgs::msg::Wrench();
       current_msg.force.x = force_x_.load();
       current_msg.force.y = force_y_.load();
@@ -276,8 +252,7 @@ private:
   }
 };
 
-int main(int const argc, char** argv)
-{
+int main(int const argc, char** argv) {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<SubjugatorKeyboardControl>();
   rclcpp::spin(node);
