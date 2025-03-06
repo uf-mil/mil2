@@ -4,28 +4,26 @@ It's like teleop_twist_keyboard, but better!
 
 - Build with ```colcon build --packages-select subjugator_keyboard_control```
 - Run with ```ros2 run subjugator_keyboard_control subjugator_keyboard_control```
-- Uses arrows (up, down, left, right, shift+up, shift+down) for linear movement.
-- Uses wasd (w, a, s, d, shift+w, shift+s) for angular movement
-- Supports key holds and pressing space to reset
+- Uses w, a, s, d, z, x for linear movement
+- Uses arrows, e, r for angular movement
+- Supports key holds
 - q for quitting
 
-
-| Key         | Action                               |
-|-------------|--------------------------------------|
-| ↑ (Up)      | Move forward (increase X force)      |
-| ↓ (Down)    | Move backward (decrease X force)     |
-| → (Right)   | Move right (increase Y force)        |
-| ← (Left)    | Move left (decrease Y force)         |
-| **Shift+↑** | Move up (increase Z force)           |
-| **Shift+↓** | Move down (decrease Z force)         |
-| **W**       | Apply torque in X+ direction         |
-| **S**       | Apply torque in X- direction         |
-| **A**       | Apply torque in Z- direction         |
-| **D**       | Apply torque in Z+ direction         |
-| **Shift+W** | Apply torque in Y+ direction         |
-| **Shift+S** | Apply torque in Y- direction         |
-| **Space**   | Stop all motion (reset key states)   |
-| **Q**       | Quit the loop (`rclcpp::shutdown()`) |
+| Key         | Action                                  |
+|-------------|-----------------------------------------|
+| **W**       | Move forward  (apply positive X force)  |
+| **S**       | Move backward (apply negative X force)  |
+| **A**       | Move left     (apply positive Y force)  |
+| **D**       | Move right    (apply negative Y force)  |
+| **X**       | Move up       (apply positive Z force)  |
+| **Z**       | Move down     (apply negative Z force)  |
+| ↑ (Up)      | Pitch up      (apply negative Y torque) |
+| ↓ (Down)    | Pitch down    (apply positive Y torque) |
+| → (Right)   | Yaw right     (apply negative Z torque) |
+| ← (Left)    | Yaw left      (apply positive Z torque) |
+| **E**       | Roll left     (apply negative X torque) |
+| **R**       | Roll left     (apply positive X torque) |
+| **Q**       | Quit the loop (`rclcpp::shutdown()`)    |
 
 ## Dependencies
 - **C++17 or later**
