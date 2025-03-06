@@ -10,10 +10,11 @@ extern ScreenInteractive screen;
 namespace mil_preflight
 {
 
-ActionBox::ActionBox(boost::json::key_value_pair const& pair)
+ActionBox::ActionBox(std::string const& name, std::string const& parameters):
+    name_(name),
+    parameters_(parameters)
 {
-    name_ = pair.key();
-    parameters_ = pair.value().as_string();
+    
 }
 
 ActionBox::~ActionBox()
@@ -122,30 +123,18 @@ void ActionBox::onStart()
     state_ = State::RUNNING;
 }
 
-void ActionBox::onSuccess(std::string const& info)
+void ActionBox::onFinish(bool success, std::string const& info)
 {
-    state_ = State::SUCCESS;
-    screen.PostEvent(Event::Custom);
-}
-void ActionBox::onFail(std::string const& info)
-{
-    state_ = State::FAILED;
+    state_ = success ? State::SUCCESS : State::FAILED;
     screen.PostEvent(Event::Custom);
 }
 
-TestPage::TestPage(boost::json::key_value_pair const& pair)
+TestPage::TestPage(std::string const& name, std::string const& plugin):
+    name_(name),
+    plugin_(plugin)
 {
-    name_ = pair.key();
-    boost::json::object obj = pair.value().as_object();
-    plugin_ = obj.at("plugin").as_string();
-
-    Components tests;
-    for(const auto& actionPair: obj.at("actions").as_object())
-    {
-        tests.push_back(std::make_shared<ActionBox>(actionPair));
-    }
-
-    Add(Container::Vertical(tests, &selector_));
+    Components comps;
+    Add(Container::Vertical(comps, &selector_));
 }
 
 TestPage::~TestPage()
@@ -244,6 +233,13 @@ std::shared_ptr<Action> TestPage::nextAction()
     return nullptr;
 }
 
+std::shared_ptr<Action> TestPage::createAction(std::string const& name, std::string const& parameters)
+{
+    std::shared_ptr<ActionBox> action = std::make_shared<ActionBox>(name, parameters);
+    ChildAt(0)->Add(action);
+    return action;
+}
+
 void TestPage::onFinish()
 {
     currentAction_ = 0;
@@ -253,7 +249,7 @@ Element TestTab::Render()
 {
     bool focused = Focused();
 
-    auto labelEle = text(test_->name_); 
+    auto labelEle = text(test_->getName()); 
 
     if (focused)
     {
@@ -364,74 +360,29 @@ void TestTab::nextState()
     }
 }
 
-JobPanel::JobPanel(boost::json::value const& value)
+JobPanel::JobPanel()
 {
     Components pages;
     Components tabs;
-    for(const auto& testPair: value.as_object())
-    {
-        std::shared_ptr<TestPage> testPage = std::make_shared<TestPage>(testPair);
-        std::shared_ptr<TestTab> testTab = std::make_shared<TestTab>(testPage);
-        pages.push_back(testPage);
-        tabs.push_back(testTab);
-    }
 
     tabsContainer_ = Container::Vertical(tabs, &selector_);
     pagesContainer_ = Container::Tab(pages,  &selector_);
     Component main = Container::Horizontal({tabsContainer_ | frame | vscroll_indicator, 
                                             Renderer([]{return separator(); }), 
                                             pagesContainer_ | frame | vscroll_indicator | flex});
+    Add(main);
 
-    main |= CatchEvent([&](Event event){
-        if(event == Event::Custom)
-        ticker_ ++;
+    // main |= CatchEvent([&](Event event){
+    //     if(event == Event::Custom)
+    //     ticker_ ++;
         
-        if(running_)
-        {
-            return true;
-        }
+    //     if(running_)
+    //     {
+    //         return true;
+    //     }
     
-        return false;
-    });
-
-    ButtonOption buttonOption = ButtonOption::Simple();
-    buttonOption.transform = [&](const EntryState& s) 
-    {
-        auto element = (running_ ? text(buttonLabels_[ticker_ % 3 + 1]) : text(s.label)) | border;
-        if (s.active)
-        {
-            element |= bold;
-        }
-        if (s.focused)
-        {
-            element |= inverted;
-        }
-        return element;
-    };
-    Component runButton = Button(buttonLabels_[0], [&]{
-        bool expected = false;
-        if(running_.compare_exchange_strong(expected, true))
-        {
-            ticker_ = 0;
-            currentTest_ = 0;
-            tabsContainer_->TakeFocus();
-            runner_.run(shared_from_this());
-        }
-    }, buttonOption);
-
-    CheckboxOption checkboxOption = CheckboxOption::Simple();
-    checkboxOption.on_change = [&]{
-        if(selectAll_)
-        {
-            for(size_t i=0;i<pagesContainer_->ChildCount();i++)
-            {
-                std::dynamic_pointer_cast<TestPage>(pagesContainer_->ChildAt(i))->check();
-            }
-        }
-    };
-    Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_, checkboxOption) | vcenter | flex, runButton | align_right});
-
-    Add(Container::Vertical({main | flex, Renderer([]{return separator(); }), bottom}));
+    //     return false;
+    // });
 }
 
 JobPanel::~JobPanel()
@@ -453,9 +404,59 @@ std::shared_ptr<Test> JobPanel::nextTest()
     return nullptr;
 }
 
+std::shared_ptr<Test> JobPanel::createTest(std::string const& name, std::string const& plugin)
+{
+    std::shared_ptr<TestPage> testPage = std::make_shared<TestPage>(name, plugin);
+    pagesContainer_->Add(testPage);
+    tabsContainer_->Add(std::make_shared<TestTab>(testPage));
+    return testPage;
+}
+
 void JobPanel::onFinish()
 {
-    running_ = false;
+    currentTest_ = 0;
+}
+
+JobPage::JobPage(std::string const& filePath):
+    panel_(std::make_shared<JobPanel>())
+{
+    runner_.initialize(panel_, filePath);
+
+    // ButtonOption buttonOption = ButtonOption::Simple();
+    // buttonOption.transform = [&](const EntryState& s) 
+    // {
+    //     auto element = (running_ ? text(buttonLabels_[ticker_ % 3 + 1]) : text(s.label)) | border;
+    //     if (s.active)
+    //     {
+    //         element |= bold;
+    //     }
+    //     if (s.focused)
+    //     {
+    //         element |= inverted;
+    //     }
+    //     return element;
+    // };
+    // Component runButton = Button(buttonLabels_[0], [&]{
+    //     bool expected = false;
+    //     if(running_.compare_exchange_strong(expected, true))
+    //     {
+    //         ticker_ = 0;
+    //         currentTest_ = 0;
+    //         tabsContainer_->TakeFocus();
+    //         runner_.run(panel_);
+    //     }
+    // }, buttonOption);
+
+    Component runButton = Button(buttonLabels_[0], [&]{
+        runner_.run(panel_);
+    });
+    Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton | align_right});
+    Add(Container::Vertical({panel_ | flex, Renderer([]{return separator(); }), bottom}));
+}
+
+JobPage::~JobPage()
+{
+
 }
 
 }

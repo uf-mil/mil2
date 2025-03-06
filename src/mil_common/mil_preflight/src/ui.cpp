@@ -29,18 +29,6 @@ int main(int argc, char* argv[])
         fileName = binPath / ".." / "cfg" / "config.json";
     }
 
-    std::ifstream file(fileName);
-    if(!file.is_open())
-    {
-        std::cout << "Failed to load the configuration file: "<<  fileName << std::endl;
-        return -1;
-    }
-
-    // Parse the configuration file
-    boost::json::value data = boost::json::parse(file);
-
-    file.close();
-
     /*--------------------The page head-----------------------*/
     int currentPage = 0;
     bool showBackButton = false;
@@ -97,11 +85,9 @@ int main(int argc, char* argv[])
     });
 
     /*--------------------The test Tab-----------------------*/
-    std::shared_ptr<mil_preflight::JobPanel> job = std::make_shared<mil_preflight::JobPanel>(data);
+    Component jobPage = std::make_shared<mil_preflight::JobPage>(fileName) | flex;
 
-    auto backButton1 = Button("<", [&] { currentPage = 0;}, ButtonOption::Ascii());
-
-    auto testsTab = job | flex;
+    // auto backButton1 = Button("<", [&] { currentPage = 0;}, ButtonOption::Ascii());
     
     // auto testsPage = Container::Vertical({head1, Renderer([&]{return separator();}) ,jobContainer | flex});
     // auto testsPage = Renderer(pageContainer, [&] {
@@ -130,7 +116,7 @@ int main(int argc, char* argv[])
 
     auto body = Container::Tab({
         mainTab,
-        testsTab,
+        jobPage,
         reportTab,
         docTab
     }, &currentPage);

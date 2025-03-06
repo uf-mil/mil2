@@ -2,11 +2,17 @@
 
 #include <string>
 #include <iostream>
+#include <filesystem>
+#include <sstream>
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
+#include <boost/dll.hpp>
+#include <boost/function.hpp>
+
+#include "mil_preflight/common.h"
 
 namespace mil_preflight
 {
@@ -20,36 +26,107 @@ namespace mil_preflight
 
         }
 
-        ~PluginBase()
+
+        virtual ~PluginBase()
         {
             workThread_.join();
         }
 
+        static std::shared_ptr<PluginBase> create(std::string const& pluginName)
+        {
+            std::filesystem::path binPath = std::filesystem::canonical("/proc/self/exe").parent_path();
+            std::filesystem::path pluginPath = binPath/".."/"lib"/pluginName;
+
+            try
+            {
+                creator_ = boost::dll::import_alias<Creator>(
+                    pluginPath.string(),
+                    pluginName,
+                    boost::dll::load_mode::append_decorations
+                );
+            }
+            catch(boost::system::system_error const& e)
+            {
+                error_ = "Failed to load the plugin: " + std::string(e.what());
+                return std::make_shared<PluginBase>();
+            }
+
+            return creator_();
+        }
+
+        protected:
+
         virtual bool runAction(std::string const& parameter)
         {
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
-            RCLCPP_ERROR(get_logger(), "No such plugin: %s", get_name());
             return false;
+        }
+
+        virtual std::string const& getSummery()
+        {
+            return error_;
+        }
+
+        int askUser(std::string const& question, std::vector<std::string> const& options)
+        {
+            std::ostringstream oss;
+            oss << BEL << question;
+            for(std::string const& option : options)
+            {
+                oss << GS << option;
+            }
+
+            oss << std::endl;
+
+            std::cout << std::move(oss.str());
+
+            std::string line;
+            if(!std::getline(std::cin, line))
+                return -1;
+
+            int index = -1;
+            try
+            {
+                index = std::stoi(line);
+            }
+            catch(std::exception const& e)
+            {
+
+            }
+
+            return index;
         }
 
         private:
 
+        using Creator = std::shared_ptr<PluginBase>();
+
         boost::thread workThread_;
+        static std::string error_;
+        static boost::function<Creator> creator_;
 
         void runTest()
         {
             std::string line;
             while(std::getline(std::cin, line))
             {
-                if(line[0] == char(0x04))
+                if(line[0] == EOT)
                     break;
                 
                 bool success = runAction(line);
-                std::cout << (success ? char(0x06) : char(0x15))  << std::endl;
-                std::cerr << char(0x04) << std::endl;
+                std::ostringstream oss;
+                oss << (success ? ACK : NCK) << std::endl;
+                oss << getSummery() << std::endl;
+                std::cout << std::move(oss.str());
+
+                oss.clear();
+                oss << EOT << std::endl;
+                std::cerr << std::move(oss.str());
             }
 
             rclcpp::shutdown();
         }
     };
+
+    std::string PluginBase::error_ = "success";
+    boost::function<PluginBase::Creator> PluginBase::creator_;
 }
