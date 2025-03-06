@@ -8,8 +8,6 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
 
 add_executable(subjugator_keyboard_control src/subjugator_keyboard_control.cpp)
 
@@ -18,23 +16,13 @@ target_include_directories(subjugator_keyboard_control PUBLIC
         $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 target_compile_features(subjugator_keyboard_control PUBLIC c_std_99 cxx_std_17)
 
-ament_target_dependencies(subjugator_keyboard_control rclcpp geometry_msgs)
-
-# Should this be installing with or without quotes?
 ament_target_dependencies(
         subjugator_keyboard_control
         rclcpp
         geometry_msgs
-        std_msgs
-        nav_msgs
 )
 
 install(TARGETS subjugator_keyboard_control
         DESTINATION lib/${PROJECT_NAME})
-
-if(BUILD_TESTING)
-    set(ament_cmake_copyright_FOUND TRUE)
-    set(ament_cmake_cpplint_FOUND TRUE)
-endif()
 
 ament_package()
