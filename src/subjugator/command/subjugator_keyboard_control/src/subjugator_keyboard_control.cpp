@@ -13,7 +13,6 @@
 using namespace std::chrono_literals;
 using namespace std::chrono;
 using std::atomic;
-using std::cout;
 using std::thread;
 
 constexpr int PUBLISH_RATE = 10;  // Hertz
@@ -56,7 +55,8 @@ public:
     keyboard_thread_ = thread(&SubjugatorKeyboardControl::keyboardLoop, this);
     publisher_thread_ = thread(&SubjugatorKeyboardControl::publishLoop, this);
 
-    cout << R"(Subjugator Keyboard Control:
+    RCLCPP_INFO(this->get_logger(), R"(
+    Subjugator Keyboard Control:
       w           : +x force
       s           : -x force
       a           : +y force
@@ -70,7 +70,7 @@ public:
       e           : roll left  (-torque x)
       r           : roll right (+torque x)
       q           : Quit
-    )" << '\n';
+    )");
   }
 
   ~SubjugatorKeyboardControl() override
@@ -120,8 +120,7 @@ private:
   void keyboardLoop()
   {
     KeyState arrow_up, arrow_down, arrow_left, arrow_right;
-    KeyState key_e, key_r;
-    KeyState key_w, key_s, key_a, key_d, key_z, key_x;
+    KeyState key_e, key_r, key_w, key_s, key_a, key_d, key_z, key_x;
 
     double current_force_x = 0.0, current_force_y = 0.0, current_force_z = 0.0;
     double current_torque_x = 0.0, current_torque_y = 0.0, current_torque_z = 0.0;
@@ -186,7 +185,7 @@ private:
           }
           else
           {
-            cout << "Unknown escape sequence\n";
+            RCLCPP_INFO(this->get_logger(), "Unknown escape sequence");
           }
         }
       }
@@ -232,7 +231,7 @@ private:
             rclcpp::shutdown();
             break;
           default:
-            cout << "Unknown command: " << static_cast<char>(ch) << "\n";
+            RCLCPP_INFO(this->get_logger(), "Unknown command: %c", static_cast<char>(ch));
             break;
         }
       }
@@ -278,11 +277,6 @@ private:
 
 int main(int const argc, char** argv)
 {
-  //  while (true) {
-  //    int ch = getchar();
-  //    std::cout << "Key code: " << ch << std::endl;
-  //  }
-  //  return 0;
   rclcpp::init(argc, argv);
   auto node = std::make_shared<SubjugatorKeyboardControl>();
   rclcpp::spin(node);
