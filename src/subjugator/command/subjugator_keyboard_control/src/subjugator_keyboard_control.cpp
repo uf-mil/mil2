@@ -55,6 +55,7 @@ public:
     keyboard_thread_ = thread(&SubjugatorKeyboardControl::keyboardLoop, this);
     publisher_thread_ = thread(&SubjugatorKeyboardControl::publishLoop, this);
 
+    RCLCPP_INFO(this->get_logger(), "Publishing wrench to \\cmd_wrench topic.");
     RCLCPP_INFO(this->get_logger(), R"(
     Subjugator Keyboard Control:
       w           : +x force
