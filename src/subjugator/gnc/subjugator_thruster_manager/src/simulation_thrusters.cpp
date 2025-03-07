@@ -1,4 +1,5 @@
 #include <memory>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float64.hpp"
@@ -6,44 +7,43 @@
 
 class SimulatedThrusterCmds : public rclcpp::Node
 {
-public:
-  SimulatedThrusterCmds() : Node("simulate_thruster_cmds")
-  {
-    publisher_flv = this->create_publisher<std_msgs::msg::Float64>("thruster/FLV", 10);
-    publisher_frv = this->create_publisher<std_msgs::msg::Float64>("thruster/FRV", 10);
-    publisher_blv = this->create_publisher<std_msgs::msg::Float64>("thruster/BLV", 10);
-    publisher_brv = this->create_publisher<std_msgs::msg::Float64>("thruster/BRV", 10);
-    auto topic_callback = [this](subjugator_msgs::msg::ThrusterEfforts::UniquePtr msg) -> void
+  public:
+    SimulatedThrusterCmds() : Node("simulate_thruster_cmds")
     {
-      auto msg_flv = std_msgs::msg::Float64();
-      auto msg_frv = std_msgs::msg::Float64();
-      auto msg_blv = std_msgs::msg::Float64();
-      auto msg_brv = std_msgs::msg::Float64();
-      msg_flv.data = msg->thrust_flv;
-      msg_frv.data = msg->thrust_frv;
-      msg_blv.data = msg->thrust_blv;
-      msg_brv.data = msg->thrust_brv;
-      this->publisher_flv->publish(msg_flv);
-      this->publisher_frv->publish(msg_frv);
-      this->publisher_blv->publish(msg_blv);
-      this->publisher_brv->publish(msg_brv);
-    };
-    subscription_ =
-        this->create_subscription<subjugator_msgs::msg::ThrusterEfforts>("thruster_efforts", 10, topic_callback);
-  }
+        std::vector<std::string> thruster_topics = { "thruster/FLH", "thruster/FRH", "thruster/BLH", "thruster/BRH",
+                                                     "thruster/FLV", "thruster/FRV", "thruster/BLV", "thruster/BRV" };
 
-private:
-  rclcpp::Subscription<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr subscription_;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr publisher_flv;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr publisher_frv;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr publisher_blv;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr publisher_brv;
+        for (auto const &topic : thruster_topics)
+        {
+            publishers_.push_back(this->create_publisher<std_msgs::msg::Float64>(topic, 10));
+        }
+
+        auto topic_callback = [this](subjugator_msgs::msg::ThrusterEfforts::UniquePtr msg) -> void
+        {
+            std::vector<double> thrust_values = { msg->thrust_flh, msg->thrust_frh, msg->thrust_blh, msg->thrust_brh,
+                                                  msg->thrust_flv, msg->thrust_frv, msg->thrust_blv, msg->thrust_brv };
+
+            for (size_t i = 0; i < publishers_.size(); ++i)
+            {
+                std_msgs::msg::Float64 msg_thruster;
+                msg_thruster.data = thrust_values[i];
+                publishers_[i]->publish(msg_thruster);
+            }
+        };
+
+        subscription_ =
+            this->create_subscription<subjugator_msgs::msg::ThrusterEfforts>("thruster_efforts", 10, topic_callback);
+    }
+
+  private:
+    rclcpp::Subscription<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr subscription_;
+    std::vector<rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr> publishers_;
 };
 
 int main(int argc, char *argv[])
 {
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<SimulatedThrusterCmds>());
-  rclcpp::shutdown();
-  return 0;
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<SimulatedThrusterCmds>());
+    rclcpp::shutdown();
+    return 0;
 }
