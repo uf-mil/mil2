@@ -22,12 +22,12 @@ add_executable(thruster_manager src/thruster_manager.cpp)
 ament_target_dependencies(thruster_manager rclcpp geometry_msgs subjugator_msgs)
 target_include_directories(thruster_manager PRIVATE ${EIGEN3_INCLUDE_DIR})
 
-add_executable(simulated_thruster_cmds src/simulation_thrusters.cpp)
-ament_target_dependencies(simulated_thruster_cmds rclcpp subjugator_msgs)
+add_executable(forward_to_sim src/forward_to_sim.cpp)
+ament_target_dependencies(forward_to_sim rclcpp subjugator_msgs)
 
 install(TARGETS
   thruster_manager
-  simulated_thruster_cmds
+  forward_to_sim
   DESTINATION lib/${PROJECT_NAME}
 )
 

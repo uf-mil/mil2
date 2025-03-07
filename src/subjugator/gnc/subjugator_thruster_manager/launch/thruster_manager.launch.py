@@ -21,5 +21,10 @@ def generate_launch_description():
                 ],
                 output="screen",
             ),
+            Node(
+                package="subjugator_thruster_manager",
+                executable="forward_to_sim",
+                name="forward_to_sim",
+            ),
         ],
     )
