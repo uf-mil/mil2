@@ -7,12 +7,11 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/dvl.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/depth.xacro"/>
 
   <!-- Base Link of the Sub -->
   <link name="base_link">
     <!-- Sub's Pose -->
-    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <origin rpy="0 0 0" xyz="-0.1 0.0125 -1"/>
 
     <!-- Inertial Properties -->
     <inertial>
@@ -24,7 +23,7 @@
 
     <!-- Visual Data-->
     <visual name="visual">
-      <origin rpy="0 0 0" xyz="-0.254 0 0"/>
+      <origin rpy="0 0 3.1415" xyz="0 0 0"/>
       <geometry>
         <mesh filename="package://subjugator_description/urdf/meshes/Sub9.dae"/>
       </geometry>
@@ -87,19 +86,16 @@
     lz="0.08825985"
   />
 
-  <!--Depth Sensor-->
-  <xacro:mil_depth_sensor name="depth_sensor" namespace="/depth" parent="base_link" xyz="0 0 0" rpy="0 0 0" update_rate="5" frame_id="depth_sensor_frame" noise_mean="0.0" noise_stddev="0"/>
-
   <!-- Thrusters -->
   <!-- Front/Back Left/Right Vertical/Horizontal -->
   <!-- Orientation seem to be correct -->
-  <xacro:mil_thruster name="FLV" parent="base_link" xyz="0.3175 0.14922 -0.028575" rpy="0 -1.57079 0"/>
-  <xacro:mil_thruster name="FRV" parent="base_link" xyz="0.3175 -0.14922 -0.02875" rpy="0 -1.57079 0"/>
-  <xacro:mil_thruster name="BRV" parent="base_link" xyz="-0.1307 -0.14922 -0.028575" rpy="0 -1.57079 0"/>
-  <xacro:mil_thruster name="BLV" parent="base_link" xyz="-0.1307 0.14922 -0.028575" rpy="0 -1.57079 0"/>
+  <xacro:mil_thruster name="FLV" parent="base_link" xyz="-0.40617 -0.16474 0.010449" rpy="0 -1.5708 0"/>
+  <xacro:mil_thruster name="FRV" parent="base_link" xyz="-0.4032 0.13821 0.010449" rpy="0 -1.5708 0"/>
+  <xacro:mil_thruster name="BRV" parent="base_link" xyz="0.05717 0.13821 0.010449" rpy="0 -1.5708 0"/>
+  <xacro:mil_thruster name="BLV" parent="base_link" xyz="0.05468 -0.16621 0.010449" rpy="0 -1.5708 0"/>
 
-  <xacro:mil_thruster name="FLH" parent="base_link" xyz="0.33337 0.24765 0.053875" rpy="0 0 5.72468"/>
-  <xacro:mil_thruster name="FRH" parent="base_link" xyz="0.33337 -0.24765 0.053975" rpy="0 0 -5.72468"/>
-  <xacro:mil_thruster name="BRH" parent="base_link" xyz="-0.127 -0.24765 0.049213" rpy="0 0 -1.01229"/>
-  <xacro:mil_thruster name="BLH" parent="base_link" xyz="-0.127 0.24765 0.053975" rpy="0 0 1.01229"/>
+  <xacro:mil_thruster name="FLH" parent="base_link" xyz="-0.40114 -0.26409 0.038317" rpy="0 0 0"/>
+  <xacro:mil_thruster name="FRH" parent="base_link" xyz="-0.401 0.2413 0.038324" rpy="0 0 0"/>
+  <xacro:mil_thruster name="BRH" parent="base_link" xyz="0.06969 0.22645 0.038317" rpy="0 0 0"/>
+  <xacro:mil_thruster name="BLH" parent="base_link" xyz="0.06997 -0.25204 0.038324" rpy="0 0 0"/>
 </robot>
