@@ -38,7 +38,7 @@
 
     <!-- Thruster Direction joint -->
     <joint name="${name}_dir_joint" type="revolute">
-      <origin xyz="0 0 0" rpy="0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <parent link="${name}_link"/>
       <child link="${name}_dir_link"/>
       <limit effort="1000" lower="0.0" upper="0.548" velocity="0.5"/>

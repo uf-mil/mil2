@@ -7,6 +7,7 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/dvl.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/depth.xacro"/>
 
   <!-- Base Link of the Sub -->
   <link name="base_link">
@@ -84,6 +85,19 @@
     lx="0.08825985"
     ly="0.08825985"
     lz="0.08825985"
+  />
+
+  <!--Depth Sensor-->
+  <xacro:mil_depth_sensor 
+    name="depth_sensor"
+    namespace="/depth"
+    parent="base_link" 
+    xyz="0 0 0" 
+    rpy="0 0 0" 
+    update_rate="5" 
+    frame_id="depth_sensor_frame" 
+    noise_mean="0.0" 
+    noise_stddev="0"
   />
 
   <!-- Thrusters -->
