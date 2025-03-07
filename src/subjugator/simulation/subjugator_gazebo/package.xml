@@ -9,6 +9,7 @@
   <author>Keith Khadar</author>
 
   <depend>geometry_msgs</depend>
+  <depend>mil_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
