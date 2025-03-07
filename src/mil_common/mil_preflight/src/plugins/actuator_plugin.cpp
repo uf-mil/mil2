@@ -33,7 +33,7 @@ namespace mil_preflight
 
         bool runAction(std::vector<std::string>&& parameters) final
         {
-            std::string question = "Ensure that all fingers are clear of the area! Is it safe to operate the actuator: " + 
+            std::string question = "Ensure that all fingers are clear of the area!\nIs it safe to operate the actuator: " + 
                 parameters[0] + " ?";
             if(askQuestion(question, {"Yes", "No"}) != 0)
             {

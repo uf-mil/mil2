@@ -71,13 +71,13 @@ namespace mil_preflight
         int askQuestion(std::string const& question, std::vector<std::string> const& options)
         {
             std::ostringstream oss;
-            oss << BEL << std::endl << question << std::endl;
+            oss << BEL << std::endl << question << GS;
             for(std::string const& option : options)
             {
-                oss << option << std::endl;
+                oss << option << GS;
             }
 
-            oss << EOT << std::endl;
+            oss << EOT << GS;
 
             std::cout << std::move(oss.str());
 

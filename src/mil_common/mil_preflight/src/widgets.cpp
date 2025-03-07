@@ -238,6 +238,8 @@ std::shared_ptr<Action> TestPage::nextAction()
         child->SetActiveChild(action);
         if(action->isChecked())
             return action;
+        
+        action->reset();
     }
 
     return nullptr;
@@ -492,11 +494,21 @@ bool JobPage::OnEvent(Event event)
         }
 
         Component buttonsContainer = Container::Horizontal(buttons);
-        dialog_ = Renderer(buttonsContainer ,[=]{
+        Component closeButton = Button("X", [=]{
+            selector_ = 0;
+            dialog_->Detach();
+            question->answer(-1);
+        }, ButtonOption::Ascii());
+
+        Component dialogContainer = Container::Vertical({closeButton, buttonsContainer});
+
+        dialog_ = Renderer(dialogContainer ,[=]{
             return vbox({
+                    closeButton->Render() | align_right,
+                    separator(),
                     paragraph(question->getQuestion()) | flex, 
                     buttonsContainer->Render() | align_right
-                });
+                }) | border;
         });
 
         ChildAt(0)->Add(dialog_);

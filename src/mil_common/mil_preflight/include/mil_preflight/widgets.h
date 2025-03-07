@@ -26,6 +26,8 @@ class ActionBox: public ComponentBase, public Action
     bool isChecked() const { return checked_; }
     void check() { checked_ = true; }
     void uncheck() { checked_ = false; }
+    void reset() {state_ = State::NONE;}
+    
     std::string const& getName() const final { return name_; }
     std::vector<std::string> const& getParameters() const final {return parameters_; }
 

@@ -260,7 +260,7 @@ namespace mil_preflight
                     }
                     else if(state == State::QUESTION)
                     {
-                        if(!std::getline(childOut, question))
+                        if(!std::getline(childOut, question, GS))
                         {
                             summery = "Broken pipe";
                             state = State::FINISH;
@@ -271,7 +271,7 @@ namespace mil_preflight
                     }
                     else if(state == State::OPTIONS)
                     {
-                        if(!std::getline(childOut, line))
+                        if(!std::getline(childOut, line, GS))
                         {
                             summery = "Broken pipe";
                             state = State::FINISH;
