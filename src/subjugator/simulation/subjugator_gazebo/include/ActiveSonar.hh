@@ -2,7 +2,6 @@
 #define DVL_ACTIVE_SONAR_HH_
 
 #include <gz/sim/System.hh>
-
  
 namespace active_sonar
 {
