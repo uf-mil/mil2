@@ -109,10 +109,13 @@ bool ActionBox::OnMouseEvent(Event event)
     if (event.mouse().button == Mouse::Left &&
         event.mouse().motion == Mouse::Pressed) 
     {
-        checked_ = !checked_;
-        TakeFocus();
+        if(Focused())
+            checked_ = !checked_;
+        else
+            TakeFocus();
         return true;
     }
+
 
     return false;
 }
@@ -336,8 +339,10 @@ bool TestTab::OnMouseEvent(Event event)
     if (event.mouse().button == Mouse::Left &&
         event.mouse().motion == Mouse::Pressed) 
     {
-        nextState();
-        TakeFocus();
+        if(Focused())
+            nextState();
+        else
+            TakeFocus();
         return true;
     }
 
