@@ -25,10 +25,12 @@
       <preserveFixedJoint>true</preserveFixedJoint>
     </gazebo>
 
-    <gazebo>
-      <plugin filename="Hydrophone" name="hydrophone::Hydrophone">
+    <!-- <gazebo>
+      <plugin
+        filename="Hydrophone"
+        name="hydrophone::Hydrophone">
         <topic>${name}</topic>
       </plugin>
-    </gazebo>
+    </gazebo> -->
   </xacro:macro>
 </robot>

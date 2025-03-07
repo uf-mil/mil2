@@ -40,6 +40,12 @@
 			    filename="gz-sim-dvl-system"
 			    name="gz::sim::systems::DopplerVelocityLogSystem">
 		    </plugin>
+            <plugin
+                filename="Hydrophone"
+                name="hydrophone::Hydrophone">
+                <topic>${name}</topic>
+            </plugin>
+
             <!-- Buoyancy Plugin -->
             <!--
                 To alter a objects's buoyancy do one or both of the following:
