@@ -58,6 +58,7 @@ namespace mil_preflight
 
         virtual bool runAction(std::string const& parameter)
         {
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
             return false;
         }
 
@@ -69,13 +70,13 @@ namespace mil_preflight
         int askUser(std::string const& question, std::vector<std::string> const& options)
         {
             std::ostringstream oss;
-            oss << BEL << question;
+            oss << BEL << std::endl << question << std::endl;
             for(std::string const& option : options)
             {
-                oss << GS << option;
+                oss << option << std::endl;
             }
 
-            oss << std::endl;
+            oss << EOT << std::endl;
 
             std::cout << std::move(oss.str());
 

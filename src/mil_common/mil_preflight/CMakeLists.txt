@@ -63,23 +63,30 @@ ament_target_dependencies(topic_plugin
   Boost
 )
 
-install(TARGETS topic_plugin
+add_library(setup_plugin SHARED src/plugins/setup_plugin.cpp)
+
+ament_target_dependencies(setup_plugin
+  rclcpp
+  Boost
+)
+
+install(TARGETS topic_plugin setup_plugin
   LIBRARY DESTINATION lib
 )
 
-# add_executable(ftxui_test src/test.cpp)
-# target_link_libraries(ftxui_test
-#   PRIVATE ftxui::screen
-#   PRIVATE ftxui::dom
-#   PRIVATE ftxui::component
-#   Boost::json
-#   Boost::thread
-#   Boost::chrono
-# )
+add_executable(ftxui_test src/test.cpp)
+target_link_libraries(ftxui_test
+  PRIVATE ftxui::screen
+  PRIVATE ftxui::dom
+  PRIVATE ftxui::component
+  Boost::json
+  Boost::thread
+  Boost::chrono
+)
 
-# install(TARGETS ftxui_test
-#   DESTINATION bin  # Install to install/bin/
-# )
+install(TARGETS ftxui_test
+  DESTINATION bin  # Install to install/bin/
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

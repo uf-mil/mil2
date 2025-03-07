@@ -7,12 +7,14 @@
 
 #include <filesystem>
 #include <fstream>
+#include <condition_variable>
 
 #include "mil_preflight/common.h"
 
 namespace mil_preflight
 {
-    class JobRunner;
+    // class JobRunner;
+    class Question;
 
     class Action
     {
@@ -21,14 +23,15 @@ namespace mil_preflight
         Action(){};
         ~Action(){};
 
-        protected:
-        std::vector<std::string> stdouts_;
-        std::vector<std::string> stderrs_;
-
         virtual void onStart() = 0;
         virtual void onFinish(bool success, std::string const& summery) = 0;
         virtual std::string const& getName() const = 0;
         virtual std::string const& getParameter() const = 0;
+        virtual void onQuestion(std::shared_ptr<Question> question) = 0;
+
+        protected:
+        std::vector<std::string> stdouts_;
+        std::vector<std::string> stderrs_;
     };
 
     class Test
@@ -37,28 +40,67 @@ namespace mil_preflight
         friend class JobRunner;
         Test(){};
         ~Test(){};
-        
-        protected:
 
         virtual std::shared_ptr<Action> createAction(std::string const& name, std::string const& parameters) = 0;
         virtual std::shared_ptr<Action> nextAction() = 0;
         virtual void onFinish() = 0;
         virtual std::string const& getName() const = 0;
         virtual std::string const& getPlugin() const = 0;
+        
     };
-
     
     class Job
     {
         public:
-        friend class JobRunner;
         Job(){};
         ~Job(){};
 
-        protected:
         virtual std::shared_ptr<Test> createTest(std::string const& name, std::string const& plugin) = 0;
         virtual std::shared_ptr<Test> nextTest() = 0;
         virtual void onFinish() = 0;
+    };
+
+    class Question: public std::enable_shared_from_this<Question>
+    {
+        public:
+        Question(std::string& question, std::vector<std::string>& options):
+            question_(std::move(question)),
+            options_(std::move(options))
+        {
+
+        }
+
+        ~Question(){}
+
+        inline void answer(int index)
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            index_ = index;
+            answered_ = true;
+            cond_.notify_all();
+        }
+
+        inline int ask(std::shared_ptr<Action> action)
+        {
+            action->onQuestion(shared_from_this());
+            std::unique_lock<std::mutex> lock(mutex_);
+            cond_.wait(lock, [this]{return answered_;});
+            return index_;
+        }
+
+        inline std::string const& getQuestion() const { return question_; }
+
+        inline size_t getOptionCount() const { return options_.size(); }
+
+        inline std::string const& getOpiton(size_t index) const { return options_[index]; }
+
+        private:
+        std::string question_;
+        std::vector<std::string> options_;
+        int index_ = -1;
+        bool answered_ = false;
+        std::condition_variable cond_;
+        std::mutex mutex_;
     };
 
     class JobRunner
@@ -154,11 +196,27 @@ namespace mil_preflight
                         }
                         else if(line[0] == BEL)
                         {
+                            std::string question;
+                            std::getline(childOut, question);
+                            std::vector<std::string> options;
+                            std::string option;
+                            while(std::getline(childOut, option))
+                            {
+                                if(option[0] == EOT)
+                                    break;
+                                options.push_back(std::move(option));
+                            }
 
+                            std::shared_ptr<Question> q = std::make_shared<Question>(question, options);
+                            childIn << q->ask(action) << std::endl;
+                            continue;
                         }
                         
                         stdouts.push_back(std::move(line));
                     }
+
+                    std::string summery;
+                    std::getline(childOut, summery);
 
                     while(std::getline(childErr, line))
                     {
@@ -167,7 +225,7 @@ namespace mil_preflight
                         stderrs.push_back(std::move(line));
                     }
 
-                    action->onFinish(success, line.substr(1, line.size() - 1));
+                    action->onFinish(success, summery);
 
                 }
 

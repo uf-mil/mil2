@@ -87,18 +87,6 @@ int main(int argc, char* argv[])
     /*--------------------The test Tab-----------------------*/
     Component jobPage = std::make_shared<mil_preflight::JobPage>(fileName) | flex;
 
-    // auto backButton1 = Button("<", [&] { currentPage = 0;}, ButtonOption::Ascii());
-    
-    // auto testsPage = Container::Vertical({head1, Renderer([&]{return separator();}) ,jobContainer | flex});
-    // auto testsPage = Renderer(pageContainer, [&] {
-    //     return vbox({
-    //         hbox({backButton1->Render(), text("Tests") | bold | center | flex}),  // Back button & title in same line
-    //         separator(),
-    //         jobContainer->Render() | flex,
-    //         runButton->Render() | align_right
-    //     });
-    // });
-
     /*--------------------The report Tab-----------------------*/
     auto reportTab = Renderer([&] {
         return vbox({

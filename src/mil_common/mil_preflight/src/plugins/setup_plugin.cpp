@@ -1,28 +1,24 @@
 #include "mil_preflight/plugin.h"
 
-#include <map>
-
-#include <boost/dll/alias.hpp>
-
 namespace mil_preflight
 {
-    class TopicPlugin: public PluginBase
+    class SetupPlugin: public PluginBase
     {
         public:
 
-        TopicPlugin()
-        {
-            topics_ = get_topic_names_and_types();
-        }
-
-        ~TopicPlugin()
+        SetupPlugin()
         {
             
         }
 
-        static std::shared_ptr<TopicPlugin> create() 
+        ~SetupPlugin()
         {
-            return std::shared_ptr<TopicPlugin>(new TopicPlugin());
+
+        }
+
+        static std::shared_ptr<SetupPlugin> create() 
+        {
+            return std::shared_ptr<SetupPlugin>(new SetupPlugin());
         }
 
         private:
@@ -32,9 +28,9 @@ namespace mil_preflight
 
         bool runAction(std::string const& parameter) final
         {
-            if(topics_.find(parameter) == topics_.end())
+            if(askUser(parameter, {"Yes", "No"}) != 0)
             {
-                summery_ = "Topic " + parameter + " does not exist";
+                summery_ = "User said No";
                 return false;
             }
 
@@ -50,5 +46,4 @@ namespace mil_preflight
 }
 
 
-BOOST_DLL_ALIAS(mil_preflight::TopicPlugin::create, topic_plugin);
-
+BOOST_DLL_ALIAS(mil_preflight::SetupPlugin::create, setup_plugin);

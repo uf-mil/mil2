@@ -6,4 +6,5 @@ namespace mil_preflight
     static constexpr char BEL = 0x07;
     static constexpr char NCK = 0x15;
     static constexpr char GS = 0x1D;
+    static constexpr char US = 0x1F;
 }

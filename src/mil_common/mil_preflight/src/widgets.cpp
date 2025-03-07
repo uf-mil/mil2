@@ -1,3 +1,5 @@
+#include <sstream>
+#include <queue>
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -9,6 +11,8 @@ extern ScreenInteractive screen;
 
 namespace mil_preflight
 {
+
+static std::queue<std::shared_ptr<Question>> questionQueue;
 
 ActionBox::ActionBox(std::string const& name, std::string const& parameters):
     name_(name),
@@ -126,7 +130,13 @@ void ActionBox::onStart()
 void ActionBox::onFinish(bool success, std::string const& info)
 {
     state_ = success ? State::SUCCESS : State::FAILED;
-    screen.PostEvent(Event::Custom);
+    screen.PostEvent(Event::Character("ActionFinish"));
+}
+
+void ActionBox::onQuestion(std::shared_ptr<Question> question)
+{
+    questionQueue.push(question);
+    screen.PostEvent(Event::Character("Question"));
 }
 
 TestPage::TestPage(std::string const& name, std::string const& plugin):
@@ -243,6 +253,7 @@ std::shared_ptr<Action> TestPage::createAction(std::string const& name, std::str
 void TestPage::onFinish()
 {
     currentAction_ = 0;
+    screen.PostEvent(Event::Character("TestFinish"));
 }
 
 Element TestTab::Render() 
@@ -370,19 +381,9 @@ JobPanel::JobPanel()
     Component main = Container::Horizontal({tabsContainer_ | frame | vscroll_indicator, 
                                             Renderer([]{return separator(); }), 
                                             pagesContainer_ | frame | vscroll_indicator | flex});
-    Add(main);
 
-    // main |= CatchEvent([&](Event event){
-    //     if(event == Event::Custom)
-    //     ticker_ ++;
-        
-    //     if(running_)
-    //     {
-    //         return true;
-    //     }
-    
-    //     return false;
-    // });
+
+    Add(main);
 }
 
 JobPanel::~JobPanel()
@@ -415,6 +416,7 @@ std::shared_ptr<Test> JobPanel::createTest(std::string const& name, std::string 
 void JobPanel::onFinish()
 {
     currentTest_ = 0;
+    screen.PostEvent(Event::Character("JobFinish"));
 }
 
 JobPage::JobPage(std::string const& filePath):
@@ -422,41 +424,91 @@ JobPage::JobPage(std::string const& filePath):
 {
     runner_.initialize(panel_, filePath);
 
-    // ButtonOption buttonOption = ButtonOption::Simple();
-    // buttonOption.transform = [&](const EntryState& s) 
-    // {
-    //     auto element = (running_ ? text(buttonLabels_[ticker_ % 3 + 1]) : text(s.label)) | border;
-    //     if (s.active)
-    //     {
-    //         element |= bold;
-    //     }
-    //     if (s.focused)
-    //     {
-    //         element |= inverted;
-    //     }
-    //     return element;
-    // };
-    // Component runButton = Button(buttonLabels_[0], [&]{
-    //     bool expected = false;
-    //     if(running_.compare_exchange_strong(expected, true))
-    //     {
-    //         ticker_ = 0;
-    //         currentTest_ = 0;
-    //         tabsContainer_->TakeFocus();
-    //         runner_.run(panel_);
-    //     }
-    // }, buttonOption);
+    ButtonOption buttonOption = ButtonOption::Simple();
+    buttonOption.transform = [&](const EntryState& s) 
+    {
+        auto element = (running_ ? text(buttonLabels_[ticker_ % 3 + 1]) : text(s.label)) | border;
+        if (s.active)
+        {
+            element |= bold;
+        }
+        if (s.focused)
+        {
+            element |= inverted;
+        }
+        return element;
+    };
 
-    Component runButton = Button(buttonLabels_[0], [&]{
-        runner_.run(panel_);
-    });
+    Component runButton = Button(buttonLabels_[0], [this]{
+        bool expected = false;
+        if(running_.compare_exchange_strong(expected, true))
+        {
+            panel_->TakeFocus();
+            runner_.run(panel_);
+        }
+    }, buttonOption);
+
     Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton | align_right});
-    Add(Container::Vertical({panel_ | flex, Renderer([]{return separator(); }), bottom}));
+    main_ = Container::Vertical({panel_ | flex, Renderer([]{return separator(); }), bottom});
+    Add(main_);
 }
 
 JobPage::~JobPage()
 {
 
+}
+
+bool JobPage::OnEvent(Event event)
+{
+    if(event == Event::Character("JobFinish"))
+    {
+        running_ = false;
+        return false;
+    }
+
+    if(event == Event::Character("TestFinish"))
+        return false;
+    
+    if(event == Event::Character("ActionFinish"))
+    {
+        ticker_ ++;
+        return false;
+    }
+
+    if(event == Event::Character("Question"))
+    {
+        main_->Detach();
+
+        Components buttons;
+        std::shared_ptr<Question> question = questionQueue.front();
+        questionQueue.pop();
+
+        for(size_t i = 0; i < question->getOptionCount(); i++)
+        {
+            buttons.push_back(Button(question->getOpiton(i), [=]{
+                ChildAt(0)->Detach();
+                Add(main_);
+                question->answer(i);
+            }));
+        }
+
+        Component buttonsContainer = Container::Horizontal(buttons);
+        Component dialog = Renderer(buttonsContainer ,[=]{
+            return vbox({
+                    text(question->getQuestion()) | flex, 
+                    buttonsContainer->Render() | align_right
+                });
+        });
+
+        Add(dialog);
+        
+        return true;
+    }
+
+    if(running_ && ChildAt(0) == main_)
+        return true;
+    
+    return ComponentBase::OnEvent(event);
 }
 
 }

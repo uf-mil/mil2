@@ -7,6 +7,8 @@
 
 #include <atomic>
 #include <stack>
+#include <mutex>
+#include <condition_variable>
 
 #include "mil_preflight/job.h"
 
@@ -51,6 +53,7 @@ class ActionBox: public ComponentBase, public Action
 
     void onStart() final;
     void onFinish(bool success, std::string const& summery) final;
+    void onQuestion(std::shared_ptr<Question> question) final;
 };
 
 class TestPage: public ComponentBase, public Test
@@ -121,6 +124,7 @@ class TestTab: public ComponentBase
 
 };
 
+
 class JobPanel: public ComponentBase, public Job //, public std::enable_shared_from_this<Job>
 {
   public:
@@ -153,5 +157,11 @@ class JobPage: public ComponentBase
   std::shared_ptr<JobPanel> panel_;
   size_t ticker_ = 0;
   bool selectAll_ = false;
+  // int switch_ = 0;
+  std::atomic<bool> running_ = false;
+
+  Component main_;
+
+  bool OnEvent(Event event) final;
 };
 }
