@@ -4,6 +4,7 @@
 #include <iostream>
 #include <filesystem>
 #include <sstream>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -56,9 +57,9 @@ namespace mil_preflight
 
         protected:
 
-        virtual bool runAction(std::string const& parameter)
+        virtual bool runAction(std::vector<std::string>&& parameters)
         {
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
+            // boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
             return false;
         }
 
@@ -67,7 +68,7 @@ namespace mil_preflight
             return error_;
         }
 
-        int askUser(std::string const& question, std::vector<std::string> const& options)
+        int askQuestion(std::string const& question, std::vector<std::string> const& options)
         {
             std::ostringstream oss;
             oss << BEL << std::endl << question << std::endl;
@@ -108,20 +109,31 @@ namespace mil_preflight
         void runTest()
         {
             std::string line;
+            std::vector<std::string> parameters;
             while(std::getline(std::cin, line))
             {
                 if(line[0] == EOT)
+                {
                     break;
-                
-                bool success = runAction(line);
-                std::ostringstream oss;
-                oss << (success ? ACK : NCK) << std::endl;
-                oss << getSummery() << std::endl;
-                std::cout << std::move(oss.str());
+                }
+                else if(line[0] == GS)
+                {
+                    bool success = runAction(std::move(parameters));
+                    std::ostringstream oss;
+                    oss << (success ? ACK : NCK) << std::endl;
+                    oss << getSummery() << std::endl;
+                    std::cout << std::move(oss.str());
 
-                oss.clear();
-                oss << EOT << std::endl;
-                std::cerr << std::move(oss.str());
+                    oss.clear();
+                    oss << EOT << std::endl;
+                    std::cerr << std::move(oss.str());
+
+                    parameters.clear();
+                }
+                else
+                {
+                    parameters.push_back(std::move(line));
+                }
             }
 
             rclcpp::shutdown();

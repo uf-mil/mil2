@@ -24,9 +24,9 @@ namespace mil_preflight
         ~Action(){};
 
         virtual void onStart() = 0;
-        virtual void onFinish(bool success, std::string const& summery) = 0;
+        virtual void onFinish(bool success, std::string&& summery) = 0;
         virtual std::string const& getName() const = 0;
-        virtual std::string const& getParameter() const = 0;
+        virtual std::vector<std::string> const& getParameters() const = 0;
         virtual void onQuestion(std::shared_ptr<Question> question) = 0;
 
         protected:
@@ -41,7 +41,7 @@ namespace mil_preflight
         Test(){};
         ~Test(){};
 
-        virtual std::shared_ptr<Action> createAction(std::string const& name, std::string const& parameters) = 0;
+        virtual std::shared_ptr<Action> createAction(std::string&& name, std::vector<std::string>&& parameters) = 0;
         virtual std::shared_ptr<Action> nextAction() = 0;
         virtual void onFinish() = 0;
         virtual std::string const& getName() const = 0;
@@ -55,7 +55,7 @@ namespace mil_preflight
         Job(){};
         ~Job(){};
 
-        virtual std::shared_ptr<Test> createTest(std::string const& name, std::string const& plugin) = 0;
+        virtual std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) = 0;
         virtual std::shared_ptr<Test> nextTest() = 0;
         virtual void onFinish() = 0;
     };
@@ -64,11 +64,19 @@ namespace mil_preflight
     {
         public:
         Question(std::string& question, std::vector<std::string>& options):
+            question_(question),
+            options_(options)
+        {
+
+        }
+
+        Question(std::string&& question, std::vector<std::string>&& options):
             question_(std::move(question)),
             options_(std::move(options))
         {
 
         }
+        
 
         ~Question(){}
 
@@ -130,7 +138,12 @@ namespace mil_preflight
                 std::shared_ptr<Test> test = job->createTest(testPair.key(), testPair.value().at("plugin").as_string().c_str());
                 for(boost::json::key_value_pair const& actionPair : testPair.value().at("actions").as_object())
                 {
-                    test->createAction(actionPair.key(), actionPair.value().as_string().c_str());
+                    std::vector<std::string> parameters;
+                    for(boost::json::value const& parameter: actionPair.value().as_array())
+                    {
+                        parameters.push_back(parameter.as_string().c_str());
+                    }
+                    test->createAction(actionPair.key(), std::move(parameters));
                 }
             }
 
@@ -199,16 +212,23 @@ namespace mil_preflight
                             break;
                         
                         action->onStart();
-                        if(childIn.fail())
+
+                        try
                         {
-                            summery = "Broken pipe";
+                            childIn << action->getName() << std::endl;
+                            for(std::string const& parameter: action->getParameters())
+                            {
+                                childIn << parameter << std::endl;
+                            }
+                            childIn << GS << std::endl;
+                        }
+                        catch(const std::exception& e)
+                        {
                             state = State::FINISH;
+                            summery = "Broken pipe: " + std::string(e.what());
+                            continue;
                         }
-                        else
-                        {
-                            childIn << action->getParameter() << std::endl;
-                            state = State::STDOUT;
-                        }
+                        state = State::STDOUT;
                     }
                     else if(state == State::STDOUT)
                     {
@@ -260,17 +280,18 @@ namespace mil_preflight
 
                         if(line[0] == EOT)
                         {
-                            std::shared_ptr<Question> q = std::make_shared<Question>(question, options);
-                            if(childIn.fail())
-                            {
-                                summery = "Broken pipe";
-                                state = State::FINISH;
-                            }
-                            else
+                            std::shared_ptr<Question> q = std::make_shared<Question>(std::move(question), std::move(options));
+                            try
                             {
                                 childIn << q->ask(action) << std::endl;
-                                state = State::STDOUT;
                             }
+                            catch(const std::exception& e)
+                            {
+                                state = State::FINISH;
+                                summery = "Broken pipe: " + std::string(e.what());
+                                continue;
+                            }
+                            state = State::STDOUT;
                         }
                         else
                         {
@@ -290,7 +311,7 @@ namespace mil_preflight
                     }
                     else if(state == State::FINISH)
                     {
-                        action->onFinish(success, summery);
+                        action->onFinish(success, std::move(summery));
                         stdouts.clear();
                         stderrs.clear();
                         state = State::START;

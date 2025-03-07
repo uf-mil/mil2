@@ -1,40 +1,41 @@
 #include "mil_preflight/plugin.h"
 
 #include <map>
+#include <vector>
 
 #include <boost/dll/alias.hpp>
 
 namespace mil_preflight
 {
-    class TopicPlugin: public PluginBase
+    class NodePlugin: public PluginBase
     {
         public:
 
-        TopicPlugin()
+        NodePlugin()
         {
-            topics_ = get_topic_names_and_types();
+            nodes_ = get_node_names();
         }
 
-        ~TopicPlugin()
+        ~NodePlugin()
         {
             
         }
 
-        static std::shared_ptr<TopicPlugin> create() 
+        static std::shared_ptr<NodePlugin> create() 
         {
-            return std::shared_ptr<TopicPlugin>(new TopicPlugin());
+            return std::shared_ptr<NodePlugin>(new NodePlugin());
         }
 
         private:
 
-        std::map<std::string, std::vector<std::string>> topics_;
+        std::vector<std::string> nodes_;
         std::string summery_;
 
         bool runAction(std::vector<std::string>&& parameters) final
         {
-            if(topics_.find(parameters[1]) == topics_.end())
+            if(std::find(nodes_.begin(), nodes_.end(), parameters[1]) == nodes_.end())
             {
-                summery_ = "Topic " + parameters[0] + " does not exist";
+                summery_ = "Node " + parameters[0] + " does not exist";
                 return false;
             }
 
@@ -50,5 +51,5 @@ namespace mil_preflight
 }
 
 
-BOOST_DLL_ALIAS(mil_preflight::TopicPlugin::create, topic_plugin);
+BOOST_DLL_ALIAS(mil_preflight::NodePlugin::create, node_plugin);
 

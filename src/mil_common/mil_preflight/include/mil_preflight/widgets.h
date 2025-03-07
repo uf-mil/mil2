@@ -8,6 +8,7 @@
 #include <atomic>
 #include <stack>
 #include <mutex>
+#include <vector>
 #include <condition_variable>
 
 #include "mil_preflight/job.h"
@@ -19,14 +20,14 @@ class ActionBox: public ComponentBase, public Action
 {
     public:
     // friend class TestPage;
-    ActionBox(std::string const& name, std::string const& parameters);
+    ActionBox(std::string&& name, std::vector<std::string>&& parameters);
     ~ActionBox();
 
     bool isChecked() const { return checked_; }
     void check() { checked_ = true; }
     void uncheck() { checked_ = false; }
     std::string const& getName() const final { return name_; }
-    std::string const& getParameter() const final {return parameters_; }
+    std::vector<std::string> const& getParameters() const final {return parameters_; }
 
     private:
 
@@ -44,7 +45,7 @@ class ActionBox: public ComponentBase, public Action
     Box box_;
     std::atomic<State> state_ = State::NONE;
     std::string name_;
-    std::string parameters_;
+    std::vector<std::string> parameters_;
 
     Element Render() final;
     bool OnEvent(Event event) final;
@@ -52,7 +53,7 @@ class ActionBox: public ComponentBase, public Action
     bool Focusable() const final;
 
     void onStart() final;
-    void onFinish(bool success, std::string const& summery) final;
+    void onFinish(bool success, std::string&& summery) final;
     void onQuestion(std::shared_ptr<Question> question) final;
 };
 
@@ -61,7 +62,7 @@ class TestPage: public ComponentBase, public Test
   public:
   using History = std::pair<size_t, bool>;
 
-  TestPage(std::string const& name, std::string const& plugin);
+  TestPage(std::string&& name, std::string&& plugin);
   ~TestPage();
 
   size_t actionCount() {return ChildAt(0)->ChildCount();}
@@ -85,9 +86,8 @@ class TestPage: public ComponentBase, public Test
   Box box_;
 
   std::shared_ptr<Action> nextAction() final;
-  std::shared_ptr<Action> createAction(std::string const& name, std::string const& parameters) final;
+  std::shared_ptr<Action> createAction(std::string&& name, std::vector<std::string>&& parameters) final;
   void onFinish() final;
-
 };
 
 class TestTab: public ComponentBase
@@ -140,7 +140,7 @@ class JobPanel: public ComponentBase, public Job //, public std::enable_shared_f
   std::atomic<size_t> currentTest_ = 0;
 
   std::shared_ptr<Test> nextTest() final;
-  std::shared_ptr<Test> createTest(std::string const& name, std::string const& plugin) final;
+  std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) final;
   void onFinish() final;
 
 };

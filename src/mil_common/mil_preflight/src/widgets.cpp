@@ -14,9 +14,9 @@ namespace mil_preflight
 
 static std::queue<std::shared_ptr<Question>> questionQueue;
 
-ActionBox::ActionBox(std::string const& name, std::string const& parameters):
-    name_(name),
-    parameters_(parameters)
+ActionBox::ActionBox(std::string&& name, std::vector<std::string>&& parameters):
+    name_(std::move(name)),
+    parameters_(std::move(parameters))
 {
     
 }
@@ -127,7 +127,7 @@ void ActionBox::onStart()
     state_ = State::RUNNING;
 }
 
-void ActionBox::onFinish(bool success, std::string const& info)
+void ActionBox::onFinish(bool success, std::string&& info)
 {
     state_ = success ? State::SUCCESS : State::FAILED;
     screen.PostEvent(Event::Character("ActionFinish"));
@@ -139,9 +139,9 @@ void ActionBox::onQuestion(std::shared_ptr<Question> question)
     screen.PostEvent(Event::Character("Question"));
 }
 
-TestPage::TestPage(std::string const& name, std::string const& plugin):
-    name_(name),
-    plugin_(plugin)
+TestPage::TestPage(std::string&& name, std::string&& plugin):
+    name_(std::move(name)),
+    plugin_(std::move(plugin))
 {
     Components comps;
     Add(Container::Vertical(comps, &selector_));
@@ -243,9 +243,9 @@ std::shared_ptr<Action> TestPage::nextAction()
     return nullptr;
 }
 
-std::shared_ptr<Action> TestPage::createAction(std::string const& name, std::string const& parameters)
+std::shared_ptr<Action> TestPage::createAction(std::string&& name, std::vector<std::string>&& parameters)
 {
-    std::shared_ptr<ActionBox> action = std::make_shared<ActionBox>(name, parameters);
+    std::shared_ptr<ActionBox> action = std::make_shared<ActionBox>(std::move(name), std::move(parameters));
     ChildAt(0)->Add(action);
     return action;
 }
@@ -405,9 +405,9 @@ std::shared_ptr<Test> JobPanel::nextTest()
     return nullptr;
 }
 
-std::shared_ptr<Test> JobPanel::createTest(std::string const& name, std::string const& plugin)
+std::shared_ptr<Test> JobPanel::createTest(std::string&& name, std::string&& plugin)
 {
-    std::shared_ptr<TestPage> testPage = std::make_shared<TestPage>(name, plugin);
+    std::shared_ptr<TestPage> testPage = std::make_shared<TestPage>(std::move(name), std::move(plugin));
     pagesContainer_->Add(testPage);
     tabsContainer_->Add(std::make_shared<TestTab>(testPage));
     return testPage;
@@ -494,7 +494,7 @@ bool JobPage::OnEvent(Event event)
         Component buttonsContainer = Container::Horizontal(buttons);
         dialog_ = Renderer(buttonsContainer ,[=]{
             return vbox({
-                    text(question->getQuestion()) | flex, 
+                    paragraph(question->getQuestion()) | flex, 
                     buttonsContainer->Render() | align_right
                 });
         });
@@ -502,6 +502,11 @@ bool JobPage::OnEvent(Event event)
         ChildAt(0)->Add(dialog_);
         selector_ = 1;
         
+        return true;
+    }
+
+    if(running_ && selector_ == 0)
+    {
         return true;
     }
 

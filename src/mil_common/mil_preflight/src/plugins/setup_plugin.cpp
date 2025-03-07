@@ -1,5 +1,7 @@
 #include "mil_preflight/plugin.h"
 
+#include <vector>
+
 namespace mil_preflight
 {
     class SetupPlugin: public PluginBase
@@ -26,9 +28,9 @@ namespace mil_preflight
         std::map<std::string, std::vector<std::string>> topics_;
         std::string summery_;
 
-        bool runAction(std::string const& parameter) final
+        bool runAction(std::vector<std::string>&& parameters) final
         {
-            if(askUser(parameter, {"Yes", "No"}) != 0)
+            if(askQuestion(parameters[1], {"Yes", "No"}) != 0)
             {
                 summery_ = "User said No";
                 return false;
