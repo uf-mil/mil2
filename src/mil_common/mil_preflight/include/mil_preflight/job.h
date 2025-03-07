@@ -146,6 +146,16 @@ namespace mil_preflight
         }
 
         private:
+        enum class State
+        {
+            START,
+            STDOUT,
+            SUMMERY,
+            QUESTION,
+            OPTIONS,
+            FINISH,
+        };
+
         boost::thread jobThread_;
         std::filesystem::path binPath_;
 
@@ -167,69 +177,136 @@ namespace mil_preflight
                                                 boost::process::std_out > childOut,
                                                 boost::process::std_err > childErr);
 
+                std::shared_ptr<Action> action;
+
+                bool success = false;
+                State state = State::START;
+                std::vector<std::string> stdouts;
+                std::vector<std::string> stderrs;
+                
+                std::string line;
+                std::string summery;
+
+                std::string question;
+                std::vector<std::string> options;
 
                 while(true)
                 {
-                    bool success = false;
-                    std::shared_ptr<Action> action = test->nextAction();
-                    if(action == nullptr)
-                        break;
-
-                    action->onStart();
-                    childIn << action->getParameter() << std::endl;
-
-                    std::vector<std::string> stdouts;
-                    std::vector<std::string> stderrs;
-                    
-                    std::string line;
-                    while(std::getline(childOut, line))
+                    if(state == State::START)
                     {
+                        action = test->nextAction();
+                        if(action == nullptr)
+                            break;
+                        
+                        action->onStart();
+                        if(childIn.fail())
+                        {
+                            summery = "Broken pipe";
+                            state = State::FINISH;
+                        }
+                        else
+                        {
+                            childIn << action->getParameter() << std::endl;
+                            state = State::STDOUT;
+                        }
+                    }
+                    else if(state == State::STDOUT)
+                    {
+                        if(!std::getline(childOut, line))
+                        {
+                            summery = "Broken pipe";
+                            state = State::FINISH;
+                            continue;
+                        }
+
                         if(line[0] == ACK)
                         {
+                            state = State::SUMMERY;
                             success = true;
-                            break;
                         }
                         else if(line[0] == NCK)
                         {
+                            state = State::SUMMERY;
                             success = false;
-                            break;
                         }
                         else if(line[0] == BEL)
                         {
-                            std::string question;
-                            std::getline(childOut, question);
-                            std::vector<std::string> options;
-                            std::string option;
-                            while(std::getline(childOut, option))
-                            {
-                                if(option[0] == EOT)
-                                    break;
-                                options.push_back(std::move(option));
-                            }
-
-                            std::shared_ptr<Question> q = std::make_shared<Question>(question, options);
-                            childIn << q->ask(action) << std::endl;
+                            state = State::QUESTION;
+                        }
+                        else
+                        {
+                            stdouts.push_back(std::move(line));
+                        }
+                    }
+                    else if(state == State::QUESTION)
+                    {
+                        if(!std::getline(childOut, question))
+                        {
+                            summery = "Broken pipe";
+                            state = State::FINISH;
                             continue;
                         }
-                        
-                        stdouts.push_back(std::move(line));
+
+                        state = State::OPTIONS;
                     }
-
-                    std::string summery;
-                    std::getline(childOut, summery);
-
-                    while(std::getline(childErr, line))
+                    else if(state == State::OPTIONS)
                     {
+                        if(!std::getline(childOut, line))
+                        {
+                            summery = "Broken pipe";
+                            state = State::FINISH;
+                            continue;
+                        }
+
                         if(line[0] == EOT)
-                            break;
-                        stderrs.push_back(std::move(line));
+                        {
+                            std::shared_ptr<Question> q = std::make_shared<Question>(question, options);
+                            if(childIn.fail())
+                            {
+                                summery = "Broken pipe";
+                                state = State::FINISH;
+                            }
+                            else
+                            {
+                                childIn << q->ask(action) << std::endl;
+                                state = State::STDOUT;
+                            }
+                        }
+                        else
+                        {
+                            options.push_back(std::move(line));
+                        }
+
                     }
+                    else if(state == State::SUMMERY)
+                    {
+                        if(!std::getline(childOut, summery))
+                        {
+                            state = State::FINISH;
+                            continue;
+                        }
 
-                    action->onFinish(success, summery);
-
+                        state = State::FINISH;
+                    }
+                    else if(state == State::FINISH)
+                    {
+                        action->onFinish(success, summery);
+                        stdouts.clear();
+                        stderrs.clear();
+                        state = State::START;
+                    }
                 }
 
-                childIn << EOT << std::endl;
+                // while(std::getline(childErr, line))
+                // {
+                //     if(line[0] == EOT)
+                //         break;
+                //     stderrs.push_back(std::move(line));
+                // }
+
+                if(!childIn.fail())
+                    childIn << EOT << std::endl;
+                
                 backend.join();
                 test->onFinish();
             }

@@ -450,7 +450,7 @@ JobPage::JobPage(std::string const& filePath):
 
     Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton | align_right});
     main_ = Container::Vertical({panel_ | flex, Renderer([]{return separator(); }), bottom});
-    Add(main_);
+    Add(Container::Tab({main_}, &selector_));
 }
 
 JobPage::~JobPage()
@@ -477,7 +477,6 @@ bool JobPage::OnEvent(Event event)
 
     if(event == Event::Character("Question"))
     {
-        main_->Detach();
 
         Components buttons;
         std::shared_ptr<Question> question = questionQueue.front();
@@ -486,28 +485,26 @@ bool JobPage::OnEvent(Event event)
         for(size_t i = 0; i < question->getOptionCount(); i++)
         {
             buttons.push_back(Button(question->getOpiton(i), [=]{
-                ChildAt(0)->Detach();
-                Add(main_);
+                selector_ = 0;
+                dialog_->Detach();
                 question->answer(i);
             }));
         }
 
         Component buttonsContainer = Container::Horizontal(buttons);
-        Component dialog = Renderer(buttonsContainer ,[=]{
+        dialog_ = Renderer(buttonsContainer ,[=]{
             return vbox({
                     text(question->getQuestion()) | flex, 
                     buttonsContainer->Render() | align_right
                 });
         });
 
-        Add(dialog);
+        ChildAt(0)->Add(dialog_);
+        selector_ = 1;
         
         return true;
     }
 
-    if(running_ && ChildAt(0) == main_)
-        return true;
-    
     return ComponentBase::OnEvent(event);
 }
 

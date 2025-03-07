@@ -157,10 +157,11 @@ class JobPage: public ComponentBase
   std::shared_ptr<JobPanel> panel_;
   size_t ticker_ = 0;
   bool selectAll_ = false;
-  // int switch_ = 0;
+  int selector_ = 0;
   std::atomic<bool> running_ = false;
 
   Component main_;
+  Component dialog_;
 
   bool OnEvent(Event event) final;
 };
