@@ -88,11 +88,13 @@ int main(int argc, char* argv[])
     Component jobPage = std::make_shared<mil_preflight::JobPage>(fileName) | flex;
 
     /*--------------------The report Tab-----------------------*/
-    auto reportTab = Renderer([&] {
-        return vbox({
-            text("This is the report.") | center
-        }) | flex;
-    });
+    // auto reportTab = Renderer([&] {
+    //     return vbox({
+    //         text("This is the report.") | center
+    //     }) | flex;
+    // });
+
+    Component reportPage = std::make_shared<mil_preflight::ReportPage>() | flex;
 
     /*--------------------The documentation Tab-----------------------*/
 
@@ -105,7 +107,7 @@ int main(int argc, char* argv[])
     auto body = Container::Tab({
         mainTab,
         jobPage,
-        reportTab,
+        reportPage,
         docTab
     }, &currentPage);
 

@@ -13,6 +13,7 @@ namespace mil_preflight
 {
 
 static std::queue<std::shared_ptr<Question>> questionQueue;
+static std::queue<JobPanel::Summery> summeryQueue;
 
 ActionBox::ActionBox(std::string&& name, std::vector<std::string>&& parameters):
     name_(std::move(name)),
@@ -55,14 +56,20 @@ Element ActionBox::Render()
 
     auto labelEle = text(name_); 
 
-    if (focused)
+    if (focused || hovered_)
     {
         labelEle |= inverted;
     }
 
+    if (focused)
+    {
+        labelEle |= bold;
+    }
+
     auto element = hbox({
         text(checked_ ? "☑ " : "☐ "),
-        labelEle | flex,
+        labelEle,
+        filler() | flex,
         text(indicator) | color(textColor) | align_right
     });
 
@@ -130,9 +137,10 @@ void ActionBox::onStart()
     state_ = State::RUNNING;
 }
 
-void ActionBox::onFinish(bool success, std::string&& info)
+void ActionBox::onFinish(bool success, std::string&& summery)
 {
     state_ = success ? State::SUCCESS : State::FAILED;
+    summery_ = std::make_pair(success, std::move(summery));
     screen.PostEvent(Event::Character("ActionFinish"));
 }
 
@@ -234,9 +242,20 @@ void TestPage::uncheck()
 std::shared_ptr<Action> TestPage::nextAction()
 {
     Component child = ChildAt(0);
+    std::shared_ptr<ActionBox> action;
+
+    if(currentAction_ > 0)
+    {
+        std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(currentAction_-1));
+        summery_.emplace(action->getName(),std::move(action->getSummery()));
+    }
+    else
+    {
+        summery_.clear();
+    }
+
     while(currentAction_ < child->ChildCount())
     {
-
         std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(currentAction_++));
         child->SetActiveChild(action);
         if(action->isChecked())
@@ -267,9 +286,14 @@ Element TestTab::Render()
 
     auto labelEle = text(test_->getName()); 
 
-    if (focused)
+    if (focused || hovered_)
     {
         labelEle |= inverted;
+    }
+
+    if (focused)
+    {
+        labelEle |= bold;
     }
 
     const char* prefix;
@@ -400,6 +424,16 @@ JobPanel::~JobPanel()
 
 std::shared_ptr<Test> JobPanel::nextTest()
 {
+    if(currentTest_ > 0)
+    {
+        std::shared_ptr<TestPage> test = std::dynamic_pointer_cast<TestPage>(pagesContainer_->ChildAt(currentTest_-1));
+        summery_.emplace(test->getName(), std::move(test->getSummery()));
+    }
+    else
+    {
+        summery_.clear();
+    }
+
     while(currentTest_ < tabsContainer_->ChildCount())
     {
         std::shared_ptr<TestTab> test = std::dynamic_pointer_cast<TestTab>(tabsContainer_->ChildAt(currentTest_++));
@@ -455,7 +489,7 @@ JobPage::JobPage(std::string const& filePath):
         }
     }, buttonOption);
 
-    Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton | align_right});
+    Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton});
     main_ = Container::Vertical({panel_ | flex, Renderer([]{return separator(); }), bottom});
     Add(Container::Tab({main_}, &selector_));
 }
@@ -470,6 +504,7 @@ bool JobPage::OnEvent(Event event)
     if(event == Event::Character("JobFinish"))
     {
         running_ = false;
+        summeryQueue.push(panel_->getSummery());
         return false;
     }
 
@@ -495,7 +530,7 @@ bool JobPage::OnEvent(Event event)
                 selector_ = 0;
                 dialog_->Detach();
                 question->answer(i);
-            }));
+            }, ButtonOption::Border()));
         }
 
         Component buttonsContainer = Container::Horizontal(buttons);
@@ -512,7 +547,7 @@ bool JobPage::OnEvent(Event event)
                     closeButton->Render() | align_right,
                     separator(),
                     paragraph(question->getQuestion()) | flex, 
-                    buttonsContainer->Render() | align_right
+                    buttonsContainer->Render() | center
                 }) | border;
         });
 
@@ -528,6 +563,70 @@ bool JobPage::OnEvent(Event event)
     }
 
     return ComponentBase::OnEvent(event);
+}
+
+ReportPage::ReportPage()
+{
+    summeryPanel_ = Container::Vertical({});
+    Component clearButton = Button("Clear", [=]{summeryPanel_->DetachAllChildren();}, ButtonOption::Border());
+    Component bottom = Container::Horizontal({Checkbox("Show all", &showSuccess_) | vcenter | flex, clearButton});
+    Add(Container::Vertical({
+        summeryPanel_ | frame | flex,
+        Renderer([]{return separator();}),
+        bottom
+    }));
+}
+
+ReportPage::~ReportPage()
+{
+
+}
+
+Element ReportPage::Render()
+{
+    if(summeryQueue.size() > 0)
+    {
+        summeryPanel_->DetachAllChildren();
+        summery_ = std::move(summeryQueue.front());
+
+        Component testContainer = Container::Vertical({});
+        for(const auto& testPair : summery_)
+        {
+            Component actionContainer = Container::Vertical({});
+            bool success = true;
+            for(const auto& actionPair: testPair.second)
+            {
+                Component summeryPanel = Renderer([&]{
+                    return hbox({
+                        text("  "),
+                        paragraph(actionPair.second.second) //| color(actionPair.second.first ? Color::Green : Color::Red)
+                    });
+                });
+
+                Component actionColp = Collapsible(actionPair.first, {summeryPanel});
+                Component actionRender = Renderer(actionColp, [=]{
+                    return actionColp->Render() | color(actionPair.second.first ? Color::Green : Color::Red);
+                });
+                if(actionPair.second.first)
+                    actionContainer->Add(Maybe(actionRender, &showSuccess_));
+                else
+                    actionContainer->Add(actionRender);
+            }
+            summeryPanel_->Add(Collapsible(testPair.first, Renderer(actionContainer, [=]{
+                return hbox({
+                    text("  "),
+                    actionContainer->Render()
+                });
+            })));
+        }
+
+        summeryQueue.pop();
+    }
+
+    if(summeryPanel_->ChildCount() > 0)
+        return ChildAt(0)->Render();
+
+    return text("No report avaiable, please run some tests first.") | center;
 }
 
 }

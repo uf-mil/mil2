@@ -10,6 +10,7 @@
 #include <mutex>
 #include <vector>
 #include <condition_variable>
+#include <unordered_map>
 
 #include "mil_preflight/job.h"
 
@@ -19,7 +20,8 @@ using namespace ftxui;
 class ActionBox: public ComponentBase, public Action
 {
     public:
-    // friend class TestPage;
+    using Summery = std::pair<bool, std::string>;
+
     ActionBox(std::string&& name, std::vector<std::string>&& parameters);
     ~ActionBox();
 
@@ -27,7 +29,9 @@ class ActionBox: public ComponentBase, public Action
     void check() { checked_ = true; }
     void uncheck() { checked_ = false; }
     void reset() {state_ = State::NONE;}
-    
+
+    Summery&& getSummery() {return std::move(summery_); }
+
     std::string const& getName() const final { return name_; }
     std::vector<std::string> const& getParameters() const final {return parameters_; }
 
@@ -48,6 +52,7 @@ class ActionBox: public ComponentBase, public Action
     std::atomic<State> state_ = State::NONE;
     std::string name_;
     std::vector<std::string> parameters_;
+    Summery summery_;
 
     Element Render() final;
     bool OnEvent(Event event) final;
@@ -63,6 +68,7 @@ class TestPage: public ComponentBase, public Test
 {
   public:
   using History = std::pair<size_t, bool>;
+  using Summery = std::unordered_map<std::string, ActionBox::Summery>;
 
   TestPage(std::string&& name, std::string&& plugin);
   ~TestPage();
@@ -78,6 +84,7 @@ class TestPage: public ComponentBase, public Test
 
   std::string const& getName() const final {return name_;};
   std::string const& getPlugin() const final {return plugin_;};
+  Summery&& getSummery() {return std::move(summery_);}
 
   private:
   int selector_ = 0;
@@ -85,6 +92,7 @@ class TestPage: public ComponentBase, public Test
   std::string name_;
   std::string plugin_;
   std::atomic<size_t> currentAction_ = 0;
+  Summery summery_;
   Box box_;
 
   std::shared_ptr<Action> nextAction() final;
@@ -130,8 +138,12 @@ class TestTab: public ComponentBase
 class JobPanel: public ComponentBase, public Job //, public std::enable_shared_from_this<Job>
 {
   public:
+  using Summery = std::unordered_map<std::string, TestPage::Summery>;
+
   JobPanel();
   ~JobPanel();
+
+  Summery&& getSummery() {return std::move(summery_);}
 
   private:
 
@@ -140,6 +152,7 @@ class JobPanel: public ComponentBase, public Job //, public std::enable_shared_f
 
   int selector_ = 0;
   std::atomic<size_t> currentTest_ = 0;
+  Summery summery_;
 
   std::shared_ptr<Test> nextTest() final;
   std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) final;
@@ -167,4 +180,19 @@ class JobPage: public ComponentBase
 
   bool OnEvent(Event event) final;
 };
+
+class ReportPage: public ComponentBase
+{
+    public:
+    ReportPage();
+    ~ReportPage();
+
+    private:
+    JobPanel::Summery summery_;
+    bool showSuccess_ = true;
+    Component summeryPanel_;
+
+    Element Render() final;
+};
+
 }
