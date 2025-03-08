@@ -13,6 +13,7 @@ repos:
     rev: v1.35.1
     hooks:
       - id: yamllint
+        exclude: ^ext
   - repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:
