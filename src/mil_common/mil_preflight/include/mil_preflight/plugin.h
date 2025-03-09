@@ -57,7 +57,7 @@ namespace mil_preflight
 
         protected:
 
-        virtual bool runAction(std::vector<std::string>&& parameters)
+        virtual bool runAction([[maybe_unused]]std::vector<std::string>&& parameters)
         {
             boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
             return false;

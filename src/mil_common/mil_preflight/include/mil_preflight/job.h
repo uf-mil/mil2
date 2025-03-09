@@ -100,14 +100,20 @@ namespace mil_preflight
     {
         public:
         Question(){}
-        ~Question(){}
+        ~Question()
+        {
+            answer(-1);
+        }
 
         inline void answer(int index)
         {
             std::unique_lock<std::mutex> lock(mutex_);
-            index_ = index;
-            answered_ = true;
-            cond_.notify_all();
+            if(!answered_)
+            {
+                index_ = index;
+                answered_ = true;
+                cond_.notify_all();
+            }
         }
 
         inline int ask()

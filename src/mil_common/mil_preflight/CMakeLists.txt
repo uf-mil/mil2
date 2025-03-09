@@ -9,6 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(subjugator_msgs REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json thread chrono filesystem system)
 
 include(FetchContent)
@@ -91,6 +92,7 @@ add_library(actuator_plugin SHARED src/plugins/actuator_plugin.cpp)
 
 ament_target_dependencies(actuator_plugin
   rclcpp
+  subjugator_msgs
   Boost
 )
 
