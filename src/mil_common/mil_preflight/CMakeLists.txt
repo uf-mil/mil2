@@ -21,23 +21,20 @@ FetchContent_Declare(ftxui
 FetchContent_GetProperties(ftxui)
 if(NOT ftxui_POPULATED)
   FetchContent_Populate(ftxui)
+
+  # Force FTXUI to build shared libraries instead of static
+  set(FTXUI_BUILD_SHARED_LIBS ON CACHE BOOL "Build FTXUI as shared libraries" FORCE)
   add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
 FetchContent_MakeAvailable(ftxui)
 
-add_executable(${PROJECT_NAME} src/frontend.cpp src/uis/ftxui/widgets.cpp)
+add_executable(${PROJECT_NAME} src/frontend.cpp)
 include_directories(include ${ftxui_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME}
-  PRIVATE ftxui::screen
-  PRIVATE ftxui::dom
-  PRIVATE ftxui::component
-  Boost::json
-  Boost::thread
-  Boost::chrono
-  Boost::filesystem
   Boost::system
+  Boost::filesystem
 )
 
 add_executable(mil_preflight_backend src/backend.cpp)
@@ -54,6 +51,19 @@ install(TARGETS ${PROJECT_NAME} mil_preflight_backend
 
 install(FILES cfg/config.json
   DESTINATION cfg
+)
+
+add_library(ftx_ui SHARED src/uis/ftxui/ui.cpp src/uis/ftxui/widgets.cpp)
+
+target_link_libraries(ftx_ui
+  PRIVATE ftxui::screen
+  PRIVATE ftxui::dom
+  PRIVATE ftxui::component
+  Boost::json
+  Boost::thread
+  Boost::chrono
+  Boost::filesystem
+  Boost::system
 )
 
 add_library(topic_plugin SHARED src/plugins/topic_plugin.cpp)
@@ -84,7 +94,7 @@ ament_target_dependencies(actuator_plugin
   Boost
 )
 
-install(TARGETS topic_plugin setup_plugin node_plugin actuator_plugin
+install(TARGETS topic_plugin setup_plugin node_plugin actuator_plugin ftx_ui
   LIBRARY DESTINATION lib
 )
 
