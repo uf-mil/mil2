@@ -11,6 +11,7 @@
   <buildtool_depend>ament_cmake_python</buildtool_depend>
   <test_depend>python3-pytest</test_depend>
 
+  <exec_depend>mil_tools</exec_depend>
   <exec_depend>rclpy</exec_depend>
 
   <export>

@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
 project(mil_tools)
-
 # Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -34,7 +33,7 @@ install(
 )
 
 install(
-    DIRECTORY include
+    DIRECTORY include/
     DESTINATION include/${PROJECT_NAME}
 )
 
@@ -82,3 +81,5 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${PROJECT_NAME}_itertools_test ${PROJECT_NAME})
 endif()
+
+ament_package()
