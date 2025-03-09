@@ -1,0 +1,27 @@
+---
+BasedOnStyle: LLVM
+Language: Cpp
+
+# See all possible options and defaults with:
+# clang-format --style=llvm --dump-config
+AccessModifierOffset: -4
+AlignArrayOfStructures: Right
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: Right
+AlignTrailingComments: true
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: Empty
+BinPackArguments: false
+BinPackParameters: false
+BreakAfterAttributes: Always
+BreakBeforeBinaryOperators: true
+BreakConstructorInitializers: BeforeComma
+# BreakTemplateDeclarations: Yes # renamed
+AlwaysBreakTemplateDeclarations: Yes
+ColumnLimit: 80
+IndentWidth: 4
+NamespaceIndentation: Inner
+SpaceAfterCStyleCast: true
+TabWidth: 4

@@ -31,7 +31,7 @@ include_directories(include)
 ament_target_dependencies(${PROJECT_NAME} INTERFACE rclcpp mil_tools)
 # ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
 
-# Add cppystruct library from ext folder
+# Add struct_pack library from ext folder
 # Set the path to the external library
 set(CPPYSTRUCT_LIB "${CMAKE_SOURCE_DIR}/../../../ext/cppystruct")
 message(STATUS "CPPYSTRUCT_LIB INCLUDE PATH: ${CPPYSTRUCT_LIB}/include")

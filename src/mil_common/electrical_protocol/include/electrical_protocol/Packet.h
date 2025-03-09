@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cppystruct.h>
+// #include <struct_pack/string_literal.hpp>
+// #include <struct_pack/string_fmt.hpp>
 
 #include <algorithm>
 #include <array>
@@ -27,49 +29,6 @@ struct StringLiteral
     char value_[N];
 };
 
-// struct BasicString : pystruct::internal::format_string {
-//     const char* s;
-//     constexpr BasicString(const char* s) : s(s) {}
-//       static constexpr decltype(auto) value() { return s; }
-//       static constexpr size_t size() { return std::size(value()) - 1; }
-//       static constexpr auto at(size_t i) { return value()[i]; };
-//     };
-
-template <std::size_t N>
-class StaticString
-{
-    static constexpr StaticString<N> instance()
-    {
-        return StaticString<N>(value_static_liberal);
-    }
-    static constexpr char value_static_liberal[N]{};
-
-  public:
-    char value_[N];
-
-    constexpr StaticString() = default;
-    constexpr StaticString(char const (&str)[N])
-    {
-        std::copy_n(str, N, value_);
-    }
-    static constexpr auto value()
-    {
-        return instance().value_;
-    }
-    static constexpr size_t size()
-    {
-        return N;
-    }
-    static constexpr char at(size_t i)
-    {
-        return value()[i];
-    }
-    // operator+
-};
-
-template <std::size_t N>
-StaticString(char const (&)[N]) -> StaticString<N>;
-
 struct PacketBase
 {
     static constexpr uint8_t SYNC_CHAR_1 = 0x37;
@@ -93,12 +52,12 @@ class Packet : public PacketBase
     static constexpr int ClassId = ClassId_;
     static constexpr int SubclassId = SubclassId_;
     static constexpr uint16_t DATA_LEN = pystruct::calcsize(PY_STRING("i"));
-    static constexpr uint16_t SIZE = 12;  // HEADER_LEN + DATA_LEN;
+    static constexpr uint16_t SIZE = HEADER_LEN + DATA_LEN;  // HEADER_LEN + DATA_LEN;
+    std::array<char, SIZE> data{};
     constexpr auto format_string() const
     {
         return PY_STRING("<BBBBH4sBB");
     }
-    std::array<char, SIZE> data{};
     constexpr std::pair<int, int> calculate_checksum() const
     {
         int sum1 = 0, sum2 = 0;

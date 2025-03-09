@@ -23,13 +23,17 @@ class TestPacket : public electrical_protocol::Packet<TestPacket, 0x99, 0x98, "i
     {
         return !(*this == other);
     }
+    constexpr auto data_string() const
+    {
+        return PY_STRING("i");
+    }
     constexpr void unpack_handle(std::array<char, DATA_LEN> const& spliced_data)
     {
-        fav_number_ = std::get<0>(pystruct::unpack(PY_STRING("i"), spliced_data));
+        fav_number_ = std::get<0>(pystruct::unpack(data_string(), spliced_data));
     }
     constexpr std::array<char, DATA_LEN> pack_format() const
     {
-        return pystruct::pack(PY_STRING("i"), fav_number_);
+        return pystruct::pack(data_string(), fav_number_);
     }
 };
 

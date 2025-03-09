@@ -1,0 +1,54 @@
+FormatStyle: file
+Checks: |
+  bugprone-*,
+  clang-analyzer-*,
+  clang-diagnostic-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  google-*,
+  llvm-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-unhandled-exception-at-new,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-avoid-do-while
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-avoid-reference-coroutine-parameters,
+  -cppcoreguidelines-special-member-functions,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-vararg,
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -google-build-using-namespace,
+  -google-explicit-constructor,
+  -llvm-qualified-auto,
+  -llvm-else-after-return,
+  -readability-redundant-access-specifiers,
+  -readability-uppercase-literal-suffix,
+  -readability-identifier-length,
+  -readability-identifier-naming,
+  -readability-qualified-auto,
+  -readability-magic-numbers,
+  -readability-convert-member-functions-to-static,
+  -readability-else-after-return,
+  -misc-non-private-member-variables-in-classes,
+  -modernize-use-nodiscard,
+  -modernize-avoid-c-arrays,
+WarningsAsErrors: '*'
+AnalyzeTemporaryDtors: false
+CheckOptions:
+- key:             modernize-use-equals-default.IgnoreMacros
+  value:           false
+- key:             performance-for-range-copy.WarnOnAllAutoCopies
+  value:           true
+- key:             performance-inefficient-string-concatenation.StrictMode
+  value:           true
+- key:             performance-unnecessary-value-param.AllowedTypes
+  value:           'exception_ptr$;'
+- key:             readability-implicit-bool-conversion.AllowPointerConditions
+  value:           true
