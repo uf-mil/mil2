@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 #include <boost/process.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
@@ -10,6 +9,7 @@
 #include <fstream>
 #include <condition_variable>
 #include <string>
+#include <future>
 #include <unordered_map>
 
 #include "mil_preflight/common.h"
@@ -102,7 +102,37 @@ namespace mil_preflight
         using Report = std::unordered_map<std::string, Test::Report>;
 
         Job(){};
+        Job(std::string const& filePath){ initialize(filePath); }
         ~Job(){};
+
+        bool initialize(std::string const& filePath)
+        {
+            std::ifstream file(filePath);
+            if(!file.is_open())
+            {
+                return false;
+            }
+
+            // Parse the configuration file
+            boost::json::value data = boost::json::parse(file);
+            for(boost::json::key_value_pair const& testPair : data.as_object())
+            {
+                std::shared_ptr<Test> test = createTest(testPair.key(), testPair.value().at("plugin").as_string().c_str());
+                for(boost::json::key_value_pair const& actionPair : testPair.value().at("actions").as_object())
+                {
+                    std::vector<std::string> parameters;
+                    for(boost::json::value const& parameter: actionPair.value().as_array())
+                    {
+                        parameters.push_back(parameter.as_string().c_str());
+                    }
+                    test->createAction(actionPair.key(), std::move(parameters));
+                }
+            }
+
+            file.close();
+            return true;
+        }
+
 
         virtual std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) = 0;
         virtual std::shared_ptr<Test> nextTest() = 0;
@@ -154,39 +184,24 @@ namespace mil_preflight
 
         }
 
-        bool initialize(std::shared_ptr<Job> job, std::string const& filePath)
-        {
-            std::ifstream file(filePath);
-            if(!file.is_open())
-            {
-                return false;
-            }
-
-            // Parse the configuration file
-            boost::json::value data = boost::json::parse(file);
-            for(boost::json::key_value_pair const& testPair : data.as_object())
-            {
-                std::shared_ptr<Test> test = job->createTest(testPair.key(), testPair.value().at("plugin").as_string().c_str());
-                for(boost::json::key_value_pair const& actionPair : testPair.value().at("actions").as_object())
-                {
-                    std::vector<std::string> parameters;
-                    for(boost::json::value const& parameter: actionPair.value().as_array())
-                    {
-                        parameters.push_back(parameter.as_string().c_str());
-                    }
-                    test->createAction(actionPair.key(), std::move(parameters));
-                }
-            }
-
-            file.close();
-            return true;
-        }
-
+        
         void run(std::shared_ptr<Job> job)
         {
-            if(jobThread_.joinable())
-                jobThread_.join();
-            jobThread_ = boost::thread(boost::bind(&JobRunner::jobThreadFunc, this, job));
+            if(isRunning())
+                return;
+            
+            future_ = std::async(std::launch::async, std::bind(&JobRunner::runJob, this, job));
+        }
+
+        bool isRunning()
+        {
+            if(!future_.valid())
+                return false;
+            
+            if(future_.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+                return false;
+            
+            return true;
         }
 
         private:
@@ -200,10 +215,10 @@ namespace mil_preflight
             FINISH,
         };
 
-        boost::thread jobThread_;
+        std::future<void> future_;
         std::filesystem::path binPath_;
 
-        void jobThreadFunc(std::shared_ptr<Job> job)
+        void runJob(std::shared_ptr<Job> job)
         {
             Job::Report jobReport;
             while(true)

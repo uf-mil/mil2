@@ -614,12 +614,12 @@ void TestPanel::onFinish(Job::Report&& report)
 TestPage::TestPage(std::string const& filePath):
     panel_(std::make_shared<TestPanel>())
 {
-    runner_.initialize(panel_, filePath);
+    panel_->initialize(filePath);
 
     ButtonOption buttonOption = ButtonOption::Simple();
     buttonOption.transform = [&](const EntryState& s) 
     {
-        auto element = (running_ ? text(buttonLabels_[ticker_ % 3 + 1]) : text(s.label)) | border;
+        auto element = (runner_.isRunning() ? text(buttonLabels_[ticker_ % 3 + 1]) : text(s.label)) | border;
         if (s.active)
         {
             element |= bold;
@@ -631,13 +631,9 @@ TestPage::TestPage(std::string const& filePath):
         return element;
     };
 
-    Component runButton = Button(buttonLabels_[0], [this]{
-        bool expected = false;
-        if(running_.compare_exchange_strong(expected, true))
-        {
-            panel_->TakeFocus();
-            runner_.run(panel_);
-        }
+    Component runButton = Button(buttonLabels_[0], [this]{        
+        panel_->TakeFocus();
+        runner_.run(panel_);
     }, buttonOption);
 
     Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton});
@@ -650,16 +646,10 @@ TestPage::~TestPage()
 
 }
 
-Element TestPage::Render()
-{
-    return ChildAt(0)->Render();
-}
-
 bool TestPage::OnEvent(Event event)
 {
     if(event == Event::Character("JobFinish"))
     {
-        running_ = false;
         return false;
     }
 
@@ -685,31 +675,48 @@ bool TestPage::OnEvent(Event event)
     return ComponentBase::OnEvent(event);
 }
 
-ReportPage::ReportPage()
+ReportsPage::ReportsPage()
 {
-    summeryPanel_ = Container::Vertical({});
-    Component clearButton = Button("Clear", [=]{summeryPanel_->DetachAllChildren();}, ButtonOption::Border());
-    Component bottom = Container::Horizontal({Checkbox("Show all", &showSuccess_) | vcenter | flex, clearButton});
+    reportPage_ = Container::Tab({}, &selector_);
+    Component clearButton = Button("Delete", [=]{reportPage_->ChildAt(selector_)->Detach();}, ButtonOption::Border());
+    Component bottomMiddle = Container::Horizontal({
+        Button("<", [=]{
+            selector_ = std::min(selector_ + 1, static_cast<int>(reportPage_->ChildCount()-1));
+        }, ButtonOption::Ascii()) | vcenter,
+        Renderer([=]{
+            return text(std::to_string(reportPage_->ChildCount()-selector_) + "/" + std::to_string(reportPage_->ChildCount()));
+        }) | vcenter ,
+        Button(">", [=]{
+            selector_ = std::max(selector_ - 1, 0); 
+        }, ButtonOption::Ascii()) | vcenter, 
+    });
+    Component bottom = Container::Horizontal({
+        Checkbox("Show all", &showSuccess_) | vcenter,
+        Renderer([]{return filler();}),
+        bottomMiddle,
+        Renderer([]{return filler();}),
+        clearButton | align_right});
+
     Add(Container::Vertical({
-        summeryPanel_ | frame | flex,
+        reportPage_ | flex,
         Renderer([]{return separator();}),
         bottom
     }));
 }
 
-ReportPage::~ReportPage()
+ReportsPage::~ReportsPage()
 {
 
 }
 
-Element ReportPage::Render()
+Element ReportsPage::Render()
 {
     if(reportQueue.size() > 0)
     {
-        summeryPanel_->DetachAllChildren();
         report_ = std::move(reportQueue.front());
 
-        Component testContainer = Container::Vertical({});
+        // Component testContainer = Container::Vertical({});
+        Component reportPanel_ = Container::Vertical({});
         for(const auto& testPair : report_)
         {
             Component actionContainer = Container::Vertical({});
@@ -732,7 +739,8 @@ Element ReportPage::Render()
                 else
                     actionContainer->Add(actionRender);
             }
-            summeryPanel_->Add(Collapsible(testPair.first, Renderer(actionContainer, [=]{
+            
+            reportPanel_->Add(Collapsible(testPair.first, Renderer(actionContainer, [=]{
                 return hbox({
                     text("  "),
                     actionContainer->Render()
@@ -740,11 +748,13 @@ Element ReportPage::Render()
             })));
         }
 
+        reportPage_->Add(reportPanel_ | frame);
+
         reportQueue.pop();
     }
 
-    if(summeryPanel_->ChildCount() > 0)
-        return ChildAt(0)->Render();
+    if(reportPage_->ChildCount() > 0)
+        return  ChildAt(0)->Render();
 
     return text("No report avaiable, please run some tests first.") | center;
 }

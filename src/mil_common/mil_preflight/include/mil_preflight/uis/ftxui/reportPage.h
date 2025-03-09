@@ -9,17 +9,18 @@ namespace mil_preflight
 {
 using namespace ftxui;
 
-class ReportPage: public ComponentBase
+class ReportsPage: public ComponentBase
 {
     public:
-    ReportPage();
-    ~ReportPage();
+    ReportsPage();
+    ~ReportsPage();
 
     private:
     Job::Report report_;
 
     bool showSuccess_ = true;
-    Component summeryPanel_;
+    Component reportPage_;
+    int selector_ = 0;
 
     Element Render() final;
 };

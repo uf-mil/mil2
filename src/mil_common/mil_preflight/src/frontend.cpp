@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
     //     }) | flex;
     // });
 
-    Component reportPage = std::make_shared<mil_preflight::ReportPage>() | flex;
+    Component reportPage = std::make_shared<mil_preflight::ReportsPage>() | flex;
 
     /*--------------------The documentation Tab-----------------------*/
 

@@ -28,8 +28,6 @@ class TestPage: public ComponentBase
   JobRunner runner_;
   std::shared_ptr<TestPanel> panel_;
 
-  std::atomic<bool> running_ = false;
-
   bool selectAll_ = false;
   int selector_ = 0;
 
@@ -37,6 +35,6 @@ class TestPage: public ComponentBase
   Component main_;
 
   bool OnEvent(Event event) final;
-  Element Render() final;
+  // Element Render() final;
 };
 }
