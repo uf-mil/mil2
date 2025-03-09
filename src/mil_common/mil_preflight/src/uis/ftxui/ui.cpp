@@ -3,8 +3,8 @@
 
 #include <boost/dll/alias.hpp>
 
-#include "mil_preflight/uis/ftxui/testPage.h"
-#include "mil_preflight/uis/ftxui/reportPage.h"
+#include "mil_preflight/uis/ftxui/testsPage.h"
+#include "mil_preflight/uis/ftxui/reportsPage.h"
 #include "mil_preflight/ui.h"
 
 using namespace ftxui;
@@ -47,42 +47,41 @@ class FTXUI: public UIBase
                     separator(),
                 });
             });
-        
-        MenuOption menuOption = MenuOption::Vertical();
-        menuOption.on_enter = [=]() 
-        {
-            if (selectedIndex_ == 3)
-            {
-                screen.Exit();
-            }
-            else
-            {
-                currentPage_ = selectedIndex_ + 1;
-            }
+
+        Component menu = Container::Vertical({}, &selectedIndex_);
+
+        ButtonOption menuOption = ButtonOption::Ascii();
+        menuOption.transform = [](const EntryState& s){
+            const std::string t = s.active ? "> " + s.label //
+                                    : "  " + s.label;
+            return text(t) | (s.focused ? bold : nothing);
         };
 
-        Component menu = Menu(&menuItems_, &selectedIndex_, menuOption);
+        menu->Add(Button("Run Tests",[=]{currentPage_ = 1;}, menuOption));
+        menu->Add(Button("View Reports", [=]{currentPage_ = 2;}, menuOption));
+        menu->Add(Button("Read Documentation", [=]{currentPage_ = 3;}, menuOption) );
+        menu->Add(Button("Quit", [&]{screen.Exit();}, menuOption));
 
         Component mainPage = Renderer(menu, [=] {
             return vbox({
                 paragraph(introduction_),
                 separator(),
-                menu->Render() | center,
+                menu->Render() | center | flex | frame,
             }) | flex;
         });
 
-        Component testPage = std::make_shared<mil_preflight::TestPage>(fileName) | flex;
+        Component testsPage = std::make_shared<mil_preflight::TestsPage>(fileName) | flex;
         Component reportsPage = std::make_shared<mil_preflight::ReportsPage>() | flex;
         
         Component docPage = Renderer([] {
             return vbox({
                 text("Coming soon") | center
-            });
-        }) | flex;
+            }) | flex;
+        });
     
         Component body = Container::Tab({
             mainPage,
-            testPage,
+            testsPage,
             reportsPage,
             docPage
         }, &currentPage_);
@@ -118,7 +117,7 @@ class FTXUI: public UIBase
                     "It ensures that everything is in working order, " 
                     "allowing you to safely deploy your robot with confidence.";
     std::vector<std::string> titles_ = {"MIL PreFlight", "Tests", "Report", "Documentation"};
-    std::vector<std::string> menuItems_ = {"Run Tests", "View Report", "Read Documentation", "Quit"};
+    // std::vector<std::string> menuItems_ = {"Run Tests", "View Report", "Read Documentation", "Quit"};
 };
 
 }

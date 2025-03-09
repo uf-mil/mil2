@@ -6,8 +6,8 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 
-#include "mil_preflight/uis/ftxui/testPage.h"
-#include "mil_preflight/uis/ftxui/reportPage.h"
+#include "mil_preflight/uis/ftxui/testsPage.h"
+#include "mil_preflight/uis/ftxui/reportsPage.h"
 #include "mil_preflight/uis/ftxui/dialog.h"
 
 using namespace ftxui;
@@ -529,57 +529,50 @@ void TestTab::nextState()
     }
 }
 
-class TestPanel: public ComponentBase, public Job //, public std::enable_shared_from_this<Job>
-{
-  public:
-
-  TestPanel();
-  ~TestPanel();
-
-  private:
-
-  Component tabsContainer_;
-  Component pagesContainer_;
-
-  int selector_ = 0;
-  std::atomic<size_t> currentTest_ = 0;
-  std::atomic<bool> running_ = false;
-
-  std::shared_ptr<Test> nextTest() final;
-  std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) final;
-  void onFinish(Job::Report&& report) final;
-
-  bool OnEvent(Event event) final
-  {
-    if(running_)
-        return true;
-    
-    return ComponentBase::OnEvent(event);
-  }
-
-};
-
-TestPanel::TestPanel()
+TestsPage::TestsPage(std::string const& filePath)
 {
     Components pages;
     Components tabs;
 
     tabsContainer_ = Container::Vertical(tabs, &selector_);
     pagesContainer_ = Container::Tab(pages,  &selector_);
-    Component main = Container::Horizontal({tabsContainer_ | frame | vscroll_indicator, 
+    main_ = Container::Horizontal({tabsContainer_ | frame | vscroll_indicator, 
                                             Renderer([]{return separator(); }), 
                                             pagesContainer_ | frame | vscroll_indicator | flex});
 
+    ButtonOption buttonOption = ButtonOption::Simple();
+    buttonOption.transform = [&](const EntryState& s) 
+    {
+        auto element = (running_ ? text(buttonLabels_[ticker_ % 3 + 1]) : text(s.label)) | border;
+        if (s.active)
+        {
+            element |= bold;
+        }
+        if (s.focused)
+        {
+            element |= inverted;
+        }
+        return element;
+    };
 
-    Add(main);
+    Component runButton = Button(buttonLabels_[0], [=]{        
+        main_->TakeFocus();
+        run();
+    }, buttonOption);
+
+    Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton});
+    Add(Container::Vertical({main_ | flex, Renderer([]{return separator(); }), bottom}));
+
+    initialize(filePath);
 }
 
-TestPanel::~TestPanel()
+TestsPage::~TestsPage()
 {
-
+    if(running_)
+        cancel();
 }
 
-std::shared_ptr<Test> TestPanel::nextTest()
+std::shared_ptr<Test> TestsPage::nextTest()
 {
     running_ = true;
 
@@ -595,7 +588,7 @@ std::shared_ptr<Test> TestPanel::nextTest()
     return nullptr;
 }
 
-std::shared_ptr<Test> TestPanel::createTest(std::string&& name, std::string&& plugin)
+std::shared_ptr<Test> TestsPage::createTest(std::string&& name, std::string&& plugin)
 {
     std::shared_ptr<ActionList> testPage = std::make_shared<ActionList>(std::move(name), std::move(plugin));
     pagesContainer_->Add(testPage);
@@ -603,7 +596,7 @@ std::shared_ptr<Test> TestPanel::createTest(std::string&& name, std::string&& pl
     return testPage;
 }
 
-void TestPanel::onFinish(Job::Report&& report)
+void TestsPage::onFinish(Job::Report&& report)
 {
     running_ = false;
     currentTest_ = 0;
@@ -611,42 +604,7 @@ void TestPanel::onFinish(Job::Report&& report)
     screen.PostEvent(Event::Character("JobFinish"));
 }
 
-TestPage::TestPage(std::string const& filePath):
-    panel_(std::make_shared<TestPanel>())
-{
-    panel_->initialize(filePath);
-
-    ButtonOption buttonOption = ButtonOption::Simple();
-    buttonOption.transform = [&](const EntryState& s) 
-    {
-        auto element = (runner_.isRunning() ? text(buttonLabels_[ticker_ % 3 + 1]) : text(s.label)) | border;
-        if (s.active)
-        {
-            element |= bold;
-        }
-        if (s.focused)
-        {
-            element |= inverted;
-        }
-        return element;
-    };
-
-    Component runButton = Button(buttonLabels_[0], [this]{        
-        panel_->TakeFocus();
-        runner_.run(panel_);
-    }, buttonOption);
-
-    Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton});
-    main_ = Container::Vertical({panel_ | flex, Renderer([]{return separator(); }), bottom});
-    Add(main_);
-}
-
-TestPage::~TestPage()
-{
-
-}
-
-bool TestPage::OnEvent(Event event)
+bool TestsPage::OnEvent(Event event)
 {
     if(event == Event::Character("JobFinish"))
     {
@@ -671,6 +629,9 @@ bool TestPage::OnEvent(Event event)
         
         return true;
     }
+
+    if(running_ && main_->Focused())
+        return false;
 
     return ComponentBase::OnEvent(event);
 }

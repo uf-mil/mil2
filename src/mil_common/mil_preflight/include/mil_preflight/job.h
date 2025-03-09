@@ -95,6 +95,34 @@ namespace mil_preflight
         virtual std::string const& getPlugin() const = 0;
         
     };
+
+    class Question
+    {
+        public:
+        Question(){}
+        ~Question(){}
+
+        inline void answer(int index)
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            index_ = index;
+            answered_ = true;
+            cond_.notify_all();
+        }
+
+        inline int ask()
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            cond_.wait(lock, [this]{return answered_;});
+            return index_;
+        }
+
+        private:
+        int index_ = -1;
+        bool answered_ = false;
+        std::condition_variable cond_;
+        std::mutex mutex_;
+    };
     
     class Job
     {
@@ -133,64 +161,18 @@ namespace mil_preflight
             return true;
         }
 
-
-        virtual std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) = 0;
-        virtual std::shared_ptr<Test> nextTest() = 0;
-        virtual void onFinish(Report&& report) = 0;
-    };
-
-    class Question
-    {
-        public:
-        Question()
-        {
-
-        }
-        
-
-        ~Question(){}
-
-        inline void answer(int index)
-        {
-            std::unique_lock<std::mutex> lock(mutex_);
-            index_ = index;
-            answered_ = true;
-            cond_.notify_all();
-        }
-
-        inline int ask()
-        {
-            std::unique_lock<std::mutex> lock(mutex_);
-            cond_.wait(lock, [this]{return answered_;});
-            return index_;
-        }
-
-        private:
-        int index_ = -1;
-        bool answered_ = false;
-        std::condition_variable cond_;
-        std::mutex mutex_;
-    };
-
-    class JobRunner
-    {
-        public:
-        JobRunner()
-        {
-            binPath_ = std::filesystem::canonical("/proc/self/exe").parent_path();
-        }
-        ~JobRunner()
-        {
-
-        }
-
-        
-        void run(std::shared_ptr<Job> job)
+        void run()
         {
             if(isRunning())
                 return;
             
-            future_ = std::async(std::launch::async, std::bind(&JobRunner::runJob, this, job));
+            future_ = std::async(std::launch::async, std::bind(&Job::runJob, this));
+        }
+
+        void cancel()
+        {
+            if(backend_.valid() && backend_.joinable())
+                backend_.terminate();
         }
 
         bool isRunning()
@@ -204,6 +186,12 @@ namespace mil_preflight
             return true;
         }
 
+        protected:
+
+        virtual std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) = 0;
+        virtual std::shared_ptr<Test> nextTest() = 0;
+        virtual void onFinish(Report&& report) = 0;
+
         private:
         enum class State
         {
@@ -216,14 +204,15 @@ namespace mil_preflight
         };
 
         std::future<void> future_;
-        std::filesystem::path binPath_;
+        boost::process::child backend_;
+        std::filesystem::path binPath_ = std::filesystem::canonical("/proc/self/exe").parent_path();
 
-        void runJob(std::shared_ptr<Job> job)
+        void runJob()
         {
             Job::Report jobReport;
             while(true)
             {
-                std::shared_ptr<Test> test = job->nextTest();
+                std::shared_ptr<Test> test = nextTest();
                 if(test == nullptr)
                     break;
 
@@ -232,10 +221,10 @@ namespace mil_preflight
                 boost::process::opstream childIn;
                 std::vector<std::string> args;
 
-                boost::process::child backend((binPath_ / "mil_preflight_backend").string(), test->getPlugin(), 
-                                                boost::process::std_in < childIn, 
-                                                boost::process::std_out > childOut,
-                                                boost::process::std_err > childErr);
+                backend_ =  boost::process::child((binPath_ / "mil_preflight_backend").string(), test->getPlugin(), 
+                            boost::process::std_in < childIn, 
+                            boost::process::std_out > childOut,
+                            boost::process::std_err > childErr);
 
                 std::shared_ptr<Action> action;
 
@@ -371,12 +360,12 @@ namespace mil_preflight
                 if(!childIn.fail())
                     childIn << EOT << std::endl;
                 
-                backend.join();
+                backend_.join();
                 test->onFinish(testReport);
                 jobReport.emplace(test->getName(), std::move(testReport));
             }
 
-            job->onFinish(std::move(jobReport));
+            onFinish(std::move(jobReport));
         }
     };
 }

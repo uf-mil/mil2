@@ -47,7 +47,7 @@ class UIBase
         }
         catch(boost::system::system_error const& e)
         {
-            error_ = "Failed to load the plugin: " + std::string(e.what());
+            error_ = "Failed to load the ui: " + uiName;
             return std::make_shared<UIBase>();
         }
 
