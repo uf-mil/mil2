@@ -1,10 +1,14 @@
 #include <sstream>
 #include <queue>
+#include <functional>
+#include <stack>
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 
-#include "mil_preflight/widgets.h"
+#include "mil_preflight/uis/ftxui/testPage.h"
+#include "mil_preflight/uis/ftxui/reportPage.h"
+#include "mil_preflight/uis/ftxui/dialog.h"
 
 using namespace ftxui;
 extern ScreenInteractive screen;
@@ -12,8 +16,74 @@ extern ScreenInteractive screen;
 namespace mil_preflight
 {
 
-static std::queue<std::shared_ptr<Question>> questionQueue;
-static std::queue<JobPanel::Summery> summeryQueue;
+static std::queue<Job::Report> reportQueue;
+
+class QuestionDialog: public Dialog, public Question
+{
+    public:
+    QuestionDialog(std::string const& title, std::string&& question, std::vector<std::string>&& options):
+        Dialog(title, std::move(question), std::move(options))
+    {
+
+    }
+
+    ~QuestionDialog()
+    {
+
+    }
+
+    private:
+
+    void onClose(int index) final
+    {
+        answer(index);
+    }
+};
+
+static std::queue<std::shared_ptr<QuestionDialog>> questionQueue;
+
+class ActionBox: public ComponentBase, public Action
+{
+    public:
+
+    ActionBox(std::string&& name, std::vector<std::string>&& parameters);
+    ~ActionBox();
+
+    bool isChecked() const { return checked_; }
+    void check() { checked_ = true; }
+    void uncheck() { checked_ = false; }
+    void reset() {state_ = State::NONE;}
+
+    std::string const& getName() const final { return name_; }
+    std::vector<std::string> const& getParameters() const final {return parameters_; }
+
+    private:
+
+    enum class State
+    {
+        NONE,
+        RUNNING,
+        SUCCESS,
+        FAILED
+    };
+
+    bool checked_ = false;
+    bool forceCheck_ = false;
+    bool hovered_ = false;
+    Box box_;
+    std::atomic<State> state_ = State::NONE;
+    std::string name_;
+    std::vector<std::string> parameters_;
+
+    Element Render() final;
+    bool OnEvent(Event event) final;
+    inline bool OnMouseEvent(Event event);
+    bool Focusable() const final;
+
+    void onStart() final;
+    void onFinish(Action::Report const& report) final;
+    std::shared_ptr<Question> onQuestion(std::string&& question, std::vector<std::string>&& options) final;
+};
 
 ActionBox::ActionBox(std::string&& name, std::vector<std::string>&& parameters):
     name_(std::move(name)),
@@ -137,20 +207,54 @@ void ActionBox::onStart()
     state_ = State::RUNNING;
 }
 
-void ActionBox::onFinish(bool success, std::string&& summery)
+void ActionBox::onFinish(Action::Report const& report)
 {
-    state_ = success ? State::SUCCESS : State::FAILED;
-    summery_ = std::make_pair(success, std::move(summery));
+    state_ = report.success ? State::SUCCESS : State::FAILED;
     screen.PostEvent(Event::Character("ActionFinish"));
 }
 
-void ActionBox::onQuestion(std::shared_ptr<Question> question)
+std::shared_ptr<Question> ActionBox::onQuestion(std::string&& question, std::vector<std::string>&& options)
 {
-    questionQueue.push(question);
+    std::shared_ptr<QuestionDialog> dialog = std::make_shared<QuestionDialog>("Question for action: " + name_ ,std::move(question), std::move(options));
+    questionQueue.push(dialog);
     screen.PostEvent(Event::Character("Question"));
+    return dialog;
 }
 
-TestPage::TestPage(std::string&& name, std::string&& plugin):
+class ActionList: public ComponentBase, public Test
+{
+  public:
+  using History = std::pair<size_t, bool>;
+
+  ActionList(std::string&& name, std::string&& plugin);
+  ~ActionList();
+
+  size_t actionCount() {return ChildAt(0)->ChildCount();}
+
+  size_t isChecked();
+  inline void saveAndCheck(std::stack<History>& historys);
+  inline void saveAndUncheck(std::stack<History>& historys);
+  inline void restore(std::stack<History>& historys);
+  inline void check();
+  inline void uncheck();
+
+  std::string const& getName() const final {return name_;};
+  std::string const& getPlugin() const final {return plugin_;};
+
+  private:
+  int selector_ = 0;
+  bool checked_ = 0;
+  std::string name_;
+  std::string plugin_;
+  std::atomic<size_t> currentAction_ = 0;
+  Box box_;
+
+  std::shared_ptr<Action> nextAction() final;
+  std::shared_ptr<Action> createAction(std::string&& name, std::vector<std::string>&& parameters) final;
+  void onFinish(Test::Report const& report) final;
+};
+
+ActionList::ActionList(std::string&& name, std::string&& plugin):
     name_(std::move(name)),
     plugin_(std::move(plugin))
 {
@@ -158,12 +262,12 @@ TestPage::TestPage(std::string&& name, std::string&& plugin):
     Add(Container::Vertical(comps, &selector_));
 }
 
-TestPage::~TestPage()
+ActionList::~ActionList()
 {
 
 }
 
-size_t TestPage::isChecked()
+size_t ActionList::isChecked()
 {
     size_t count = 0;
     Component child = ChildAt(0);
@@ -176,7 +280,7 @@ size_t TestPage::isChecked()
     return count;
 }
 
-void TestPage::saveAndCheck(std::stack<History>& historys)
+void ActionList::saveAndCheck(std::stack<History>& historys)
 {
     Component child = ChildAt(0);
     for(size_t i=0;i<child->ChildCount();i++)
@@ -190,7 +294,7 @@ void TestPage::saveAndCheck(std::stack<History>& historys)
     }
 }
 
-void TestPage::check()
+void ActionList::check()
 {
     Component child = ChildAt(0);
     for(size_t i=0;i<child->ChildCount();i++)
@@ -200,7 +304,7 @@ void TestPage::check()
     }
 }
 
-void TestPage::restore(std::stack<History>& historys)
+void ActionList::restore(std::stack<History>& historys)
 {
     Component child = ChildAt(0);
     while(historys.size() > 0)
@@ -215,7 +319,7 @@ void TestPage::restore(std::stack<History>& historys)
     }
 }
 
-void TestPage::saveAndUncheck(std::stack<History>& historys)
+void ActionList::saveAndUncheck(std::stack<History>& historys)
 {
     Component child = ChildAt(0);
     for(size_t i=0;i<child->ChildCount();i++)
@@ -229,7 +333,7 @@ void TestPage::saveAndUncheck(std::stack<History>& historys)
     }
 }
 
-void TestPage::uncheck()
+void ActionList::uncheck()
 {
     Component child = ChildAt(0);
     for(size_t i=0;i<child->ChildCount();i++)
@@ -239,20 +343,9 @@ void TestPage::uncheck()
     }
 }
 
-std::shared_ptr<Action> TestPage::nextAction()
+std::shared_ptr<Action> ActionList::nextAction()
 {
     Component child = ChildAt(0);
-    std::shared_ptr<ActionBox> action;
-
-    if(currentAction_ > 0)
-    {
-        std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(currentAction_-1));
-        summery_.emplace(action->getName(),std::move(action->getSummery()));
-    }
-    else
-    {
-        summery_.clear();
-    }
 
     while(currentAction_ < child->ChildCount())
     {
@@ -267,18 +360,52 @@ std::shared_ptr<Action> TestPage::nextAction()
     return nullptr;
 }
 
-std::shared_ptr<Action> TestPage::createAction(std::string&& name, std::vector<std::string>&& parameters)
+std::shared_ptr<Action> ActionList::createAction(std::string&& name, std::vector<std::string>&& parameters)
 {
     std::shared_ptr<ActionBox> action = std::make_shared<ActionBox>(std::move(name), std::move(parameters));
     ChildAt(0)->Add(action);
     return action;
 }
 
-void TestPage::onFinish()
+void ActionList::onFinish([[maybe_unused]] Test::Report const& report)
 {
     currentAction_ = 0;
     screen.PostEvent(Event::Character("TestFinish"));
 }
+
+class TestTab: public ComponentBase
+{
+  public:
+  enum class State
+  {
+    Checked,
+    Indeterminate,
+    Unchecked
+  };
+
+  TestTab(std::shared_ptr<ActionList> test):test_(test){}
+  ~TestTab(){}
+
+  State getState() const {return state_;}
+
+  private:
+
+  bool hovered_ = false;
+  State state_ = State::Unchecked;
+  bool toggle_ = false;
+  std::shared_ptr<ActionList> test_;
+  std::stack<ActionList::History> historys_;
+  Box box_;
+
+  Element Render() final;
+  bool OnEvent(Event event) final;
+  bool OnMouseEvent(Event event);
+
+  inline void nextState();
+
+  bool Focusable() const final { return true; } 
+
+};
 
 Element TestTab::Render() 
 {
@@ -402,7 +529,37 @@ void TestTab::nextState()
     }
 }
 
-JobPanel::JobPanel()
+class TestPanel: public ComponentBase, public Job //, public std::enable_shared_from_this<Job>
+{
+  public:
+
+  TestPanel();
+  ~TestPanel();
+
+  private:
+
+  Component tabsContainer_;
+  Component pagesContainer_;
+
+  int selector_ = 0;
+  std::atomic<size_t> currentTest_ = 0;
+  std::atomic<bool> running_ = false;
+
+  std::shared_ptr<Test> nextTest() final;
+  std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) final;
+  void onFinish(Job::Report&& report) final;
+
+  bool OnEvent(Event event) final
+  {
+    if(running_)
+        return true;
+    
+    return ComponentBase::OnEvent(event);
+  }
+
+};
+
+TestPanel::TestPanel()
 {
     Components pages;
     Components tabs;
@@ -417,22 +574,14 @@ JobPanel::JobPanel()
     Add(main);
 }
 
-JobPanel::~JobPanel()
+TestPanel::~TestPanel()
 {
 
 }
 
-std::shared_ptr<Test> JobPanel::nextTest()
+std::shared_ptr<Test> TestPanel::nextTest()
 {
-    if(currentTest_ > 0)
-    {
-        std::shared_ptr<TestPage> test = std::dynamic_pointer_cast<TestPage>(pagesContainer_->ChildAt(currentTest_-1));
-        summery_.emplace(test->getName(), std::move(test->getSummery()));
-    }
-    else
-    {
-        summery_.clear();
-    }
+    running_ = true;
 
     while(currentTest_ < tabsContainer_->ChildCount())
     {
@@ -440,28 +589,30 @@ std::shared_ptr<Test> JobPanel::nextTest()
         if(test->getState() != TestTab::State::Unchecked)
         {
             tabsContainer_->SetActiveChild(tabsContainer_->ChildAt(currentTest_-1));
-            return std::dynamic_pointer_cast<TestPage>(pagesContainer_->ChildAt(currentTest_-1));
+            return std::dynamic_pointer_cast<ActionList>(pagesContainer_->ChildAt(currentTest_-1));
         }
     }
     return nullptr;
 }
 
-std::shared_ptr<Test> JobPanel::createTest(std::string&& name, std::string&& plugin)
+std::shared_ptr<Test> TestPanel::createTest(std::string&& name, std::string&& plugin)
 {
-    std::shared_ptr<TestPage> testPage = std::make_shared<TestPage>(std::move(name), std::move(plugin));
+    std::shared_ptr<ActionList> testPage = std::make_shared<ActionList>(std::move(name), std::move(plugin));
     pagesContainer_->Add(testPage);
     tabsContainer_->Add(std::make_shared<TestTab>(testPage));
     return testPage;
 }
 
-void JobPanel::onFinish()
+void TestPanel::onFinish(Job::Report&& report)
 {
+    running_ = false;
     currentTest_ = 0;
+    reportQueue.push(std::move(report));
     screen.PostEvent(Event::Character("JobFinish"));
 }
 
-JobPage::JobPage(std::string const& filePath):
-    panel_(std::make_shared<JobPanel>())
+TestPage::TestPage(std::string const& filePath):
+    panel_(std::make_shared<TestPanel>())
 {
     runner_.initialize(panel_, filePath);
 
@@ -491,20 +642,24 @@ JobPage::JobPage(std::string const& filePath):
 
     Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton});
     main_ = Container::Vertical({panel_ | flex, Renderer([]{return separator(); }), bottom});
-    Add(Container::Tab({main_}, &selector_));
+    Add(main_);
 }
 
-JobPage::~JobPage()
+TestPage::~TestPage()
 {
 
 }
 
-bool JobPage::OnEvent(Event event)
+Element TestPage::Render()
+{
+    return ChildAt(0)->Render();
+}
+
+bool TestPage::OnEvent(Event event)
 {
     if(event == Event::Character("JobFinish"))
     {
         running_ = false;
-        summeryQueue.push(panel_->getSummery());
         return false;
     }
 
@@ -520,45 +675,10 @@ bool JobPage::OnEvent(Event event)
     if(event == Event::Character("Question"))
     {
 
-        Components buttons;
-        std::shared_ptr<Question> question = questionQueue.front();
+        std::shared_ptr<QuestionDialog> dialog = questionQueue.front();
         questionQueue.pop();
-
-        for(size_t i = 0; i < question->getOptionCount(); i++)
-        {
-            buttons.push_back(Button(question->getOpiton(i), [=]{
-                selector_ = 0;
-                dialog_->Detach();
-                question->answer(i);
-            }, ButtonOption::Border()));
-        }
-
-        Component buttonsContainer = Container::Horizontal(buttons);
-        Component closeButton = Button("X", [=]{
-            selector_ = 0;
-            dialog_->Detach();
-            question->answer(-1);
-        }, ButtonOption::Ascii());
-
-        Component dialogContainer = Container::Vertical({closeButton, buttonsContainer});
-
-        dialog_ = Renderer(dialogContainer ,[=]{
-            return vbox({
-                    closeButton->Render() | align_right,
-                    separator(),
-                    paragraph(question->getQuestion()) | flex, 
-                    buttonsContainer->Render() | center
-                }) | border;
-        });
-
-        ChildAt(0)->Add(dialog_);
-        selector_ = 1;
+        dialog->show(this);
         
-        return true;
-    }
-
-    if(running_ && selector_ == 0)
-    {
         return true;
     }
 
@@ -584,30 +704,30 @@ ReportPage::~ReportPage()
 
 Element ReportPage::Render()
 {
-    if(summeryQueue.size() > 0)
+    if(reportQueue.size() > 0)
     {
         summeryPanel_->DetachAllChildren();
-        summery_ = std::move(summeryQueue.front());
+        report_ = std::move(reportQueue.front());
 
         Component testContainer = Container::Vertical({});
-        for(const auto& testPair : summery_)
+        for(const auto& testPair : report_)
         {
             Component actionContainer = Container::Vertical({});
-            bool success = true;
+            // bool success = true;
             for(const auto& actionPair: testPair.second)
             {
                 Component summeryPanel = Renderer([&]{
                     return hbox({
                         text("  "),
-                        paragraph(actionPair.second.second) //| color(actionPair.second.first ? Color::Green : Color::Red)
+                        paragraph(actionPair.second.summery) //| color(actionPair.second.first ? Color::Green : Color::Red)
                     });
                 });
 
                 Component actionColp = Collapsible(actionPair.first, {summeryPanel});
                 Component actionRender = Renderer(actionColp, [=]{
-                    return actionColp->Render() | color(actionPair.second.first ? Color::Green : Color::Red);
+                    return actionColp->Render() | color(actionPair.second.success ? Color::Green : Color::Red);
                 });
-                if(actionPair.second.first)
+                if(actionPair.second.success)
                     actionContainer->Add(Maybe(actionRender, &showSuccess_));
                 else
                     actionContainer->Add(actionRender);
@@ -620,7 +740,7 @@ Element ReportPage::Render()
             })));
         }
 
-        summeryQueue.pop();
+        reportQueue.pop();
     }
 
     if(summeryPanel_->ChildCount() > 0)

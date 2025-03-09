@@ -4,30 +4,75 @@
 #include <boost/chrono.hpp>
 #include <boost/process.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
+#include <boost/json.hpp>
 
 #include <filesystem>
 #include <fstream>
 #include <condition_variable>
+#include <string>
+#include <unordered_map>
 
 #include "mil_preflight/common.h"
 
 namespace mil_preflight
 {
-    // class JobRunner;
     class Question;
 
     class Action
     {
         public:
+
+        struct Report
+        {
+            bool success;
+            std::string summery;
+            std::vector<std::string> stdouts;
+            std::vector<std::string> stderrs;
+
+            Report():success(false){}
+            ~Report() = default;
+            Report(Report const& report) = default;
+            Report(Report && report)
+            {
+                success = report.success;
+                report.success = false;
+                summery = std::move(report.summery);
+                stdouts = std::move(report.stdouts);
+                stderrs = std::move(report.stderrs);
+            }
+
+            Report& operator=(Report const& report)
+            {
+                success = report.success;
+                summery = report.summery;
+                stdouts = report.stdouts;
+                stderrs = report.stderrs;
+
+                return *this;
+            }
+
+            Report& operator=(Report&& report)
+            {
+                success = report.success;
+                report.success = false;
+                summery = std::move(report.summery);
+                stdouts = std::move(report.stdouts);
+                stderrs = std::move(report.stderrs);
+
+                return *this;
+            }
+
+        };
+
         friend class JobRunner;
         Action(){};
         ~Action(){};
 
         virtual void onStart() = 0;
-        virtual void onFinish(bool success, std::string&& summery) = 0;
+        virtual void onFinish(Report const& report) = 0;
         virtual std::string const& getName() const = 0;
         virtual std::vector<std::string> const& getParameters() const = 0;
-        virtual void onQuestion(std::shared_ptr<Question> question) = 0;
+        virtual std::shared_ptr<Question> onQuestion(std::string&& question, std::vector<std::string>&& options) = 0;
 
         protected:
         std::vector<std::string> stdouts_;
@@ -38,12 +83,14 @@ namespace mil_preflight
     {
         public:
         friend class JobRunner;
+        using Report = std::unordered_map<std::string, Action::Report>;
+
         Test(){};
         ~Test(){};
 
         virtual std::shared_ptr<Action> createAction(std::string&& name, std::vector<std::string>&& parameters) = 0;
         virtual std::shared_ptr<Action> nextAction() = 0;
-        virtual void onFinish() = 0;
+        virtual void onFinish(Report const& report) = 0;
         virtual std::string const& getName() const = 0;
         virtual std::string const& getPlugin() const = 0;
         
@@ -52,27 +99,20 @@ namespace mil_preflight
     class Job
     {
         public:
+        using Report = std::unordered_map<std::string, Test::Report>;
+
         Job(){};
         ~Job(){};
 
         virtual std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) = 0;
         virtual std::shared_ptr<Test> nextTest() = 0;
-        virtual void onFinish() = 0;
+        virtual void onFinish(Report&& report) = 0;
     };
 
-    class Question: public std::enable_shared_from_this<Question>
+    class Question
     {
         public:
-        Question(std::string& question, std::vector<std::string>& options):
-            question_(question),
-            options_(options)
-        {
-
-        }
-
-        Question(std::string&& question, std::vector<std::string>&& options):
-            question_(std::move(question)),
-            options_(std::move(options))
+        Question()
         {
 
         }
@@ -88,23 +128,14 @@ namespace mil_preflight
             cond_.notify_all();
         }
 
-        inline int ask(std::shared_ptr<Action> action)
+        inline int ask()
         {
-            action->onQuestion(shared_from_this());
             std::unique_lock<std::mutex> lock(mutex_);
             cond_.wait(lock, [this]{return answered_;});
             return index_;
         }
 
-        inline std::string const& getQuestion() const { return question_; }
-
-        inline size_t getOptionCount() const { return options_.size(); }
-
-        inline std::string const& getOpiton(size_t index) const { return options_[index]; }
-
         private:
-        std::string question_;
-        std::vector<std::string> options_;
         int index_ = -1;
         bool answered_ = false;
         std::condition_variable cond_;
@@ -174,6 +205,7 @@ namespace mil_preflight
 
         void jobThreadFunc(std::shared_ptr<Job> job)
         {
+            Job::Report jobReport;
             while(true)
             {
                 std::shared_ptr<Test> test = job->nextTest();
@@ -192,17 +224,14 @@ namespace mil_preflight
 
                 std::shared_ptr<Action> action;
 
-                bool success = false;
                 State state = State::START;
-                std::vector<std::string> stdouts;
-                std::vector<std::string> stderrs;
-                
                 std::string line;
-                std::string summery;
 
                 std::string question;
                 std::vector<std::string> options;
 
+                Action::Report actionReport;
+                Test::Report testReport;
                 while(true)
                 {
                     if(state == State::START)
@@ -225,7 +254,7 @@ namespace mil_preflight
                         catch(const std::exception& e)
                         {
                             state = State::FINISH;
-                            summery = "Broken pipe: " + std::string(e.what());
+                            actionReport.summery = "Broken pipe: " + std::string(e.what());
                             continue;
                         }
                         state = State::STDOUT;
@@ -234,7 +263,7 @@ namespace mil_preflight
                     {
                         if(!std::getline(childOut, line))
                         {
-                            summery = "Broken pipe";
+                            actionReport.summery = "Broken pipe";
                             state = State::FINISH;
                             continue;
                         }
@@ -242,12 +271,11 @@ namespace mil_preflight
                         if(line[0] == ACK)
                         {
                             state = State::SUMMERY;
-                            success = true;
+                            actionReport.success = true;
                         }
                         else if(line[0] == NCK)
                         {
                             state = State::SUMMERY;
-                            success = false;
                         }
                         else if(line[0] == BEL)
                         {
@@ -255,14 +283,14 @@ namespace mil_preflight
                         }
                         else
                         {
-                            stdouts.push_back(std::move(line));
+                            actionReport.stdouts.push_back(std::move(line));
                         }
                     }
                     else if(state == State::QUESTION)
                     {
                         if(!std::getline(childOut, question, GS))
                         {
-                            summery = "Broken pipe";
+                            actionReport.summery = "Broken pipe";
                             state = State::FINISH;
                             continue;
                         }
@@ -273,22 +301,23 @@ namespace mil_preflight
                     {
                         if(!std::getline(childOut, line, GS))
                         {
-                            summery = "Broken pipe";
+                            actionReport.summery = "Broken pipe";
                             state = State::FINISH;
                             continue;
                         }
 
                         if(line[0] == EOT)
                         {
-                            std::shared_ptr<Question> q = std::make_shared<Question>(std::move(question), std::move(options));
+                            std::shared_ptr<Question> q = action->onQuestion(std::move(question), std::move(options));
                             try
                             {
-                                childIn << q->ask(action) << std::endl;
+                                childIn << q->ask() << std::endl;
+                                options.clear();
                             }
                             catch(const std::exception& e)
                             {
                                 state = State::FINISH;
-                                summery = "Broken pipe: " + std::string(e.what());
+                                actionReport.summery = "Broken pipe: " + std::string(e.what());
                                 continue;
                             }
                             state = State::STDOUT;
@@ -301,7 +330,7 @@ namespace mil_preflight
                     }
                     else if(state == State::SUMMERY)
                     {
-                        if(!std::getline(childOut, summery))
+                        if(!std::getline(childOut, actionReport.summery))
                         {
                             state = State::FINISH;
                             continue;
@@ -311,9 +340,8 @@ namespace mil_preflight
                     }
                     else if(state == State::FINISH)
                     {
-                        action->onFinish(success, std::move(summery));
-                        stdouts.clear();
-                        stderrs.clear();
+                        action->onFinish(actionReport);
+                        testReport.emplace(action->getName(), std::move(actionReport));
                         state = State::START;
                     }
                 }
@@ -329,10 +357,11 @@ namespace mil_preflight
                     childIn << EOT << std::endl;
                 
                 backend.join();
-                test->onFinish();
+                test->onFinish(testReport);
+                jobReport.emplace(test->getName(), std::move(testReport));
             }
 
-            job->onFinish();
+            job->onFinish(std::move(jobReport));
         }
     };
 }

@@ -12,7 +12,7 @@ namespace mil_preflight
 
         TopicPlugin()
         {
-            topics_ = get_topic_names_and_types();
+            // topics_ = get_topic_names_and_types();
         }
 
         ~TopicPlugin()
@@ -29,9 +29,11 @@ namespace mil_preflight
 
         std::map<std::string, std::vector<std::string>> topics_;
         std::string summery_;
-
         bool runAction(std::vector<std::string>&& parameters) final
         {
+            
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
+            topics_ = get_topic_names_and_types();
             if(topics_.find(parameters[1]) == topics_.end())
             {
                 summery_ = "Topic " + parameters[0] + " does not exist";

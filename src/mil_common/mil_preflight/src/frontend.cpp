@@ -9,7 +9,8 @@
 
 #include <boost/json.hpp>
 
-#include "mil_preflight/widgets.h"
+#include "mil_preflight/uis/ftxui/testPage.h"
+#include "mil_preflight/uis/ftxui/reportPage.h"
 
 using namespace ftxui;
 
@@ -85,7 +86,7 @@ int main(int argc, char* argv[])
     });
 
     /*--------------------The test Tab-----------------------*/
-    Component jobPage = std::make_shared<mil_preflight::JobPage>(fileName) | flex;
+    Component jobPage = std::make_shared<mil_preflight::TestPage>(fileName) | flex;
 
     /*--------------------The report Tab-----------------------*/
     // auto reportTab = Renderer([&] {

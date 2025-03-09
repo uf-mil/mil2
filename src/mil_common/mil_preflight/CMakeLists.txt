@@ -26,7 +26,7 @@ endif()
 
 FetchContent_MakeAvailable(ftxui)
 
-add_executable(${PROJECT_NAME} src/ui.cpp src/widgets.cpp)
+add_executable(${PROJECT_NAME} src/frontend.cpp src/uis/ftxui/widgets.cpp)
 include_directories(include ${ftxui_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME}
