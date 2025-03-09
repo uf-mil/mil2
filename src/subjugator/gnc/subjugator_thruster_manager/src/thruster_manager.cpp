@@ -1,3 +1,5 @@
+#include "thruster_manager.h"
+
 #include <Eigen/Dense>
 #include <chrono>
 #include <iostream>
@@ -8,25 +10,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
-
-class ThrusterManager : public rclcpp::Node
-{
-  public:
-    ThrusterManager();
-
-  private:
-    rclcpp::Subscription<geometry_msgs::msg::Wrench>::SharedPtr wrench_subscription_;
-    Eigen::VectorXd reference_wrench_;  // TODO: change to Vector6d
-    Eigen::MatrixXd tam_;
-    int const dof_ = 6;
-    int const thruster_count_ = 8;
-
-    rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr thrust_publisher_;
-
-    void wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg);
-    void timer_callback();
-};
 
 // Construct node class
 ThrusterManager::ThrusterManager() : Node("thruster_manager")

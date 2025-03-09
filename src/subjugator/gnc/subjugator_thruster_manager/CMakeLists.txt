@@ -20,7 +20,7 @@ find_package(Eigen3 REQUIRED)
 
 add_executable(thruster_manager src/thruster_manager.cpp)
 ament_target_dependencies(thruster_manager rclcpp geometry_msgs subjugator_msgs)
-target_include_directories(thruster_manager PRIVATE ${EIGEN3_INCLUDE_DIR})
+target_include_directories(thruster_manager PRIVATE ${EIGEN3_INCLUDE_DIR} include)
 
 add_executable(forward_to_sim src/forward_to_sim.cpp)
 ament_target_dependencies(forward_to_sim rclcpp subjugator_msgs)
