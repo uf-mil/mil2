@@ -34,8 +34,8 @@ class TestsPage: public ComponentBase, public Job
   const std::string buttonLabels_[4] = {" Run ", " ·   ", "  ·  ", "   · "};
   size_t ticker_ = 0;
 
-  std::shared_ptr<Test> nextTest() final;
-  std::shared_ptr<Test> createTest(std::string&& name, std::string&& plugin) final;
+  std::optional<std::reference_wrapper<Test>> nextTest() final;
+  std::optional<std::reference_wrapper<Test>> createTest(std::string&& name, std::string&& plugin) final;
   void onFinish(Job::Report&& report) final;
 
   bool OnEvent(Event event) final;

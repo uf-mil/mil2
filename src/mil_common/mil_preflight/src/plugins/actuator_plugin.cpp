@@ -96,6 +96,5 @@ namespace mil_preflight
     };
 }
 
-
 BOOST_DLL_ALIAS(mil_preflight::ActuatorPlugin::create, actuator_plugin);
 

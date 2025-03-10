@@ -10,34 +10,22 @@ using namespace ftxui;
 class Dialog: public ComponentBase, public std::enable_shared_from_this<Dialog>
 {
     public:
-    Dialog(std::string title, std::string question, std::vector<std::string> options)
+    struct Option
     {
-        Components buttons;
-        for(size_t i = 0; i < options.size(); i++)
-        {
-            buttons.push_back(Button(options[i], [=]{
-                ComponentBase* parent = Parent();
-                restoreAllChildren(parent);
-                onClose(i);
-            }, ButtonOption::Border()));
-        }
-        Component buttonsContainer = Container::Horizontal(buttons);
+        std::string title;
+        std::string question;
+        std::vector<std::string> buttonLabels;
+        std::function<void(int)> onClose = [](int){};
+    };
 
-        Component closeButton = Button("X", [=]{
-            ComponentBase* parent = Parent();
-            restoreAllChildren(parent);
-            onClose(-1);
-        }, ButtonOption::Ascii());
+    Dialog(Option const& option):option_(option)
+    {
+        create();
+    }
 
-        // Component titleBar = Container::Horizontal({Render([]{return text()})});
-
-        Component dialogContainer = Container::Vertical({
-            Container::Horizontal({Renderer([t=std::move(title)]{return text(t);}) |flex ,closeButton}), 
-            Renderer([]{return separator(); }),
-            Renderer([q=std::move(question)]{return paragraph(q) | flex; }),
-            buttonsContainer | center});
-
-        Add(dialogContainer | border);
+    Dialog(Option&& option):option_(std::move(option))
+    {
+        create();
     }
 
     ~Dialog()
@@ -50,11 +38,45 @@ class Dialog: public ComponentBase, public std::enable_shared_from_this<Dialog>
         saveAllChildren(parent);
     }
 
-    protected:
-
-    virtual void onClose([[maybe_unused]]int index){}
+    Element Render() override
+    {
+        return vbox({
+            hbox({text(option_.title) | flex, closeButton_->Render()}),
+            separator(),
+            paragraph(option_.question) | flex,
+            separator(),
+            buttonsContainer_->Render() | center
+        }) | border;
+    }
 
     private:
+
+    Component buttonsContainer_;
+    Component closeButton_;
+    Option option_;
+
+    void create()
+    {
+        Components buttons;
+        for(size_t i = 0; i < option_.buttonLabels.size(); i++)
+        {
+            buttons.push_back(Button(option_.buttonLabels[i],std::bind(&Dialog::onButton, this, i), ButtonOption::Border()));
+        }
+        buttonsContainer_ = Container::Horizontal(buttons);
+
+        closeButton_ = Button("X", std::bind(&Dialog::onButton, this, -1), ButtonOption::Ascii());
+
+        Component dialogContainer = Container::Vertical({closeButton_, buttonsContainer_});
+
+        Add(dialogContainer);
+    }
+
+    void onButton(int index)
+    {
+        option_.onClose(index);
+        ComponentBase* parent = Parent();
+        restoreAllChildren(parent);
+    }
 
     void saveAllChildren(ComponentBase* parent)
     {
@@ -67,16 +89,11 @@ class Dialog: public ComponentBase, public std::enable_shared_from_this<Dialog>
 
     void restoreAllChildren(ComponentBase* parent)
     {
-        Detach();
         for(size_t i=1;i<children_.size();i++)
         {
             parent->Add(children_[i]);
         }
-    }
-
-    Element Render() final
-    {
-        return children_[0]->Render();
+        Detach();
     }
 };
 

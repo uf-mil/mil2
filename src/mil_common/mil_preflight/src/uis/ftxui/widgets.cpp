@@ -18,29 +18,7 @@ namespace mil_preflight
 
 static std::queue<Job::Report> reportQueue;
 
-class QuestionDialog: public Dialog, public Question
-{
-    public:
-    QuestionDialog(std::string const& title, std::string&& question, std::vector<std::string>&& options):
-        Dialog(title, std::move(question), std::move(options))
-    {
-
-    }
-
-    ~QuestionDialog()
-    {
-
-    }
-
-    private:
-
-    void onClose(int index) final
-    {
-        answer(index);
-    }
-};
-
-static std::queue<std::shared_ptr<QuestionDialog>> questionQueue;
+static std::queue<std::shared_ptr<Dialog>> questionQueue;
 
 class ActionBox: public ComponentBase, public Action
 {
@@ -82,7 +60,7 @@ class ActionBox: public ComponentBase, public Action
 
     void onStart() final;
     void onFinish(Action::Report const& report) final;
-    std::shared_ptr<Question> onQuestion(std::string&& question, std::vector<std::string>&& options) final;
+    std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) final;
 };
 
 ActionBox::ActionBox(std::string&& name, std::vector<std::string>&& parameters):
@@ -213,12 +191,22 @@ void ActionBox::onFinish(Action::Report const& report)
     screen.PostEvent(Event::Character("ActionFinish"));
 }
 
-std::shared_ptr<Question> ActionBox::onQuestion(std::string&& question, std::vector<std::string>&& options)
+std::shared_future<int> ActionBox::onQuestion(std::string&& question, std::vector<std::string>&& options)
 {
-    std::shared_ptr<QuestionDialog> dialog = std::make_shared<QuestionDialog>("Question for action: " + name_ ,std::move(question), std::move(options));
+    std::shared_ptr<std::promise<int>> feedback = std::make_shared<std::promise<int>>();
+
+    Dialog::Option option;
+    option.title = "Question for action" + name_;
+    option.question = std::move(question);
+    option.buttonLabels = std::move(options);
+    option.onClose = [=](int index) mutable { 
+        feedback->set_value(index); 
+    };
+
+    std::shared_ptr<Dialog> dialog = std::make_shared<Dialog>(std::move(option));
     questionQueue.push(dialog);
     screen.PostEvent(Event::Character("Question"));
-    return dialog;
+    return feedback->get_future().share();
 }
 
 class ActionList: public ComponentBase, public Test
@@ -249,8 +237,8 @@ class ActionList: public ComponentBase, public Test
   std::atomic<size_t> currentAction_ = 0;
   Box box_;
 
-  std::shared_ptr<Action> nextAction() final;
-  std::shared_ptr<Action> createAction(std::string&& name, std::vector<std::string>&& parameters) final;
+  std::optional<std::reference_wrapper<Action>> nextAction() final;
+  std::optional<std::reference_wrapper<Action>> createAction(std::string&& name, std::vector<std::string>&& parameters) final;
   void onFinish(Test::Report const& report) final;
 };
 
@@ -343,7 +331,7 @@ void ActionList::uncheck()
     }
 }
 
-std::shared_ptr<Action> ActionList::nextAction()
+std::optional<std::reference_wrapper<Action>> ActionList::nextAction()
 {
     Component child = ChildAt(0);
 
@@ -352,19 +340,19 @@ std::shared_ptr<Action> ActionList::nextAction()
         std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(currentAction_++));
         child->SetActiveChild(action);
         if(action->isChecked())
-            return action;
+            return *action;
         
         action->reset();
     }
 
-    return nullptr;
+    return std::nullopt;
 }
 
-std::shared_ptr<Action> ActionList::createAction(std::string&& name, std::vector<std::string>&& parameters)
+std::optional<std::reference_wrapper<Action>> ActionList::createAction(std::string&& name, std::vector<std::string>&& parameters)
 {
     std::shared_ptr<ActionBox> action = std::make_shared<ActionBox>(std::move(name), std::move(parameters));
     ChildAt(0)->Add(action);
-    return action;
+    return *action;
 }
 
 void ActionList::onFinish([[maybe_unused]] Test::Report const& report)
@@ -572,7 +560,7 @@ TestsPage::~TestsPage()
         cancel();
 }
 
-std::shared_ptr<Test> TestsPage::nextTest()
+std::optional<std::reference_wrapper<Test>> TestsPage::nextTest()
 {
     running_ = true;
 
@@ -582,18 +570,18 @@ std::shared_ptr<Test> TestsPage::nextTest()
         if(test->getState() != TestTab::State::Unchecked)
         {
             tabsContainer_->SetActiveChild(tabsContainer_->ChildAt(currentTest_-1));
-            return std::dynamic_pointer_cast<ActionList>(pagesContainer_->ChildAt(currentTest_-1));
+            return *std::dynamic_pointer_cast<ActionList>(pagesContainer_->ChildAt(currentTest_-1));
         }
     }
-    return nullptr;
+    return std::nullopt;
 }
 
-std::shared_ptr<Test> TestsPage::createTest(std::string&& name, std::string&& plugin)
+std::optional<std::reference_wrapper<Test>> TestsPage::createTest(std::string&& name, std::string&& plugin)
 {
     std::shared_ptr<ActionList> testPage = std::make_shared<ActionList>(std::move(name), std::move(plugin));
     pagesContainer_->Add(testPage);
     tabsContainer_->Add(std::make_shared<TestTab>(testPage));
-    return testPage;
+    return *testPage;
 }
 
 void TestsPage::onFinish(Job::Report&& report)
@@ -623,7 +611,7 @@ bool TestsPage::OnEvent(Event event)
     if(event == Event::Character("Question"))
     {
 
-        std::shared_ptr<QuestionDialog> dialog = questionQueue.front();
+        std::shared_ptr<Dialog> dialog = questionQueue.front();
         questionQueue.pop();
         dialog->show(this);
         
@@ -676,40 +664,44 @@ Element ReportsPage::Render()
     {
         report_ = std::move(reportQueue.front());
 
-        // Component testContainer = Container::Vertical({});
-        Component reportPanel_ = Container::Vertical({});
-        for(const auto& testPair : report_)
+        if(report_.size() != 0)
         {
-            Component actionContainer = Container::Vertical({});
-            // bool success = true;
-            for(const auto& actionPair: testPair.second)
+
+            // Component testContainer = Container::Vertical({});
+            Component reportPanel_ = Container::Vertical({});
+            for(const auto& testPair : report_)
             {
-                Component summeryPanel = Renderer([&]{
+                Component actionContainer = Container::Vertical({});
+                // bool success = true;
+                for(const auto& actionPair: testPair.second)
+                {
+                    Component summeryPanel = Renderer([&]{
+                        return hbox({
+                            text("  "),
+                            paragraph(actionPair.second.summery) //| color(actionPair.second.first ? Color::Green : Color::Red)
+                        });
+                    });
+
+                    Component actionColp = Collapsible(actionPair.first, {summeryPanel});
+                    Component actionRender = Renderer(actionColp, [=]{
+                        return actionColp->Render() | color(actionPair.second.success ? Color::Green : Color::Red);
+                    });
+                    if(actionPair.second.success)
+                        actionContainer->Add(Maybe(actionRender, &showSuccess_));
+                    else
+                        actionContainer->Add(actionRender);
+                }
+                
+                reportPanel_->Add(Collapsible(testPair.first, Renderer(actionContainer, [=]{
                     return hbox({
                         text("  "),
-                        paragraph(actionPair.second.summery) //| color(actionPair.second.first ? Color::Green : Color::Red)
+                        actionContainer->Render()
                     });
-                });
-
-                Component actionColp = Collapsible(actionPair.first, {summeryPanel});
-                Component actionRender = Renderer(actionColp, [=]{
-                    return actionColp->Render() | color(actionPair.second.success ? Color::Green : Color::Red);
-                });
-                if(actionPair.second.success)
-                    actionContainer->Add(Maybe(actionRender, &showSuccess_));
-                else
-                    actionContainer->Add(actionRender);
+                })));
             }
-            
-            reportPanel_->Add(Collapsible(testPair.first, Renderer(actionContainer, [=]{
-                return hbox({
-                    text("  "),
-                    actionContainer->Render()
-                });
-            })));
-        }
 
-        reportPage_->Add(reportPanel_ | frame);
+            reportPage_->Add(reportPanel_ | flex | frame);
+        }
 
         reportQueue.pop();
     }
