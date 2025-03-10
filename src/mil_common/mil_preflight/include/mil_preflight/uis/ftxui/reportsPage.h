@@ -23,6 +23,7 @@ private:
   int selector_ = 0;
 
   Element Render() final;
+  bool OnEvent(Event event) final;
 };
 
 }  // namespace mil_preflight

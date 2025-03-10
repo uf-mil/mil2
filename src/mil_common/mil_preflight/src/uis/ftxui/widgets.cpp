@@ -597,6 +597,7 @@ TestsPage::TestsPage(std::string const& filePath)
       else
         tab->uncheck();
     }
+    screen.PostEvent(Event::Custom);
   };
   Component checkBox = Checkbox("Select all", &selectAll_, option);
   Component bottom = Container::Horizontal({ checkBox | vcenter | flex, runButton });
@@ -692,7 +693,11 @@ bool TestsPage::OnEvent(Event event)
 ReportsPage::ReportsPage()
 {
   reportPage_ = Container::Tab({}, &selector_);
-  Component clearButton = Button("Delete", [=] { reportPage_->ChildAt(selector_)->Detach(); }, ButtonOption::Border());
+  Component clearButton = Button("Delete", [=] { 
+    if(reportPage_->ChildCount() > 0)
+      reportPage_->ChildAt(selector_)->Detach();
+      selector_ -= 1; 
+  }, ButtonOption::Border());
   Component bottomMiddle = Container::Horizontal({
       Button(
           "<", [=] { selector_ = std::min(selector_ + 1, static_cast<int>(reportPage_->ChildCount() - 1)); },
@@ -720,20 +725,26 @@ ReportsPage::~ReportsPage()
 {
 }
 
+bool ReportsPage::OnEvent(Event event)
+{
+  if(reportPage_->ChildCount() == 0)
+    return false;
+
+  return ComponentBase::OnEvent(event);
+}
+
 Element ReportsPage::Render()
 {
-  if (reportQueue.size() > 0)
+  while (reportQueue.size() > 0)
   {
     report_ = std::move(reportQueue.front());
 
     if (report_.size() != 0)
     {
-      // Component testContainer = Container::Vertical({});
       Component reportPanel_ = Container::Vertical({});
       for (auto const& testPair : report_)
       {
         Component actionContainer = Container::Vertical({});
-        // bool success = true;
         for (auto const& actionPair : testPair.second)
         {
           Component summeryPanel = Renderer(
