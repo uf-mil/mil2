@@ -375,6 +375,8 @@ class TestTab: public ComponentBase
   ~TestTab(){}
 
   State getState() const {return state_;}
+  void check() ;
+  void uncheck();
 
   private:
 
@@ -488,6 +490,23 @@ bool TestTab::OnMouseEvent(Event event)
     return false;
 }
 
+void TestTab::check()
+{
+    if(state_ != State::Checked)
+    {
+        test_->saveAndCheck(historys_);
+    }
+}
+
+void TestTab::uncheck()
+{
+    if(state_ == State::Checked)
+    {
+        if(historys_.size() > 0)
+            test_->restore(historys_);
+    }
+}
+
 void TestTab::nextState()
 {
     if(state_ == State::Unchecked)
@@ -548,7 +567,20 @@ TestsPage::TestsPage(std::string const& filePath)
         run();
     }, buttonOption);
 
-    Component bottom = Container::Horizontal({Checkbox("Select all", &selectAll_) | vcenter | flex, runButton});
+
+    CheckboxOption option = CheckboxOption::Simple();
+    option.on_change = [=]{
+        for(size_t i=0;i<pagesContainer_->ChildCount();i++)
+        {
+            std::shared_ptr<TestTab> tab = std::dynamic_pointer_cast<TestTab>(tabsContainer_->ChildAt(i));
+            if(selectAll_)
+                tab->check();
+            else
+                tab->uncheck();
+        }
+    };
+    Component checkBox = Checkbox("Select all", &selectAll_, option);
+    Component bottom = Container::Horizontal({checkBox | vcenter | flex, runButton});
     Add(Container::Vertical({main_ | flex, Renderer([]{return separator(); }), bottom}));
 
     initialize(filePath);
@@ -558,6 +590,21 @@ TestsPage::~TestsPage()
 {
     if(running_)
         cancel();
+}
+
+Element TestsPage::Render()
+{
+    size_t nChecked = 0;
+    for(size_t i=0;i<tabsContainer_->ChildCount();i++)
+    {
+        std::shared_ptr<TestTab> tab = std::dynamic_pointer_cast<TestTab>(tabsContainer_->ChildAt(i));
+        if(tab->getState() == TestTab::State::Checked)
+           nChecked ++;
+    }
+
+    selectAll_ = (nChecked == tabsContainer_->ChildCount());
+
+    return ComponentBase::Render();
 }
 
 std::optional<std::reference_wrapper<Test>> TestsPage::nextTest()

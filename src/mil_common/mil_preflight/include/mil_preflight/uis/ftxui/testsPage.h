@@ -38,6 +38,7 @@ class TestsPage: public ComponentBase, public Job
   std::optional<std::reference_wrapper<Test>> createTest(std::string&& name, std::string&& plugin) final;
   void onFinish(Job::Report&& report) final;
 
+  Element Render();
   bool OnEvent(Event event) final;
 
 };
