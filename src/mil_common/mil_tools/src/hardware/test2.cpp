@@ -1,14 +1,12 @@
 #include <sensors-c++/sensors.h>
 #include <iostream>
+#include "/home/praveen/mil2/src/mil_common/mil_tools/include/mil_tools/hardware/system_info.hpp"
+#include "/home/praveen/mil2/src/mil_common/mil_tools/include/mil_tools/hardware/cpu_temp.hpp"
 
 using namespace std;
 
 
 int main()
 {
-sensors::subfeature temp {"/sys/devices/virtual/thermal/thermal_zone0/temp"};
-
-cout << temp.read() << '\n';
-
-return 0;
+    cout << mil_tools::hardware::cpu_temp::get_cpu_temperature();
 }
