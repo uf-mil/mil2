@@ -1,7 +1,7 @@
 #pragma once
 
+#include "rclcpp/rclcpp.hpp"
 #include <ros2_alarms_msgs/msg/alarm.hpp>
-
 
 #include <sstream>
 #include <string>
