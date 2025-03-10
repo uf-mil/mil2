@@ -22,9 +22,10 @@ FetchContent_Declare(ftxui
 FetchContent_GetProperties(ftxui)
 if(NOT ftxui_POPULATED)
   FetchContent_Populate(ftxui)
-
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
   # Force FTXUI to build shared libraries instead of static
-  set(FTXUI_BUILD_SHARED_LIBS ON CACHE BOOL "Build FTXUI as shared libraries" FORCE)
+  # set(FTXUI_BUILD_SHARED_LIBS ON CACHE BOOL "Build FTXUI as shared libraries" FORCE)
+
   add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
