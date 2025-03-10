@@ -1,4 +1,4 @@
-#include "/home/praveen/mil2/src/mil_common/mil_tools/include/mil_tools/hardware/system_info.hpp"
+#include "mil_tools/hardware/system_info.hpp"
 
 #include <iostream>
 #include <fstream>

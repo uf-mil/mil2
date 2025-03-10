@@ -1,8 +1,5 @@
-// #include "mil_tools/hardware/cpu_temp.hpp"
-// #include "mil_tools/hardware/system_info.hpp"
-#include "/home/praveen/mil2/src/mil_common/mil_tools/include/mil_tools/hardware/cpu_temp.hpp"
-#include "/home/praveen/mil2/src/mil_common/mil_tools/include/mil_tools/hardware/system_info.hpp"
-
+#include "mil_tools/hardware/cpu_temp.hpp"
+#include "mil_tools/hardware/system_info.hpp"
 #include <iostream>
 #include <sensors/sensors.h>
 #include <cstring>
