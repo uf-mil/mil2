@@ -1,11 +1,16 @@
-#include "mil_tools/hardware/cpu_temp.hpp"
-#include "mil_tools/hardware/system_info.hpp"
+// #include "mil_tools/hardware/cpu_temp.hpp"
+// #include "mil_tools/hardware/system_info.hpp"
+#include "/home/praveen/mil2/src/mil_common/mil_tools/include/mil_tools/hardware/cpu_temp.hpp"
+#include "/home/praveen/mil2/src/mil_common/mil_tools/include/mil_tools/hardware/system_info.hpp"
 
+#include <iostream>
 #include <sensors/sensors.h>
+#include <cstring>
+#include <string>
 
 namespace mil_tools::hardware::cpu_temp
 {
-    void get_cpu_temperatures(cpu_temperatures& object)
+    double get_cpu_temperature()
     {
         // First we need to know the CPU architecture since the command/library we'll use for determining the temp differs based on the architecture
         std::string cpu_architecture = mil_tools::hardware::system_info::get_cpu_architecture();
@@ -16,8 +21,9 @@ namespace mil_tools::hardware::cpu_temp
             // Initialize sensors, none-zero returned value means there was an error during initialization
             if (sensors_init(nullptr) != 0) 
             {
+                std::cout << "Could not initialize sensors!\n";
                 // Return without modifying any values
-                return;
+                return -1;
             }
 
             // Iterate through all chips
@@ -54,18 +60,8 @@ namespace mil_tools::hardware::cpu_temp
                             // Get sensor label
                             char *label = sensors_get_label(chip, feature);
 
-                            if (label == "edge")
-                                object.edge = temp;
-                            else if (label == "temp1")
-                                object.temp1 = temp;
-                            else if (label == "Tctl")
-                                object.Tctl = temp;
-                            else if (label == "Composite")
-                                object.Composite = temp;
-                            else if (label == "Sensor 1")
-                                object.Sensor1 = temp;
-                            else if (label == "temp1")
-                                object.temp1 = temp;
+                            if (strcmp(label, "temp1") == 0)
+                                return temp;
 
                             // Free the string that I used to store the temperature reading's label/identifier
                             free(label);
@@ -80,38 +76,73 @@ namespace mil_tools::hardware::cpu_temp
         // If the architecture is ARM, we can assume the device is a Jetson and use tegrastats to grab CPU temp
         else if (cpu_architecture.find("aarch") != std::string::npos || cpu_architecture.find("arm") != std::string::npos)
         {
-            
+            std::cout << "Detected an ARM system!\n";
+
+            // To execute tegrastats, we can use a pipe and read the output from it
+            FILE* pipe = popen("tegrastats", "r");
+
+            // We have to check if the pipe failed to execute before we read from it which will result in a nullptr
+            if (!pipe)
+            {
+                std::cout << "Failed to create a pipe to execute Tegrastats!";
+                // If the pipe failed to execute, we can just return -1
+                return -1;
+            }
+
+            // We need a buffer to store the output of our command in chunks, as well as a string to combine everything
+            char buffer[128];
+            std::string tegrastats_output;
+
+            // Reads the output from that pipe and appends it to a string
+            while (fgets(buffer, 128, pipe) != NULL)
+            tegrastats_output += buffer;
+
+            // Now we can close the pipe and parse the string for the temperature reading
+            pclose(pipe);
+
+            // I'll look for the "thermal" substring in the output
+            int start_of_substring = tegrastats_output.find("thermal@");
+
+            // If the substring doesn't exist, we'll just return -1
+            if (start_of_substring == -1)
+            {
+                std::cout << "Substring thermal@ doesn't exist!\n";
+                return -1;
+            }
+
+            // Update the output string to exclude anything before the substring
+            tegrastats_output = tegrastats_output.substr(start_of_substring);
+            int end_of_substring = tegrastats_output.find("C");
+
+            // If the "C" doesn't exist, then the output is in a format I don't recognize
+            // so I'll be unable to parse it. In that case we'll return -1.
+            if (end_of_substring == -1)
+            {
+                std::cout << "\'C\' doesn't exist in the substring. Unable to determine where the temperature reading ends!\n";
+                return -1;
+            }
+
+            // Parse the string to a double. I'll wrap it in a try-catch because
+            // parsing has the potential to throw an exception
+            try
+            {
+                std::stod(tegrastats_output.substr(0, end_of_substring));
+            }
+            catch(const std::exception& e)
+            {
+                std::cout << "Could not parse \'" << tegrastats_output.substr(0, end_of_substring) << "\' to a double!\n";
+                return -1;
+            }
         }
 
         // If the the get_cpu_architecture() function returns unknown, then we'll just return without modifying the cpu_temperatures object
         else
-            return;
-    }
+        {
+            std::cout << "CPU architecture wasn't x86! \n";
+            return -1;
+        }
 
-
-    /**
-     * @brief Returns a struct object containing CPU temperatures using libsensors.
-     * 
-     * @return cpu_temperatures 
-     */
-    cpu_temperatures get_cpu_temperatures()
-    {
-        cpu_temperatures cpu_temps_object;
-
-        get_cpu_temperatures(cpu_temps_object);
-
-        return cpu_temps_object;
-    }
-
-
-    /**
-     * @brief Retrieves a specific CPU temperature reading based on the argument string. Options: "edge", "temp1", "Tctl", "Composite", "Sensor 1", "temp1".
-     * 
-     * @param temperature_reading_name 
-     * @return double 
-     */
-    double get_cpu_temperature(const std::string& temperature_reading_name)
-    {
-        
+        std::cout << "Reached end of function, returning -1! \n";
+        return -1;
     }
 }
