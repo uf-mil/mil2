@@ -9,20 +9,20 @@ namespace mil_preflight
 {
 using namespace ftxui;
 
-class ReportsPage: public ComponentBase
+class ReportsPage : public ComponentBase
 {
-    public:
-    ReportsPage();
-    ~ReportsPage();
+public:
+  ReportsPage();
+  ~ReportsPage();
 
-    private:
-    Job::Report report_;
+private:
+  Job::Report report_;
 
-    bool showSuccess_ = true;
-    Component reportPage_;
-    int selector_ = 0;
+  bool showSuccess_ = true;
+  Component reportPage_;
+  int selector_ = 0;
 
-    Element Render() final;
+  Element Render() final;
 };
 
-}
+}  // namespace mil_preflight

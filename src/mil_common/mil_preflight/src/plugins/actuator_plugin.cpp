@@ -1,100 +1,93 @@
-#include "mil_preflight/plugin.h"
-
+#include <boost/dll/alias.hpp>
 #include <map>
 #include <vector>
 
-#include <boost/dll/alias.hpp>
-
+#include "mil_preflight/plugin.h"
 #include "subjugator_msgs/msg/thruster_cmd.hpp"
 
 namespace mil_preflight
 {
-    class ActuatorPlugin: public PluginBase
+class ActuatorPlugin : public PluginBase
+{
+public:
+  ActuatorPlugin()
+  {
+  }
+
+  ~ActuatorPlugin()
+  {
+  }
+
+  static std::shared_ptr<ActuatorPlugin> create()
+  {
+    return std::shared_ptr<ActuatorPlugin>(new ActuatorPlugin());
+  }
+
+private:
+  // std::vector<std::string> nodes_;
+  std::string summery_;
+
+  bool runAction(std::vector<std::string>&& parameters) final
+  {
+    std::string question =
+        "Ensure that all fingers are clear of the area!\nIs it safe to operate the actuator: " + parameters[0] + " ?";
+    if (askQuestion(question, { "Yes", "No" }) != 0)
     {
-        public:
+      summery_ = "User did not clear the area";
+      return false;
+    }
 
-        ActuatorPlugin()
-        {
-            
-        }
+    std::vector<rclcpp::TopicEndpointInfo> infos = get_subscriptions_info_by_topic(parameters[1]);
+    if (infos.size() == 0)
+    {
+      summery_ = "No subscriber subscribe to the topic: " + parameters[1];
+      return false;
+    }
 
-        ~ActuatorPlugin()
-        {
-            
-        }
+    std::string& topicType = infos[0].topic_type();
+    if (topicType != "subjugator_msgs/msg/Thruster Command")
+    {
+      summery_ = "Mismatched message type : " + infos[0].topic_type();
+      return false;
+    }
 
-        static std::shared_ptr<ActuatorPlugin> create() 
-        {
-            return std::shared_ptr<ActuatorPlugin>(new ActuatorPlugin());
-        }
+    subjugator_msgs::msg::ThrusterCmd cmd;
+    cmd.name = parameters[2];
 
-        private:
+    try
+    {
+      cmd.thrust = std::stof(parameters[3]);
+    }
+    catch (std::exception const& e)
+    {
+      summery_ = "Invalid thrust parameter: " + parameters[3];
+      return false;
+    }
 
-        // std::vector<std::string> nodes_;
-        std::string summery_;
+    rclcpp::Publisher<subjugator_msgs::msg::ThrusterCmd>::SharedPtr pub =
+        create_publisher<subjugator_msgs::msg::ThrusterCmd>(parameters[1], 10);
 
-        bool runAction(std::vector<std::string>&& parameters) final
-        {
-            std::string question = "Ensure that all fingers are clear of the area!\nIs it safe to operate the actuator: " + 
-                parameters[0] + " ?";
-            if(askQuestion(question, {"Yes", "No"}) != 0)
-            {
-                summery_ = "User did not clear the area";
-                return false;
-            }
+    pub->publish(cmd);
 
-            std::vector<rclcpp::TopicEndpointInfo> infos = get_subscriptions_info_by_topic(parameters[1]);
-            if(infos.size() == 0)
-            {
-                summery_ = "No subscriber subscribe to the topic: " + parameters[1];
-                return false;
-            }
+    if (askQuestion("Had the " + parameters[2] + "start spinning?", { "Yes", "No" }) != 0)
+    {
+      summery_ = "User said the thruster didn't spin";
+      return false;
+    }
 
-            std::string& topicType = infos[0].topic_type();
-            if(topicType != "subjugator_msgs/msg/Thruster Command")
-            {
-                summery_ = "Mismatched message type : " + infos[0].topic_type(); 
-                return false;
-            }
+    cmd.thrust = 0;
 
-            subjugator_msgs::msg::ThrusterCmd cmd;
-            cmd.name = parameters[2];
+    pub->publish(cmd);
 
-            try
-            {
-                cmd.thrust = std::stof(parameters[3]);
-            }
-            catch(std::exception const& e)
-            {
-                summery_ = "Invalid thrust parameter: " + parameters[3];
-                return false;
-            }
+    summery_ = "success";
+    return true;
+  }
 
-            rclcpp::Publisher<subjugator_msgs::msg::ThrusterCmd>::SharedPtr pub = 
-                create_publisher<subjugator_msgs::msg::ThrusterCmd>(parameters[1], 10);
-
-            pub->publish(cmd);
-            
-            if(askQuestion("Had the " + parameters[2] + "start spinning?", {"Yes", "No"})!=0)
-            {
-                summery_ = "User said the thruster didn't spin";
-                return false;
-            }
-
-            cmd.thrust = 0;
-
-            pub->publish(cmd);
-
-            summery_ = "success";
-            return true;
-        }
-
-        std::string const& getSummery() final
-        {
-            return summery_;
-        }
-    };
-}
+  std::string const& getSummery() final
+  {
+    return summery_;
+  }
+};
+}  // namespace mil_preflight
 
 BOOST_DLL_ALIAS(mil_preflight::ActuatorPlugin::create, actuator_plugin);
-
