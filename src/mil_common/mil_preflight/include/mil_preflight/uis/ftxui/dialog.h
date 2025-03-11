@@ -1,10 +1,9 @@
 #pragma once
 
-#include <sstream>
-#include <iostream>
-
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <iostream>
+#include <sstream>
 
 namespace mil_preflight
 {
@@ -20,23 +19,18 @@ public:
     std::vector<std::string> buttonLabels;
   };
 
-  Dialog(Option const& option) : 
-    option_(option),
-    screen_(ScreenInteractive::Fullscreen())
+  Dialog(Option const& option) : option_(option), screen_(ScreenInteractive::Fullscreen())
   {
     create();
   }
 
-  Dialog(Option&& option) : 
-    option_(std::move(option)),
-    screen_(ScreenInteractive::Fullscreen())
+  Dialog(Option&& option) : option_(std::move(option)), screen_(ScreenInteractive::Fullscreen())
   {
     create();
   }
 
   ~Dialog()
   {
-
   }
 
   int show()
@@ -47,11 +41,9 @@ public:
 
   Element Render() override
   {
-    
-    return vbox({ hbox({ text(option_.title) | flex, closeButton_->Render() }), separator(),
-                  vbox(paragraphs_) | flex, separator(), buttonsContainer_->Render() | center }) |
+    return vbox({ hbox({ text(option_.title) | flex, closeButton_->Render() }), separator(), vbox(paragraphs_) | flex,
+                  separator(), buttonsContainer_->Render() | center }) |
            border;
-
   }
 
 private:
@@ -74,17 +66,25 @@ private:
     Components buttons;
     for (size_t i = 0; i < option_.buttonLabels.size(); i++)
     {
-      buttons.push_back(Button(option_.buttonLabels[i], [=]{ 
-        index_ = i;
-        screen_.Exit();
-      }, ButtonOption::Border()));
+      buttons.push_back(Button(
+          option_.buttonLabels[i],
+          [=]
+          {
+            index_ = i;
+            screen_.Exit();
+          },
+          ButtonOption::Border()));
     }
     buttonsContainer_ = Container::Horizontal(buttons);
 
-    closeButton_ = Button("X", [=]{
-      index_ = -1;
-      screen_.Exit();
-    }, ButtonOption::Ascii());
+    closeButton_ = Button(
+        "X",
+        [=]
+        {
+          index_ = -1;
+          screen_.Exit();
+        },
+        ButtonOption::Ascii());
 
     Component dialogContainer = Container::Vertical({ closeButton_, buttonsContainer_ });
 

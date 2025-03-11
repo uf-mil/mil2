@@ -408,11 +408,11 @@ private:
               break;
             }
 
-            while(std::getline(childErr, line))
+            while (std::getline(childErr, line))
             {
-                if(line[0] == EOT)
-                    break;
-                actionReport.stderrs.push_back(std::move(line));
+              if (line[0] == EOT)
+                break;
+              actionReport.stderrs.push_back(std::move(line));
             }
 
             break;
