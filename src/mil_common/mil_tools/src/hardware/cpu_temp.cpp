@@ -90,6 +90,8 @@ namespace mil_tools::hardware::cpu_temp
             char buffer[128];
             std::string tegrastats_output;
 
+            pipe = popen("tegrastats --close", "r");
+
             // Reads the output from that pipe and appends it to a string
             while (fgets(buffer, 128, pipe) != NULL)
             tegrastats_output += buffer;
