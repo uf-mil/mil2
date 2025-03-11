@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <string>
 
-TEST(SystemInfo, CPUArchitecture)
+TEST(system_info, get_cpu_architecture)
 {
   // Create a pipe so I can execute "arch" and extract the architecture
   FILE* pipe = popen("arch", "r");

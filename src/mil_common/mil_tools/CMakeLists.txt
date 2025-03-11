@@ -81,4 +81,11 @@ if(BUILD_TESTING)
     $<INSTALL_INTERFACE:include>
   )
   target_link_libraries(${PROJECT_NAME}_itertools_test ${PROJECT_NAME})
+  
+  ament_add_gtest(${PROJECT_NAME}_cpu_architecture_test test/hardware/system_info.cpp)
+  target_include_directories(${PROJECT_NAME}_cpu_architecture_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_cpu_architecture_test ${PROJECT_NAME})
 endif()
