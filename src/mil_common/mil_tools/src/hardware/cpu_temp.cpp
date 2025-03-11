@@ -76,7 +76,7 @@ namespace mil_tools::hardware::cpu_temp
             std::cout << "Detected an ARM system!\n";
 
             // To execute tegrastats, we can use a pipe and read the output from it
-            FILE* pipe = popen("tegrastats --interval 0.1", "r");
+            FILE* pipe = popen("tegrastats --interval 0.1 | head -n 1", "r");
 
             // We have to check if the pipe failed to execute before we read from it which will result in a nullptr
             if (!pipe)
@@ -89,8 +89,6 @@ namespace mil_tools::hardware::cpu_temp
             // We need a buffer to store the output of our command in chunks, as well as a string to combine everything
             char buffer[128];
             std::string tegrastats_output;
-
-            pipe = popen("tegrastats --close", "r");
 
             // Reads the output from that pipe and appends it to a string
             while (fgets(buffer, 128, pipe) != NULL)
