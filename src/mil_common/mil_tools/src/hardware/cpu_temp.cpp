@@ -110,6 +110,7 @@ namespace mil_tools::hardware::cpu_temp
             // Update the output string to exclude anything before the substring
             tegrastats_output = tegrastats_output.substr(start_of_substring + 4);
             int end_of_substring = tegrastats_output.find("C");
+	    std::cout << "Output: " << tegrastats_output.substr(0, end_of_substring) << "\n";
 
             // If the "C" doesn't exist, then the output is in a format I don't recognize
             // so I'll be unable to parse it. In that case we'll return -1.
@@ -123,7 +124,7 @@ namespace mil_tools::hardware::cpu_temp
             // parsing has the potential to throw an exception
             try
             {
-                std::stod(tegrastats_output.substr(0, end_of_substring));
+                return(std::stod(tegrastats_output.substr(0, end_of_substring)));
             }
             catch(const std::exception& e)
             {
