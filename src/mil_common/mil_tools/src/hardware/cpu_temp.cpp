@@ -76,7 +76,7 @@ namespace mil_tools::hardware::cpu_temp
             std::cout << "Detected an ARM system!\n";
 
             // To execute tegrastats, we can use a pipe and read the output from it
-            FILE* pipe = popen("tegrastats", "r");
+            FILE* pipe = popen("tegrastats | grep -oP \'cpu@\\K[0-9]+\\.[0-9]+\'", "r");
 
             // We have to check if the pipe failed to execute before we read from it which will result in a nullptr
             if (!pipe)
@@ -87,47 +87,47 @@ namespace mil_tools::hardware::cpu_temp
             }
 
             // We need a buffer to store the output of our command in chunks, as well as a string to combine everything
-            char buffer[128];
+            char buffer[8];
             std::string tegrastats_output;
 
             // Reads the output from that pipe and appends it to a string
-            while (fgets(buffer, 128, pipe) != NULL)
+            while (fgets(buffer, 8, pipe) != NULL)
             tegrastats_output += buffer;
 
             // Now we can close the pipe and parse the string for the temperature reading
             pclose(pipe);
 
-            // I'll look for the "thermal" substring in the output
-            int start_of_substring = tegrastats_output.find("cpu@") + 4;
+            // // I'll look for the "thermal" substring in the output
+            // int start_of_substring = tegrastats_output.find("cpu@") + 4;
 
-            // If the substring doesn't exist, we'll just return -1
-            if (start_of_substring == -1)
-            {
-                std::cout << "Substring cpu@ doesn't exist!\n";
-                return -1;
-            }
+            // // If the substring doesn't exist, we'll just return -1
+            // if (start_of_substring == -1)
+            // {
+            //     std::cout << "Substring cpu@ doesn't exist!\n";
+            //     return -1;
+            // }
 
-            // Update the output string to exclude anything before the substring
-            tegrastats_output = tegrastats_output.substr(start_of_substring);
-            int end_of_substring = tegrastats_output.find("C");
+            // // Update the output string to exclude anything before the substring
+            // tegrastats_output = tegrastats_output.substr(start_of_substring);
+            // int end_of_substring = tegrastats_output.find("C");
 
-            // If the "C" doesn't exist, then the output is in a format I don't recognize
-            // so I'll be unable to parse it. In that case we'll return -1.
-            if (end_of_substring == -1)
-            {
-                std::cout << "\'C\' doesn't exist in the substring. Unable to determine where the temperature reading ends!\n";
-                return -1;
-            }
+            // // If the "C" doesn't exist, then the output is in a format I don't recognize
+            // // so I'll be unable to parse it. In that case we'll return -1.
+            // if (end_of_substring == -1)
+            // {
+            //     std::cout << "\'C\' doesn't exist in the substring. Unable to determine where the temperature reading ends!\n";
+            //     return -1;
+            // }
 
             // Parse the string to a double. I'll wrap it in a try-catch because
             // parsing has the potential to throw an exception
             try
             {
-                std::stod(tegrastats_output.substr(0, end_of_substring));
+                std::stod(tegrastats_output);
             }
             catch(const std::exception& e)
             {
-                std::cout << "Could not parse \'" << tegrastats_output.substr(0, end_of_substring) << "\' to a double!\n";
+                std::cout << "Could not parse \'" << tegrastats_output << "\' to a double!\n";
                 return -1;
             }
         }
