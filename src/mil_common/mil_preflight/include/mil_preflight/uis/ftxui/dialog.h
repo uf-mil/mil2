@@ -15,15 +15,18 @@ public:
     std::string title;
     std::string question;
     std::vector<std::string> buttonLabels;
-    std::function<void(int)> onClose = [](int) {};
   };
 
-  Dialog(Option const& option) : option_(option)
+  Dialog(Option const& option) : 
+    option_(option),
+    screen_(ScreenInteractive::Fullscreen())
   {
     create();
   }
 
-  Dialog(Option&& option) : option_(std::move(option))
+  Dialog(Option&& option) : 
+    option_(std::move(option)),
+    screen_(ScreenInteractive::Fullscreen())
   {
     create();
   }
@@ -32,9 +35,10 @@ public:
   {
   }
 
-  void show(ComponentBase* parent)
+  int show()
   {
-    saveAllChildren(parent);
+    screen_.Loop(shared_from_this());
+    return index_;
   }
 
   Element Render() override
@@ -48,46 +52,29 @@ private:
   Component buttonsContainer_;
   Component closeButton_;
   Option option_;
+  ScreenInteractive screen_;
+  int index_ = -1;
 
   void create()
   {
     Components buttons;
     for (size_t i = 0; i < option_.buttonLabels.size(); i++)
     {
-      buttons.push_back(Button(option_.buttonLabels[i], std::bind(&Dialog::onButton, this, i), ButtonOption::Border()));
+      buttons.push_back(Button(option_.buttonLabels[i], [=]{ 
+        index_ = i;
+        screen_.Exit();
+      }, ButtonOption::Border()));
     }
     buttonsContainer_ = Container::Horizontal(buttons);
 
-    closeButton_ = Button("X", std::bind(&Dialog::onButton, this, -1), ButtonOption::Ascii());
+    closeButton_ = Button("X", [=]{
+      index_ = -1;
+      screen_.Exit();
+    }, ButtonOption::Ascii());
 
     Component dialogContainer = Container::Vertical({ closeButton_, buttonsContainer_ });
 
     Add(dialogContainer);
-  }
-
-  void onButton(int index)
-  {
-    option_.onClose(index);
-    ComponentBase* parent = Parent();
-    restoreAllChildren(parent);
-  }
-
-  void saveAllChildren(ComponentBase* parent)
-  {
-    for (size_t i = 0; i < parent->ChildCount(); i++)
-    {
-      Add(parent->ChildAt(i));
-    }
-    parent->Add(shared_from_this());
-  }
-
-  void restoreAllChildren(ComponentBase* parent)
-  {
-    for (size_t i = 1; i < children_.size(); i++)
-    {
-      parent->Add(children_[i]);
-    }
-    Detach();
   }
 };
 

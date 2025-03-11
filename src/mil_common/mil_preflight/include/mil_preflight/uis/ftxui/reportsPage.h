@@ -20,7 +20,7 @@ private:
 
   bool showSuccess_ = true;
   Component reportPage_;
-  int selector_ = 0;
+  int selector_ = -1;
 
   Element Render() final;
   bool OnEvent(Event event) final;

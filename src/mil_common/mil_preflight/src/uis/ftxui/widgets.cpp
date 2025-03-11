@@ -15,6 +15,66 @@ extern ScreenInteractive screen;
 namespace mil_preflight
 {
 
+class ReportPanel: public ComponentBase
+{
+  public:
+  ReportPanel(Job::Report&& report, bool* showSuccess):
+    report_(std::move(report)),
+    showSuccess_(showSuccess)
+  {
+    Component reportPanel_ = Container::Vertical({});
+    Add(reportPanel_);
+  }
+
+  ~ReportPanel()
+  {
+
+  }
+
+  Element Render() final
+  {
+    if(!rendered_)
+    {
+      for (auto const& testPair : report_)
+      {
+        Component actionContainer = Container::Vertical({});
+        for (auto const& actionPair : testPair.second)
+        {
+          Component summeryPanel = Renderer(
+              [&]
+              {
+                return hbox({
+                    text("  "),
+                    paragraph(actionPair.second.summery)  //| color(actionPair.second.first ? Color::Green : Color::Red)
+                });
+              });
+
+          Component actionColp = Collapsible(actionPair.first, { summeryPanel });
+          Component actionRender =
+              Renderer(actionColp, [=]
+                        { return actionColp->Render() | color(actionPair.second.success ? Color::Green : Color::Red); });
+          if (actionPair.second.success)
+            actionContainer->Add(Maybe(actionRender, showSuccess_));
+          else
+            actionContainer->Add(actionRender);
+        }
+
+        ChildAt(0)->Add(
+            Collapsible(testPair.first,
+                        Renderer(actionContainer, [=] { return hbox({ text("  "), actionContainer->Render() }); })));
+      }
+      rendered_ = true;
+    }
+
+    return ChildAt(0)->Render();
+  }
+
+  private:
+  Job::Report report_;
+  bool rendered_ = false;
+  bool* showSuccess_;
+};
+
 static std::queue<Job::Report> reportQueue;
 
 static std::queue<std::shared_ptr<Dialog>> questionQueue;
@@ -202,14 +262,16 @@ std::shared_future<int> ActionBox::onQuestion(std::string&& question, std::vecto
   std::shared_ptr<std::promise<int>> feedback = std::make_shared<std::promise<int>>();
 
   Dialog::Option option;
-  option.title = "Question for action" + name_;
+  option.title = "Question for action " + name_;
   option.question = std::move(question);
   option.buttonLabels = std::move(options);
-  option.onClose = [=](int index) mutable { feedback->set_value(index); };
 
   std::shared_ptr<Dialog> dialog = std::make_shared<Dialog>(std::move(option));
-  questionQueue.push(dialog);
-  screen.PostEvent(Event::Character("Question"));
+  screen.Post([=]{
+    int index = dialog->show();
+    feedback->set_value(index);
+  });
+
   return feedback->get_future().share();
 }
 
@@ -597,7 +659,6 @@ TestsPage::TestsPage(std::string const& filePath)
       else
         tab->uncheck();
     }
-    screen.PostEvent(Event::Custom);
   };
   Component checkBox = Checkbox("Select all", &selectAll_, option);
   Component bottom = Container::Horizontal({ checkBox | vcenter | flex, runButton });
@@ -675,14 +736,14 @@ bool TestsPage::OnEvent(Event event)
     return false;
   }
 
-  if (event == Event::Character("Question"))
-  {
-    std::shared_ptr<Dialog> dialog = questionQueue.front();
-    questionQueue.pop();
-    dialog->show(this);
+  // if (event == Event::Character("Question"))
+  // {
+  //   std::shared_ptr<Dialog> dialog = questionQueue.front();
+  //   questionQueue.pop();
+  //   dialog->show();
 
-    return true;
-  }
+  //   return true;
+  // }
 
   if (running_ && main_->Focused())
     return false;
@@ -695,8 +756,10 @@ ReportsPage::ReportsPage()
   reportPage_ = Container::Tab({}, &selector_);
   Component clearButton = Button("Delete", [=] { 
     if(reportPage_->ChildCount() > 0)
+    {
       reportPage_->ChildAt(selector_)->Detach();
-      selector_ -= 1; 
+      // selector_ = reportPage_->ChildCount();
+    }
   }, ButtonOption::Border());
   Component bottomMiddle = Container::Horizontal({
       Button(
@@ -741,37 +804,8 @@ Element ReportsPage::Render()
 
     if (report_.size() != 0)
     {
-      Component reportPanel_ = Container::Vertical({});
-      for (auto const& testPair : report_)
-      {
-        Component actionContainer = Container::Vertical({});
-        for (auto const& actionPair : testPair.second)
-        {
-          Component summeryPanel = Renderer(
-              [&]
-              {
-                return hbox({
-                    text("  "),
-                    paragraph(actionPair.second.summery)  //| color(actionPair.second.first ? Color::Green : Color::Red)
-                });
-              });
-
-          Component actionColp = Collapsible(actionPair.first, { summeryPanel });
-          Component actionRender =
-              Renderer(actionColp, [=]
-                       { return actionColp->Render() | color(actionPair.second.success ? Color::Green : Color::Red); });
-          if (actionPair.second.success)
-            actionContainer->Add(Maybe(actionRender, &showSuccess_));
-          else
-            actionContainer->Add(actionRender);
-        }
-
-        reportPanel_->Add(
-            Collapsible(testPair.first,
-                        Renderer(actionContainer, [=] { return hbox({ text("  "), actionContainer->Render() }); })));
-      }
-
-      reportPage_->Add(reportPanel_ | flex | frame);
+      reportPage_->Add(std::make_shared<ReportPanel>(std::move(report_), &showSuccess_) | frame);
+      selector_ += 1;
     }
 
     reportQueue.pop();
