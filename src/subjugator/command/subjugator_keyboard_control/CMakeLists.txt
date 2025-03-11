@@ -9,7 +9,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-add_executable(subjugator_keyboard_control src/subjugator_keyboard_control.cpp)
+add_executable(subjugator_keyboard_control src/node.cpp src/SubjugatorKeyboardControl.cpp)
 
 target_include_directories(subjugator_keyboard_control PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
