@@ -92,12 +92,12 @@ namespace mil_tools::hardware::cpu_temp
             // parsing has the potential to throw an exception
             try
             {
-		    return(std::stod(tegrastats_output));
+		        return(std::stod(tegrastats_output));
             }
             catch(const std::exception& e)
-	    {
-    		    return -1;
-	    }
+            {
+                return -1;
+            }
 
      	}
 
