@@ -3,6 +3,7 @@
 #include <sensors/sensors.h>
 #include <cstring>
 #include <string>
+#include <iostream>
 
 namespace mil_tools::hardware::cpu_temp
 {
@@ -52,23 +53,12 @@ namespace mil_tools::hardware::cpu_temp
                         {
                             // Get sensor label
                             char *label = sensors_get_label(chip, feature);
-
-                            if (strcmp(label, "Composite") == 0)
-                                return temp;
-			    // Free the string that I used to store the temperature reading's label/identifier
-                            free(label);
-                        }
-
-			// If we reach this point in the code, that means the "Composite" reading couldn't be found
-			// so we'll need to try a different temp sensor
-                        if (sensors_get_value(chip, subfeature->number, &temp) == 0) 
-                        {
-                            // Get sensor label
-                            char *label = sensors_get_label(chip, feature);
+			std::cout << label << "\n";
 
                             if (strcmp(label, "temp1") == 0)
                                 return temp;
-			    // Free the string that I used to store the temperature reading's label/identifier
+
+                            // Free the string that I used to store the temperature reading's label/identifier
                             free(label);
                         }
                     }
