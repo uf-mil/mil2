@@ -98,12 +98,12 @@ namespace mil_tools::hardware::cpu_temp
             pclose(pipe);
 
             // I'll look for the "thermal" substring in the output
-            int start_of_substring = tegrastats_output.find("thermal@");
+            int start_of_substring = tegrastats_output.find("cpu@") + 4;
 
             // If the substring doesn't exist, we'll just return -1
             if (start_of_substring == -1)
             {
-                std::cout << "Substring thermal@ doesn't exist!\n";
+                std::cout << "Substring cpu@ doesn't exist!\n";
                 return -1;
             }
 
