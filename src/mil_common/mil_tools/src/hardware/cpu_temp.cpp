@@ -1,6 +1,5 @@
 #include "mil_tools/hardware/cpu_temp.hpp"
 #include "mil_tools/hardware/system_info.hpp"
-#include <iostream>
 #include <sensors/sensors.h>
 #include <cstring>
 #include <string>
@@ -17,11 +16,8 @@ namespace mil_tools::hardware::cpu_temp
         {
             // Initialize sensors, none-zero returned value means there was an error during initialization
             if (sensors_init(nullptr) != 0) 
-            {
-                std::cout << "Could not initialize sensors!\n";
                 // Return without modifying any values
                 return -1;
-            }
 
             // Iterate through all chips
             const sensors_chip_name *chip;
@@ -73,74 +69,42 @@ namespace mil_tools::hardware::cpu_temp
         // If the architecture is ARM, we can assume the device is a Jetson and use tegrastats to grab CPU temp
         else if (cpu_architecture.find("aarch") != std::string::npos || cpu_architecture.find("arm") != std::string::npos)
         {
-            std::cout << "Detected an ARM system!\n";
-
             // To execute tegrastats, we can use a pipe and read the output from it
-            FILE* pipe = popen("tegrastats --interval 0.1 | head -n 1", "r");
+            FILE* pipe = popen("tegrastats --interval 0.1 | head -n 1 | grep -oP \'cpu@\\K[0-9]+\\.[0-9]+\'", "r");
 
             // We have to check if the pipe failed to execute before we read from it which will result in a nullptr
             if (!pipe)
-            {
-                std::cout << "Failed to create a pipe to execute Tegrastats!";
                 // If the pipe failed to execute, we can just return -1
                 return -1;
-            }
 
             // We need a buffer to store the output of our command in chunks, as well as a string to combine everything
-            char buffer[128];
+            char buffer[8];
             std::string tegrastats_output;
 
             // Reads the output from that pipe and appends it to a string
-            while (fgets(buffer, 128, pipe) != NULL)
+            while (fgets(buffer, 8, pipe) != NULL)
             tegrastats_output += buffer;
 
             // Now we can close the pipe and parse the string for the temperature reading
             pclose(pipe);
 
-            // I'll look for the "thermal" substring in the output
-            int start_of_substring = tegrastats_output.find("cpu@");
-
-            // If the substring doesn't exist, we'll just return -1
-            if (start_of_substring == -1)
-            {
-                std::cout << "Substring cpu@ doesn't exist!\n";
-                return -1;
-            }
-
-            // Update the output string to exclude anything before the substring
-            tegrastats_output = tegrastats_output.substr(start_of_substring + 4);
-            int end_of_substring = tegrastats_output.find("C");
-	    std::cout << "Output: " << tegrastats_output.substr(0, end_of_substring) << "\n";
-
-            // If the "C" doesn't exist, then the output is in a format I don't recognize
-            // so I'll be unable to parse it. In that case we'll return -1.
-            if (end_of_substring == -1)
-            {
-                std::cout << "\'C\' doesn't exist in the substring. Unable to determine where the temperature reading ends!\n";
-                return -1;
-            }
-
             // Parse the string to a double. I'll wrap it in a try-catch because
             // parsing has the potential to throw an exception
             try
             {
-                return(std::stod(tegrastats_output.substr(0, end_of_substring)));
+		    return(std::stod(tegrastats_output));
             }
             catch(const std::exception& e)
-            {
-                std::cout << "Could not parse \'" << tegrastats_output.substr(0, end_of_substring) << "\' to a double!\n";
-                return -1;
-            }
-        }
+	    {
+    		    return -1;
+	    }
+
+     	}
 
         // If the the get_cpu_architecture() function returns unknown, then we'll just return without modifying the cpu_temperatures object
         else
-        {
-            std::cout << "CPU architecture wasn't x86! \n";
             return -1;
-        }
 
-        std::cout << "Reached end of function, returning -1! \n";
         return -1;
     }
 }
