@@ -1,4 +1,4 @@
-#include "thruster_manager.h"
+#include "subjugator_thruster_manager/thruster_manager.h"
 
 #include <Eigen/Dense>
 #include <chrono>
@@ -15,6 +15,8 @@
 ThrusterManager::ThrusterManager() : Node("thruster_manager")
 {
     reference_wrench_ = Eigen::VectorXd::Zero(6);
+    this->declare_parameter("safety_limit", 0.0);
+    safety_limit_ = this->get_parameter("safety_limit").as_double();
 
     // Create thruster allocation matrix from config file parameters
     tam_ = Eigen::MatrixXd::Zero(dof_, thruster_count_);
@@ -46,18 +48,39 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
 // Update wrench when new msg heard
 void ThrusterManager::wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg)
 {
-    RCLCPP_INFO(this->get_logger(), "Heard wrench: [%.2f, %.2f, %.2f], [%.2f, %.2f, %.2f]", msg->force.x, msg->force.y,
-                msg->force.z, msg->torque.x, msg->torque.y, msg->torque.z);
-
+    // RCLCPP_INFO(this->get_logger(), "Heard wrench: [%.2f, %.2f, %.2f], [%.2f, %.2f, %.2f]", msg->force.x,
+    // msg->force.y,
+    //             msg->force.z, msg->torque.x, msg->torque.y, msg->torque.z);
     this->reference_wrench_ << msg->force.x, msg->force.y, msg->force.z, msg->torque.x, msg->torque.y, msg->torque.z;
 }
 
 // Compute and publish thruster efforts
 void ThrusterManager::timer_callback()
 {
-    Eigen::VectorXd const thrust_values(tam_.completeOrthogonalDecomposition().pseudoInverse() * reference_wrench_);
+    Eigen::VectorXd thrust_values(tam_.completeOrthogonalDecomposition().pseudoInverse() * reference_wrench_);
 
     auto msg = subjugator_msgs::msg::ThrusterEfforts();
+
+    // check that the allocated thrust is not over the safety limit, and if it is, rescale all thrusters by safety_limit
+    // / biggest thrust value
+    double biggest_thrust = 0;
+    bool over_safety_limit = false;
+    for (int i = 0; i < thrust_values.size(); i++)
+    {
+        if (thrust_values[i] > biggest_thrust)
+        {
+            biggest_thrust = thrust_values[i];
+            if (biggest_thrust > safety_limit_)
+            {
+                over_safety_limit = true;
+            }
+        }
+    }
+    if (over_safety_limit)
+    {
+        thrust_values = thrust_values * (safety_limit_ / biggest_thrust);
+    }
+
     msg.thrust_frh = thrust_values[0];
     msg.thrust_flh = thrust_values[1];
     msg.thrust_brh = thrust_values[2];
