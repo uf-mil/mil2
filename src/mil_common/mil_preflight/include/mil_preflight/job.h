@@ -63,65 +63,65 @@ public:
     }
   };
 
-  class Feedback
-  {
-  public:
-    Feedback() : impl_(std::make_shared<Impl>())
-    {
-    }
+  // class Feedback
+  // {
+  // public:
+  //   Feedback() : impl_(std::make_shared<Impl>())
+  //   {
+  //   }
 
-    Feedback(Feedback&& feedback)
-    {
-      impl_ = std::move(feedback.impl_);
-    }
-    Feedback(Feedback const& feedback)
-    {
-      impl_ = feedback.impl_;
-    }
-    Feedback& operator=(Feedback&& feedback)
-    {
-      impl_ = std::move(feedback.impl_);
-      return *this;
-    }
-    Feedback& operator=(Feedback const& feedback)
-    {
-      impl_ = feedback.impl_;
-      return *this;
-    }
+  //   Feedback(Feedback&& feedback)
+  //   {
+  //     impl_ = std::move(feedback.impl_);
+  //   }
+  //   Feedback(Feedback const& feedback)
+  //   {
+  //     impl_ = feedback.impl_;
+  //   }
+  //   Feedback& operator=(Feedback&& feedback)
+  //   {
+  //     impl_ = std::move(feedback.impl_);
+  //     return *this;
+  //   }
+  //   Feedback& operator=(Feedback const& feedback)
+  //   {
+  //     impl_ = feedback.impl_;
+  //     return *this;
+  //   }
 
-    ~Feedback()
-    {
-    }
+  //   ~Feedback()
+  //   {
+  //   }
 
-    void set(int index)
-    {
-      std::unique_lock<std::mutex> lock(impl_->mutex_);
-      if (!impl_->answered_)
-      {
-        impl_->index_ = index;
-        impl_->answered_ = true;
-        impl_->cond_.notify_all();
-      }
-    }
+  //   void set(int index)
+  //   {
+  //     std::unique_lock<std::mutex> lock(impl_->mutex_);
+  //     if (!impl_->answered_)
+  //     {
+  //       impl_->index_ = index;
+  //       impl_->answered_ = true;
+  //       impl_->cond_.notify_all();
+  //     }
+  //   }
 
-    int get() const
-    {
-      std::unique_lock<std::mutex> lock(impl_->mutex_);
-      impl_->cond_.wait(lock, [this] { return impl_->answered_; });
-      return impl_->index_;
-    }
+  //   int get() const
+  //   {
+  //     std::unique_lock<std::mutex> lock(impl_->mutex_);
+  //     impl_->cond_.wait(lock, [this] { return impl_->answered_; });
+  //     return impl_->index_;
+  //   }
 
-  private:
-    struct Impl
-    {
-      int index_ = -1;
-      bool answered_ = false;
-      std::condition_variable cond_;
-      std::mutex mutex_;
-    };
+  // private:
+  //   struct Impl
+  //   {
+  //     int index_ = -1;
+  //     bool answered_ = false;
+  //     std::condition_variable cond_;
+  //     std::mutex mutex_;
+  //   };
 
-    std::shared_ptr<Impl> impl_;
-  };
+  //   std::shared_ptr<Impl> impl_;
+  // };
 
   Action() {};
   ~Action() {};
@@ -408,6 +408,13 @@ private:
               break;
             }
 
+            while(std::getline(childErr, line))
+            {
+                if(line[0] == EOT)
+                    break;
+                actionReport.stderrs.push_back(std::move(line));
+            }
+
             break;
           }
         }
@@ -415,13 +422,6 @@ private:
         action.onFinish(actionReport);
         testReport.emplace(action.getName(), std::move(actionReport));
       }
-
-      // while(std::getline(childErr, line))
-      // {
-      //     if(line[0] == EOT)
-      //         break;
-      //     stderrs.push_back(std::move(line));
-      // }
 
       if (!childIn.fail())
         childIn << EOT << std::endl;

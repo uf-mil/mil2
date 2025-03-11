@@ -119,8 +119,7 @@ private:
                                     "systems on your autonomous robot. "
                                     "It ensures that everything is in working order, "
                                     "allowing you to safely deploy your robot with confidence.";
-  std::vector<std::string> titles_ = { "MIL PreFlight", "Tests", "Report", "Documentation" };
-  // std::vector<std::string> menuItems_ = {"Run Tests", "View Report", "Read Documentation", "Quit"};
+  std::vector<std::string> titles_ = { "MIL Preflight", "Tests", "Reports", "Documentation" };
 };
 
 }  // namespace mil_preflight

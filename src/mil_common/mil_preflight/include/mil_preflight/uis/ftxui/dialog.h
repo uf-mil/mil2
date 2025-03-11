@@ -1,5 +1,8 @@
 #pragma once
 
+#include <sstream>
+#include <iostream>
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 
@@ -33,6 +36,7 @@ public:
 
   ~Dialog()
   {
+
   }
 
   int show()
@@ -43,20 +47,30 @@ public:
 
   Element Render() override
   {
+    
     return vbox({ hbox({ text(option_.title) | flex, closeButton_->Render() }), separator(),
-                  paragraph(option_.question) | flex, separator(), buttonsContainer_->Render() | center }) |
+                  vbox(paragraphs_) | flex, separator(), buttonsContainer_->Render() | center }) |
            border;
+
   }
 
 private:
   Component buttonsContainer_;
   Component closeButton_;
+  Elements paragraphs_;
   Option option_;
   ScreenInteractive screen_;
   int index_ = -1;
 
   void create()
   {
+    std::istringstream iss(option_.question);
+    std::string line;
+    while (std::getline(iss, line))
+    {
+      paragraphs_.push_back(paragraph(line));
+    }
+
     Components buttons;
     for (size_t i = 0; i < option_.buttonLabels.size(); i++)
     {

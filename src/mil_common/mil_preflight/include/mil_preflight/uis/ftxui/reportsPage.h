@@ -19,8 +19,9 @@ private:
   Job::Report report_;
 
   bool showSuccess_ = true;
-  Component reportPage_;
-  int selector_ = -1;
+  Component reportPanel_;
+  Component bottom_;
+  int selector_ = 0;
 
   Element Render() final;
   bool OnEvent(Event event) final;

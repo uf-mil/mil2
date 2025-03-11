@@ -39,8 +39,10 @@ public:
     }
     catch (boost::system::system_error const& e)
     {
-      error_ = "Failed to load the plugin: " + std::string(e.what());
-      return std::make_shared<PluginBase>();
+      error_ = "Failed to load plugin: " + pluginName;
+      std::shared_ptr<PluginBase> plugin = std::make_shared<PluginBase>();
+      RCLCPP_ERROR(plugin->get_logger(), e.what());
+      return plugin;
     }
 
     return creator_();
@@ -107,14 +109,14 @@ private:
       else if (line[0] == GS)
       {
         bool success = runAction(std::move(parameters));
-        std::ostringstream oss;
-        oss << (success ? ACK : NCK) << std::endl;
-        oss << getSummery() << std::endl;
-        std::cout << std::move(oss.str());
+        std::ostringstream stdoutss;
+        stdoutss << (success ? ACK : NCK) << std::endl;
+        stdoutss << getSummery() << std::endl;
+        std::cout << std::move(stdoutss.str());
 
-        oss.clear();
-        oss << EOT << std::endl;
-        std::cerr << std::move(oss.str());
+        std::ostringstream stderrss;
+        stderrss << EOT << std::endl;
+        std::cerr << std::move(stderrss.str());
 
         parameters.clear();
       }

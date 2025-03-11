@@ -15,66 +15,6 @@ extern ScreenInteractive screen;
 namespace mil_preflight
 {
 
-class ReportPanel: public ComponentBase
-{
-  public:
-  ReportPanel(Job::Report&& report, bool* showSuccess):
-    report_(std::move(report)),
-    showSuccess_(showSuccess)
-  {
-    Component reportPanel_ = Container::Vertical({});
-    Add(reportPanel_);
-  }
-
-  ~ReportPanel()
-  {
-
-  }
-
-  Element Render() final
-  {
-    if(!rendered_)
-    {
-      for (auto const& testPair : report_)
-      {
-        Component actionContainer = Container::Vertical({});
-        for (auto const& actionPair : testPair.second)
-        {
-          Component summeryPanel = Renderer(
-              [&]
-              {
-                return hbox({
-                    text("  "),
-                    paragraph(actionPair.second.summery)  //| color(actionPair.second.first ? Color::Green : Color::Red)
-                });
-              });
-
-          Component actionColp = Collapsible(actionPair.first, { summeryPanel });
-          Component actionRender =
-              Renderer(actionColp, [=]
-                        { return actionColp->Render() | color(actionPair.second.success ? Color::Green : Color::Red); });
-          if (actionPair.second.success)
-            actionContainer->Add(Maybe(actionRender, showSuccess_));
-          else
-            actionContainer->Add(actionRender);
-        }
-
-        ChildAt(0)->Add(
-            Collapsible(testPair.first,
-                        Renderer(actionContainer, [=] { return hbox({ text("  "), actionContainer->Render() }); })));
-      }
-      rendered_ = true;
-    }
-
-    return ChildAt(0)->Render();
-  }
-
-  private:
-  Job::Report report_;
-  bool rendered_ = false;
-  bool* showSuccess_;
-};
-
 static std::queue<Job::Report> reportQueue;
 
 static std::queue<std::shared_ptr<Dialog>> questionQueue;
@@ -621,8 +561,8 @@ TestsPage::TestsPage(std::string const& filePath)
 
   tabsContainer_ = Container::Vertical(tabs, &selector_);
   pagesContainer_ = Container::Tab(pages, &selector_);
-  main_ = Container::Horizontal({ tabsContainer_ | frame | vscroll_indicator, Renderer([] { return separator(); }),
-                                  pagesContainer_ | frame | vscroll_indicator | flex });
+  main_ = Container::Horizontal({ tabsContainer_ | vscroll_indicator | frame  , Renderer([] { return separator(); }),
+                                  pagesContainer_ | vscroll_indicator | frame | flex });
 
   ButtonOption buttonOption = ButtonOption::Simple();
   buttonOption.transform = [&](EntryState const& s)
@@ -736,53 +676,206 @@ bool TestsPage::OnEvent(Event event)
     return false;
   }
 
-  // if (event == Event::Character("Question"))
-  // {
-  //   std::shared_ptr<Dialog> dialog = questionQueue.front();
-  //   questionQueue.pop();
-  //   dialog->show();
-
-  //   return true;
-  // }
-
   if (running_ && main_->Focused())
     return false;
 
   return ComponentBase::OnEvent(event);
 }
 
+class ActionReportPanel: public ComponentBase
+{
+  public:
+  ActionReportPanel(Action::Report&& report):report_(std::move(report))
+  {
+    for(std::string const& line: report_.stdouts)
+    {
+      stdouts_.push_back(paragraph(line));
+    }
+
+    for(std::string const& line: report_.stderrs)
+    {
+      stderrs_.push_back(paragraph(line));
+    }
+
+    Component stdoutsRenderer = Renderer([=]{
+      return vbox(stdouts_);
+    });
+
+    Component stdoutsCollap = Collapsible("stdout", stdoutsRenderer);
+
+    Component stderrsRenderer = Renderer([=]{
+      return vbox(stderrs_);
+    });
+
+    Component stderrsCollap = Collapsible("stderr", stderrsRenderer);
+
+    Add(Container::Vertical({
+      Renderer([&]{return paragraph(report_.summery);}),
+      stdoutsCollap , 
+      stderrsCollap}));
+  }
+  ~ActionReportPanel()
+  {
+
+  }
+
+  private:
+  Action::Report&& report_;
+  Elements summeries_;
+  Elements stdouts_;
+  Elements stderrs_;
+};
+
+
+class TestReportPanel: public ComponentBase
+{
+  public:
+  TestReportPanel(std::string const& name, Test::Report&& report, bool* errorOnly):errorOnly_(errorOnly)
+  {
+    Component panelsContainer = Container::Tab({}, &selector_);
+    Component tabsContainer = Container::Vertical({}, &selector_);
+    int errorCount = 0;
+    for(auto& pair: report)
+    {
+      ButtonOption option = ButtonOption::Simple();
+      option.transform = option.transform = [success=pair.second.success](const EntryState& s) {
+        Element element = text(s.label) | color(success ? Color::Green : Color::Red);
+        if(s.focused)
+          element |= inverted;
+        if(s.active)
+          element |= bold;
+        return element;
+      };
+
+      Component button = Button(pair.first, []{}, option);
+      if(pair.second.success)
+        button = Maybe(button, [=]{return !(*errorOnly_);});
+      tabsContainer->Add(button);
+      names_.push_back(pair.first);
+      panelsContainer->Add(std::make_shared<ActionReportPanel>(std::move(pair.second)));
+      
+      if(!pair.second.success)
+        errorCount ++;
+    }
+
+    tab_ = Collapsible(name, Renderer(tabsContainer, [=]
+      {
+        return hbox({text("  "), tabsContainer->Render()});
+      }), &show_);
+    
+    if(errorCount == 0)
+      tab_ = Maybe(tab_, [=]{return !(*errorOnly_);});
+    
+    Add(panelsContainer);
+  }
+  ~TestReportPanel()
+  {
+
+  }
+
+  Component getTab()
+  {
+    return tab_;
+  }
+
+  bool isShown()
+  {
+    return show_;
+  }
+
+  private:
+  int selector_ = 0;
+  bool show_ = false;
+  std::vector<std::string> names_;
+  Component tab_;
+  bool* errorOnly_;
+};
+
+class JobReportPanel: public ComponentBase
+{
+  public:
+  JobReportPanel(Job::Report&& report, bool* errorOnly):
+    report_(std::move(report)),
+    errorOnly_(errorOnly)
+  {
+  }
+
+  ~JobReportPanel()
+  {
+
+  }
+
+  Element Render() final
+  {
+    if(!rendered_)
+    {
+      left_ = Container::Vertical({}, &selector_);
+      right_ = Container::Tab({}, &selector_);
+      for (auto& pair : report_)
+      { 
+        std::shared_ptr<TestReportPanel> panel = std::make_shared<TestReportPanel>(pair.first, std::move(pair.second), errorOnly_);
+        left_->Add(panel->getTab());
+        right_->Add(panel);
+      }
+
+      Component maybe = Maybe(right_, [=]{
+        auto panel = std::dynamic_pointer_cast<TestReportPanel>(right_->ChildAt(selector_));
+        return panel->isShown();
+      });
+
+      Add(Container::Horizontal({
+        left_ | vscroll_indicator | frame, 
+        Renderer([]{return separator();}), 
+        maybe | flex | vscroll_indicator | yframe
+      }));
+      rendered_ = true;
+    }
+
+    return ChildAt(0)->Render();
+  }
+
+  private:
+  Job::Report report_;
+  Component left_;
+  Component right_;
+  int selector_ = 0;
+  bool rendered_ = false;
+  bool* errorOnly_;
+};
+
 ReportsPage::ReportsPage()
 {
-  reportPage_ = Container::Tab({}, &selector_);
+  reportPanel_ = Container::Tab({}, &selector_);
   Component clearButton = Button("Delete", [=] { 
-    if(reportPage_->ChildCount() > 0)
+    if(reportPanel_->ChildCount() > 0)
     {
-      reportPage_->ChildAt(selector_)->Detach();
-      // selector_ = reportPage_->ChildCount();
+      reportPanel_->ChildAt(selector_)->Detach();
+      selector_ = std::max(selector_ - 1, 0);
     }
   }, ButtonOption::Border());
   Component bottomMiddle = Container::Horizontal({
       Button(
-          "<", [=] { selector_ = std::min(selector_ + 1, static_cast<int>(reportPage_->ChildCount() - 1)); },
+          "<", [=] { selector_ = std::min(selector_ + 1, static_cast<int>(reportPanel_->ChildCount() - 1)); },
           ButtonOption::Ascii()) |
           vcenter,
       Renderer(
           [=]
           {
-            return text(std::to_string(reportPage_->ChildCount() - selector_) + "/" +
-                        std::to_string(reportPage_->ChildCount()));
+            return text(std::to_string(reportPanel_->ChildCount() - selector_) + "/" +
+                        std::to_string(reportPanel_->ChildCount()));
           }) |
           vcenter,
       Button(
           ">", [=] { selector_ = std::max(selector_ - 1, 0); }, ButtonOption::Ascii()) |
           vcenter,
   });
-  Component bottom =
-      Container::Horizontal({ Checkbox("Show all", &showSuccess_) | vcenter, Renderer([] { return filler(); }),
+  bottom_ =
+      Container::Horizontal({ Checkbox("Errors only", &showSuccess_) | vcenter, Renderer([] { return filler(); }),
                               bottomMiddle, Renderer([] { return filler(); }), clearButton | align_right });
 
-  Add(Container::Vertical({ reportPage_ | flex, Renderer([] { return separator(); }), bottom }));
+  Add(Container::Vertical({ reportPanel_, bottom_ }));
 }
+
 
 ReportsPage::~ReportsPage()
 {
@@ -790,7 +883,7 @@ ReportsPage::~ReportsPage()
 
 bool ReportsPage::OnEvent(Event event)
 {
-  if(reportPage_->ChildCount() == 0)
+  if(reportPanel_->ChildCount() == 0)
     return false;
 
   return ComponentBase::OnEvent(event);
@@ -804,15 +897,20 @@ Element ReportsPage::Render()
 
     if (report_.size() != 0)
     {
-      reportPage_->Add(std::make_shared<ReportPanel>(std::move(report_), &showSuccess_) | frame);
-      selector_ += 1;
+      reportPanel_->Add(std::make_shared<JobReportPanel>(std::move(report_), &showSuccess_));
+      if(reportPanel_->ChildCount() > 1)
+        selector_ += 1;
     }
 
     reportQueue.pop();
   }
 
-  if (reportPage_->ChildCount() > 0)
-    return ChildAt(0)->Render();
+  if (reportPanel_->ChildCount() > 0)
+    return vbox({
+      reportPanel_->Render() | flex,
+      separator(),
+      bottom_->Render(),
+    });
 
   return text("No report available, please run some tests first.") | center;
 }
