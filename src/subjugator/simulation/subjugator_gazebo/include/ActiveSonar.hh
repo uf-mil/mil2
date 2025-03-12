@@ -2,7 +2,10 @@
 #define DVL_ACTIVE_SONAR_HH_
 
 #include <gz/sim/System.hh>
- 
+
+#include <gz/transport/Node.hh>
+#include <gz/msgs/twist.pb.h>
+
 namespace active_sonar
 {
   class ActiveSonar:
@@ -28,9 +31,11 @@ namespace active_sonar
 
     public: void PostUpdate(const gz::sim::UpdateInfo &_info,
                 const gz::sim::EntityComponentManager &_ecm) override;
+  
+    private: 
+      gz::transport::Node node;
+      gz::transport::Node::Publisher publisher;
   };
- 
-
 }
 
 #endif
