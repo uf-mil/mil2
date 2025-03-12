@@ -18,6 +18,7 @@ class ThrusterManager : public rclcpp::Node
     Eigen::MatrixXd tam_;
     int const dof_ = 6;
     int const thruster_count_ = 8;
+    double safety_limit_;
 
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr thrust_publisher_;

@@ -18,7 +18,7 @@
     <inertial>
       <origin rpy="0 0 0" xyz="0.354 0 0"/>
       <!-- Need to be properly calculated at some point -->
-      <mass value="22.5"/>
+      <mass value="20.5"/>
       <inertia ixx="2.4" ixy="0" ixz="0" iyy="2.4" iyz="0.0" izz="3.0"/>
     </inertial>
 
