@@ -80,3 +80,15 @@ colbuild() {
 	source ./install/setup.bash    # Source the install script
 	cd "$prev_dir" || return       # Return to the original directory
 }
+
+# Print all devices on the specified subnet / network prefix
+list_lan_devices() {
+	if [ $# -lt 1 ]; then
+		echo "Usage:   list_lan_devices <subnet>"
+		echo "Example: list_lan_devices 192.168.37.1/24"
+	fi
+	nmap -sP "$1" -oG - | awk '/Up$/{print $2}'
+}
+
+# List all devices on the MIL network currently by scanning
+alias list_mil_devices="list_lan_devices 192.168.37.1/24"
