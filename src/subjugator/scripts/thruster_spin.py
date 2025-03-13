@@ -30,6 +30,12 @@ class ThrusterSpinner(Node):
             setattr(effort, self._option_to_field_name(thruster), self.rate)
         self.pub.publish(effort)
 
+    def reset(self):
+        effort = ThrusterEfforts()
+        for thruster in self.thrusters:
+            setattr(effort, self._option_to_field_name(thruster), 0.0)
+        self.pub.publish(effort)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -44,6 +50,11 @@ def main():
         default=0,
         help="Set thruster spin rate (-1, 1)",
     )
+    parser.add_argument(
+        "--zero",
+        action="store_true",
+        help="Set zero rate (0), useful for testing thruster pipeline with no effort",
+    )
     parser.add_argument("--slow", action="store_true", help="Set slow rate (0.2)")
     parser.add_argument("--medium", action="store_true", help="Set medium rate (0.5)")
     parser.add_argument("--fast", action="store_true", help="Set fast rate (1)")
@@ -56,7 +67,9 @@ def main():
     args = parser.parse_args()
 
     # Define default rates based on arguments
-    if args.slow:
+    if args.zero:
+        rate = 0.0
+    elif args.slow:
         rate = 0.2
     elif args.medium:
         rate = 0.5
@@ -65,7 +78,9 @@ def main():
     elif args.rate > 0:
         rate = args.rate
     else:
-        raise ValueError("No rate specified! Use --rate, --slow, --medium, or --fast.")
+        raise ValueError(
+            "No rate specified! Use --rate, --zero, --slow, --medium, or --fast.",
+        )
 
     # Determine thrusters to spin
     thrusters = []
@@ -81,8 +96,15 @@ def main():
     # Create node
     rclpy.init()
     node = ThrusterSpinner(thrusters, rate)
-    rclpy.spin(node)
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        print("Stopping...")
+        node.reset()
+    finally:
+        # node.destroy_node()
+        # rclpy.shutdown()
+        pass
 
 
 if __name__ == "__main__":
