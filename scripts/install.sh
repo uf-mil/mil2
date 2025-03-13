@@ -314,7 +314,8 @@ add_hosts_entry() {
 }
 
 # Add /etc/hosts entry for vehicles
-add_hosts_entry "192.168.37.60 sub8"
+add_hosts_entry "192.168.37.60 sub9-mil"
+add_hosts_entry "192.168.37.61 navtube"
 add_hosts_entry "192.168.37.82 navigator-two"
 
 # Builds the MIL repo
