@@ -349,7 +349,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_A1'>
+            <model name='Pinger_A1_10000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -399,7 +399,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_A2'>
+            <model name='Pinger_A2_15000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -678,7 +678,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_B1'>
+            <model name='Pinger_B1_20000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -728,7 +728,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_B2'>
+            <model name='Pinger_B2_25000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -1007,7 +1007,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_C1'>
+            <model name='Pinger_C1_30000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -1057,7 +1057,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_C2'>
+            <model name='Pinger_C2_35000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -1336,7 +1336,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_D1'>
+            <model name='Pinger_D1_40000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -1386,7 +1386,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_D2'>
+            <model name='Pinger_D2_45000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>

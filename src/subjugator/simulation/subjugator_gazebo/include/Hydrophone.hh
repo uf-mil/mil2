@@ -36,6 +36,8 @@ public:
   void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                  gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) override;
 
+  void FormatPinger(std::string &entityName);
+
   // Gather World Info
   void GatherWorldInfo(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                        gz::sim::EntityComponentManager const &ecm);
@@ -45,8 +47,12 @@ public:
 
 private:
   // Stored values of the hydrophone during Configure
-  gz::sim::Entity modelEntity_{ gz::sim::kNullEntity };
-  std::shared_ptr<sdf::Element const> sdf_;
+  gz::sim::Entity modelEntity_{ gz::sim::kNullEntity };  // World Entity
+  gz::sim::Entity sub9Entity_{ gz::sim::kNullEntity };   // Sub9 Entity
+  std::shared_ptr<sdf::Element const> sdf_;              // World SDF
+
+  // Sub9 Pose
+  gz::math::Pose3d sub9Pose_{ gz::math::Pose3d::Zero };  // Sub9 Pose
 
   // ROS node + publisher
   std::shared_ptr<rclcpp::Node> rosNode_;

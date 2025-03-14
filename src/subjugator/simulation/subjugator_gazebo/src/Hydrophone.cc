@@ -15,6 +15,30 @@ Hydrophone::~Hydrophone()
 {
 }
 
+void Hydrophone::FormatPinger(std::string &entityName)
+{
+  // Input string is of format: Pinger_1X_00000/Pinger_2X_00000
+  // Where X can be a value from A-Z and 00000 is a 5 digit frequency
+
+  // Split input string by underscore
+  size_t lastUnderscore = entityName.find_last_of('_');
+
+  // Extract the frequency after the last underscore and convert to an integer
+  std::string frequencyStr = entityName.substr(lastUnderscore + 1);
+  int frequency = std::stoi(frequencyStr);
+
+  // Extract the name of the Pinger
+  std::string pingerName = entityName.substr(0, lastUnderscore);
+
+  // Input Frequency and Name to the respective vectors
+  this->pingerFrequencies_.push_back(frequency);
+  this->pingerNames_.push_back(pingerName);
+
+  // Print the extracted frequency and name
+  std::cout << "[Hydrophone] Extracted Frequency: " << frequency << std::endl;
+  std::cout << "[Hydrophone] Extracted Name: " << pingerName << std::endl;
+}
+
 void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                            gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr)
 {
@@ -23,41 +47,21 @@ void Hydrophone::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::E
 
   // Gather necessary information for future GatherWorldInfo() call
   this->modelEntity_ = entity;
-  std::string pingerPrefix = "Pinger_";
 
   // Create copy of the SDF element to perform modifications due to const
   this->sdf_ = sdf->Clone();
-  // std::string testing = sdfCopy->Get<std::string>("model");
-  // std::cout << "Model Name: " << testing << std::endl;
-
-  // Iterate through sdf file, getting all <frequency> elements
-  // !! Does not enter Loop - Because 'frequency' doesn't exist in sub.sdf!!
-  // auto frequencyElement = sdfCopy->GetElement("frequency");
-  // std::cout << "Frequency Element: " << frequencyElement << std::endl;
-  // while (frequencyElement)
-  // {
-  //   // Get and store frequency
-  //   double frequency = frequencyElement->Get<double>();
-  //   std::cout << "Frequency: " << frequency << std::endl;
-  //   pingerFrequencies_.push_back(frequency);
-
-  //   // Move to the next <frequency> element
-  //   frequencyElement = frequencyElement->GetNextElement("frequency");
-  // }
 
   size_t entityCount = ecm.EntityCount();
-  std::cout << "Entity Count: " << entityCount << std::endl;
 
   if (!rclcpp::ok())
   {
     rclcpp::init(0, nullptr);
   }
+
   this->rosNode_ = std::make_shared<rclcpp::Node>("hydrophone_node");
   this->pingPub_ = this->rosNode_->create_publisher<mil_msgs::msg::ProcessedPing>("/ping", 1);
 
-  std::cout << "[Hydrophone] Configure() done." << "\n"
-            << "Entity = " << entity << "\n"
-            << "Pose = " << this->pose_ << std::endl;
+  std::cout << "[Hydrophone] Configure() done." << std::endl;
   std::cout << std::endl;
 }
 
@@ -65,18 +69,6 @@ void Hydrophone::GatherWorldInfo(gz::sim::Entity const &entity, std::shared_ptr<
                                  gz::sim::EntityComponentManager const &_ecm)
 {
   std::string pingerPrefix = "Pinger_";
-
-  auto frequencyElement = this->sdf_->FindElement("frequency");
-  while (frequencyElement)
-  {
-    // Get and store frequency
-    double frequency = frequencyElement->Get<double>();
-    std::cout << "Frequency: " << frequency << std::endl;
-    pingerFrequencies_.push_back(frequency);
-
-    // Move to the next <frequency> element
-    frequencyElement = frequencyElement->GetNextElement("frequency");
-  }
 
   size_t entityCount = _ecm.EntityCount();
   std::cout << "Entity Count: " << entityCount << std::endl;
@@ -91,6 +83,10 @@ void Hydrophone::GatherWorldInfo(gz::sim::Entity const &entity, std::shared_ptr<
           std::cout << "No pose or name" << std::endl;
           return true;  // Skip if either component is missing
         }
+        if (name->Data() == "sub9")
+        {
+          this->sub9Entity_ = ent;
+        }
         std::string entityName = name->Data();  // Get entity name
         std::cout << "Entity Name: " << entityName << std::endl;
         // Check if name starts with "Pinger_"
@@ -104,16 +100,7 @@ void Hydrophone::GatherWorldInfo(gz::sim::Entity const &entity, std::shared_ptr<
           this->pingerCount_++;  // Increment counter
 
           // Store the name of the pinger
-          this->pingerNames_.push_back(entityName);  // Store name
-
-          // Assign the extracted frequencies
-          // std::cout << "Pinger Frequencies Count: " << pingerFrequencies_.size() << std::endl;
-          for (double freq : pingerFrequencies_)
-          {
-            this->pingerFrequencies_.push_back(freq);
-            std::cout << "[Hydrophone] Found pinger [" << entityName << "] with frequency [" << freq << "] at pose ["
-                      << pose->Data() << "]" << std::endl;
-          }
+          FormatPinger(entityName);  // Format the name to extract frequency and Name
         }
 
         return true;  // Continue iteration
@@ -144,6 +131,15 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
   // Spin the ROS node to process incoming messages
   rclcpp::spin_some(this->rosNode_);
 
+  // Get current pose of the Sub9 entity
+  std::cout << "Get Sub9 Pose" << std::endl;
+  auto sub9Component = ecm.Component<gz::sim::components::Pose>(this->sub9Entity_);
+  if (sub9Component)
+  {
+    this->sub9Pose_ = sub9Component->Data();
+    std::cout << "[Hydrophone] Sub9 Pose Updated: " << this->sub9Pose_ << std::endl;
+  }
+
   // Update values of hydrophones on update
   // auto poseComp = ecm.Component<gz::sim::components::Pose>(this->modelEntity_);
   // if (!poseComp)
@@ -152,41 +148,41 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
   //   return;
   // }
 
-  // // Get the current pose of the hydrophone
+  // // Get the current pose of the sub9
   // gz::math::Pose3d hydroPose = poseComp->Data();
 
   // // Clear previous difference vectors
   // this->pingerDiffs_.clear();
 
-  // // Iterate over all pinger locations and compute difference vectors
-  // for (auto const &pingerPose : this->pingerLocations_)
-  // {
-  //   int i = 0;
-  //   // Compute difference vector (pinger - hydrophone)
-  //   gz::math::Vector3d diffVector = pingerPose.Pos() - hydroPose.Pos();
-  //   this->pingerDiffs_.push_back(diffVector);
+  // Iterate over all pinger locations and compute difference vectors
+  for (auto const &pingerPose : this->pingerLocations_)
+  {
+    int i = 0;
+    // Compute difference vector (pinger - hydrophone)
+    gz::math::Vector3d diffVector = pingerPose.Pos() - sub9Pose_.Pos();
+    this->pingerDiffs_.push_back(diffVector);
 
-  //   // Create ROS2 message
-  //   // Msg for Origin Direction Body
-  //   mil_msgs::msg::ProcessedPing msg;
-  //   msg.origin_direction_body.x = diffVector.X();
-  //   msg.origin_direction_body.y = diffVector.Y();
-  //   msg.origin_direction_body.z = diffVector.Z();
+    // Create ROS2 message
+    // Msg for Origin Direction Body
+    mil_msgs::msg::ProcessedPing msg;
+    msg.origin_direction_body.x = diffVector.X();
+    msg.origin_direction_body.y = diffVector.Y();
+    msg.origin_direction_body.z = diffVector.Z();
 
-  //   // Msg for Pinger Frequency
-  //   msg.frequency = this->pingerFrequencies_.at(i);
+    // Msg for Pinger Frequency
+    msg.frequency = this->pingerFrequencies_.at(i);
 
-  //   // Msg for Origin Distance
-  //   msg.origin_distance_m = diffVector.Length();
+    // Msg for Origin Distance
+    msg.origin_distance_m = diffVector.Length();
 
-  //   // Publish message
-  //   this->pingPub_->publish(msg);
+    // Publish message
+    this->pingPub_->publish(msg);
 
-  //   std::cout << "[Hydrophone] Pinger at [" << pingerPose.Pos() << "] -> Difference vector: [" << diffVector << "]"
-  //             << "with frequency [" << this->pingerFrequencies_.at(i) << "]" << std::endl;
+    std::cout << "[Hydrophone] Pinger at [" << pingerPose.Pos() << "] -> Difference vector: [" << diffVector << "]"
+              << "with frequency [" << this->pingerFrequencies_.at(i) << "]" << std::endl;
 
-  //   i++;
-  // }
+    i++;
+  }
 }
 
 }  // namespace hydrophone
