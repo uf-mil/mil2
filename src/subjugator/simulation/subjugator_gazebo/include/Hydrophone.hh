@@ -47,12 +47,12 @@ public:
 
 private:
   // Stored values of the hydrophone during Configure
-  gz::sim::Entity modelEntity_{ gz::sim::kNullEntity };  // World Entity
-  gz::sim::Entity sub9Entity_{ gz::sim::kNullEntity };   // Sub9 Entity
-  std::shared_ptr<sdf::Element const> sdf_;              // World SDF
+  gz::sim::Entity modelEntity_{ gz::sim::kNullEntity };       // World Entity
+  gz::sim::Entity hydrophoneEntity_{ gz::sim::kNullEntity };  // Hydrophone Entity
+  std::shared_ptr<sdf::Element const> sdf_;                   // World SDF
 
   // Sub9 Pose
-  gz::math::Pose3d sub9Pose_{ gz::math::Pose3d::Zero };  // Sub9 Pose
+  gz::math::Pose3d hydrophonePose_{ gz::math::Pose3d::Zero };  // Sub9 Pose
 
   // ROS node + publisher
   std::shared_ptr<rclcpp::Node> rosNode_;
@@ -60,12 +60,6 @@ private:
 
   // Boolean for GatherWorldInfo()
   bool worldGathered = false;
-
-  // Hydrophone Pose
-  gz::math::Pose3d pose_{ gz::math::Pose3d::Zero };
-
-  // Pinger count
-  int pingerCount_;
 
   // Pinger locations
   std::vector<gz::math::Pose3d> pingerLocations_;
