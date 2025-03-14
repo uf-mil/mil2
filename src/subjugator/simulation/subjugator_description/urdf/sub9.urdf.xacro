@@ -85,8 +85,8 @@
   <xacro:mil_active_sonar
     name="mil_active_sonar"
     parent="base_link"
-    xyz="0 0 0"
-    rpy="0 0 0"
+    xyz="0 0 -0.25"
+    rpy="0 3.1415 0"
   />
 
   <!-- IMU, Magnetometer -->

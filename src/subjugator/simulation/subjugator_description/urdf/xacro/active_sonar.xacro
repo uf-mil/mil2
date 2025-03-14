@@ -31,11 +31,12 @@
     <!-- Sensor/Plugin Info-->
     <gazebo reference="${name}_link">
       <sensor
-        name="Ping360" type="lidar">
+        name="Ping360" type="gpu_lidar">
         <pose>0 0 0 0 0 0</pose>
         <always_on>1</always_on>
         <update_rate>8</update_rate>
-        <topic>/active_sonar/raw_data</topic>
+        <visualize>true</visualize>
+        <topic>/lidar/raw_data</topic>
           <lidar>
             <scan>
               <horizontal>
@@ -44,17 +45,24 @@
                 <min_angle>-3.14</min_angle>
                 <max_angle>3.14</max_angle>
               </horizontal>
+              <vertical>
+              <samples>50</samples>
+              <resolution>1</resolution>
+              <min_angle>0</min_angle>
+              <max_angle>1.425</max_angle>
+            </vertical>
             </scan>
             <range>
               <min>0.1</min>
-              <max>30.0</max>
+              <max>30</max>
               <resolution>0.01</resolution>
             </range>
+            <frame_id>${name}_link</frame_id>
           </lidar>
-        <plugin
+          <plugin
           filename="ActiveSonar"
           name="active_sonar::ActiveSonar">
-        </plugin>
+          </plugin>
       </sensor>
     </gazebo>
   </xacro:macro>
