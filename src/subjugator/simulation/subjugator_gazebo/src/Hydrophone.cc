@@ -114,18 +114,19 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
 {
   // std::cout << "Post Update Entered" << std::endl;
   //  Check if the simulation is paused
+  if (info.paused)
+  {
+    // std::cout << "Simulation is paused" << std::endl;
+    return;
+  }
+
+  // Gather world info only once
   size_t entityCount = ecm.EntityCount();
   if (!worldGathered)
   {
     GatherWorldInfo(this->modelEntity_, this->sdf_, ecm);
     std::cout << "World Gathered" << std::endl;
     worldGathered = true;
-  }
-
-  if (info.paused)
-  {
-    // std::cout << "Simulation is paused" << std::endl;
-    return;
   }
 
   // Spin the ROS node to process incoming messages
@@ -140,24 +141,10 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
     std::cout << "[Hydrophone] Sub9 Pose Updated: " << this->sub9Pose_ << std::endl;
   }
 
-  // Update values of hydrophones on update
-  // auto poseComp = ecm.Component<gz::sim::components::Pose>(this->modelEntity_);
-  // if (!poseComp)
-  // {
-  //   gzerr << "[Hydrophone] Pose component not found for entity [" << this->modelEntity_ << "]\n";
-  //   return;
-  // }
-
-  // // Get the current pose of the sub9
-  // gz::math::Pose3d hydroPose = poseComp->Data();
-
-  // // Clear previous difference vectors
-  // this->pingerDiffs_.clear();
-
   // Iterate over all pinger locations and compute difference vectors
+  int i = 0;
   for (auto const &pingerPose : this->pingerLocations_)
   {
-    int i = 0;
     // Compute difference vector (pinger - hydrophone)
     gz::math::Vector3d diffVector = pingerPose.Pos() - sub9Pose_.Pos();
     this->pingerDiffs_.push_back(diffVector);
@@ -178,8 +165,10 @@ void Hydrophone::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComp
     // Publish message
     this->pingPub_->publish(msg);
 
-    std::cout << "[Hydrophone] Pinger at [" << pingerPose.Pos() << "] -> Difference vector: [" << diffVector << "]"
-              << "with frequency [" << this->pingerFrequencies_.at(i) << "]" << std::endl;
+    std::cout << "[Hydrophone] Pinger at [" << pingerPose.Pos() << "]" << std::endl
+              << "Difference vector: [" << diffVector << "]" << std::endl
+              << "Difference Length: [" << diffVector.Length() << "]" << std::endl
+              << "Frequency: [" << this->pingerFrequencies_.at(i) << "]" << std::endl;
 
     i++;
   }
