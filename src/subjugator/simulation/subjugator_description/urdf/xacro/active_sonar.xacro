@@ -1,42 +1,22 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  <!-- Macro for inserting the sonar -->
+  <!-- Macro for inserting a Active Sonar -->
   <xacro:macro
     name="mil_active_sonar"
     params="name parent xyz rpy"
-  > 
-    <!-- Sonar Link -->
+  >
+    <!-- Active Sonar Link -->
      <link name="${name}_link">
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-
-      <!-- Inertial Properties - necessary for collider to exist -->
+      <origin xyz="0 0 -0.06" rpy="0 0 0"/>
       <inertial>
-        <!-- The following tags DO NOT work to rotate the collider and exist
-             so that work does not have to be repeated -->
-        <!-- <pose>-0.15 0 -0.05 0 0 0</pose>
-        <axis>
-          <xyz>0 1 0</xyz>
-        </axis> -->
-        <!-- End test tags -->
-        <origin rpy="0 0 0" xyz="0 0 0"/>
-        <mass value="1"/>
-        <inertia ixx="1.0" ixy="0.0" ixz="0.0"
-                 iyy="1.0" iyz="0.0"
-                 izz="1.0"/>
+        <origin xyz="0 0 -0.06" rpy="0 0 0"/>
+        <mass value="0.1"/> 
+        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
-
-      <collision name="${name}_collision">
-        <!-- This collision is for calculating the buoyant forces-->
-        <origin rpy="0 0 0" xyz="0 0 -0.6"/>
-        <geometry>
-          <box size="0.05 0.05 1"/>
-        </geometry>
-      </collision>
     </link>
 
-
-    <!-- Sonar Joint -->
-    <joint name="${name}_joint" type="continuous">
+    <!-- Active Sonar Joint -->
+    <joint name="${name}_joint" type="fixed">
       <origin xyz="${xyz}" rpy="${rpy}"/>
       <parent link="${parent}"/>
       <child link="${name}_link"/>
@@ -48,12 +28,34 @@
       <preserveFixedJoint>true</preserveFixedJoint>
     </gazebo>
     
-    <!-- Plugin Info-->
-    <gazebo>
+    <!-- Sensor/Plugin Info-->
+    <gazebo reference="${name}_link">
+      <sensor
+        name="Ping360" type="lidar">
+        <pose>0 0 0 0 0 0</pose>
+        <always_on>1</always_on>
+        <update_rate>8</update_rate>
+        <topic>/active_sonar/raw_data</topic>
+          <lidar>
+            <scan>
+              <horizontal>
+                <samples>720</samples>
+                <resolution>1</resolution>
+                <min_angle>-3.14</min_angle>
+                <max_angle>3.14</max_angle>
+              </horizontal>
+            </scan>
+            <range>
+              <min>0.1</min>
+              <max>30.0</max>
+              <resolution>0.01</resolution>
+            </range>
+          </lidar>
         <plugin
           filename="ActiveSonar"
           name="active_sonar::ActiveSonar">
         </plugin>
-      </gazebo>
-    </xacro:macro>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
 </robot>
