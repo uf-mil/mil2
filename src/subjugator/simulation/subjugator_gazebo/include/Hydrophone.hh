@@ -10,18 +10,15 @@
 #include <gz/sim/World.hh>
 #include <gz/sim/components/Name.hh>  // For gz::sim::components::Name
 #include <gz/sim/components/Pose.hh>  // For gz::sim::components::Pose
-#include <gz/transport/Node.hh>
-#include <gz/utils/ImplPtr.hh>
 #include <iostream>
-#include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <sdf/Element.hh>
-#include <sdf/Root.hh>
 #include <sdf/World.hh>
 #include <sdf/sdf.hh>
 #include <string>
 #include <vector>
 
+// The .msg file is named ProcessedPing.msg (PascalCase) but #include must be the name in snake_case
 #include "mil_msgs/msg/processed_ping.hpp"
 
 namespace hydrophone
@@ -32,43 +29,42 @@ public:
   Hydrophone();
   ~Hydrophone();
 
-  // System Configure
+  // Configure() - Gathers Info at the start of the simulation //
   void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                  gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) override;
 
+  // FormatPinger() - Extract frequency and name //
   void FormatPinger(std::string &entityName);
 
-  // Gather World Info
+  // System PostUpdate - Called every simulation step to update pinger/hydrophone distances //
+  void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
+
+  // GatherWorldInfo() - Scrape info from the worldSDF to get pinger info //
   void GatherWorldInfo(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                        gz::sim::EntityComponentManager const &ecm);
 
-  // System PostUpdate
-  void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
-
 private:
-  // Stored values of the hydrophone during Configure
+  // Boolean so GatherWorldInfo is only called once //
+  bool worldGathered = false;
+
+  // Stored Entities //
   gz::sim::Entity modelEntity_{ gz::sim::kNullEntity };       // World Entity
   gz::sim::Entity hydrophoneEntity_{ gz::sim::kNullEntity };  // Hydrophone Entity
-  std::shared_ptr<sdf::Element const> sdf_;                   // World SDF
 
-  // Sub9 Pose
-  gz::math::Pose3d hydrophonePose_{ gz::math::Pose3d::Zero };  // Sub9 Pose
+  // World SDF //
+  std::shared_ptr<sdf::Element const> sdf_;
 
-  // ROS node + publisher
+  // ROS node + publisher //
   std::shared_ptr<rclcpp::Node> rosNode_;
   rclcpp::Publisher<mil_msgs::msg::ProcessedPing>::SharedPtr pingPub_;
 
-  // Boolean for GatherWorldInfo()
-  bool worldGathered = false;
-
-  // Pinger locations
+  // Vectors for Pinger Info //
+  std::vector<std::string> pingerNames_;
   std::vector<gz::math::Pose3d> pingerLocations_;
-
-  // Pinger frequency
   std::vector<double> pingerFrequencies_;
 
-  // Pinger names
-  std::vector<std::string> pingerNames_;
+  // Sub9 Pose //
+  gz::math::Pose3d hydrophonePose_{ gz::math::Pose3d::Zero };
 
   // Difference Vectors - Where the pinger is relative to the hydrophone
   std::vector<gz::math::Vector3d> pingerDiffs_;
