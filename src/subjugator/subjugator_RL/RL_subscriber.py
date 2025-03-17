@@ -7,6 +7,9 @@ import threading
 import time
 import cv2
 from cv_bridge import CvBridge
+import os
+
+cvBridge = CvBridge()
 
 class RL_subscriber(Node):
     def __init__(self):
@@ -17,49 +20,55 @@ class RL_subscriber(Node):
             self.image_callback,
             10
         )
-        self.lock = threading.Lock()
         self.image_subscription
-        self.front_cam_image = None        
+        self.front_cam_image = None    
+
+        # Make pipe for image
+        if not os.path.exists("image_pipe"):
+            os.mkfifo("image_pipe")
+    
 
     def image_callback(self, msg):
+        time.sleep(0.5) # Delay for image callback
         self.get_logger().info("Image received")
-        with self.lock:
-            self.front_cam_image = msg
 
-    def get_image(self):
-        with self.lock:
-            return self.front_cam_image
-        
-def main(args=None):
-    rclpy.init(args=args)
-    cvBridge = CvBridge()
-
-    # Declare node and spin it
-    node = RL_subscriber()
-    threading.Thread(target=rclpy.spin, args=(node,)).start()
-    while True:
-        time.sleep(1)
         cv2.destroyAllWindows()
-        cv2.imshow("Front cam", cvBridge.imgmsg_to_cv2(node.get_image(), "bgr8"))
+        # Front cam image size is 600x960, before max pooling
+        cv2.imshow("Front cam", cvBridge.imgmsg_to_cv2(msg, "bgr8"))
         cv2.waitKey(40)
 
         # Simple max pooling algorithm for image
+        pool_size = 12 
+        # Divide original image dimensions by pool size to get pooled image dimensions
         net = cv2.dnn.Net()
         params = {
-            "kernel_w": 3,
-            "kernel_h": 3,
-            "stride_w": 3,
-            "stride_h": 3,
+            "kernel_w": pool_size,
+            "kernel_h": pool_size,
+            "stride_w": pool_size,
+            "stride_h": pool_size,
             "pool": "max",
         }
         net.addLayerToPrev("pool", "Pooling", cv2.CV_32F, params)
 
-        image = cvBridge.imgmsg_to_cv2(node.get_image(), "bgr8")
+        image = cvBridge.imgmsg_to_cv2(msg, "bgr8")
         net.setInput(cv2.dnn.blobFromImage(image))
         out = net.forward()
 
-        cv2.imshow("Pooled image", cv2.dnn.imagesFromBlob(out)[0].astype("uint8"))
-        cv2.waitKey(40)
+        pooled_image = cv2.dnn.imagesFromBlob(out)[0].astype("uint8")
+        cv2.imshow("Pooled image", pooled_image)
+        cv2.waitKey(20)
+
+        with open("image_pipe", 'wb') as pipe:
+                print("Writing to Image pipe")
+                pipe.write(pooled_image.tobytes())
+        
+def main(args=None):
+    rclpy.init(args=args)
+
+    # Declare node and spin it
+    node = RL_subscriber()
+    rclpy.spin(node)
+        
 
 
     node.destroy_node()
