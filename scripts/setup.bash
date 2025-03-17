@@ -76,9 +76,25 @@ colbuild() {
 	local prev_dir
 	prev_dir=$(pwd)                # Store the current directory
 	cd $MIL_REPO || return         # Change to your workspace
-	colcon build --symlink-install # Build the workspace
+
+	#checking for package parameters
+	if [ -n "$1" ]; then
+		rm -rf build/"$1" install/"$1" log # Cleaning old files before running colcon (to fix electrical_protocol issue)
+		# Build the specific package
+		colcon build --symlink-install --packages-select "$1" \
+            --event-handlers console_cohesion+ \
+            --cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON #adding more options
+	else
+		# Build all packages
+		colcon build --symlink-install
+	fi # end if statement
 	source ./install/setup.bash    # Source the install script
 	cd "$prev_dir" || return       # Return to the original directory
+}
+
+# make it cb as another option
+cb() {
+	colbuild "$1"
 }
 
 # Print all devices on the specified subnet / network prefix
