@@ -67,6 +67,20 @@ if(BUILD_TESTING)
     $<INSTALL_INTERFACE:include>
   )
   target_link_libraries(${PROJECT_NAME}_random_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_overloaded_test test/overloaded.cpp)
+  target_include_directories(${PROJECT_NAME}_overloaded_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_overloaded_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_itertools_test test/itertools.cpp)
+  target_include_directories(${PROJECT_NAME}_itertools_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_itertools_test ${PROJECT_NAME})
 endif()
 
 ament_package()

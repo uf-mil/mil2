@@ -1,0 +1,35 @@
+<sdf version="1.9">
+<model name="Tubeworm" canonical_link="root">
+  <link name="root">
+    <collision name="tubeworm_collision">
+      <geometry>
+        <box>
+          <size>0.02478 0.02476 0.15577</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <inertial>
+      <inertia>
+        <ixx>0.00035</ixx>
+        <ixy>-0.00000</ixy>
+        <ixz>-0.00000</ixz>
+        <iyy>0.00035</iyy>
+        <iyz>-0.00000</iyz>
+        <izz>0.00002</izz>
+      </inertia>
+      <mass>0.14300</mass>
+    </inertial>
+    <visual name="tubeworm">
+      <geometry>
+        <mesh>
+          <uri>../meshes/dae/tubeworm.001.dae</uri>
+          <scale>1.00000 1.00000 1.00000</scale>
+        </mesh>
+      </geometry>
+    </visual>
+  </link>
+</model>
+</sdf>
