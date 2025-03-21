@@ -31,6 +31,10 @@ set(msg_files
   "msg/RangeStamped.msg"
   "msg/VelocityMeasurements.msg"
   "msg/VelocityMeasurement.msg"
+  "msg/HoughTransform.msg"
+  "msg/Lines.msg"
+  "msg/ObjectDetection.msg"
+  "msg/ObjectDetections.msg"
 )
 
 set(srv_files
