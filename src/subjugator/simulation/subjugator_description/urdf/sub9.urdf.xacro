@@ -94,7 +94,7 @@
       <nRabsR>-750</nRabsR>
       <nR>-750</nR>
     </plugin>
-    
+
     <plugin name="scoring_plugin::ScoringPlugin" filename="libScoringPlugin.so">
       <gate_name>StartGate_B</gate_name>
     </plugin>
