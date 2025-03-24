@@ -60,6 +60,11 @@ add_library(DepthSensor SHARED
   src/DepthSensor.cc
 )
 
+# Plugin 4: ScoringPlugin
+add_library(ScoringPlugin SHARED
+  src/ScoringPlugin.cc
+)
+
 # Ensures plugin can see include directory to access its header files
 target_include_directories(
   ExamplePlugin PRIVATE include
@@ -75,6 +80,10 @@ target_include_directories(
 
 target_include_directories(
   DepthSensor PRIVATE include
+)
+
+target_include_directories(
+  ScoringPlugin PRIVATE include
 )
 
 # Add additional needed libraries
@@ -97,6 +106,12 @@ gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
 target_link_libraries(DepthSensor
   gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
 )
+
+# Link libraries for ScoringPlugin
+target_link_libraries(ScoringPlugin
+  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+)
+
 # Specify dependencies using ament_target_dependencies
 ament_target_dependencies(ExamplePlugin
   #
@@ -122,8 +137,13 @@ ament_target_dependencies(DepthSensor
   sensor_msgs
 )
 
+ament_target_dependencies(ScoringPlugin
+  rclcpp
+  std_msgs
+)
+
 # Install the plugins
-install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge DepthSensor
+install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge DepthSensor ScoringPlugin
 LIBRARY DESTINATION lib/${PROJECT_NAME}
 )
 

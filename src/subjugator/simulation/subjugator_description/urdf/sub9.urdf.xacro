@@ -62,6 +62,10 @@
       <nRabsR>-5</nRabsR>
       <nR>-10</nR>
     </plugin>
+    
+    <plugin name="scoring_plugin::ScoringPlugin" filename="libScoringPlugin.so">
+      <gate_name>StartGate_B</gate_name>
+    </plugin>
   </gazebo>
 
   <!-- Cameras -->
