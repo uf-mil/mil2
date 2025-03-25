@@ -18,3 +18,4 @@ jobs:
           ping -c 1 zobelisk.mil.ufl.edu &> /dev/null
           ping -c 1 workstation1.mil.ufl.edu &> /dev/null
           ping -c 1 workstation2.mil.ufl.edu &> /dev/null
+          ping -c 1 workstation3.mil.ufl.edu &> /dev/null
