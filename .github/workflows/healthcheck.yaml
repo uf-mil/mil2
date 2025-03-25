@@ -13,9 +13,15 @@ jobs:
     runs-on:
       group: mala-lab-noble
     steps:
-      - name: Check that the service is up
+      - name: zobelisk
         run: |
           ping -c 1 zobelisk.mil.ufl.edu &> /dev/null
+      - name: workstation1
+        run: |
           ping -c 1 workstation1.mil.ufl.edu &> /dev/null
+      - name: workstation2
+        run: |
           ping -c 1 workstation2.mil.ufl.edu &> /dev/null
+      - name: workstation3
+        run: |
           ping -c 1 workstation3.mil.ufl.edu &> /dev/null
