@@ -22,6 +22,30 @@ jobs:
       - name: workstation2
         run: |
           ping -c 1 workstation2.mil.ufl.edu &> /dev/null
-      - name: workstation3
+
+  milnet:
+    name: milnet visibility healthcheck
+    runs-on:
+      group: mala-lab-noble
+    steps:
+      - name: zobelisk
         run: |
-          ping -c 1 workstation3.mil.ufl.edu &> /dev/null
+          ping -c 1 192.168.37.23 &> /dev/null
+
+  external:
+    name: external visibility healthcheck
+    runs-on:
+      group: mala-lab-noble
+    steps:
+      - name: milwiki
+        run: |
+          ping -c 1 milwiki.cbrxyz.com &> /dev/null
+      - name: mil website
+        run: |
+          ping -c 1 mil.ufl.edu &> /dev/null
+      - name: navigator website
+        run: |
+          ping -c 1 navigatoruf.org &> /dev/null
+      - name: subjugator website
+        run: |
+          ping -c 1 subjugator.org &> /dev/null
