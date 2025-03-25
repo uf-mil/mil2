@@ -1,0 +1,120 @@
+<sdf version="1.9">
+<model name="Coral" canonical_link="root">
+  <link name="root">
+    <collision name="Coral_collision">
+      <pose>-0.00653 -0.00037 0.00843 0.00000 0.00000 0.00000</pose>
+      <geometry>
+        <box>
+          <size>0.14933 0.01685 0.01652</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="Coral_collision.001">
+      <pose>-0.07727 0.03707 0.00843 0.00000 0.00000 1.56849</pose>
+      <geometry>
+        <box>
+          <size>0.07173 0.01685 0.01652</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="Coral_collision.002">
+      <pose>-0.08883 0.09077 0.02194 0.06664 -0.53369 2.05071</pose>
+      <geometry>
+        <box>
+          <size>0.04961 0.01685 0.01652</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="Coral_collision.003">
+      <pose>-0.07689 -0.04222 0.00843 0.00000 0.00000 -1.57311</pose>
+      <geometry>
+        <box>
+          <size>0.07173 0.01685 0.01652</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="Coral_collision.004">
+      <pose>-0.06341 -0.09515 0.02194 0.06664 -0.53369 -0.97168</pose>
+      <geometry>
+        <box>
+          <size>0.04961 0.01685 0.01652</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="Coral_collision.005">
+      <pose>0.00062 -0.00037 0.06113 -0.00000 1.57080 -0.00000</pose>
+      <geometry>
+        <box>
+          <size>0.09261 0.01685 0.01652</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="Coral_collision.008">
+      <pose>0.00062 0.03771 0.05878 -1.57080 -0.00272 -1.57080</pose>
+      <geometry>
+        <box>
+          <size>0.06180 0.01685 0.01652</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="Coral_collision.011">
+      <pose>0.00073 0.06054 0.05867 -1.57457 -0.90005 -3.13676</pose>
+      <geometry>
+        <box>
+          <size>0.07817 0.01685 0.01652</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <inertial>
+      <inertia>
+        <ixx>0.00040</ixx>
+        <ixy>-0.00006</ixy>
+        <ixz>-0.00008</ixz>
+        <iyy>0.00028</iyy>
+        <iyz>-0.00005</iyz>
+        <izz>0.00050</izz>
+      </inertia>
+      <pose>-0.03511 0.00990 0.02775 0.00000 0.00000 0.00000</pose>
+      <mass>0.18700</mass>
+    </inertial>
+    <visual name="Coral">
+      <material>
+        <diffuse>0.93725 0.26275 0.00000 1.00000</diffuse>
+        <specular>0.02745 0.02745 0.02745 1.00000</specular>
+        <emissive>0.00000 0.00000 0.00000 1.00000</emissive>
+      </material>
+      <pose>0.00000 0.00000 0.00000 0.00000 0.00000 0.00000</pose>
+      <geometry>
+        <mesh>
+          <uri>../meshes/dae/coral.dae</uri>
+          <scale>1.00000 1.00000 1.00000</scale>
+        </mesh>
+      </geometry>
+    </visual>
+  </link>
+</model>
+</sdf>

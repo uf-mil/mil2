@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <!-- Macro for inserting a camera -->
+  <xacro:macro name="mil_camera" params="name parent xyz rpy
+            use_image_processing=false
+            width=960 height=600 fov=1.047 fps=30">
+    <!-- Camera Link -->
+    <link name="${name}_link">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/>
+        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- Camera Joint -->
+    <joint name="${name}_joint" type="fixed">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+    </joint>
+
+    <!-- This ensures that the fixed link is not simplified away -->
+    <gazebo reference="${name}_joint">
+      <disableFixedJointLumping>true</disableFixedJointLumping>
+      <preserveFixedJoint>true</preserveFixedJoint>
+    </gazebo>
+
+    <gazebo reference="${name}_link">
+      <sensor name="${name}_camera" type="rgbd_camera">
+        <update_rate>${fps}</update_rate>
+        <visualize>true</visualize>
+        <always_on>1</always_on>
+        <topic>${name}</topic>
+        <camera>
+          <horizontal_fov>${fov}</horizontal_fov>
+          <image>
+            <width>${width}</width>
+            <height>${height}</height>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>10.0</far>
+          </clip>
+        </camera>
+        <xacro:if value="${use_image_processing}">
+          <plugin filename="UnderwaterCamera" name="dave_gz_sensor_plugins::UnderwaterCamera">
+            <attenuationR>0.8</attenuationR>
+            <attenuationG>0.5</attenuationG>
+            <attenuationB>0.2</attenuationB>
+            <!-- Murky Coastal Waters -->
+            <backgroundR>85</backgroundR>
+            <backgroundG>107</backgroundG>
+            <backgroundB>47</backgroundB>
+          </plugin>
+        </xacro:if>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>

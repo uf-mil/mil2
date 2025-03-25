@@ -31,6 +31,7 @@ if [[ $VERSION != *"24.04"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu 24.04 (you're using: ${VERSION}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
+
 # Display header
 cat <<EOF
 $(color "$Pur")
@@ -181,7 +182,12 @@ $(color "$Pur")Downloading ROS2 Jazzy Jalisco...
 $(hash_header)$(color "$Res")
 EOF
 
-mil_system_install ros-jazzy-desktop-full gz-harmonic
+# Install MESA drivers for GZ
+sudo add-apt-repository ppa:kisak/kisak-mesa -y
+sudo apt update -y
+sudo apt upgrade -y
+
+mil_system_install ros-jazzy-desktop-full ros-jazzy-ros-gz
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
 mil_system_install \
@@ -191,7 +197,10 @@ mil_system_install \
 	ros-jazzy-vision-msgs \
 	ros-jazzy-velodyne \
 	ros-jazzy-backward-ros \
-	python3-colcon-common-extensions
+	python3-colcon-common-extensions \
+	ros-jazzy-marine-acoustic-msgs \
+	ros-jazzy-generate-parameter-library \
+	nlohmann-json3-dev
 
 cat <<EOF
 $(color "$Pur")
@@ -296,7 +305,7 @@ mil_user_setup_rc() {
 		if [ -f "$HOME/.bashrc" ]; then
 			. "$HOME/.bashrc"
 		fi
-	fi' >> ~/.profile
+	fi' >>~/.profile
 
 }
 
@@ -305,7 +314,8 @@ add_hosts_entry() {
 }
 
 # Add /etc/hosts entry for vehicles
-add_hosts_entry "192.168.37.60 sub8"
+add_hosts_entry "192.168.37.60 sub9-mil"
+add_hosts_entry "192.168.37.61 navtube"
 add_hosts_entry "192.168.37.82 navigator-two"
 
 # Builds the MIL repo

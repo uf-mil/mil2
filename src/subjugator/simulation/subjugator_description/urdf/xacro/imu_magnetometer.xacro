@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="mil_imu_magnetometer" params="name namespace parent xyz rpy
+            rate ax ay az lx ly lz">
+    <!-- Imu link -->
+    <link name="${name}_link">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/>
+        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- IMU joint -->
+    <joint name="${name}_joint" type="fixed">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+    </joint>
+
+    <!-- This ensures that the fixed link is not simplified away -->
+    <gazebo reference="${name}_joint">
+      <disableFixedJointLumping>true</disableFixedJointLumping>
+      <preserveFixedJoint>true</preserveFixedJoint>
+    </gazebo>
+
+    <!-- Sensor/Plugin Info-->
+    <gazebo reference="${name}_link">
+      <sensor name="${name}_link" type="imu">
+        <always_on>true</always_on>
+        <update_rate>${rate}</update_rate>
+        <topic>${namespace}/data_raw</topic>
+        <gz_frame_id>imu_link</gz_frame_id>
+        <imu>
+          <linear_acceleration>
+            <x>
+              <noise type="gaussian">
+                <stddev>${lx}</stddev>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <stddev>${ly}</stddev>
+              </noise>
+            </y>
+            <z>
+              <noise type="gaussian">
+                <stddev>${lz}</stddev>
+              </noise>
+            </z>
+          </linear_acceleration>
+          <angular_velocity>
+            <x>
+              <noise type="gaussian">
+                <stddev>${ax}</stddev>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <stddev>${ay}</stddev>
+              </noise>
+            </y>
+            <z>
+              <noise type="gaussian">
+                <stddev>${az}</stddev>
+              </noise>
+            </z>
+          </angular_velocity>
+        </imu>
+        <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+      </sensor>
+      <sensor name="VectorNav_MAG" type="magnetometer">
+        <always_on>true</always_on>
+        <update_rate>${rate}</update_rate>
+        <topic>${namespace}/mag</topic>
+        <plugin filename="gz-sim-magnetometer-system" name="gz::sim::systems::Magnetometer"/>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>

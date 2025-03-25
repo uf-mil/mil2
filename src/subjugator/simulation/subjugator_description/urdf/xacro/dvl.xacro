@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" xmlns:experimental="http://sdformat.org/schemas/experimental" xmlns:gz="http://gazebosim.org/schema">
+  <!-- Macro for inserting a DVL -->
+  <xacro:macro name="mil_dvl_sensor" params="name parent xyz rpy">
+    <!-- DVL Link -->
+    <link name="${name}_link">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/>
+        <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+
+    <!-- DVL Joint -->
+    <joint name="${name}_joint" type="fixed">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+    </joint>
+
+    <!-- This ensures that the fixed link is not simplified away -->
+    <gazebo reference="${name}_joint">
+      <disableFixedJointLumping>true</disableFixedJointLumping>
+      <preserveFixedJoint>true</preserveFixedJoint>
+    </gazebo>
+
+    <!-- Sensor/Plugin Info-->
+    <gazebo reference="${name}_link">
+      <sensor name="A50_Waterlinked" type="custom" gz:type="dvl">
+        <pose>0 0 0 0 0 0</pose>
+        <always_on>1</always_on>
+        <update_rate>8</update_rate>
+        <topic>/dvl/velocity</topic>
+        <gz:dvl>
+          <type>phased_array</type>
+          <arrangement degrees="true">
+            <beam id="1">
+              <aperture>3</aperture>
+              <rotation>-135</rotation>
+              <tilt>25</tilt>
+            </beam>
+            <beam>
+              <aperture>3</aperture>
+              <rotation>135</rotation>
+              <tilt>25</tilt>
+            </beam>
+            <beam>
+              <aperture>3</aperture>
+              <rotation>45</rotation>
+              <tilt>25</tilt>
+            </beam>
+            <beam>
+              <aperture>3</aperture>
+              <rotation>-45</rotation>
+              <tilt>25</tilt>
+            </beam>
+          </arrangement>
+          <tracking>
+            <water_mass_mode>
+              <when>best</when>
+              <water_velocity>
+                <x>0.</x>
+                <y>0.</y>
+                <z>0.</z>
+              </water_velocity>
+              <boundaries>
+                <near>10.</near>
+                <far>100.</far>
+              </boundaries>
+              <bins>10</bins>
+              <noise type="gaussian">
+                <stddev>0.015</stddev>
+              </noise>
+              <visualize>true</visualize>
+            </water_mass_mode>
+            <bottom_mode>
+              <when>best</when>
+              <noise type="gaussian">
+                <stddev>0.005</stddev>
+              </noise>
+              <visualize>true</visualize>
+            </bottom_mode>
+          </tracking>
+          <maximum_range>200.</maximum_range>
+          <minimum_range>0.3</minimum_range>
+          <!-- ENU to FSD -->
+          <reference_frame>0 0 0 3.14 0 -1.57</reference_frame>
+        </gz:dvl>
+      </sensor>
+    </gazebo>
+
+    <gazebo>
+      <plugin filename="DVLBridge" name="dave_ros_gz_plugins::DVLBridge">
+        <!-- Grabbed in DVL Bridge script -->
+        <topic>/dvl/velocity</topic>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</robot>

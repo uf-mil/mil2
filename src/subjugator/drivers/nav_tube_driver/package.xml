@@ -11,9 +11,9 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
-  <depend>nav_msgs</depend>
 
   <exec_depend>mil_msgs</exec_depend>
 

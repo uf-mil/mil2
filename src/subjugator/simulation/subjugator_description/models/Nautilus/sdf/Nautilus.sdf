@@ -1,0 +1,164 @@
+<sdf version="1.9">
+<model name="Nautilus" canonical_link="root">
+  <link name="root">
+    <collision name="nautilus_assembly_collision">
+      <pose>-0.11312 0.00183 0.00353 0.00000 0.00000 0.00000</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.08489 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.001">
+      <pose>-0.07739 0.08090 0.00353 0.00000 0.00000 -0.78164</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.09572 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.002">
+      <pose>0.00550 0.11362 0.00353 0.00000 0.00000 -1.56840</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.09317 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.003">
+      <pose>0.08618 0.07991 0.00353 0.00000 0.00000 -2.36655</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.09317 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.004">
+      <pose>0.12030 -0.00238 0.00353 0.00000 0.00000 3.13952</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.09317 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.005">
+      <pose>0.10186 -0.06870 0.00826 0.64561 1.23038 2.93121</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.04520 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.006">
+      <pose>0.04738 -0.08653 0.02507 0.93644 1.12197 2.47152</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.07245 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.007">
+      <pose>-0.01930 -0.05738 0.04675 0.60072 1.21964 1.27372</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.07613 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.008">
+      <pose>-0.04264 -0.00257 0.06099 0.80054 1.16632 0.71791</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.05561 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.009">
+      <pose>-0.01502 0.05299 0.07389 0.43757 1.24622 -0.40363</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.07379 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.010">
+      <pose>0.04328 0.07660 0.08392 0.54220 1.23293 -1.09511</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.05388 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <collision name="nautilus_assembly_collision.011">
+      <pose>0.08911 0.05940 0.09169 0.39379 1.25566 -1.99419</pose>
+      <geometry>
+        <box>
+          <size>0.01211 0.03755 0.01305</size>
+        </box>
+      </geometry>
+      <surface>
+        <contact/>
+      </surface>
+    </collision>
+    <inertial>
+      <inertia>
+        <ixx>0.00064</ixx>
+        <ixy>0.00010</ixy>
+        <ixz>-0.00002</ixz>
+        <iyy>0.00083</iyy>
+        <iyz>0.00000</iyz>
+        <izz>0.00124</izz>
+      </inertia>
+      <pose>0.01605 0.02333 0.02915 0.00000 0.00000 0.00000</pose>
+      <mass>0.18700</mass>
+    </inertial>
+    <visual name="nautilus_assembly">
+      <material>
+        <diffuse>0.80000 0.75294 0.00000 1.00000</diffuse>
+        <specular>0.02745 0.02745 0.02745 1.00000</specular>
+        <emissive>0.00000 0.00000 0.00000 1.00000</emissive>
+      </material>
+      <pose>0.00000 0.00000 0.00000 0.00000 0.00000 0.00000</pose>
+      <geometry>
+        <mesh>
+          <uri>../meshes/dae/nautilus_assembly.dae</uri>
+          <scale>1.00000 1.00000 1.00000</scale>
+        </mesh>
+      </geometry>
+    </visual>
+  </link>
+</model>
+</sdf>

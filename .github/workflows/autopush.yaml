@@ -44,52 +44,15 @@ jobs:
               `${team} team. Found: ${members.join(', ')}`);
             }
 
-  pre-commit:
-    name: Run pre-commit
-    runs-on:
-      group: mala-lab-pre-commit
-    needs: [ensure_autopusher]
-    steps:
-      - name: Check out code from GitHub
-        uses: actions/checkout@v3.0.2
-        with:
-          submodules: recursive
-      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v4.1.0
-        with:
-          python-version: ${{ env.DEFAULT_PYTHON }}
-          cache: "pip"
-      - name: Install pre-commit hooks
-        run: |
-          python --version
-          pip install "$(cat requirements.txt | grep pre-commit)"
-      - name: Generate pre-commit cache key
-        id: pre-commit_cache_key
-        run: >
-          echo "::set-output
-          name=key::${{ env.CACHE_VERSION }}-${{ env.DEFAULT_PYTHON }}-${{
-          hashFiles('.pre-commit-config.yaml') }}"
-      - name: Restore base pre-commit environment
-        id: cache-pre-commmit
-        uses: actions/cache@v3.0.4
-        with:
-          path: ${{ env.PRE_COMMIT_CACHE }}
-          key: >
-            ${{ runner.os
-            }}-pre-commit-${{ steps.pre-commit_cache_key.outputs.key }}
-      - name: Install pre-commit dependencies if no cache
-        if: steps.cache-precommit.outputs.cache-hit != 'true'
-        run: |
-          pre-commit install-hooks
-      - name: Run pre-commit
-        run: |
-          pre-commit run --all-files --show-diff-on-failure
-
   autopush:
     name: Autopush changes
-    needs: [pre-commit]
+    needs: [ensure_autopusher]
     runs-on: ubuntu-latest
     steps:
+      - name: Sleep to allow checks to appear
+        run: sleep 60s
+        shell: bash
+
       - name: Wait for tests to succeed
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
