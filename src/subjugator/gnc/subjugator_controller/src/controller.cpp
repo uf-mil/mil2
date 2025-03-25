@@ -10,54 +10,38 @@ PIDController::PIDController() : Node("pid_controller")
         [this](geometry_msgs::msg::Pose::UniquePtr msg) { this->goal_trajectory_cb(std::move(msg)); });
     pub_cmd_wrench_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", 1);
 
-    // init gains as ros parameters for dynamic reconfiguration
-    this->declare_parameter("kp", std::vector<double>(dof_, 0.0));
-    this->declare_parameter("ki", std::vector<double>(dof_, 0.0));
-    this->declare_parameter("kd", std::vector<double>(dof_, 0.0));
-    this->declare_parameter("imax", std::vector<double>(dof_, 0.0));
-    this->declare_parameter("imin", std::vector<double>(dof_, 0.0));
-    this->declare_parameter("antiwindup", std::vector<double>(dof_, 0.0));  // maybe should be bool?
-
-    std::vector<double> kp_arr_ = this->get_parameter("kp").as_double_array();
-    std::vector<double> ki_arr_ = this->get_parameter("ki").as_double_array();
-    std::vector<double> kd_arr_ = this->get_parameter("kd").as_double_array();
-    std::vector<double> imax_arr_ = this->get_parameter("imax").as_double_array();
-    std::vector<double> imin_arr_ = this->get_parameter("imin").as_double_array();
-    std::vector<double> antiwindup_arr_ = this->get_parameter("antiwindup").as_double_array();
-
-    // TODO: log starting gains to screen
-
-    for (size_t i = 0; i < pid_vec_.size(); i++)
-    {
-        pid_vec_[i] =
-            control_toolbox::Pid(kp_arr_[i], ki_arr_[i], kd_arr_[i], imax_arr_[i], imin_arr_[i], antiwindup_arr_[i]);
-    }
-
     param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
 
     auto param_cb = [this](rclcpp::Parameter const &p)
     {
         RCLCPP_INFO(this->get_logger(), "cb: Received an update to parameter \"%s\"", p.get_name().c_str());
 
-        std::vector<double> kp_arr_ = this->get_parameter("kp").as_double_array();
-        std::vector<double> ki_arr_ = this->get_parameter("ki").as_double_array();
-        std::vector<double> kd_arr_ = this->get_parameter("kd").as_double_array();
-        std::vector<double> imax_arr_ = this->get_parameter("imax").as_double_array();
-        std::vector<double> imin_arr_ = this->get_parameter("imin").as_double_array();
-        std::vector<double> antiwindup_arr_ = this->get_parameter("antiwindup").as_double_array();
+        param_map_[p.get_name()].first = p.as_double_array();
 
         for (size_t i = 0; i < pid_vec_.size(); i++)
         {
-            pid_vec_[i].set_gains(kp_arr_[i], ki_arr_[i], kd_arr_[i], imax_arr_[i], imin_arr_[i], antiwindup_arr_[i]);
+            pid_vec_[i].set_gains(param_map_["kp"].first[i], param_map_["ki"].first[i], param_map_["kd"].first[i],
+                                  param_map_["imax"].first[i], param_map_["imin"].first[i],
+                                  param_map_["antiwindup"].first[i]);
         }
     };
 
-    kp_cb_handle_ = this->param_subscriber_->add_parameter_callback("kp", param_cb);
-    ki_cb_handle_ = this->param_subscriber_->add_parameter_callback("ki", param_cb);
-    kd_cb_handle_ = this->param_subscriber_->add_parameter_callback("kd", param_cb);
-    imax_cb_handle_ = this->param_subscriber_->add_parameter_callback("imax", param_cb);
-    imin_cb_handle_ = this->param_subscriber_->add_parameter_callback("imin", param_cb);
-    antiwindup_cb_handle_ = this->param_subscriber_->add_parameter_callback("antiwindup", param_cb);
+    std::vector<std::string> const params = { "kp", "ki", "kd", "imax", "imin", "antiwindup" };
+    for (auto const &param : params)
+    {
+        this->declare_parameter(param, std::vector<double>(dof_, 0.0));
+        param_map_[param].first = this->get_parameter(param).as_double_array();
+        param_map_[param].second = this->param_subscriber_->add_parameter_callback(param, param_cb);
+    }
+
+    // TODO: log starting gains to screen
+
+    for (size_t i = 0; i < pid_vec_.size(); i++)
+    {
+        pid_vec_[i] = control_toolbox::Pid(param_map_["kp"].first[i], param_map_["ki"].first[i],
+                                           param_map_["kd"].first[i], param_map_["imax"].first[i],
+                                           param_map_["imin"].first[i], param_map_["antiwindup"].first[i]);
+    }
 
     last_cmd_time_ = this->get_clock()->now();
 

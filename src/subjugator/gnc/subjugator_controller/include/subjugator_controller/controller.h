@@ -5,6 +5,9 @@
 #include <control_toolbox/pid.hpp>
 #include <iostream>
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/wrench.hpp"
@@ -26,12 +29,8 @@ class PIDController : public rclcpp::Node
     rclcpp::Publisher<geometry_msgs::msg::Wrench>::SharedPtr pub_cmd_wrench_;
 
     std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
-    std::shared_ptr<rclcpp::ParameterCallbackHandle> kp_cb_handle_;
-    std::shared_ptr<rclcpp::ParameterCallbackHandle> ki_cb_handle_;
-    std::shared_ptr<rclcpp::ParameterCallbackHandle> kd_cb_handle_;
-    std::shared_ptr<rclcpp::ParameterCallbackHandle> imax_cb_handle_;
-    std::shared_ptr<rclcpp::ParameterCallbackHandle> imin_cb_handle_;
-    std::shared_ptr<rclcpp::ParameterCallbackHandle> antiwindup_cb_handle_;
+    std::unordered_map<std::string, std::pair<std::vector<double>, std::shared_ptr<rclcpp::ParameterCallbackHandle>>>
+        param_map_;
 
     Eigen::Matrix<double, 7, 1> last_odom_;  // Eigen::Vector7d won't work? typedefs are missing
     Eigen::Matrix<double, 7, 1> last_goal_trajectory_;
