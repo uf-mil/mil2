@@ -23,14 +23,15 @@ jobs:
         run: |
           ping -c 1 workstation2.mil.ufl.edu &> /dev/null
 
-  milnet:
-    name: milnet visibility healthcheck
-    runs-on:
-      group: mala-lab-noble
-    steps:
-      - name: zobelisk
-        run: |
-          ping -c 1 192.168.37.23 &> /dev/null
+  # TODO uf-mil/mil2#94
+  # milnet:
+  #   name: milnet visibility healthcheck
+  #   runs-on:
+  #     group: mala-lab-noble
+  #   steps:
+  #     - name: zobelisk
+  #       run: |
+  #         ping -c 1 192.168.37.23 &> /dev/null
 
   external:
     name: external visibility healthcheck
