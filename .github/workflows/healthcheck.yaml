@@ -1,0 +1,20 @@
+---
+name: Service healthcheck
+
+# yamllint disable-line rule:truthy
+on: push
+  # schedule:
+  #   # Run every day at midnight
+  #   - cron: '0 0 * * *'
+
+jobs:
+  ufl:
+    name: eduroam visibility healthcheck
+    runs-on:
+      group: mala-lab-noble
+    steps:
+      - name: Check that the service is up
+        run: |
+          ping -c 1 zobelisk.mil.ufl.edu &> /dev/null
+          ping -c 1 workstation1.mil.ufl.edu &> /dev/null
+          ping -c 1 workstation2.mil.ufl.edu &> /dev/null
