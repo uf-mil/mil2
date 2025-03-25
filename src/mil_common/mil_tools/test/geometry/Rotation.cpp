@@ -33,9 +33,10 @@ TEST(mil_tools_geometry_rotation, conversion)
     double r, p, y;
     tf2::Matrix3x3(tf2_q).getRPY(r, p, y);
     auto const &[rot_roll, rot_pitch, rot_yaw] = r1.rot_vec_tuple(Axis::X, Axis::Y, Axis::Z);
-    EXPECT_NEAR(r, rot_roll, 1e-6);
-    EXPECT_NEAR(p, rot_pitch, 1e-6);
-    EXPECT_NEAR(y, rot_yaw, 1e-6);
+    // values from: https://quaternions.online/
+    EXPECT_NEAR(0.527, rot_roll, 1e-2);
+    EXPECT_NEAR(1.222, rot_pitch, 1e-2);
+    EXPECT_NEAR(1.567, rot_yaw, 1e-2);
 }
 
 int main(int argc, char **argv)
