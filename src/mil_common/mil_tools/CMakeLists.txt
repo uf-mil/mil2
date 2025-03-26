@@ -11,18 +11,21 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Werror)
 endif()
 
-find_package(backward_ros REQUIRED)
 find_package(ament_cmake REQUIRED)
+find_package(backward_ros REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 
 add_library(${PROJECT_NAME}
+    src/geometry/Rotation.cpp
     src/fs/path.cpp
     src/os.cpp
     src/os/FileDescriptor.cpp
     src/string.cpp
 )
-include_directories(include)
-ament_target_dependencies(${PROJECT_NAME} rclcpp)
+include_directories(include ${EIGEN3_INCLUDE_DIR})
+ament_target_dependencies(${PROJECT_NAME} rclcpp Eigen3 tf2_geometry_msgs)
 ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
 
 install(
@@ -81,4 +84,13 @@ if(BUILD_TESTING)
     $<INSTALL_INTERFACE:include>
   )
   target_link_libraries(${PROJECT_NAME}_itertools_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_rotation_test test/geometry/Rotation.cpp)
+  target_include_directories(${PROJECT_NAME}_rotation_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(${PROJECT_NAME}_rotation_test ${PROJECT_NAME})
 endif()
+
+ament_package()

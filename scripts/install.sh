@@ -198,7 +198,10 @@ mil_system_install \
 	ros-jazzy-velodyne \
 	ros-jazzy-backward-ros \
 	python3-colcon-common-extensions \
-	ros-jazzy-control-toolbox
+	ros-jazzy-control-toolbox \
+	ros-jazzy-marine-acoustic-msgs \
+	ros-jazzy-generate-parameter-library \
+	nlohmann-json3-dev
 
 cat <<EOF
 $(color "$Pur")
@@ -312,7 +315,8 @@ add_hosts_entry() {
 }
 
 # Add /etc/hosts entry for vehicles
-add_hosts_entry "192.168.37.60 sub8"
+add_hosts_entry "192.168.37.60 sub9-mil"
+add_hosts_entry "192.168.37.61 navtube"
 add_hosts_entry "192.168.37.82 navigator-two"
 
 # Builds the MIL repo
