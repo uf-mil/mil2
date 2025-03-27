@@ -31,11 +31,16 @@ private:
   {
     if (std::find(nodes_.begin(), nodes_.end(), parameters[1]) == nodes_.end())
     {
-      summery_ = "Node " + parameters[0] + " does not exist";
-      return false;
+      nodes_ = get_node_names();
+      if (std::find(nodes_.begin(), nodes_.end(), parameters[1]) == nodes_.end())
+      {
+        summery_ = "Node " + parameters[0] + " does not exist in 100 ms";
+        return false;
+      }
     }
 
-    summery_ = "success";
+    summery_ = "Found node " + parameters[1];
+
     return true;
   }
 

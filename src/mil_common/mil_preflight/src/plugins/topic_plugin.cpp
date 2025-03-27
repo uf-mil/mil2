@@ -27,14 +27,21 @@ private:
   std::string summery_;
   bool runAction(std::vector<std::string>&& parameters) final
   {
-    // boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
-    if (topics_.find(parameters[1]) == topics_.end())
+    auto it = topics_.find(parameters[1]);
+    if (it == topics_.end())
     {
-      summery_ = "Topic " + parameters[0] + " does not exist";
-      return false;
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+      topics_ = get_topic_names_and_types();
+
+      it = topics_.find(parameters[1]);
+      if (it == topics_.end())
+      {
+        summery_ = "Topic " + parameters[0] + " does not exist in 100 ms";
+        return false;
+      }
     }
 
-    summery_ = "success";
+    summery_ = "Found topic " + parameters[0] + " with type " + it->second[0];
     return true;
   }
 

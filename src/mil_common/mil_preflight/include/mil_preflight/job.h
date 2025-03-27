@@ -2,8 +2,9 @@
 
 #include <boost/chrono.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
-#include <boost/json.hpp>
 #include <boost/process.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <condition_variable>
 #include <filesystem>
 #include <fstream>
@@ -210,24 +211,33 @@ public:
     }
 
     // Parse the configuration file
-    boost::json::value data = boost::json::parse(file);
-    for (boost::json::key_value_pair const& testPair : data.as_object())
+    boost::property_tree::ptree root;
+    boost::property_tree::read_json(file, root);
+
+    for (auto& testPair : root)
     {
+      std::string testName = std::move(testPair.first);
+      boost::property_tree::ptree& testNode = testPair.second;
+
       std::optional<std::reference_wrapper<Test>> testOptional =
-          createTest(testPair.key(), testPair.value().at("plugin").as_string().c_str());
+          createTest(std::move(testName), testNode.get<std::string>("plugin"));
       if (!testOptional.has_value())
         continue;
 
       Test& test = testOptional.value();
 
-      for (boost::json::key_value_pair const& actionPair : testPair.value().at("actions").as_object())
+      for (auto& actionPair : testNode.get_child("actions"))
       {
+        std::string actionName = std::move(actionPair.first);
+        boost::property_tree::ptree& paramsArray = actionPair.second;
+
         std::vector<std::string> parameters;
-        for (boost::json::value const& parameter : actionPair.value().as_array())
+        for (auto& param : paramsArray)
         {
-          parameters.push_back(parameter.as_string().c_str());
+          parameters.push_back(std::move(param.second.get_value<std::string>()));
         }
-        test.createAction(actionPair.key(), std::move(parameters));
+
+        test.createAction(std::move(actionName), std::move(parameters));
       }
     }
 
