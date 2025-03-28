@@ -67,6 +67,20 @@ void PIDController::control_loop()
         RCLCPP_INFO(this->get_logger(), "error: '%s'", std::to_string(errors[0]).c_str());
 
         // TODO: compute orientation error
+        // do math on quaternions, then convert to euler angles
+        Eigen::Quaterniond goal_quat = Eigen::Quaterniond(last_goal_trajectory_(6), last_goal_trajectory_(3),
+                                                          last_goal_trajectory_(4), last_goal_trajectory_(5));
+        Eigen::Quaterniond odom_quat = Eigen::Quaterniond(last_odom_(6), last_odom_(3), last_odom_(4), last_odom_(5));
+        Eigen::Quaterniond error_quat = goal_quat * odom_quat.inverse();
+        Eigen::Vector3d error_euler = error_quat.toRotationMatrix().eulerAngles(0, 1, 2);
+        errors(Eigen::seq(3, 5)) = error_euler;
+        RCLCPP_INFO(this->get_logger(), "quat error: '%s'", std::to_string(error_euler[0]).c_str());
+
+        // convert to euler, then do math
+        Eigen::Vector3d euler_goal = goal_quat.toRotationMatrix().eulerAngles(0, 1, 2);
+        Eigen::Vector3d euler_odom = odom_quat.toRotationMatrix().eulerAngles(0, 1, 2);
+        Eigen::Vector3d euler_error = euler_goal - euler_odom;
+        RCLCPP_INFO(this->get_logger(), "euler error: '%s'", std::to_string(euler_error[0]).c_str());
 
         // errors -> commands
         for (size_t i = 0; i < pid_vec_.size(); i++)

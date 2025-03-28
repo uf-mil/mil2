@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Eigen/Core>
+#include <Eigen/Dense>
 #include <array>
 #include <control_toolbox/pid.hpp>
 #include <iostream>
@@ -32,7 +32,7 @@ class PIDController : public rclcpp::Node
     std::unordered_map<std::string, std::pair<std::vector<double>, std::shared_ptr<rclcpp::ParameterCallbackHandle>>>
         param_map_;
 
-    Eigen::Matrix<double, 7, 1> last_odom_;  // Eigen::Vector7d won't work? typedefs are missing
+    Eigen::Matrix<double, 7, 1> last_odom_;
     Eigen::Matrix<double, 7, 1> last_goal_trajectory_;
     std::array<control_toolbox::Pid, 6> pid_vec_;
     void control_loop();
