@@ -14,7 +14,8 @@ namespace active_sonar {
   struct ActiveSonar::PrivateData
 {
   // Add any private data members here.
-  std::mutex mutex_;
+  std::mutex scan_mutex_;
+  std::mutex echo_mutex_;
   gz::transport::Node gz_node;
   std::string scan_topic;
   std::string echo_topic;
@@ -74,7 +75,7 @@ ActiveSonar::ActiveSonar() : dataPtr(std::make_unique<PrivateData>()) {}
   std::bind(&ActiveSonar::receiveGazeboCallbackScan, this, std::placeholders::_1);
 
   this->dataPtr->gz_node.Subscribe(this->dataPtr->echo_topic, echo_callback);
-  this->dataPtr->gz_node.Subscribe(this->dataPtr->scan_topic, echo_callback);
+  this->dataPtr->gz_node.Subscribe(this->dataPtr->scan_topic, scan_callback);
 
   // ROS2 publisher
   this->dataPtr->echo_pub =
@@ -86,38 +87,43 @@ ActiveSonar::ActiveSonar() : dataPtr(std::make_unique<PrivateData>()) {}
 
   void ActiveSonar::receiveGazeboCallbackScan(const gz::msgs::LaserScan & msg)
   {
-    //this->dataPtr->scan_pub->publish(msg);
+    std::lock_guard<std::mutex> lock(this->dataPtr->scan_mutex_);
+    //std::cout << "SCAN CALLED SUCCESS" << std::endl;
+
+    auto scan_msg = sensor_msgs::msg::LaserScan();
+
+    this->dataPtr->scan_pub->publish(scan_msg);
   }
 
   void ActiveSonar::receiveGazeboCallbackEcho(const gz::msgs::PointCloudPacked & msg)
   {
-    // std::lock_guard<std::mutex> lock(this->dataPtr->mutex_);
+    std::lock_guard<std::mutex> lock(this->dataPtr->echo_mutex_);
 
     gzmsg << "dave_ros_gz_plugins::DVLBridge::receiveGazeboCallback" << std::endl;
-    std::cout << "ECHO CALLED SUCCESS" << std::endl;
+    //std::cout << "ECHO CALLED SUCCESS" << std::endl;
 
-    auto sonar_msg = mil_msgs::msg::EchoIntensities();
+    auto echo_msg = mil_msgs::msg::EchoIntensities();
 
-    sonar_msg.header.stamp.sec = msg.header().stamp().sec();
-    sonar_msg.header.stamp.nanosec = msg.header().stamp().nsec();
+    echo_msg.header.stamp.sec = msg.header().stamp().sec();
+    echo_msg.header.stamp.nanosec = msg.header().stamp().nsec();
 
     //TODO: some of these can be hard coded for now, some from xacro
 
     // probably hardcode whatever seems reasonable like the ping360
-    sonar_msg.gain = 0;
-    sonar_msg.transmit_frequency = 0;
-    sonar_msg.sound_speed = 0;
+    echo_msg.gain = 0;
+    echo_msg.transmit_frequency = 0;
+    echo_msg.sound_speed = 0;
 
     //xacro
-    sonar_msg.range = 0;
-    sonar_msg.sample_count = 0;
-    sonar_msg.angle = 0;
+    echo_msg.range = 0;
+    echo_msg.sample_count = 0;
+    echo_msg.angle = 0;
 
     // repackage data from gz msg
     // sonar_msg.intensities = msg.back().fields(3).name();
 
     // 
-    this->dataPtr->echo_pub->publish(sonar_msg);
+    this->dataPtr->echo_pub->publish(echo_msg);
 
   }
   
