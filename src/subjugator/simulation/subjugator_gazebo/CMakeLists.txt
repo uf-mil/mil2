@@ -12,6 +12,7 @@ find_package(nav_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 
 find_package(subjugator_description REQUIRED)
+find_package(mil_msgs REQUIRED)
 
 find_package(gz-cmake3 REQUIRED)
 find_package(gz-plugin2 REQUIRED COMPONENTS register)
@@ -54,7 +55,7 @@ add_library(DVLBridge SHARED
   src/DVLBridge.cc
 )
 
-# Plugin 3: Active Sonar Plugin
+# Plugin 3: Active Sonar
 add_library(ActiveSonar SHARED
   src/ActiveSonar.cc
 )
@@ -117,9 +118,7 @@ ament_target_dependencies(DVLBridge
 )
 
 ament_target_dependencies(ActiveSonar
-  #
-  # Here is where you would place any dependencies for Active Sonar
-  #
+  mil_msgs
 )
 
 # Install the plugins

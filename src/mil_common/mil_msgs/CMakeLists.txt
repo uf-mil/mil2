@@ -19,6 +19,7 @@ set(action_files
   "action/BagOnline.action"
 )
 
+# NOTE: File name (.msg) is in PascalCase, but must import in snake_case
 set(msg_files
   "msg/DepthStamped.msg"
   "msg/ObjectInImage.msg"
@@ -31,6 +32,7 @@ set(msg_files
   "msg/RangeStamped.msg"
   "msg/VelocityMeasurements.msg"
   "msg/VelocityMeasurement.msg"
+  "msg/EchoIntensities.msg"
 )
 
 set(srv_files
@@ -40,6 +42,7 @@ set(srv_files
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
+  ${action_files}  
   ${msg_files}
   ${srv_files}
   DEPENDENCIES std_msgs action_msgs geometry_msgs sensor_msgs
