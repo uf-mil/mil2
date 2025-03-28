@@ -11,17 +11,16 @@ import os
 
 cvBridge = CvBridge()
 
-class RL_subscriber(Node):
+class cam_subscriber(Node):
     def __init__(self):
-        super().__init__('RL_subscriber')
-        self.image_subscription = self.create_subscription(
+        super().__init__('cam_subscriber')
+        self.cam_subscription = self.create_subscription(
             Image,
             '/front_cam/image_raw', #topic for sub9 cam
             self.image_callback,
             10
         )
-        self.image_subscription
-        self.front_cam_image = None    
+        self.cam_subscription
 
         # Make pipe for image
         if not os.path.exists("image_pipe"):
@@ -66,7 +65,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Declare node and spin it
-    node = RL_subscriber()
+    node = cam_subscriber()
     rclpy.spin(node)
         
 
