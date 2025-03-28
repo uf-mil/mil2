@@ -7,14 +7,14 @@
 
 int main(int argc, char* argv[])
 {
-  if (argc <= 1)
-    return 1;
+    if (argc <= 1)
+        return 1;
 
-  rclcpp::init(argc - 1, argv);
-  std::shared_ptr<mil_preflight::PluginBase> node = mil_preflight::PluginBase::create(argv[argc - 1]);
+    rclcpp::init(argc - 1, argv);
+    std::shared_ptr<mil_preflight::PluginBase> node = mil_preflight::PluginBase::create(argv[argc - 1]);
 
-  rclcpp::spin(node);
-  rclcpp::shutdown();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
 
-  return 0;
+    return 0;
 }
