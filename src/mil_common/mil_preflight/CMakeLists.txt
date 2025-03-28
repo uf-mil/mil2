@@ -10,7 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(subjugator_msgs REQUIRED)
-find_package(Boost REQUIRED COMPONENTS json thread chrono filesystem system)
+find_package(Boost REQUIRED COMPONENTS thread chrono filesystem system)
 
 include(FetchContent)
 
@@ -61,7 +61,6 @@ target_link_libraries(ftx_ui
   PRIVATE ftxui::screen
   PRIVATE ftxui::dom
   PRIVATE ftxui::component
-  Boost::json
   Boost::thread
   Boost::chrono
   Boost::filesystem
@@ -106,7 +105,6 @@ target_link_libraries(ftxui_test
   PRIVATE ftxui::screen
   PRIVATE ftxui::dom
   PRIVATE ftxui::component
-  Boost::json
   Boost::thread
   Boost::chrono
 )
