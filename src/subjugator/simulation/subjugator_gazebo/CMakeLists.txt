@@ -118,6 +118,7 @@ ament_target_dependencies(DVLBridge
 )
 
 ament_target_dependencies(ActiveSonar
+  rclcpp
   mil_msgs
 )
 
