@@ -16,6 +16,8 @@ class SubEnv(gym.Env):
             'image': spaces.Box(0, 255, shape=(SHAPE[0], SHAPE[1], SHAPE[2]), dtype=np.uint8),
         })
 
+	self.action_space = spaces.Box(low=-10, high=10, shape=(2,), dtype=np.float32)
+
 	self.sketch = None
 	self.setup = True
 
