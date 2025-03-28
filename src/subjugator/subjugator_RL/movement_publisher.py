@@ -10,14 +10,15 @@ import time
 
 PUBLISH_RATE = 10  # Hertz
 
-class SubjugatorKeyboardControl(Node):
+class SubjugatorControl(Node):
     def __init__(self):
         super().__init__('subjugator_keyboard_control')
         self.publisher_ = self.create_publisher(Wrench, 'cmd_wrench', PUBLISH_RATE)
 
         self.declare_parameter('linear_speed', 1.0)
         self.declare_parameter('angular_speed', 1.0)
-        self.base_linear = self.get_parameter('linear_speed').value
+        # self.base_linear = self.get_parameter('linear_speed').value
+        self.base_linear = 10
         self.base_angular = self.get_parameter('angular_speed').value
 
         self.force_x = 0.0
@@ -46,32 +47,10 @@ class SubjugatorKeyboardControl(Node):
     def restore_terminal(self):
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_terminal_settings)
 
-    def keyboard_loop(self):
-        try:
-            while self.running:
-                ch = sys.stdin.read(1)
-                if ch == 'w':
-                    self.force_x = self.base_linear
-                elif ch == 's':
-                    self.force_x = -self.base_linear
-                elif ch == 'a':
-                    self.force_y = self.base_linear
-                elif ch == 'd':
-                    self.force_y = -self.base_linear
-                elif ch == 'x':
-                    self.force_z = self.base_linear
-                elif ch == 'z':
-                    self.force_z = -self.base_linear
-                elif ch == 'e':
-                    self.torque_x = -self.base_angular
-                elif ch == 'r':
-                    self.torque_x = self.base_angular
-                elif ch == 'q':
-                    self.running = False
-                    rclpy.shutdown()
-                time.sleep(0.1)
-        except KeyboardInterrupt:
-            self.running = False
+    def force_action(self, action):
+        # Action is array of two values, first is for forward/back and second is for left/right
+        self.force_x = action[0]
+        self.force_y = action[1]
 
     def publish_loop(self):
         rate = self.create_rate(PUBLISH_RATE)
@@ -93,7 +72,7 @@ class SubjugatorKeyboardControl(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = SubjugatorKeyboardControl()
+    node = SubjugatorControl()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
