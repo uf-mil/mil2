@@ -49,7 +49,7 @@
               <samples>50</samples>
               <resolution>1</resolution>
               <min_angle>0</min_angle>
-              <max_angle>1.425</max_angle>
+              <max_angle>1.2</max_angle>
             </vertical>
             </scan>
             <range>

@@ -121,6 +121,7 @@ ament_target_dependencies(ActiveSonar
   rclcpp
   mil_msgs
   std_msgs
+  sensor_msgs
 )
 
 # Install the plugins
