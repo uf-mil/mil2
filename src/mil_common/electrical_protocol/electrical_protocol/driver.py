@@ -196,9 +196,9 @@ class SerialDeviceNode(Generic[SendPackets, RecvPackets], Node):
         except serial.SerialException as e:
             self.get_logger().error(f"Error reading packet: {e}")
             return False
-        except OSError:
+        except OSError as e:
             self.get_logger().error(
-                "Cannot read from serial device.",
+                f"Cannot read from serial device. {e}",
                 throttle_duration_sec=1,
             )
             return False

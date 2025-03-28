@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <cmath>
 
 #include "geometry_msgs/msg/wrench.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -63,22 +64,22 @@ void ThrusterManager::timer_callback()
 
     // check that the allocated thrust is not over the safety limit, and if it is, rescale all thrusters by safety_limit
     // / biggest thrust value
-    double biggest_thrust = 0;
-    bool over_safety_limit = false;
+    double biggest_thrust = 0.0;
+    // bool over_safety_limit = false;
     for (int i = 0; i < thrust_values.size(); i++)
     {
-        if (thrust_values[i] > biggest_thrust)
+        if (std::abs(thrust_values[i]) > biggest_thrust)
         {
-            biggest_thrust = thrust_values[i];
-            if (biggest_thrust > safety_limit_)
-            {
-                over_safety_limit = true;
-            }
+            biggest_thrust = std::abs(thrust_values[i]);
+        //    if (biggest_thrust > safety_limit_)
+        //    {
+        //        over_safety_limit = true;
+        //    }
         }
     }
-    if (over_safety_limit)
+    if (biggest_thrust > 0.0)
     {
-        thrust_values = thrust_values * (safety_limit_ / biggest_thrust);
+    	thrust_values = thrust_values * (0.5 / biggest_thrust);
     }
 
     msg.thrust_frh = thrust_values[0];
