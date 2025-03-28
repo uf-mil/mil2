@@ -1,9 +1,10 @@
 from movement_publisher import SubjugatorControl
+import rclpy
 
+rclpy.init()
 control = SubjugatorControl()
 
-action = []
-action.append(10)
-action.append(4)
+action = [10, 4]
 
-control.force_action(action)
+while True:
+    control.force_action(action)
