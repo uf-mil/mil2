@@ -11,20 +11,20 @@ using namespace ftxui;
 
 class ReportsPage : public ComponentBase
 {
-public:
-  ReportsPage();
-  ~ReportsPage();
+  public:
+    ReportsPage();
+    ~ReportsPage();
 
-private:
-  Job::Report report_;
+  private:
+    Job::Report report_;
 
-  bool showSuccess_ = true;
-  Component reportPanel_;
-  Component bottom_;
-  int selector_ = 0;
+    bool showSuccess_ = true;
+    Component reportPanel_;
+    Component bottom_;
+    int selector_ = 0;
 
-  Element Render() final;
-  bool OnEvent(Event event) final;
+    Element Render() final;
+    bool OnEvent(Event event) final;
 };
 
 }  // namespace mil_preflight

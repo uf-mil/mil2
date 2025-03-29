@@ -1,107 +1,107 @@
 {
-  "actuators": {
-    "plugin": "actuator_plugin",
-    "actions": {
-      "FLH Thruster": [
-        "/thrusters/thrust",
-        "FLH",
-        "10.0"
-      ],
-      "FRH Thruster": [
-        "/thrusters/thrust",
-        "FRH",
-        "10.0"
-      ],
-      "BLH Thruster": [
-        "/thrusters/thrust",
-        "BLH",
-        "10.0"
-      ],
-      "BRH Thruster": [
-        "/thrusters/thrust",
-        "BRH",
-        "10.0"
-      ],
-      "FLV Thruster": [
-        "/thrusters/thrust",
-        "FLV",
-        "10.0"
-      ],
-      "FRV Thruster": [
-        "/thrusters/thrust",
-        "FRV",
-        "10.0"
-      ],
-      "BLV Thruster": [
-        "/thrusters/thrust",
-        "BLV",
-        "10.0"
-      ],
-      "BRV Thruster": [
-        "/thrusters/thrust",
-        "BRV",
-        "10.0"
-      ]
+    "actuators": {
+        "plugin": "actuator_plugin",
+        "actions": {
+            "FLH Thruster": [
+                "/thrusters/thrust",
+                "FLH",
+                "10.0"
+            ],
+            "FRH Thruster": [
+                "/thrusters/thrust",
+                "FRH",
+                "10.0"
+            ],
+            "BLH Thruster": [
+                "/thrusters/thrust",
+                "BLH",
+                "10.0"
+            ],
+            "BRH Thruster": [
+                "/thrusters/thrust",
+                "BRH",
+                "10.0"
+            ],
+            "FLV Thruster": [
+                "/thrusters/thrust",
+                "FLV",
+                "10.0"
+            ],
+            "FRV Thruster": [
+                "/thrusters/thrust",
+                "FRV",
+                "10.0"
+            ],
+            "BLV Thruster": [
+                "/thrusters/thrust",
+                "BLV",
+                "10.0"
+            ],
+            "BRV Thruster": [
+                "/thrusters/thrust",
+                "BRV",
+                "10.0"
+            ]
+        }
+    },
+    "setup": {
+        "plugin": "setup_plugin",
+        "actions": {
+            "O-rings": [
+                "Grease O-rings with Molykote 55 every time a pressure vessel is closed."
+            ],
+            "Deploy sub": [
+                "Check for bubbles coming out of every pressure vessel, make sure buoyancy is correct"
+            ]
+        }
+    },
+    "nodes": {
+        "plugin": "node_plugin",
+        "actions": {
+            "/odom_estimator": [
+                "/odom_estimator"
+            ],
+            "/transform_odometry": [
+                "/transform_odometry"
+            ],
+            "/c3_trajectory_generator": [
+                "/c3_trajectory_generator"
+            ],
+            "/adaptive_controller": [
+                "/adaptive_controller"
+            ],
+            "/thruster_mapper": [
+                "/thruster_mapper"
+            ],
+            "/mission_runner": [
+                "/mission_runner"
+            ]
+        }
+    },
+    "topics": {
+        "plugin": "topic_plugin",
+        "actions": {
+            "/camera/front/right/image_raw": [
+                "/camera/front/right/image_raw"
+            ],
+            "/camera/down/image_raw": [
+                "/camera/down/image_raw"
+            ],
+            "/camera/front/left/image_raw": [
+                "/camera/front/left/image_raw"
+            ],
+            "/dvl": [
+                "/dvl"
+            ],
+            "/depth": [
+                "/depth"
+            ],
+            "/imu/data_raw": [
+                "/imu/data_raw"
+            ],
+            "/imu/mag": [
+                "/imu/mag"
+            ]
+        }
     }
-  },
-  "setup": {
-    "plugin": "setup_plugin",
-    "actions": {
-      "O-rings": [
-        "Grease O-rings with Molykote 55 every time a pressure vessel is closed."
-      ],
-      "Deploy sub": [
-        "Check for bubbles coming out of every pressure vessel, make sure buoyancy is correct"
-      ]
-    }
-  },
-  "nodes": {
-    "plugin": "node_plugin",
-    "actions": {
-      "/odom_estimator": [
-        "/odom_estimator"
-      ],
-      "/transform_odometry": [
-        "/transform_odometry"
-      ],
-      "/c3_trajectory_generator": [
-        "/c3_trajectory_generator"
-      ],
-      "/adaptive_controller": [
-        "/adaptive_controller"
-      ],
-      "/thruster_mapper": [
-        "/thruster_mapper"
-      ],
-      "/mission_runner": [
-        "/mission_runner"
-      ]
-    }
-  },
-  "topics": {
-    "plugin": "topic_plugin",
-    "actions": {
-      "/camera/front/right/image_raw": [
-        "/camera/front/right/image_raw"
-      ],
-      "/camera/down/image_raw": [
-        "/camera/down/image_raw"
-      ],
-      "/camera/front/left/image_raw": [
-        "/camera/front/left/image_raw"
-      ],
-      "/dvl": [
-        "/dvl"
-      ],
-      "/depth": [
-        "/depth"
-      ],
-      "/imu/data_raw": [
-        "/imu/data_raw"
-      ],
-      "/imu/mag": [
-        "/imu/mag"
-      ]
-    }
-  }
 }
