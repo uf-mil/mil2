@@ -45,4 +45,28 @@ SpaceAfterControlStatementKeyword: true
 SpaceBeforeAssignmentOperators: true
 ContinuationIndentWidth: 4
 QualifierAlignment: Right
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Related header (automatically assigned priority 0)
+  # No regex needed; clang-format automatically places related header first.
+
+  # C system headers and other angle-bracketed headers with .h extension
+  - Regex: '^<.*\.h>$'
+    Priority: 1
+    SortPriority: 1
+
+  # C++ standard library headers (angle-bracketed headers without extension)
+  - Regex: '^<[a-zA-Z0-9_]+>$'
+    Priority: 2
+    SortPriority: 2
+
+  # Other libraries' headers (e.g., third-party, external libraries)
+  - Regex: '^("|<)(ext|boost|Eigen|rclcpp)/'
+    Priority: 3
+    SortPriority: 3
+
+  # Your project's headers (local headers)
+  - Regex: '^".*"'
+    Priority: 4
+    SortPriority: 4
 ...
