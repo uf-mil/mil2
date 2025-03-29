@@ -1,10 +1,11 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <memory>
 
-#include "geometry_msgs/msg/wrench.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include <Eigen/Dense>
+
+#include "geometry_msgs/msg/wrench.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 class ThrusterManager : public rclcpp::Node

@@ -1,5 +1,7 @@
-#include <Eigen/Dense>
 #include <ostream>
+
+#include <Eigen/Dense>
+
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 namespace mil_tools::geometry

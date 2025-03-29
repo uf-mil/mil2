@@ -1,10 +1,5 @@
 #pragma once
 
-#include <boost/chrono.hpp>
-#include <boost/interprocess/ipc/message_queue.hpp>
-#include <boost/process.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <condition_variable>
 #include <filesystem>
 #include <fstream>
@@ -12,6 +7,12 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+
+#include <boost/chrono.hpp>
+#include <boost/interprocess/ipc/message_queue.hpp>
+#include <boost/process.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 #include "mil_preflight/common.h"
 

@@ -16,12 +16,14 @@
 
 #include "DVLBridge.hh"
 
-#include <gz/common/Console.hh>
-#include <gz/transport/Node.hh>
 #include <iostream>
+
 #include <rclcpp/rclcpp.hpp>
 
 #include "gz/plugin/Register.hh"
+
+#include <gz/common/Console.hh>
+#include <gz/transport/Node.hh>
 
 GZ_ADD_PLUGIN(dave_ros_gz_plugins::DVLBridge, gz::sim::System, dave_ros_gz_plugins::DVLBridge::ISystemConfigure,
               dave_ros_gz_plugins::DVLBridge::ISystemPostUpdate)

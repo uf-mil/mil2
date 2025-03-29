@@ -1,13 +1,14 @@
 #include "subjugator_thruster_manager/thruster_manager.h"
 
-#include <Eigen/Dense>
 #include <chrono>
 #include <iostream>
 #include <memory>
 #include <string>
 
-#include "geometry_msgs/msg/wrench.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include <Eigen/Dense>
+
+#include "geometry_msgs/msg/wrench.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 
