@@ -3,42 +3,42 @@
         "plugin": "actuator_plugin",
         "actions": {
             "FLH Thruster": [
-                "/thrusters/thrust",
+                "/thruster_efforts",
                 "FLH",
                 "10.0"
             ],
             "FRH Thruster": [
-                "/thrusters/thrust",
+                "/thruster_efforts",
                 "FRH",
                 "10.0"
             ],
             "BLH Thruster": [
-                "/thrusters/thrust",
+                "/thruster_efforts",
                 "BLH",
                 "10.0"
             ],
             "BRH Thruster": [
-                "/thrusters/thrust",
+                "/thruster_efforts",
                 "BRH",
                 "10.0"
             ],
             "FLV Thruster": [
-                "/thrusters/thrust",
+                "/thruster_efforts",
                 "FLV",
                 "10.0"
             ],
             "FRV Thruster": [
-                "/thrusters/thrust",
+                "/thruster_efforts",
                 "FRV",
                 "10.0"
             ],
             "BLV Thruster": [
-                "/thrusters/thrust",
+                "/thruster_efforts",
                 "BLV",
                 "10.0"
             ],
             "BRV Thruster": [
-                "/thrusters/thrust",
+                "/thruster_efforts",
                 "BRV",
                 "10.0"
             ]

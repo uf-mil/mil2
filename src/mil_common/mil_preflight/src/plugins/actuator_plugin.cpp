@@ -78,7 +78,7 @@ class ActuatorPlugin : public PluginBase
         }
 
         std::string& topicType = infos[0].topic_type();
-        if (topicType != "subjugator_msgs/msg/Thruster Efforts")
+        if (topicType != "subjugator_msgs/msg/ThrusterEfforts")
         {
             summery_ = "Mismatched message type : " + infos[0].topic_type();
             return false;
