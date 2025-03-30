@@ -101,13 +101,20 @@ class ActuatorPlugin : public PluginBase
         rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr pub =
             create_publisher<subjugator_msgs::msg::ThrusterEfforts>(parameters[1], 10);
 
-        pub->publish(cmd);
+        auto start_time = std::chrono::steady_clock::now();
+        std::chrono::seconds timeout(2);  // TODO: Make into a variable
+        int thruster_did_spin = 0;
+
+        while (std::chrono::steady_clock::now() - start_time < timeout)
+        {
+            pub->publish(cmd);
+        }
 
         cmd = this->assignThrust(cmd, thruster, 0);
 
-        int thruster_did_spin = askQuestion("Is the " + parameters[2] + " thruster spinning?", { "Yes", "No" }) == 0;
-
         pub->publish(cmd);
+
+        thruster_did_spin = askQuestion("Did the " + parameters[2] + " thruster spin?", { "Yes", "No" }) == 0;
 
         if (!thruster_did_spin)
         {
