@@ -22,6 +22,9 @@ jobs:
       - name: workstation2
         run: |
           ping -c 1 workstation2.mil.ufl.edu &> /dev/null
+      - name: nas
+        run: |
+          ping -c 1 10.245.80.239 &> /dev/null
 
   # TODO uf-mil/mil2#94
   # milnet:
