@@ -1,5 +1,5 @@
 # ROS-Gazebo bridge configuration
-
+---
 # IMU configuration.
 - ros_topic_name: "/imu/data_raw"
   gz_topic_name: "/imu/data_raw"
