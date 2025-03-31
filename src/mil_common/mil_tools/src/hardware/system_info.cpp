@@ -9,20 +9,18 @@ namespace mil_tools::hardware::system_info
 {
     std::string get_cpu_architecture() 
     {
-        // Create a pipe so I can execute "u-name -m" and extract the architecture
+        // Execute "uname -m"
         FILE* pipe = popen("uname -m", "r");
 
-        // If the pointer's null, that means we failed to execute the command so I'll return Unknown
+        // Null pointer means we failed to execute the command so return "Unknown"
         if (!pipe) 
         {
             return "Unknown";
         }
         
-        // Buffer to contain the output
         char buffer[128];
         std::string result = "";
         
-        // Continues until we reach the end of the file
         while (!feof(pipe)) 
         {
             if (fgets(buffer, 128, pipe) != nullptr) 
