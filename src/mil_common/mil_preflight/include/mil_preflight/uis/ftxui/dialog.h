@@ -1,9 +1,10 @@
 #pragma once
 
-#include <ftxui/component/component.hpp>
-#include <ftxui/dom/elements.hpp>
 #include <iostream>
 #include <sstream>
+
+#include <ftxui/component/component.hpp>
+#include <ftxui/dom/elements.hpp>
 
 namespace mil_preflight
 {

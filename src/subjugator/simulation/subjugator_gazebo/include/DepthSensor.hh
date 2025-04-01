@@ -2,16 +2,18 @@
 #define DEPTH_SENSOR_HPP
 
 #include <chrono>
+#include <memory>
+#include <mutex>
+#include <random>
+#include <string>
+
+#include <rclcpp/rclcpp.hpp>
+
 #include <gz/math/Pose3.hh>
 #include <gz/sim/System.hh>
 #include <gz/sim/components/Pose.hh>
-#include <memory>
 #include <mil_msgs/msg/depth_stamped.hpp>
-#include <mutex>
-#include <random>
-#include <rclcpp/rclcpp.hpp>
 #include <sdf/sdf.hh>
-#include <string>
 
 namespace depth_sensor
 {

@@ -1,13 +1,14 @@
 #include "subjugator_thruster_manager/thruster_manager.h"
 
-#include <Eigen/Dense>
 #include <chrono>
 #include <iostream>
 #include <memory>
 #include <string>
 
-#include "geometry_msgs/msg/wrench.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include <Eigen/Dense>
+
+#include "geometry_msgs/msg/wrench.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 
@@ -15,8 +16,13 @@
 ThrusterManager::ThrusterManager() : Node("thruster_manager")
 {
     reference_wrench_ = Eigen::VectorXd::Zero(6);
-    this->declare_parameter("safety_limit", 0.0);
-    safety_limit_ = this->get_parameter("safety_limit").as_double();
+    this->declare_parameter("thruster_cap", 0.0);
+    thruster_cap_ = this->get_parameter("thruster_cap").as_double();
+
+    this->declare_parameter("max_force_pos", 0.0);
+    max_force_pos_ = this->get_parameter("max_force_pos").as_double();
+    this->declare_parameter("max_force_neg", 0.0);
+    max_force_neg_ = this->get_parameter("max_force_neg").as_double();
 
     // Create thruster allocation matrix from config file parameters
     tam_ = Eigen::MatrixXd::Zero(dof_, thruster_count_);
@@ -59,28 +65,31 @@ void ThrusterManager::timer_callback()
 {
     Eigen::VectorXd thrust_values(tam_.completeOrthogonalDecomposition().pseudoInverse() * reference_wrench_);
 
-    auto msg = subjugator_msgs::msg::ThrusterEfforts();
-
-    // check that the allocated thrust is not over the safety limit, and if it is, rescale all thrusters by safety_limit
-    // / biggest thrust value
+    // check that the allocated thrust is not over the thruster cap (typically 1.0), and if it is, rescale all thrusters
     double biggest_thrust = 0;
-    bool over_safety_limit = false;
+    bool over_thruster_cap = false;
     for (int i = 0; i < thrust_values.size(); i++)
     {
-        if (thrust_values[i] > biggest_thrust)
+        // scale desired force to percent effort for thruster board compatibility
+        // Note that thrusters produce different force if spinning forward (max_force_pos_) vs spinning backwards
+        thrust_values[i] =
+            (thrust_values[i] > 0) ? thrust_values[i] / max_force_pos_ : thrust_values[i] / max_force_neg_;
+        // determine largest thrust magnitude
+        if (std::abs(thrust_values[i]) > biggest_thrust)
         {
-            biggest_thrust = thrust_values[i];
-            if (biggest_thrust > safety_limit_)
+            biggest_thrust = std::abs(thrust_values[i]);
+            if (biggest_thrust > thruster_cap_)
             {
-                over_safety_limit = true;
+                over_thruster_cap = true;
             }
         }
     }
-    if (over_safety_limit)
+    if (over_thruster_cap)
     {
-        thrust_values = thrust_values * (safety_limit_ / biggest_thrust);
+        thrust_values = thrust_values * (thruster_cap_ / biggest_thrust);
     }
 
+    auto msg = subjugator_msgs::msg::ThrusterEfforts();
     msg.thrust_frh = thrust_values[0];
     msg.thrust_flh = thrust_values[1];
     msg.thrust_brh = thrust_values[2];

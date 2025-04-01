@@ -1,9 +1,10 @@
-#include <ftxui/component/component.hpp>
-#include <ftxui/component/screen_interactive.hpp>
 #include <functional>
 #include <queue>
 #include <sstream>
 #include <stack>
+
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/screen_interactive.hpp>
 
 #include "mil_preflight/uis/ftxui/dialog.h"
 #include "mil_preflight/uis/ftxui/reportsPage.h"

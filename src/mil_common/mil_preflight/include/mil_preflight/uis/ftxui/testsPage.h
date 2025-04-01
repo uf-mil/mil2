@@ -1,10 +1,11 @@
 #pragma once
 
 #include <atomic>
-#include <ftxui/component/component.hpp>
-#include <ftxui/dom/elements.hpp>
 #include <memory>
 #include <string>
+
+#include <ftxui/component/component.hpp>
+#include <ftxui/dom/elements.hpp>
 
 #include "mil_preflight/job.h"
 
