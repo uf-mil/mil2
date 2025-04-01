@@ -90,8 +90,8 @@ def generate_launch_description():
             Node(
                 package="robot_localization",
                 namespace="subjugator_localization",
-                executable="ukf_node",
-                name="ukf_filter_node",
+                executable="ekf_node",
+                name="ekf_filter_node",
                 parameters=[p.dict() for p in parameters],
             ),
         ],
