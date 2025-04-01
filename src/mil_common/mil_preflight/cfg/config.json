@@ -5,42 +5,42 @@
             "FLH Thruster": [
                 "/thruster_efforts",
                 "FLH",
-                "10.0"
+                "0.2"
             ],
             "FRH Thruster": [
                 "/thruster_efforts",
                 "FRH",
-                "10.0"
+                "0.2"
             ],
             "BLH Thruster": [
                 "/thruster_efforts",
                 "BLH",
-                "10.0"
+                "0.2"
             ],
             "BRH Thruster": [
                 "/thruster_efforts",
                 "BRH",
-                "10.0"
+                "0.2"
             ],
             "FLV Thruster": [
                 "/thruster_efforts",
                 "FLV",
-                "10.0"
+                "0.2"
             ],
             "FRV Thruster": [
                 "/thruster_efforts",
                 "FRV",
-                "10.0"
+                "0.2"
             ],
             "BLV Thruster": [
                 "/thruster_efforts",
                 "BLV",
-                "10.0"
+                "0.2"
             ],
             "BRV Thruster": [
                 "/thruster_efforts",
                 "BRV",
-                "10.0"
+                "0.2"
             ]
         }
     },
