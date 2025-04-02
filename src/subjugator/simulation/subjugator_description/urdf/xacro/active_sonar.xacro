@@ -36,7 +36,7 @@
         <always_on>1</always_on>
         <update_rate>8</update_rate>
         <visualize>true</visualize>
-        <topic>/lidar/raw_data</topic>
+        <topic>/active_sonar/raw_data</topic>
           <lidar>
             <scan>
               <horizontal>

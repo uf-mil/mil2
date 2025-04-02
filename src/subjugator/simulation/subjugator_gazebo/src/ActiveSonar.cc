@@ -47,7 +47,7 @@ void ActiveSonar::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf:
   // Declare the topic to subscribe to
   if (!_sdf->HasElement("echo_topic"))
   {
-    this->dataPtr->echo_topic = "/lidar/raw_data/points";
+    this->dataPtr->echo_topic = "/active_sonar/raw_data/points";
     gzmsg << "echo_topic set to default:  " << this->dataPtr->echo_topic << std::endl;
   }
   else
@@ -57,7 +57,7 @@ void ActiveSonar::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf:
   }
   if (!_sdf->HasElement("scan_topic"))
   {
-    this->dataPtr->scan_topic = "/lidar/raw_data";
+    this->dataPtr->scan_topic = "/active_sonar/raw_data";
     gzmsg << "echo_topic set to default:  " << this->dataPtr->scan_topic << std::endl;
   }
   else
@@ -81,14 +81,12 @@ void ActiveSonar::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf:
       this->ros_node_->create_publisher<mil_msgs::msg::EchoIntensities>(this->dataPtr->echo_topic, 1);
   this->dataPtr->scan_pub =
       this->ros_node_->create_publisher<sensor_msgs::msg::LaserScan>(this->dataPtr->scan_topic, 1);
-
-  std::cout << "END OF CONFIGURE" << std::endl;
 }
 
+// Serves as the callback for the LaserScan
 void ActiveSonar::receiveGazeboCallbackScan(gz::msgs::LaserScan const &msg)
 {
   std::lock_guard<std::mutex> lock(this->dataPtr->scan_mutex_);
-  // std::cout << "SCAN CALLED SUCCESS" << std::endl;
 
   auto scan_msg = sensor_msgs::msg::LaserScan();
 
@@ -137,40 +135,39 @@ void ActiveSonar::receiveGazeboCallbackScan(gz::msgs::LaserScan const &msg)
 
   // Publish ros msg
   this->dataPtr->scan_pub->publish(scan_msg);
-
-  // Debugging output
-  std::cout << "END OF CALLBACK SCAN" << std::endl;
 }
 
+// Serves as the callback for the PointCloudPacked data
 void ActiveSonar::receiveGazeboCallbackEcho(gz::msgs::PointCloudPacked const &msg)
 {
   std::lock_guard<std::mutex> lock(this->dataPtr->echo_mutex_);
 
   gzmsg << "dave_ros_gz_plugins::DVLBridge::receiveGazeboCallback" << std::endl;
-  // std::cout << "ECHO CALLED SUCCESS" << std::endl;
 
   auto echo_msg = mil_msgs::msg::EchoIntensities();
 
   echo_msg.header.stamp.sec = msg.header().stamp().sec();
   echo_msg.header.stamp.nanosec = msg.header().stamp().nsec();
 
-  // TODO: some of these can be hard coded for now, some from xacro
-
-  // probably hardcode whatever seems reasonable like the ping360
+  //
+  // TODO: Get proper data for these hardcoded messages
+  //
   echo_msg.gain = 0;
   echo_msg.transmit_frequency = 0;
   echo_msg.sound_speed = 0;
 
-  // xacro
+  //
+  // TODO: Grab data for these attributes from the active_sonar.xacro (Do not hardcode, import them if possible)
+  //
   echo_msg.range = 0;
   echo_msg.sample_count = 0;
   echo_msg.angle = 0;
 
-  // repackage data from gz msg
-  // sonar_msg.intensities = msg.back().fields(3).name();
-
-  //
-  this->dataPtr->echo_pub->publish(echo_msg);
+  // Repackage intensity data from Gazebo to ROS2
+  // echo_msg.intensities = msg.intensities();
+  // std::cout << msg.data() << std::endl;
+  // 
+  // this->dataPtr->echo_pub->publish(echo_msg);
 }
 
 void ActiveSonar::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::EntityComponentManager const &_ecm)
