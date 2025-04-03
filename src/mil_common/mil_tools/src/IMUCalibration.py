@@ -6,6 +6,7 @@ from sensor_msgs.msg import Imu
 
 import sys
 from time import sleep
+import datetime
 
 
 class IMUSubscriber(Node):
@@ -14,12 +15,15 @@ class IMUSubscriber(Node):
 
         super().__init__('imu_subscriber')
 
-        # Reference values for each test
-
         # Orientation test reference values
-        self.x_orientation_test = [9.8, 0, 0]
-        self.y_orientation_test = [0, 9.8, 0]
-        self.z_orientation_test = [0, 0, 9.8]
+        self.x_axis_test = [9.8, 0, 0]
+        self.y_axis_test = [0, 9.8, 0]
+        self.z_axis_test = [0, 0, 9.8]
+
+        # Time that the robot has to stay in one position before the test is successful/passes
+        self.test_timer_threshold = 3
+        self.test_countdown = False
+        self.start_time = None
 
         # Index of which IMU test we're on
         self.test_counter = 0
@@ -30,7 +34,7 @@ class IMUSubscriber(Node):
         self.z_average = 0
 
         # Threshold for deviance to pass a test
-        self.ORIENTATION_DEVIANCE_THRESHOLD = 0.1
+        self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD = 0.1
 
         # Subscribes to the IMU topic
         self.subscription = self.create_subscription(
@@ -44,9 +48,9 @@ class IMUSubscriber(Node):
     def listener_callback(self, msg):
 
         # Rounded linear acceleration values
-        x = round(msg.orientation.x, 2)
-        y = round(msg.orientation.y, 2)
-        z = round(msg.orientation.z, 2)
+        x = round(msg.linear_acceleration.x, 2)
+        y = round(msg.linear_acceleration.y, 2)
+        z = round(msg.linear_acceleration.z, 2)
 
         # If we just started, we'll set the first values to the first IMU readings we get
         if (self.x_average == 0 and self.y_average == 0 and self.z_average == 0):
@@ -67,15 +71,19 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write(f"\033[2J\033[H")
                 sys.stdout.write("Orient X-Axis of IMU Up, achieve +/- 0.1 deviance to continue tests\n")
-                sys.stdout.write(f"Expected: \t{self.x_orientation_test[0]} \t{self.x_orientation_test[1]} \t{self.x_orientation_test[2]}\n")
+                sys.stdout.write(f"Expected: \t{self.x_axis_test[0]} \t{self.x_axis_test[1]} \t{self.x_axis_test[2]}\n")
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}")
-                sys.stdout.flush()
 
-                if (abs(self.x_average - self.x_orientation_test[0]) <= self.ORIENTATION_DEVIANCE_THRESHOLD and abs(self.y_average - self.x_orientation_test[1]) <= self.ORIENTATION_DEVIANCE_THRESHOLD and abs(self.z_average - self.x_orientation_test[2]) <= self.ORIENTATION_DEVIANCE_THRESHOLD):
+                # if 
+                if (abs(self.x_average - self.x_axis_test[0]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD and abs(self.y_average - self.x_axis_test[1]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD and abs(self.z_average - self.x_axis_test[2]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD):
+                    
                     print("Sufficient deviance met, continuing to next test...\n")
 
                     sleep(2)
                     self.test_counter += 1
+
+                sys.stdout.flush()
+
 
 
             # (Test) Point Y-axis up
@@ -84,11 +92,11 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write(f"\033[2J\033[H")
                 sys.stdout.write("Orient Y-Axis of IMU Up, achieve +/- 0.1 deviance to continue tests\n")
-                sys.stdout.write(f"Expected: \t{self.y_orientation_test[0]} \t{self.y_orientation_test[1]} \t{self.y_orientation_test[2]}\n")
+                sys.stdout.write(f"Expected: \t{self.y_axis_test[0]} \t{self.y_axis_test[1]} \t{self.y_axis_test[2]}\n")
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}")
                 sys.stdout.flush()
 
-                if (abs(self.x_average - self.y_orientation_test[0]) <= self.ORIENTATION_DEVIANCE_THRESHOLD and abs(self.y_average - self.y_orientation_test[1]) <= self.ORIENTATION_DEVIANCE_THRESHOLD and abs(self.z_average - self.y_orientation_test[2]) <= self.ORIENTATION_DEVIANCE_THRESHOLD):
+                if (abs(self.x_average - self.y_axis_test[0]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD and abs(self.y_average - self.y_axis_test[1]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD and abs(self.z_average - self.y_axis_test[2]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD):
                     print("Sufficient deviance met, continuing to next test...\n")
 
                     sleep(2)
@@ -101,11 +109,11 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write(f"\033[2J\033[H")
                 sys.stdout.write("Orient Z-Axis of IMU Up, achieve +/- 0.1 deviance to continue tests\n")
-                sys.stdout.write(f"Expected: \t{self.y_orientation_test[0]} \t{self.y_orientation_test[1]} \t{self.y_orientation_test[2]}\n")
+                sys.stdout.write(f"Expected: \t{self.y_axis_test[0]} \t{self.y_axis_test[1]} \t{self.y_axis_test[2]}\n")
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}")
                 sys.stdout.flush()
 
-                if (abs(self.x_average - self.z_orientation_test[0]) <= self.ORIENTATION_DEVIANCE_THRESHOLD and abs(self.y_average - self.z_orientation_test[1]) <= self.ORIENTATION_DEVIANCE_THRESHOLD and abs(self.z_average - self.z_orientation_test[2]) <= self.ORIENTATION_DEVIANCE_THRESHOLD):
+                if (abs(self.x_average - self.z_axis_test[0]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD and abs(self.y_average - self.z_axis_test[1]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD and abs(self.z_average - self.z_axis_test[2]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD):
                     print("Sufficient deviance met, continuing to next test...\n")
 
                     sleep(2)
