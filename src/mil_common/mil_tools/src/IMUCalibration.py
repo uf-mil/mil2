@@ -21,20 +21,21 @@ class IMUSubscriber(Node):
         self.z_axis_test = [0, 0, 9.8]
 
         # Time that the robot has to stay in one position before the test is successful/passes
-        self.test_timer_threshold = 3
+        self.timer_threshold = datetime.timedelta(seconds=5)
         self.test_countdown = False
-        self.start_time = None
+        self.start_time = 0
 
         # Index of which IMU test we're on
         self.test_counter = 0
 
         # Averages of the linear acceleration components
-        self.x_average = 0
-        self.y_average = 0
-        self.z_average = 0
+        self.linear_acceleration_averages = [0.0, 0.0, 0.0]
+
+        # Deviances
+        self.linear_acceleration_deviances = [0.0, 0.0, 0.0]
 
         # Threshold for deviance to pass a test
-        self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD = 0.1
+        self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD = 3
 
         # Subscribes to the IMU topic
         self.subscription = self.create_subscription(
@@ -52,35 +53,54 @@ class IMUSubscriber(Node):
         y = round(msg.linear_acceleration.y, 2)
         z = round(msg.linear_acceleration.z, 2)
 
-        # If we just started, we'll set the first values to the first IMU readings we get
-        if (self.x_average == 0 and self.y_average == 0 and self.z_average == 0):
-            self.x_average = x
-            self.y_average = y
-            self.z_average = z
-        # Update the averages (not the best technique since they're both weight equally, but it's the simplest)
-        else:
-            self.x_average = (self.x_average + x)/2
-            self.y_average = (self.y_average + y)/2
-            self.z_average = (self.z_average + z)/2
+        # # Update the averages (not the best technique since they're both weight equally, but it's the simplest)
+        self.linear_acceleration_averages[0] = (self.linear_acceleration_averages[0] + x)/2
+        self.linear_acceleration_averages[1] = (self.linear_acceleration_averages[1] + y)/2
+        self.linear_acceleration_averages[2] = (self.linear_acceleration_averages[2] + z)/2        
 
         match (self.test_counter):
 
             # (Test) Point X-axis up
             case 0:
+                self.linear_acceleration_deviances[0] = round(abs(self.linear_acceleration_averages[0] - self.x_axis_test[0]), 2)
+                self.linear_acceleration_deviances[1] = round(abs(self.linear_acceleration_averages[1] - self.x_axis_test[1]), 2)
+                self.linear_acceleration_deviances[2] = round(abs(self.linear_acceleration_averages[2] - self.x_axis_test[2]), 2)
+                
             
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write(f"\033[2J\033[H")
                 sys.stdout.write("Orient X-Axis of IMU Up, achieve +/- 0.1 deviance to continue tests\n")
                 sys.stdout.write(f"Expected: \t{self.x_axis_test[0]} \t{self.x_axis_test[1]} \t{self.x_axis_test[2]}\n")
-                sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}")
+                sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
 
-                # if 
-                if (abs(self.x_average - self.x_axis_test[0]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD and abs(self.y_average - self.x_axis_test[1]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD and abs(self.z_average - self.x_axis_test[2]) <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD):
+                sys.stdout.write(f"Deviance: \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n")
+
+
+                if (all (deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD for deviance in self.linear_acceleration_deviances)):
                     
-                    print("Sufficient deviance met, continuing to next test...\n")
+                    # If the countdown is running, we'll check if we've met the time threshold
+                    if (self.test_countdown):
+                        current_time = datetime.datetime.now()
 
-                    sleep(2)
-                    self.test_counter += 1
+                        if (current_time - self.start_time >= self.timer_threshold):
+
+                            print("Sufficient deviance met, continuing to next test...\n")
+
+                            sleep(2)
+                            self.test_counter += 1
+
+                        else:
+                            sys.stdout.write(f"\nMaintain position for {round((self.timer_threshold - (current_time - self.start_time)).total_seconds(), 1)} more seconds...")
+
+                    else:
+                        self.test_countdown = True
+
+                        # Record the starting time so we know if the timer threshold is met next time we check
+                        self.start_time = datetime.datetime.now()
+
+                # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
+                else:
+                    self.test_countdown = False
 
                 sys.stdout.flush()
 
@@ -88,6 +108,9 @@ class IMUSubscriber(Node):
 
             # (Test) Point Y-axis up
             case 1:
+                self.linear_acceleration_deviances[0] = abs(self.linear_acceleration_averages[0] - self.y_axis_test[0])
+                self.linear_acceleration_deviances[1] = abs(self.linear_acceleration_averages[1] - self.y_axis_test[1])
+                self.linear_acceleration_deviances[2] = abs(self.linear_acceleration_averages[2] - self.y_axis_test[2])
 
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write(f"\033[2J\033[H")
@@ -104,7 +127,11 @@ class IMUSubscriber(Node):
 
 
             # (Test) Point Z-axis up
-            case 1:
+            case 2:
+
+                self.linear_acceleration_deviances[0] = abs(self.linear_acceleration_averages[0] - self.z_axis_test[0])
+                self.linear_acceleration_deviances[1] = abs(self.linear_acceleration_averages[1] - self.z_axis_test[1])
+                self.linear_acceleration_deviances[2] = abs(self.linear_acceleration_averages[2] - self.z_axis_test[2])
 
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write(f"\033[2J\033[H")
@@ -127,6 +154,8 @@ class IMUSubscriber(Node):
         # angular_velocity_covariance (array)
         # linear_acceleration (Vector3)
         # linear_acceleration_covariance (array)
+
+        sleep(0.05)
 
 
 def main(args=None):
