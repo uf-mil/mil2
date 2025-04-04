@@ -2,6 +2,7 @@
 #define THRUSTERBRIDGE__HH_
 
 #include <iostream>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -20,17 +21,14 @@
 #include <sdf/sdf.hh>
 
 // The .msg file is named ProcessedPing.msg (PascalCase) but #include must be the name in snake_case
-#include "../../../subjugator_msgs/msg/thruster_efforts.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 
 using std::placeholders::_1;
 
 namespace thrusterBridge
 {
-class ThrusterBridge : public gz::sim::System,
-                       public gz::sim::ISystemConfigure,
-                       public gz::sim::ISystemPostUpdate,
-                       public rclcpp::Node
+class ThrusterBridge : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
+
 {
   public:
     ThrusterBridge();

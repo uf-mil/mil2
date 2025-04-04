@@ -45,6 +45,11 @@
                 name="hydrophone::Hydrophone">
                 <topic>${name}</topic>
             </plugin>
+            <plugin
+                filename="ThrusterBridge"
+                name="thruster_bridge::ThrusterBridge">
+                <topic>${name}</topic>
+            </plugin>
 
             <!-- Buoyancy Plugin -->
             <!--

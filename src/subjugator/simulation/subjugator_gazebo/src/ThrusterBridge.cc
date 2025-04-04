@@ -19,6 +19,9 @@ ThrusterBridge::~ThrusterBridge()
 void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                                gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr)
 {
+    std::cout << std::endl;
+    std::cout << "KEITHTHHHHHH" << std::endl;
+
     // Initialize the ROS node and publisher
     if (!rclcpp::ok())
     {
@@ -27,11 +30,16 @@ void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
 
     // Create a ROS2 node for publishing
     this->rosNode_ = std::make_shared<rclcpp::Node>("thruster_to_gz");
-    this->thrusterSub_ = this->rosNode_->create_subscriber<subjugator_msgs::msg::ThrusterEfforts>(
-        "/thruster_efforts", 1, std::bind(&thrusterBridge::ThrusterBridge::receiveEffortCallback, this, _1);)
+    this->thrusterSub_ = this->rosNode_->create_subscription<subjugator_msgs::msg::ThrusterEfforts>(
+        "/thruster_efforts", 1,
+        std::bind(&thrusterBridge::ThrusterBridge::receiveEffortCallback, this, std::placeholders::_1));
+
+    // this->thruster_sub_ = this->node_->create_subscription<thruster_msgs::msg::ThrusterEfforts>(
+    //     "/thruster_efforts", 1,
+    //     std::bind(&ThrusterBridge::receiveEffortCallback, this, std::placeholders::_1));
 }
 
-void ThrusterBridge::receiveEffortCallback(mil_msgs::msg::ThrusterEfforts const &msg)
+void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts const &msg)
 {
     // Process the received thruster efforts message
     std::cout << "[ThrusterBridge] Received Thruster Efforts: " << std::endl;
