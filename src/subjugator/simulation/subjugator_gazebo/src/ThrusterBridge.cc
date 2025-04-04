@@ -21,6 +21,9 @@ ThrusterBridge::~ThrusterBridge()
 void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                                gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr)
 {
+    std::cout << std::endl;
+    std::cout << "KEITHTHHHHHH" << std::endl;
+
     // Initialize the ROS node and publisher
     if (!rclcpp::ok())
     {
