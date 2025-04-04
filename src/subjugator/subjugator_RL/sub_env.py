@@ -2,22 +2,30 @@ import gym
 from gym import spaces
 import numpy as np
 from geometry_msgs.msg import Wrench, Vector3
+from sensor_msgs.msg import Imu
 import random
 import time
 import os
+import threading
+from imu_subscriber import ImuSubscriber
+from imu_subscriber import main as imu_main
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50,80,3]
 
 #to be finished
 class SubEnv(gym.Env):
+
+    imu_thread = threading.Thread(target=imu_main)
+    imu_thread.daemon = True  # The thread will exit when the main program exits
+    imu_thread.start()
+
     def __init__(self, render_mode = "rgb_array"):
 
         #camera rgb space
         self.observation_space = spaces.Dict({
                 'image'                 : spaces.Box(0, 255, shape=(SHAPE[0], SHAPE[1], SHAPE[2]), dtype=np.uint8),
                 'orientation'           : spaces.Box(low = -np.inf, high = np.inf, shape=(4,))
-
             })
 
 
@@ -27,7 +35,7 @@ class SubEnv(gym.Env):
              'torque' : spaces.Box(low=-50, high=50, shape=(3,), dtype=np.float32)
             })
 
-
+        self.imu_node = ImuSubscriber()
         # self.sketch = None
         # self.setup = True
 
@@ -37,9 +45,11 @@ class SubEnv(gym.Env):
         # Get image from RL_subscriber through pipe
         
         with open("image_pipe", 'rb') as pipe:
-            img_data = pipe.read(SHAPE[0]*SHAPE[1]*SHAPE[2])
+            imu_data = pipe.read()
             if img_data:
                 image = np.frombuffer(img_data, dtype=np.uint8).reshape((SHAPE[0], SHAPE[1], SHAPE[2]))
+
+       
         
         return {"image": image, }
     
