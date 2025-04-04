@@ -10,16 +10,16 @@ import time
 
 PUBLISH_RATE = 10  # Hertz
 
-class SubjugatorControl(Node):
+class MovementPublisher(Node):
     def __init__(self):
-        super().__init__('subjugator_keyboard_control')
+        super().__init__('movement_pub')
 
         self.publisher_ = self.create_publisher(Wrench, 'cmd_wrench', PUBLISH_RATE)
 
         self.declare_parameter('linear_speed', 1.0)
         self.declare_parameter('angular_speed', 1.0)
-        # self.base_linear = self.get_parameter('linear_speed').value
-        self.base_linear = 10
+        self.base_linear = self.get_parameter('linear_speed').value
+        #self.base_linear = 10
         self.base_angular = self.get_parameter('angular_speed').value
 
         self.force_x = 0.0
@@ -29,12 +29,23 @@ class SubjugatorControl(Node):
         self.torque_y = 0.0
         self.torque_z = 0.0
 
-        self.get_logger().info("Publishing wrench to /cmd_wrench topic.")
+        while True:
+            self.force_action()
 
-    def force_action(self, action):
+
+    def force_action(self):
         # Action is array of two values, first is for forward/back and second is for left/right
-        self.force_x = (float)(action[0])
-        self.force_y = (float)(action[1])
+        self.get_logger().info("Publishing wrench to /cmd_wrench topic.")
+        action = None
+        with open("wrench_msg_pipe", 'rb') as pipe:
+            data = pipe.read()
+            action = Wrench.frombytes(data)            
+        self.force_x = (float)(action.force.x)
+        self.force_y = (float)(action.force.y)
+        self.force_z = (float)(action.force.z)
+        self.torque_x = (float)(action.torque.x)
+        self.torque_y = (float)(action.torque.y)
+        self.torque_z = (float)(action.torque.z)
 
         self.publish_loop()
 
@@ -56,7 +67,7 @@ class SubjugatorControl(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = SubjugatorControl()
+    node = MovementPublisher()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
