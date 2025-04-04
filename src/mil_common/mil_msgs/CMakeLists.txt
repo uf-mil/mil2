@@ -16,6 +16,7 @@ find_package(sensor_msgs REQUIRED)
 
 set(action_files "action/MoveTo.action" "action/BagOnline.action")
 
+# File name is in CamelCase, but must import in snake_case
 set(msg_files
     "msg/DepthStamped.msg"
     "msg/ObjectInImage.msg"
@@ -28,6 +29,7 @@ set(msg_files
     "msg/RangeStamped.msg"
     "msg/VelocityMeasurements.msg"
     "msg/VelocityMeasurement.msg"
+    "msg/ProcessedPing.msg"
     "msg/HoughTransform.msg"
     "msg/Lines.msg"
     "msg/ObjectDetection.msg"

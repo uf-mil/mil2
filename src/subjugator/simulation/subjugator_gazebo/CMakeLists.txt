@@ -13,6 +13,7 @@ find_package(mil_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 
 find_package(subjugator_description REQUIRED)
+find_package(mil_msgs REQUIRED)
 
 find_package(gz-cmake3 REQUIRED)
 find_package(gz-plugin2 REQUIRED COMPONENTS register)
@@ -48,6 +49,9 @@ add_library(DVLBridge SHARED src/DVLBridge.cc)
 # Plugin 3: DepthSensor
 add_library(DepthSensor SHARED src/DepthSensor.cc)
 
+# Plugin 3: Hydrophone
+add_library(Hydrophone SHARED src/Hydrophone.cc)
+
 # Ensures plugin can see include directory to access its header files
 target_include_directories(ExamplePlugin PRIVATE include)
 
@@ -56,6 +60,8 @@ target_include_directories(UnderwaterCamera PRIVATE include)
 target_include_directories(DVLBridge PRIVATE include)
 
 target_include_directories(DepthSensor PRIVATE include)
+
+target_include_directories(Hydrophone PRIVATE include)
 
 # Add additional needed libraries
 target_link_libraries(
@@ -71,8 +77,12 @@ target_link_libraries(UnderwaterCamera gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
 # Link libraries for DVL Bridge plugin
 target_link_libraries(DVLBridge gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
 
+# Link libraries for Hydrophone plugin
+target_link_libraries(Hydrophone gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
+
 # Link libraries for DepthSensor plugin
 target_link_libraries(DepthSensor gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
+
 # Specify dependencies using ament_target_dependencies
 ament_target_dependencies(
   ExamplePlugin
@@ -87,8 +97,10 @@ ament_target_dependencies(DVLBridge nav_msgs rclcpp geometry_msgs std_msgs)
 
 ament_target_dependencies(DepthSensor rclcpp mil_msgs sensor_msgs)
 
+ament_target_dependencies(Hydrophone rclcpp geometry_msgs mil_msgs)
+
 # Install the plugins
-install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge DepthSensor
+install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge Hydrophone DepthSensor
         LIBRARY DESTINATION lib/${PROJECT_NAME})
 
 # Install headers
