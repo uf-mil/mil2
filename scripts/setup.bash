@@ -38,7 +38,6 @@ alias search='find . -print | grep -i'
 alias fd="fdfind"
 alias cb="colbuild"
 
-
 # potentially borrowed from forrest
 autopush() {
 	git push origin +"${1:-HEAD}":refs/heads/autopush-"$USER"-"$(uuidgen --random | cut -c1-8)"-citmp
@@ -76,30 +75,32 @@ subnet_ip() {
 # This will build the repository from wherever you are and take you back into the mil2 repo
 colbuild() {
 	local prev_dir
-	prev_dir=$(pwd)                # Store the current directory
-	cd $MIL_REPO || return         # Change to your workspace
-	if [ $# -eq 0 ]; then 
+	prev_dir=$(pwd)        # Store the current directory
+	cd $MIL_REPO || return # Change to your workspace
+	if [ $# -eq 0 ]; then
 		colcon build --symlink-install # Build the workspace
 	else
 		colcon build --symlink-install --packages-select "$@" # Build the workspace
 	fi
-	source ./install/setup.bash    # Source the install script
-	cd "$prev_dir" || return       # Return to the original directory
+	source ./install/setup.bash # Source the install script
+	cd "$prev_dir" || return    # Return to the original directory
 }
 
 # Autocomplete for colbuild based on ROS 2 packages
 _colbuild_autocomplete() {
-    local cur
-    cur="${COMP_WORDS[COMP_CWORD]}"  # Get the current word being typed
-    local packages
+	local cur
+	cur="${COMP_WORDS[COMP_CWORD]}" # Get the current word being typed
+	local packages
 
-    # Fetch the list of packages from the ROS 2 workspace (replace this with your workspace)
-    packages=$(cd $MIL_REPO && colcon list --names-only)
+	# Fetch the list of packages from the ROS 2 workspace (replace this with your workspace)
+	packages=$(cd $MIL_REPO && colcon list --names-only)
 
-    mapfile -t package_array <<< "$packages"
+	mapfile -t package_array <<<"$packages"
 
-    # Filter packages based on the current word (autocomplete logic)
-    COMPREPLY=($(compgen -W "${package_array[*]}" -- "$cur"))
+	mapfile -t replacement <<< "$(compgen -W "${package_array[*]}" -- "$cur")"
+
+	# Filter packages based on the current word (autocomplete logic)
+	COMPREPLY=($replacement)
 }
 
 # Bind the autocomplete function to the colbuild command
