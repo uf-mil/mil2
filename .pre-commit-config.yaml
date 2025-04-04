@@ -13,6 +13,7 @@ repos:
     rev: v1.35.1
     hooks:
       - id: yamllint
+        exclude: ^src/subjugator/gnc/subjugator_thruster_manager/config|ext
   - repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:
@@ -45,6 +46,11 @@ repos:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
         exclude: ^NaviGator/simulation/VRX
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.10
+    hooks:
+      - id: cmake-format
+        exclude: ^ext
   - repo: https://github.com/codespell-project/codespell
     rev: v2.3.0
     hooks:

@@ -39,7 +39,7 @@ alias fd="fdfind"
 
 # potentially borrowed from forrest
 autopush() {
-  git push origin +"${1:-HEAD}":refs/heads/autopush-"$USER"-"$(uuidgen --random | cut -c1-8)"-citmp
+	git push origin +"${1:-HEAD}":refs/heads/autopush-"$USER"-"$(uuidgen --random | cut -c1-8)"-citmp
 
 }
 
@@ -73,9 +73,22 @@ subnet_ip() {
 
 # This will build the repository from wherever you are and take you back into the mil2 repo
 colbuild() {
-    local prev_dir=$(pwd)  # Store the current directory
-    cd $MIL_REPO || return  # Change to your workspace
-    colcon build --symlink-install  # Build the workspace
-    source ./install/setup.bash  # Source the install script
-    cd "$prev_dir"  # Return to the original directory
+	local prev_dir
+	prev_dir=$(pwd)                # Store the current directory
+	cd $MIL_REPO || return         # Change to your workspace
+	colcon build --symlink-install # Build the workspace
+	source ./install/setup.bash    # Source the install script
+	cd "$prev_dir" || return       # Return to the original directory
 }
+
+# Print all devices on the specified subnet / network prefix
+list_lan_devices() {
+	if [ $# -lt 1 ]; then
+		echo "Usage:   list_lan_devices <subnet>"
+		echo "Example: list_lan_devices 192.168.37.1/24"
+	fi
+	nmap -sP "$1" -oG - | awk '/Up$/{print $2}'
+}
+
+# List all devices on the MIL network currently by scanning
+alias list_mil_devices="list_lan_devices 192.168.37.1/24"

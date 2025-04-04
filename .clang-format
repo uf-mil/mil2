@@ -32,8 +32,8 @@ PointerBindsToType: false
 SpacesBeforeTrailingComments: 2
 Cpp11BracedListStyle: false
 Standard: Auto
-IndentWidth: 2
-TabWidth: 2
+IndentWidth: 4
+TabWidth: 4
 UseTab: Never
 BreakBeforeBraces: Allman
 IndentFunctionDeclarationAfterType: false
@@ -45,4 +45,28 @@ SpaceAfterControlStatementKeyword: true
 SpaceBeforeAssignmentOperators: true
 ContinuationIndentWidth: 4
 QualifierAlignment: Right
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Related header (automatically assigned priority 0)
+  # No regex needed; clang-format automatically places related header first.
+
+  # C system headers and other angle-bracketed headers with .h extension
+  - Regex: '^<.*\.h>$'
+    Priority: 1
+    SortPriority: 1
+
+  # C++ standard library headers (angle-bracketed headers without extension)
+  - Regex: '^<[a-zA-Z0-9_]+>$'
+    Priority: 2
+    SortPriority: 2
+
+  # Other library headers (aka, ext libraries)
+  - Regex: '^("|<)(ext|boost|Eigen|rclcpp|ftxui)/'
+    Priority: 3
+    SortPriority: 3
+
+  # Local headers
+  - Regex: '^".*"'
+    Priority: 4
+    SortPriority: 4
 ...
