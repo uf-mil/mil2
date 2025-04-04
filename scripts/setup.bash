@@ -99,8 +99,13 @@ _colbuild_autocomplete() {
 
 	mapfile -t replacement <<<"$(compgen -W "${package_array[*]}" -- "$cur")"
 
-	# Filter packages based on the current word (autocomplete logic)
-	COMPREPLY=(${replacement[0]})
+	if [ ${#replacement[@]} -eq 0 ] || [ -z "$cur" ]; then
+		COMPREPLY=("${package_array[@]}")
+	else
+		# Filter packages based on the current word (autocomplete logic)
+		COMPREPLY=("${replacement[0]}")
+	fi
+
 }
 
 # Bind the autocomplete function to the colbuild command
