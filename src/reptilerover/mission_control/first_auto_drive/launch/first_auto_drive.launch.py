@@ -12,8 +12,14 @@ def generate_launch_description():
         ),
 
         Node(
-            package='wheel_drivers',
-            executable='joy_handsome',
-            output='screen'
-        )
+            package='first_auto_drive',
+            executable='main_node',
+            # output='screen'
+        ),
+        Node(
+            package='rr_sonar',
+            executable='sonar_node',
+            #output='screen'
+        ),
     ])
+
