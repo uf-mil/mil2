@@ -127,6 +127,7 @@ class MainNode(Node):
         controller_being_used = not (self.joy_data[0] == 0 and self.joy_data[1] == 0)
         if controller_being_used:
             # self.get_logger().warn("cont")
+
             self.controller_to_motors()
             return
 
@@ -155,8 +156,8 @@ class MainNode(Node):
 
         # just keep going forwards
         # self.get_logger().warn("forward")
-        self.tank_drive_train.stop()
-        # self.tank_drive_train.forward(0.4)
+        # self.tank_drive_train.stop()
+        self.tank_drive_train.forward(0.4)
 
 def quaternion_to_euler(quaternion):
     # Convert quaternion to Euler angles (roll, pitch, yaw) in radians
