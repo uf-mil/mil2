@@ -96,8 +96,10 @@ _colbuild_autocomplete() {
     # Fetch the list of packages from the ROS 2 workspace (replace this with your workspace)
     packages=$(cd $MIL_REPO && colcon list --names-only)
 
+    mapfile -t package_array <<< "$packages"
+
     # Filter packages based on the current word (autocomplete logic)
-    COMPREPLY=($(compgen -W "$packages" -- "$cur"))
+    COMPREPLY=($(compgen -W "${package_array[*]}" -- "$cur"))
 }
 
 # Bind the autocomplete function to the colbuild command
