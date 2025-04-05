@@ -16,6 +16,13 @@
 
 #include "UnderwaterCamera.hh"
 
+#include "gz/plugin/Register.hh"
+#include "gz/sim/EntityComponentManager.hh"
+#include "gz/sim/components/Link.hh"
+#include "gz/sim/components/Model.hh"
+#include "gz/sim/components/Name.hh"
+#include "gz/sim/components/World.hh"
+
 #include <gz/common/Console.hh>
 #include <gz/sim/Model.hh>
 #include <gz/sim/Util.hh>
@@ -25,13 +32,6 @@
 #include <gz/sim/components/Sensor.hh>
 #include <gz/transport/Node.hh>
 #include <sdf/Camera.hh>
-
-#include "gz/plugin/Register.hh"
-#include "gz/sim/EntityComponentManager.hh"
-#include "gz/sim/components/Link.hh"
-#include "gz/sim/components/Model.hh"
-#include "gz/sim/components/Name.hh"
-#include "gz/sim/components/World.hh"
 
 GZ_ADD_PLUGIN(dave_gz_sensor_plugins::UnderwaterCamera, gz::sim::System,
               dave_gz_sensor_plugins::UnderwaterCamera::ISystemConfigure,

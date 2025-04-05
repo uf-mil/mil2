@@ -9,8 +9,9 @@
 #include <iostream>
 #include <thread>
 
-#include "geometry_msgs/msg/wrench.hpp"
 #include "rclcpp/rclcpp.hpp"
+
+#include "geometry_msgs/msg/wrench.hpp"
 
 // May be used elsewhere if similar logic?
 struct KeyState

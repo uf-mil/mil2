@@ -15,20 +15,19 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-rosidl_generate_interfaces(${PROJECT_NAME}
+rosidl_generate_interfaces(
+  ${PROJECT_NAME}
   "msg/ProcessedPing.msg"
-  DEPENDENCIES std_msgs geometry_msgs service_msgs
-  ADD_LINTER_TESTS
-)
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+  service_msgs
+  ADD_LINTER_TESTS)
 
-ament_export_dependencies(
-	rosidl_default_runtime
-	std_msgs
-	geometry_msgs
-	service_msgs
-	rclcpp
-)
+ament_export_dependencies(rosidl_default_runtime std_msgs geometry_msgs
+                          service_msgs rclcpp)
 
 ament_package()
 
-install(PROGRAMS scripts/ping_publisher.py scripts/fakeping_pipeline.sh scripts/pipeline.sh DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS scripts/ping_publisher.py scripts/fakeping_pipeline.sh
+                 scripts/pipeline.sh DESTINATION lib/${PROJECT_NAME})

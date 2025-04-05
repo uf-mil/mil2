@@ -43,7 +43,7 @@ Rotation::Rotation(Eigen::Vector3d const& rot_vec)
 
 Rotation::Rotation(Eigen::Vector4d const& quat)
 {
-    quat_ = Eigen::Quaterniond(quat[3], quat[1], quat[2], quat[0]);
+    quat_ = Eigen::Quaterniond(quat[3], quat[0], quat[1], quat[2]);
 }
 
 Rotation::Rotation(geometry_msgs::msg::Quaternion const& quat)
@@ -119,6 +119,34 @@ bool Rotation::operator==(Rotation const& other) const
 {
     return quat_.w() == other.quat_w() && quat_.x() == other.quat_x() && quat_.y() == other.quat_y() &&
            quat_.z() == other.quat_z();
+}
+
+bool Rotation::operator!=(Rotation const& other) const
+{
+    return !(*this == other);
+}
+
+Rotation Rotation::operator*(Rotation const& other) const
+{
+    return Rotation(quat_ * other.quat_);
+}
+
+Rotation Rotation::operator-() const
+{
+    // operator-() not defined on Eigen::Quaternion
+    return Rotation(Eigen::Vector4d{ -quat_.x(), -quat_.y(), -quat_.z(), quat_.w() });
+}
+
+void Rotation::normalize()
+{
+    quat_.normalize();
+}
+
+std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, Rotation const& obj)
+{
+    os << "Rotation<x=" << obj.quat_x() << " y=" << obj.quat_y() << " z=" << obj.quat_z() << " w=" << obj.quat_w()
+       << " roll_deg=" << obj.roll_deg() << " pitch_deg=" << obj.pitch_deg() << " yaw_deg=" << obj.yaw_deg() << ">";
+    return os;
 }
 
 }  // namespace mil_tools::geometry
