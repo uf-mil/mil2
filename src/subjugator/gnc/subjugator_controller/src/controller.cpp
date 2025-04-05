@@ -2,9 +2,8 @@
 
 PIDController::PIDController() : Node("pid_controller")
 {
-    sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>("subjugator_localization/odometry/filtered", 10,
-                                                                   [this](nav_msgs::msg::Odometry::UniquePtr msg)
-                                                                   { this->odom_cb(std::move(msg)); });
+    sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        "odometry/filtered", 10, [this](nav_msgs::msg::Odometry::UniquePtr msg) { this->odom_cb(std::move(msg)); });
     sub_goal_trajectory_ = this->create_subscription<geometry_msgs::msg::Pose>(
         "trajectory", 10,
         [this](geometry_msgs::msg::Pose::UniquePtr msg) { this->goal_trajectory_cb(std::move(msg)); });
@@ -43,7 +42,14 @@ PIDController::PIDController() : Node("pid_controller")
                                            param_map_["imin"].first[i], param_map_["antiwindup"].first[i]);
     }
 
+    // set starting command to all zeros
     last_cmd_time_ = this->get_clock()->now();
+    last_goal_trajectory_ = Eigen::Matrix<double, 7, 1>::Zero();
+    last_goal_trajectory_[6] = 1.0;  // set w to 1.0 for quaternion
+
+    // init odom to all zeros
+    last_odom_ = Eigen::Matrix<double, 7, 1>::Zero();
+    last_odom_[6] = 1.0;  // set w to 1.0 for quaternion
 
     control_loop();
 }
@@ -64,25 +70,22 @@ void PIDController::control_loop()
 
         // compute position error
         errors(Eigen::seq(0, 2)) = last_goal_trajectory_(Eigen::seq(0, 2)) - last_odom_(Eigen::seq(0, 2));
-        RCLCPP_INFO(this->get_logger(), "error: '%s'", std::to_string(errors[0]).c_str());
 
-        // TODO: compute orientation error
-        // do math on quaternions, then convert to euler angles
+        // compute orientation error
         Eigen::Quaterniond goal_quat = Eigen::Quaterniond(last_goal_trajectory_(6), last_goal_trajectory_(3),
                                                           last_goal_trajectory_(4), last_goal_trajectory_(5));
         Eigen::Quaterniond odom_quat = Eigen::Quaterniond(last_odom_(6), last_odom_(3), last_odom_(4), last_odom_(5));
-        Eigen::Quaterniond error_quat = goal_quat * odom_quat.inverse();
-        Eigen::Vector3d error_euler = error_quat.toRotationMatrix().eulerAngles(0, 1, 2);
-        errors(Eigen::seq(3, 5)) = error_euler;
-        RCLCPP_INFO(this->get_logger(), "quat error: '%s'", std::to_string(error_euler[0]).c_str());
 
-        // convert to euler, then do math
-        Eigen::Vector3d euler_goal = goal_quat.toRotationMatrix().eulerAngles(0, 1, 2);
-        Eigen::Vector3d euler_odom = odom_quat.toRotationMatrix().eulerAngles(0, 1, 2);
-        Eigen::Vector3d euler_error = euler_goal - euler_odom;
-        RCLCPP_INFO(this->get_logger(), "euler error: '%s'", std::to_string(euler_error[0]).c_str());
+        // perform calculation on quaternions, then convert to euler angles
+        // source:
+        // https://www.vectornav.com/resources/inertial-navigation-primer/math-fundamentals/math-attitudetran#mjx-eqn%3Aeq%3Aq2dcm
+        Eigen::Matrix3d dcm = goal_quat.toRotationMatrix() * odom_quat.inverse().toRotationMatrix();
+        double roll = atan2(dcm(2, 1), dcm(2, 2));
+        double pitch = atan2(-dcm(2, 0), sqrt(dcm(2, 1) * dcm(2, 1) + dcm(2, 2) * dcm(2, 2)));
+        double yaw = atan2(dcm(1, 0), dcm(0, 0));
+        errors(Eigen::seq(3, 5)) = Eigen::Vector3d(roll, pitch, yaw);
 
-        // errors -> commands
+        // apply PID control to errors
         for (size_t i = 0; i < pid_vec_.size(); i++)
         {
             commands[i] = pid_vec_[i].compute_command(errors[i], dt_s);
@@ -90,7 +93,14 @@ void PIDController::control_loop()
 
         // publish as cmd_wrench
         publish_commands(commands);
-        RCLCPP_INFO(this->get_logger(), "command: '%s'", std::to_string(commands[0]).c_str());
+        RCLCPP_INFO(this->get_logger(), "errors: '%s' '%s' '%s' '%s' '%s' '%s'", std::to_string(errors[0]).c_str(),
+                    std::to_string(errors[1]).c_str(), std::to_string(errors[2]).c_str(),
+                    std::to_string(errors[3]).c_str(), std::to_string(errors[4]).c_str(),
+                    std::to_string(errors[5]).c_str());
+        RCLCPP_INFO(this->get_logger(), "commands: '%s' '%s' '%s' '%s' '%s' '%s'", std::to_string(commands[0]).c_str(),
+                    std::to_string(commands[1]).c_str(), std::to_string(commands[2]).c_str(),
+                    std::to_string(commands[3]).c_str(), std::to_string(commands[4]).c_str(),
+                    std::to_string(commands[5]).c_str());
 
         last_cmd_time_ = tnow;
         rclcpp::spin_some(this->get_node_base_interface());
@@ -112,11 +122,9 @@ void PIDController::publish_commands(std::array<double, 6> const &commands)
 
 void PIDController::odom_cb(nav_msgs::msg::Odometry::UniquePtr const msg)
 {
-    // last_odom_ = *msg;
     last_odom_ << msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z,
         msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z,
         msg->pose.pose.orientation.w;
-    RCLCPP_INFO(this->get_logger(), "heard odom: '%s'", std::to_string(msg->pose.pose.position.x).c_str());
 }
 
 void PIDController::goal_trajectory_cb(geometry_msgs::msg::Pose::UniquePtr const msg)
