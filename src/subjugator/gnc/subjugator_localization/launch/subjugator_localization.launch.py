@@ -9,16 +9,15 @@ def generate_launch_description():
     config_file = os.path.join(
         get_package_share_directory("subjugator_localization"),
         "config",
-        "parameter_definitions.yaml",
+        "localization_parameters.yaml",
     )
 
     return LaunchDescription(
         [
             Node(
                 package="robot_localization",
-                executable="ukf_node",
-                name="ukf_filter_node",
-                namespace="subjugator_localization",
+                executable="ekf_node",
+                name="subjugator_localization",
                 parameters=[config_file],
             ),
         ],

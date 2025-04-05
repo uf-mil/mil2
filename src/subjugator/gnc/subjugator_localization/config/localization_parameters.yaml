@@ -1,5 +1,5 @@
 ---
-ukf_filter_node:
+/subjugator_localization:
   ros__parameters:
     imu0: "/imu/data_raw"
     imu0_config: [
