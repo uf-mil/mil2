@@ -41,6 +41,7 @@ pyserial>=3.5
 
 # Drivers
 psutil>=5.6.6
+depthai>=2.30.0
 
 # Linting
 black>=24.3.0
