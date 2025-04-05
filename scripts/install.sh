@@ -200,7 +200,8 @@ mil_system_install \
 	python3-colcon-common-extensions \
 	ros-jazzy-marine-acoustic-msgs \
 	ros-jazzy-generate-parameter-library \
-	nlohmann-json3-dev
+	nlohmann-json3-dev \
+	ros-jazzy-robot-localization
 
 cat <<EOF
 $(color "$Pur")
