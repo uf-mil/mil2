@@ -19,22 +19,15 @@ find_package(control_toolbox REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 add_executable(subjugator_controller src/node.cpp src/controller.cpp)
-ament_target_dependencies(subjugator_controller rclcpp nav_msgs control_toolbox Eigen3)
-target_include_directories(subjugator_controller PRIVATE ${EIGEN3_INCLUDE_DIR} include)
+ament_target_dependencies(subjugator_controller rclcpp nav_msgs control_toolbox
+                          Eigen3)
+target_include_directories(subjugator_controller PRIVATE ${EIGEN3_INCLUDE_DIR}
+                                                         include)
 
-install(TARGETS
-  subjugator_controller
-  DESTINATION lib/${PROJECT_NAME}
-)
+install(TARGETS subjugator_controller DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY
-  config launch
-  DESTINATION share/${PROJECT_NAME}
-)
+install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 
-install(DIRECTORY
-  include/
-  DESTINATION include/${PROJECT_NAME}
-)
+install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
 
 ament_package()
