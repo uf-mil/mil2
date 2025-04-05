@@ -1,0 +1,55 @@
+---
+name: Service healthcheck
+
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    # Run every hour
+    - cron: '0 * * * *'
+
+jobs:
+  ufl:
+    name: eduroam visibility healthcheck
+    runs-on:
+      group: mala-lab-noble
+    steps:
+      - name: zobelisk
+        run: |
+          ping -c 1 zobelisk.mil.ufl.edu &> /dev/null
+      - name: workstation1
+        run: |
+          ping -c 1 workstation1.mil.ufl.edu &> /dev/null
+      - name: workstation2
+        run: |
+          ping -c 1 workstation2.mil.ufl.edu &> /dev/null
+      - name: nas
+        run: |
+          ping -c 1 10.245.80.239 &> /dev/null
+
+  # TODO uf-mil/mil2#94
+  # milnet:
+  #   name: milnet visibility healthcheck
+  #   runs-on:
+  #     group: mala-lab-noble
+  #   steps:
+  #     - name: zobelisk
+  #       run: |
+  #         ping -c 1 192.168.37.23 &> /dev/null
+
+  external:
+    name: external visibility healthcheck
+    runs-on:
+      group: mala-lab-noble
+    steps:
+      - name: milwiki
+        run: |
+          ping -c 1 milwiki.cbrxyz.com &> /dev/null
+      - name: mil website
+        run: |
+          ping -c 1 mil.ufl.edu &> /dev/null
+      - name: navigator website
+        run: |
+          ping -c 1 navigatoruf.org &> /dev/null
+      - name: subjugator website
+        run: |
+          ping -c 1 subjugator.org &> /dev/null

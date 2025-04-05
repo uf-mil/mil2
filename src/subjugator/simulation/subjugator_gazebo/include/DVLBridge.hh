@@ -20,11 +20,13 @@
 
 #include <gz/msgs/dvl_velocity_tracking.pb.h>
 
-#include <gz/sim/System.hh>
 #include <memory>
 #include <mutex>
-#include <nav_msgs/msg/odometry.hpp>
+
 #include <rclcpp/rclcpp.hpp>
+
+#include <gz/sim/System.hh>
+#include <nav_msgs/msg/odometry.hpp>
 
 namespace dave_ros_gz_plugins
 

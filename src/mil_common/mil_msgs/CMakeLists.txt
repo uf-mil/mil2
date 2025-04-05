@@ -14,37 +14,40 @@ find_package(action_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
-set(action_files
-  "action/MoveTo.action"
-  "action/BagOnline.action"
-)
+set(action_files "action/MoveTo.action" "action/BagOnline.action")
 
+# File name is in CamelCase, but must import in snake_case
 set(msg_files
-  "msg/DepthStamped.msg"
-  "msg/ObjectInImage.msg"
-  "msg/ObjectsInImage.msg"
-  "msg/PerceptionObject.msg"
-  "msg/PerceptionObjectArray.msg"
-  "msg/Point2D.msg"
-  "msg/PoseTwistStamped.msg"
-  "msg/PoseTwist.msg"
-  "msg/RangeStamped.msg"
-  "msg/VelocityMeasurements.msg"
-  "msg/VelocityMeasurement.msg"
-)
+    "msg/DepthStamped.msg"
+    "msg/ObjectInImage.msg"
+    "msg/ObjectsInImage.msg"
+    "msg/PerceptionObject.msg"
+    "msg/PerceptionObjectArray.msg"
+    "msg/Point2D.msg"
+    "msg/PoseTwistStamped.msg"
+    "msg/PoseTwist.msg"
+    "msg/RangeStamped.msg"
+    "msg/VelocityMeasurements.msg"
+    "msg/VelocityMeasurement.msg"
+    "msg/ProcessedPing.msg"
+    "msg/HoughTransform.msg"
+    "msg/Lines.msg"
+    "msg/ObjectDetection.msg"
+    "msg/ObjectDetections.msg")
 
-set(srv_files
-  "srv/CameraToLidarTransform.srv"
-  "srv/ObjectDBQuery.srv"
-  "srv/SetGeometry.srv"
-)
+set(srv_files "srv/CameraToLidarTransform.srv" "srv/ObjectDBQuery.srv"
+              "srv/SetGeometry.srv")
 
-rosidl_generate_interfaces(${PROJECT_NAME}
+rosidl_generate_interfaces(
+  ${PROJECT_NAME}
   ${action_files}
   ${msg_files}
   ${srv_files}
-  DEPENDENCIES std_msgs action_msgs geometry_msgs sensor_msgs
-)
+  DEPENDENCIES
+  std_msgs
+  action_msgs
+  geometry_msgs
+  sensor_msgs)
 
 ament_export_dependencies(rosidl_default_runtime)
 

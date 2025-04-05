@@ -27,7 +27,7 @@ if [[ $NAME != *"Ubuntu"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu (you're using: ${NAME}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
-if [[ $VERSION != *"24.04"* ]]; then
+if [[ $VERSION != *"24.04"* && $VERSION != *"22.04.5 LTS (Jammy Jellyfish)"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu 24.04 (you're using: ${VERSION}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
@@ -264,7 +264,8 @@ mil_user_install_dependencies() {
 		ripgrep \
 		fzf \
 		aptitude \
-		lm-sensors
+		lm-sensors \
+		libboost-all-dev
 }
 
 # Add line to user's bashrc which source the repo's setup files
