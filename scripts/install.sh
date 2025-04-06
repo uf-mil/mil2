@@ -197,7 +197,6 @@ mil_system_install \
 	ros-jazzy-control-toolbox \
 	ros-jazzy-generate-parameter-library \
 	ros-jazzy-geographic-msgs \
-	ros-jazzy-marine-acoustic-msgs \
 	ros-jazzy-robot-localization \
 	ros-jazzy-rmw-cyclonedds-cpp \
 	ros-jazzy-tf2-sensor-msgs \
