@@ -128,10 +128,10 @@
 
   <!-- Thrusters -->
   <!-- Front/Back Left/Right Vertical/Horizontal -->
-  <xacro:mil_thruster name="FLV" parent="base_link" xyz="0.5715 0.14922 -0.028575" rpy="0 1.5708 0"/>
-  <xacro:mil_thruster name="FRV" parent="base_link" xyz="0.5715 -0.14922 -0.028575" rpy="0 1.5708 0"/>
-  <xacro:mil_thruster name="BRV" parent="base_link" xyz="0.1143 -0.14922 -0.028575" rpy="0 1.5708 0"/>
-  <xacro:mil_thruster name="BLV" parent="base_link" xyz="0.1143 0.14922 -0.028575" rpy="0 1.5708 0"/>
+  <xacro:mil_thruster name="FLV" parent="base_link" xyz="0.5715 0.14922 -0.028575" rpy="0 -1.5708 0"/>
+  <xacro:mil_thruster name="FRV" parent="base_link" xyz="0.5715 -0.14922 -0.028575" rpy="0 -1.5708 0"/>
+  <xacro:mil_thruster name="BRV" parent="base_link" xyz="0.1143 -0.14922 -0.028575" rpy="0 -1.5708 0"/>
+  <xacro:mil_thruster name="BLV" parent="base_link" xyz="0.1143 0.14922 -0.028575" rpy="0 -1.5708 0"/>
 
   <xacro:mil_thruster name="FLH" parent="base_link" xyz="0.58737 0.24765 0.053975" rpy="0 0 -0.523598776"/>
   <xacro:mil_thruster name="FRH" parent="base_link" xyz="0.58737 -0.24765 0.053975" rpy="0 0 0.523598776"/>
