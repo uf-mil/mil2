@@ -198,6 +198,7 @@ mil_system_install \
 	ros-jazzy-velodyne \
 	ros-jazzy-backward-ros \
 	python3-colcon-common-extensions \
+	ros-jazzy-control-toolbox \
 	ros-jazzy-marine-acoustic-msgs \
 	ros-jazzy-generate-parameter-library \
 	nlohmann-json3-dev \
