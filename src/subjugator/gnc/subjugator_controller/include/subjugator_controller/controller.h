@@ -22,8 +22,10 @@ class PIDController : public rclcpp::Node
     void odom_cb(nav_msgs::msg::Odometry::UniquePtr const msg);
     void goal_trajectory_cb(geometry_msgs::msg::Pose::UniquePtr const msg);
     void publish_commands(std::array<double, 6> const &commands);
+    void shutdown();
 
   private:
+    bool is_shutdown;
     static int const dof_ = 6;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom_;
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr sub_goal_trajectory_;

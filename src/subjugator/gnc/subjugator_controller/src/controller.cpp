@@ -2,12 +2,23 @@
 
 PIDController::PIDController() : Node("pid_controller")
 {
+    this->is_shutdown = false;
+
     sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "odometry/filtered", 10, [this](nav_msgs::msg::Odometry::UniquePtr msg) { this->odom_cb(std::move(msg)); });
     sub_goal_trajectory_ = this->create_subscription<geometry_msgs::msg::Pose>(
         "trajectory", 10,
         [this](geometry_msgs::msg::Pose::UniquePtr msg) { this->goal_trajectory_cb(std::move(msg)); });
-    pub_cmd_wrench_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", 1);
+    pub_cmd_wrench_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", rclcpp::QoS(1).reliable());
+
+    // callback to send 0 cmd_wrench on shutdown
+    using rclcpp::contexts::get_global_default_context;
+    get_global_default_context()->add_pre_shutdown_callback(
+        [this]()
+        {
+            this->is_shutdown = true;
+            this->shutdown();
+        });
 
     param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
 
@@ -57,7 +68,7 @@ PIDController::PIDController() : Node("pid_controller")
 void PIDController::control_loop()
 {
     rclcpp::Rate rate(10);
-    while (rclcpp::ok())
+    while (rclcpp::ok() && !this->is_shutdown)
     {
         RCLCPP_INFO(this->get_logger(), "control loop");
 
@@ -129,8 +140,15 @@ void PIDController::odom_cb(nav_msgs::msg::Odometry::UniquePtr const msg)
 
 void PIDController::goal_trajectory_cb(geometry_msgs::msg::Pose::UniquePtr const msg)
 {
-    // last_goal_trajectory_ = *msg;
     last_goal_trajectory_ << msg->position.x, msg->position.y, msg->position.z, msg->orientation.x, msg->orientation.y,
         msg->orientation.z, msg->orientation.w;
     RCLCPP_INFO(this->get_logger(), "heard goal: '%s'", std::to_string(msg->position.x).c_str());
+}
+
+void PIDController::shutdown()
+{
+    std::array<double, 6> commands = { 0 };
+    publish_commands(commands);
+    pub_cmd_wrench_->wait_for_all_acked();
+    RCLCPP_INFO(this->get_logger(), "Shutting down PID controller, sent 0 cmd_wrench.");
 }
