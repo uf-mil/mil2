@@ -44,14 +44,14 @@ class ThrustAndKillNode(
         self.test_pub = self.create_publisher(String, "thrust_set", 10)
 
     def _thruster_efforts_cb(self, msg: ThrusterEfforts):
-        self.send_packet(ThrustSetPacket(ThrusterId.FLH, min(msg.thrust_flh, 0.7)))
-        self.send_packet(ThrustSetPacket(ThrusterId.FRH, min(msg.thrust_frh, 0.7)))
-        self.send_packet(ThrustSetPacket(ThrusterId.FLV, min(msg.thrust_flv, 0.7)))
-        self.send_packet(ThrustSetPacket(ThrusterId.FRV, min(msg.thrust_frv, 0.7)))
-        self.send_packet(ThrustSetPacket(ThrusterId.BLH, min(msg.thrust_blh, 0.7)))
-        self.send_packet(ThrustSetPacket(ThrusterId.BRH, min(msg.thrust_brh, 0.7)))
-        self.send_packet(ThrustSetPacket(ThrusterId.BLV, min(msg.thrust_blv, 0.7)))
-        self.send_packet(ThrustSetPacket(ThrusterId.BRV, min(msg.thrust_brv, 0.7)))
+        self.send_packet(ThrustSetPacket(ThrusterId.FLH, min(msg.thrust_flh, 1)))
+        self.send_packet(ThrustSetPacket(ThrusterId.FRH, min(msg.thrust_frh, 1)))
+        self.send_packet(ThrustSetPacket(ThrusterId.FLV, min(msg.thrust_flv, 1)))
+        self.send_packet(ThrustSetPacket(ThrusterId.FRV, min(msg.thrust_frv, 1)))
+        self.send_packet(ThrustSetPacket(ThrusterId.BLH, min(msg.thrust_blh, 1)))
+        self.send_packet(ThrustSetPacket(ThrusterId.BRH, min(msg.thrust_brh, 1)))
+        self.send_packet(ThrustSetPacket(ThrusterId.BLV, min(msg.thrust_blv, 1)))
+        self.send_packet(ThrustSetPacket(ThrusterId.BRV, min(msg.thrust_brv, 1)))
 
     def on_packet_received(self, packet: Packet):
         self.get_logger().error(f"Received packet: {packet}")
