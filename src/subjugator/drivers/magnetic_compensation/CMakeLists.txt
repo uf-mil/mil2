@@ -19,6 +19,12 @@ find_package(tf2 REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+# Install project launch files
+install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
+
+# Install project configuration files
+install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
+
 # create the component library
 add_library(
   ${PROJECT_NAME} SHARED src/component.cpp # adjust if your source file is named

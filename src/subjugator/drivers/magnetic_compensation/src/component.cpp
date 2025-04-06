@@ -18,8 +18,8 @@ class HardsoftCompensator : public rclcpp::Node
         // Declare and get parameters
         frame_id_ = this->declare_parameter<std::string>("frame_id", "imu_link");
 
-        auto scale = this->declare_parameter<std::vector<double>>("scale", std::vector<double>(9, 0.0));
-        auto shift_vec = this->declare_parameter<std::vector<double>>("shift", std::vector<double>(3, 0.0));
+        auto scale = this->declare_parameter<std::vector<double>>("scale");
+        auto shift_vec = this->declare_parameter<std::vector<double>>("shift");
 
         if (scale.size() != 9 || shift_vec.size() != 3)
         {
@@ -32,6 +32,18 @@ class HardsoftCompensator : public rclcpp::Node
         for (size_t i = 0; i < 9; ++i)
         {
             scale_matrix(i / 3, i % 3) = scale[i];
+        }
+
+        // Check if the scale matrix is invertible
+        if (scale_matrix.determinant() == 0)
+        {
+            std::string scale_str;
+            for (size_t i = 0; i < 9; ++i)
+            {
+                scale_str += std::to_string(scale[i]) + " ";
+            }
+            RCLCPP_ERROR(this->get_logger(), "Scale matrix is not invertible: %s", scale_str.c_str());
+            throw std::runtime_error("Scale matrix is not invertible");
         }
         scale_inverse_ = scale_matrix.inverse();
         shift_ = Eigen::Vector3d(shift_vec[0], shift_vec[1], shift_vec[2]);
@@ -65,6 +77,7 @@ class HardsoftCompensator : public rclcpp::Node
 
         sensor_msgs::msg::MagneticField result;
         result.header = msg->header;
+        result.header.stamp = this->now();
         tf2::toMsg(processed, result.magnetic_field);
 
         pub_->publish(result);
