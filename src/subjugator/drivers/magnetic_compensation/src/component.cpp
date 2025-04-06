@@ -51,7 +51,7 @@ class HardsoftCompensator : public rclcpp::Node
         // Create publisher and subscriber
         pub_ = this->create_publisher<sensor_msgs::msg::MagneticField>("imu/mag", 10);
         sub_ = this->create_subscription<sensor_msgs::msg::MagneticField>(
-            "imu/mag_raw", 10,
+            "/vectornav/magnetic", 10,
             [this](sensor_msgs::msg::MagneticField::SharedPtr const msg) { this->handle_mag_field(msg); });
     }
 
