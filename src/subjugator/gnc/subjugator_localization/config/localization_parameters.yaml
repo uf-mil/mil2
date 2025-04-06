@@ -1,7 +1,7 @@
 ---
 /subjugator_localization:
   ros__parameters:
-    imu0: "/imu/data_raw"
+    imu0: "/vectornav/imu"
     imu0_config: [
       false, false, false,
       true, true, true,
@@ -13,18 +13,7 @@
     imu0_relative: true
     imu0_remove_gravitational_acceleration: true
     imu0_queue_size: 10
-#     pose0: "/depth/pose"
-#     pose0_config: [
-#       false, false, true,
-#       false, false, false,
-#       false, false, false,
-#       false, false, false,
-#       false, false, false
-#     ]
-#     pose0_differential: true
-#     pose0_relative: true
-#     pose0_queue_size: 10
-    odom0: "/dvl/velocity"
+    odom0: "/waterlinked_dvl_driver/odom"
     odom0_config:
       [
         false, false, false,
@@ -47,7 +36,22 @@
 #     pose0_queue_size: 10
     print_diagnostics: true
     publish_acceleration: true
-#     debug: true
-#     debug_out_file: "~/debug.txt"
+#    debug: true
+#    debug_out_file: "/home/sub9/debug.txt"
     frequency: 10.0
-#     initial_state: [0.0] * 15
+    initial_state:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
