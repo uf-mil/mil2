@@ -37,6 +37,7 @@ alias search_root='sudo find / ... | grep -i'
 alias search='find . -print | grep -i'
 alias fd="fdfind"
 alias cb="colbuild"
+alias imu-socat="sudo socat PTY,link=/dev/ttyV0,mode=777 TCP:192.168.37.61:10001"
 
 # potentially borrowed from forrest
 autopush() {
