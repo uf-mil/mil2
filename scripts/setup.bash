@@ -76,14 +76,26 @@ colbuild() {
 	local prev_dir
 	prev_dir=$(pwd)                # Store the current directory
 	cd $MIL_REPO || return         # Change to your workspace
-
-	#checking for package parameters
-	if [ -n "$1" ]; then
-		rm -rf build/"$1" install/"$1" log # Cleaning old files before running colcon (to fix electrical_protocol issue)
-		# Build the specific package
-		colcon build --symlink-install --packages-select "$1" \
-            --event-handlers console_cohesion+ \
-            --cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON #adding more options
+	
+	local packages=();
+	local verbose_count=0;
+	#see if there is verbose in the input
+	for arg in $@; do
+		if [ "$arg" == "--verbose" ]; then
+			verbose_count=1;
+		else
+			packages+=("$arg") # adding all the packages
+		fi 
+	done
+	#checking for package parameters, $@ list of args
+	if [ "${#packages[@]}" -gt 0 ]; then
+		if [ "$verbose_count" -eq 1 ]; then #build with all the extra stuff
+			colcon build --symlink-install --packages-select ${packages[@]} \
+				--event-handlers console_cohesion+ \
+				--cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON
+		else
+			colcon build --symlink-install --packages-select ${packages[@]}
+		fi
 	else
 		# Build all packages
 		colcon build --symlink-install
@@ -94,7 +106,7 @@ colbuild() {
 
 # make it cb as another option
 cb() {
-	colbuild "$1"
+	colbuild "$@"
 }
 
 # Print all devices on the specified subnet / network prefix
