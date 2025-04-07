@@ -56,6 +56,7 @@ jobs:
         run: |
           ping -c 1 subjugator.org &> /dev/null
 
+<<<<<<< HEAD
   internal:
     name: internal visibility healthcheck
     runs-on:
@@ -64,3 +65,41 @@ jobs:
       - name: zobelisk
         run: |
           ping -c 1 192.168.37.23 &> /dev/null
+=======
+  account-access:
+    name: SMTP Access Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify access for all accounts
+        env:
+          ACCOUNTS_JSON: ${{ secrets.ACCOUNTS_JSON }}
+        run: |
+          python - <<'EOF'
+          import imaplib, os, json
+          try:
+              data = json.loads(os.environ["ACCOUNTS_JSON"])
+          except Exception as e:
+              print(f"Error loading accounts JSON: {e}")
+              exit(1)
+
+          for account in data.get("accounts", []):
+              server = account.get("server")
+              username = account.get("username")
+              password = account.get("password")
+              if not server or not username or not password:
+                  print(f"Malformed JSON or missing credentials for account: {account}")
+                  exit(1)
+              try:
+                  mail = imaplib.IMAP4_SSL(server)
+                  mail.login(username, password)
+                  status, _ = mail.select("inbox")
+                  if status != 'OK':
+                      print(f"Failed to access inbox for {server}.")
+                      exit(1)
+                  print(f"Access verified for {server}.")
+                  mail.logout()
+              except Exception as e:
+                  print(f"Error for account {server}: {e}")
+                  exit(1)
+          EOF
+>>>>>>> 41d3e20 (add account-access check to ci)
