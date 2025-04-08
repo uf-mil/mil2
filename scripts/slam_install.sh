@@ -1,5 +1,4 @@
 # Install dependencies
-sudo add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security main" -y
 sudo apt update
 
 sudo apt-get install build-essential -y
@@ -20,20 +19,19 @@ sudo apt install libopencv-dev -y
 cd ../ext
 git clone --recursive https://github.com/stevenlovegrove/Pangolin.git
 cd Pangolin
-./Pangolin/scripts/install_prerequisites.sh --dry-run recommended
+./scripts/install_prerequisites.sh --dry-run recommended
 
 # Configure and build
-mkdir build
-cd build
-cmake .. -D CMAKE_BUILD_TYPE=Release
-make -j 3
+cmake -B build
+cmake --build build
+cd build/
 sudo make install
 sudo ldconfig
 
 # Install ORB-SLAM3
 cd ../..
 git clone https://github.com/UZ-SLAMLab/ORB_SLAM3.git ORB_SLAM3
-cd ORB_SLAM3
+cd ORB_SLAM3/
 sed -i 's/++11/++14/g' CMakeLists.txt
 chmod +x build.sh
 ./build.sh
