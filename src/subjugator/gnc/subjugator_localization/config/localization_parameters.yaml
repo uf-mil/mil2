@@ -1,7 +1,7 @@
 ---
 /subjugator_localization:
   ros__parameters:
-    imu0: "/vectornav/imu"
+    imu0: "/imu/data"
     imu0_config: [
       false, false, false,
       true, true, true,
@@ -13,7 +13,7 @@
     imu0_relative: true
     imu0_remove_gravitational_acceleration: true
     imu0_queue_size: 10
-    odom0: "/waterlinked_dvl_driver/odom"
+    odom0: "/dvl/odom"
     odom0_config:
       [
         false, false, false,

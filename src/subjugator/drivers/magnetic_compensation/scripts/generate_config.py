@@ -143,7 +143,7 @@ def main():
         sys.exit(1)
 
     bag_file = sys.argv[1]
-    topic = "/vectornav/magnetic"
+    topic = "/imu/mag_raw"
 
     points = read_ros2_bag(bag_file, topic)
 
