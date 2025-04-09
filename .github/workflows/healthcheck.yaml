@@ -6,6 +6,8 @@ on:
   schedule:
     # Run every hour
     - cron: '0 * * * *'
+  workflow_call:
+  workflow_dispatch:
 
 jobs:
   ufl:
@@ -24,7 +26,7 @@ jobs:
           ping -c 1 workstation2.mil.ufl.edu &> /dev/null
       - name: nas
         run: |
-          ping -c 1 10.245.80.239 &> /dev/null
+          ping -c 1 nas.mil.ufl.edu &> /dev/null
 
   # TODO uf-mil/mil2#94
   # milnet:

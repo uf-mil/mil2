@@ -33,6 +33,11 @@ jobs:
       - id: check_skip
         uses: fkirc/skip-duplicate-actions@v5
 
+  ensure_healthcheck:
+    uses: ./.github/workflows/healthcheck.yaml
+    needs: avoid-duplicate-ci
+    if: needs.avoid-duplicate-ci.outputs.should_skip != 'true'
+
   pre-commit:
     name: Run pre-commit
     needs: avoid-duplicate-ci
