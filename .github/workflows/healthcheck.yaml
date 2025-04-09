@@ -53,3 +53,12 @@ jobs:
       - name: subjugator website
         run: |
           ping -c 1 subjugator.org &> /dev/null
+
+  internal:
+    name: internal visibility healthcheck
+    runs-on:
+      group: mala-lab-noble
+    steps:
+      - name: zobelisk
+        run: |
+          ping -c 1 192.168.37.23 &> /dev/null
