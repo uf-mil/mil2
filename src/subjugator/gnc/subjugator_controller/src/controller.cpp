@@ -3,6 +3,7 @@
 PIDController::PIDController() : Node("pid_controller")
 {
     this->is_shutdown = false;
+    this->heard_odom = false;
 
     sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "odometry/filtered", 10, [this](nav_msgs::msg::Odometry::UniquePtr msg) { this->odom_cb(std::move(msg)); });
@@ -24,7 +25,7 @@ PIDController::PIDController() : Node("pid_controller")
 
     auto param_cb = [this](rclcpp::Parameter const &p)
     {
-        RCLCPP_INFO(this->get_logger(), "cb: Received an update to parameter \"%s\"", p.get_name().c_str());
+        RCLCPP_INFO(this->get_logger(), "Received an update to parameter \"%s\"", p.get_name().c_str());
 
         param_map_[p.get_name()].first = p.as_double_array();
 
@@ -53,14 +54,17 @@ PIDController::PIDController() : Node("pid_controller")
                                            param_map_["imin"].first[i], param_map_["antiwindup"].first[i]);
     }
 
-    // set starting command to all zeros
-    last_cmd_time_ = this->get_clock()->now();
-    last_goal_trajectory_ = Eigen::Matrix<double, 7, 1>::Zero();
-    last_goal_trajectory_[6] = 1.0;  // set w to 1.0 for quaternion
+    // wait to hear odom msg
+    RCLCPP_INFO(this->get_logger(), "Waiting for odometry msg...");
+    while (!this->heard_odom)
+    {
+        rclcpp::spin_some(this->get_node_base_interface());
+    }
+    RCLCPP_INFO(this->get_logger(), "Heard odometry msg. Starting control loop.");
 
-    // init odom to all zeros
-    last_odom_ = Eigen::Matrix<double, 7, 1>::Zero();
-    last_odom_[6] = 1.0;  // set w to 1.0 for quaternion
+    // set starting command to first odom msg (stationkeep)
+    last_goal_trajectory_ = last_odom_;
+    last_cmd_time_ = this->get_clock()->now();
 
     control_loop();
 }
@@ -104,6 +108,15 @@ void PIDController::control_loop()
 
         // publish as cmd_wrench
         publish_commands(commands);
+        // log goal and odom
+        RCLCPP_INFO(this->get_logger(), "goal: '%s' '%s' '%s' '%s' '%s' '%s'",
+                    std::to_string(last_goal_trajectory_(0)).c_str(), std::to_string(last_goal_trajectory_(1)).c_str(),
+                    std::to_string(last_goal_trajectory_(2)).c_str(), std::to_string(last_goal_trajectory_(3)).c_str(),
+                    std::to_string(last_goal_trajectory_(4)).c_str(), std::to_string(last_goal_trajectory_(5)).c_str());
+        RCLCPP_INFO(this->get_logger(), "odom: '%s' '%s' '%s' '%s' '%s' '%s'", std::to_string(last_odom_(0)).c_str(),
+                    std::to_string(last_odom_(1)).c_str(), std::to_string(last_odom_(2)).c_str(),
+                    std::to_string(last_odom_(3)).c_str(), std::to_string(last_odom_(4)).c_str(),
+                    std::to_string(last_odom_(5)).c_str());
         RCLCPP_INFO(this->get_logger(), "errors: '%s' '%s' '%s' '%s' '%s' '%s'", std::to_string(errors[0]).c_str(),
                     std::to_string(errors[1]).c_str(), std::to_string(errors[2]).c_str(),
                     std::to_string(errors[3]).c_str(), std::to_string(errors[4]).c_str(),
@@ -136,6 +149,7 @@ void PIDController::odom_cb(nav_msgs::msg::Odometry::UniquePtr const msg)
     last_odom_ << msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z,
         msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z,
         msg->pose.pose.orientation.w;
+    this->heard_odom = true;
 }
 
 void PIDController::goal_trajectory_cb(geometry_msgs::msg::Pose::UniquePtr const msg)

@@ -26,6 +26,7 @@ class PIDController : public rclcpp::Node
 
   private:
     bool is_shutdown;
+    bool heard_odom;
     static int const dof_ = 6;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom_;
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr sub_goal_trajectory_;
