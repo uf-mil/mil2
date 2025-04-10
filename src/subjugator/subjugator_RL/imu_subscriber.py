@@ -5,8 +5,8 @@ import threading
 import time
 import os
 
-class imu_subscriber(Node):
-    def init(self):
+class ImuSubscriber(Node):
+    def __init__(self):
         super().init('imu_subscriber')
         self.imu_subscription = self.create_subscription(
             Imu,
@@ -29,11 +29,11 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Declare node and spin it
-    node = imu_subscriber()
+    node = ImuSubscriber()
     rclpy.spin(node)
 
     node.destroy_node()
     rclpy.shutdown()
 
-if name == 'main':
+if __name__ == '__main__':
     main()
