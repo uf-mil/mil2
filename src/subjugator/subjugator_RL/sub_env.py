@@ -16,6 +16,7 @@ SHAPE = [50,80,3]
 #to be finished
 class SubEnv(gym.Env):
 
+    # Is threading needed? Might add unnecessary computation that could slow down training --
     imu_thread = threading.Thread(target=imu_main)
     imu_thread.daemon = True  # The thread will exit when the main program exits
     imu_thread.start()
@@ -26,6 +27,7 @@ class SubEnv(gym.Env):
         self.observation_space = spaces.Dict({
                 'image'                 : spaces.Box(0, 255, shape=(SHAPE[0], SHAPE[1], SHAPE[2]), dtype=np.uint8),
                 'orientation'           : spaces.Box(low = -np.inf, high = np.inf, shape=(4,))
+                'object_distance'       : spaces.Box(low = 0, high = 100, shape=(1,), dtype=np.float32),
             })
 
 
@@ -36,25 +38,61 @@ class SubEnv(gym.Env):
             })
 
         self.imu_node = ImuSubscriber()
-        # self.sketch = None
-        # self.setup = True
 
 
 
     def _get_obs(self):
         # Get image from RL_subscriber through pipe
-        
         with open("image_pipe", 'rb') as pipe:
-            imu_data = pipe.read()
+            img_data = pipe.read()
             if img_data:
                 image = np.frombuffer(img_data, dtype=np.uint8).reshape((SHAPE[0], SHAPE[1], SHAPE[2]))
-
-       
         
-        return {"image": image, }
+        # We need imu version of above based on imu_node --
+        
+        # Get object distance via the buoy_finder (possibly through a subscriber) --       
+        
+        # imu and object_distance are yet to be implemented --
+        return {"image": image, imu, object_distance }
     
+    # Unneeded, can be used for debugging
+    def _get_info(self):
+        print("Getting info")
 
 
+    def step(self, action):
+        # Send action to the environment
+        self._publish_action_as_wrench(self, action)
+
+        # Get observation from the environment (especially object_distance)
+        observation = self._get_obs(self)
+
+        # Get extra info (mostly for debugging)
+        info = self._get_info(self)
+
+        # Define rules for rewarding - must be within range of 2 and 5 meters of object
+        if (self.object_distance < 2 or self.object_distance > 5):
+            reward = 1
+        else:
+            reward = 0
+
+        # Also define termination (when to end)
+        terminated = False
+        if (self.object_distance < 2){
+            terminated = True
+        }
+    
+        return observation, reward, terminated, False, info
+    
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+
+        # Find initial position of sub and place it there (if possible within the ROS environment, or simply send it to initial position) --
+
+        observation = self._get_obs(self)
+        info = self._get_info(self)
+
+        return observation, info
 
 
     def _publish_action_as_wrench(self, action):
@@ -79,16 +117,8 @@ class SubEnv(gym.Env):
             print("Writing to wrench publisher")
             pipe.write(wrench_msg.tobytes())
 
-
-    def step(self, action):
-        self._publish_action_as_wrench(self, action)
-
-        #if()
-        #reward
-        observation = self._get_obs(self)
 # subscriber for IMU
 # Register the environment in the gym
-
 register(
     id="SubjugatorAgent-v0",
     entry_point=SubEnv
