@@ -1,5 +1,4 @@
 import threading
-import time
 
 import depthai as dai
 import rclpy
@@ -12,7 +11,8 @@ class LuxonisCamera(Node):
     def __init__(self):
         super().__init__("luxonis_camera")
         self.rgb_pub = self.create_publisher(Image, "cam_rgb", 10)
-        self.mono_pub = self.create_publisher(Image, "cam_mono", 10)
+        self.left_pub = self.create_publisher(Image, "cam_left", 10)
+        self.right_pub = self.create_publisher(Image, "cam_right", 10)
         self.depth_pub = self.create_publisher(Image, "cam_depth", 10)
 
         self.__pipeline = dai.Pipeline()
@@ -59,15 +59,27 @@ class LuxonisCamera(Node):
 
     def run(self):
         with dai.Device(self.__pipeline) as device:
-            color_queue = device.getOutputQueue("cam_rgb", maxSize=4, blocking=False)
-            mono_queue = device.getOutputQueue("left", maxSize=4, blocking=False)
-            depth_queue = device.getOutputQueue("cam_depth", maxSize=4, blocking=False)
+            color_queue = device.getOutputQueue(
+                name="cam_rgb",
+                maxSize=4,
+                blocking=False,
+            )
+            left_queue = device.getOutputQueue(name="left", maxSize=4, blocking=False)
+            right_queue = device.getOutputQueue(name="right", maxSize=4, blocking=False)
+            depth_queue = device.getOutputQueue(
+                name="cam_depth",
+                maxSize=4,
+                blocking=False,
+            )
 
             while rclpy.ok():
                 color_frame = (
                     color_queue.get().getCvFrame() if color_queue.has() else None
                 )
-                mono_frame = mono_queue.get().getCvFrame() if mono_queue.has() else None
+                left_frame = left_queue.get().getCvFrame() if left_queue.has() else None
+                right_frame = (
+                    right_queue.get().getCvFrame() if right_queue.has() else None
+                )
                 depth_frame = (
                     depth_queue.get().getCvFrame() if depth_queue.has() else None
                 )
@@ -75,19 +87,17 @@ class LuxonisCamera(Node):
                 # print(color_frame is not None, mono_frame is not None, depth_frame is not None)
 
                 if color_frame is not None:
-                    print("rgb")
                     msg = self.bridge.cv2_to_imgmsg(color_frame, "bgr8")
                     self.rgb_pub.publish(msg)
-                if mono_frame is not None:
-                    print("mono")
-                    msg = self.bridge.cv2_to_imgmsg(mono_frame, "mono8")
-                    self.mono_pub.publish(msg)
+                if left_frame is not None:
+                    msg = self.bridge.cv2_to_imgmsg(left_frame, "mono8")
+                    self.left_pub.publish(msg)
+                if right_frame is not None:
+                    msg = self.bridge.cv2_to_imgmsg(right_frame, "mono8")
+                    self.right_pub.publish(msg)
                 if depth_frame is not None:
-                    print("depth!")
                     msg = self.bridge.cv2_to_imgmsg(depth_frame, "mono16")
                     self.depth_pub.publish(msg)
-
-                time.sleep(0.03)
 
 
 def main(args=None):
