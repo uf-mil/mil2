@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 import rclpy
 from electrical_protocol import AckPacket, NackPacket, Packet, SerialDeviceNode
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
@@ -78,6 +80,16 @@ class ThrustAndKillNode(
         self.send_packet(ThrustSetPacket(ThrusterId.BLV, min(msg.thrust_blv, 1)))
         self.send_packet(ThrustSetPacket(ThrusterId.BRV, min(msg.thrust_brv, 1)))
 
+    def reset(self):
+        self.send_packet(ThrustSetPacket(ThrusterId.FLH, 0))
+        self.send_packet(ThrustSetPacket(ThrusterId.FRH, 0))
+        self.send_packet(ThrustSetPacket(ThrusterId.FLV, 0))
+        self.send_packet(ThrustSetPacket(ThrusterId.FRV, 0))
+        self.send_packet(ThrustSetPacket(ThrusterId.BLH, 0))
+        self.send_packet(ThrustSetPacket(ThrusterId.BRH, 0))
+        self.send_packet(ThrustSetPacket(ThrusterId.BLV, 0))
+        self.send_packet(ThrustSetPacket(ThrusterId.BRV, 0))
+
     def on_packet_received(self, packet: Packet):
         self.get_logger().error(f"Received packet: {packet}")
 
@@ -85,7 +97,9 @@ class ThrustAndKillNode(
 def main(args=None):
     rclpy.init(args=args)
     thrust_kill_node = ThrustAndKillNode()
-    rclpy.spin(thrust_kill_node)
+    with contextlib.suppress(KeyboardInterrupt):
+        rclpy.spin(thrust_kill_node)
+    thrust_kill_node.reset()
     rclpy.shutdown()
 
 
