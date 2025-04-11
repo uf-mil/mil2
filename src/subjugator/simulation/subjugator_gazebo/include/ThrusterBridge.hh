@@ -43,14 +43,16 @@ class ThrusterBridge : public gz::sim::System, public gz::sim::ISystemConfigure,
 
   private:
     // ROS node + publisher //
-    std::shared_ptr<rclcpp::Node> rosNode_;
-    rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr thrusterSub_;
+    rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr thrustPublisher;
+    rclcpp::Subscription<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr thrustSubscription;
+    std::shared_ptr<rclcpp::Node> thrustNode;
 
     // Gazebo Thruster Node //
     gz::transport::Node gz_node;
 
     // Callback for receiving thruster efforts //
     void receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts const &msg);
+    void receiveGazeboCallback(subjugator_msgs::msg::ThrusterEfforts const &msg);
 
     // Thruster efforts storage - FLV = Front Left Vertical, BRH = Back Right Horizontal //
     std::vector<float> thrusterEfforts_;

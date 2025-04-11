@@ -111,7 +111,7 @@ ament_target_dependencies(ThrusterBridge rclcpp subjugator_msgs geometry_msgs)
 
 # Install the plugins
 install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge Hydrophone DepthSensor
-        LIBRARY DESTINATION lib/${PROJECT_NAME})
+                ThrusterBridge LIBRARY DESTINATION lib/${PROJECT_NAME})
 
 # Install headers
 install(DIRECTORY include/ DESTINATION include)
