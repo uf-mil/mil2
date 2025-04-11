@@ -36,7 +36,7 @@ set(msg_files
     "msg/ObjectDetections.msg")
 
 set(srv_files "srv/CameraToLidarTransform.srv" "srv/ObjectDBQuery.srv"
-              "srv/SetGeometry.srv")
+              "srv/SetGeometry.srv" "srv/GetStatus.srv")
 
 rosidl_generate_interfaces(
   ${PROJECT_NAME}

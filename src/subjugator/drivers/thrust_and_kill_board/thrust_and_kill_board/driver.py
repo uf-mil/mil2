@@ -6,6 +6,7 @@ import contextlib
 
 import rclpy
 from electrical_protocol import AckPacket, NackPacket, SerialDeviceNode
+from mil_msgs.srv import GetStatus
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from rclpy.duration import Duration
 from rclpy.time import Time
@@ -68,7 +69,7 @@ class ThrustAndKillNode(
         self.connect(port_val, baudrate_val)
         # TODO (kill, cbrxyz): uf-mil/mil2#85
         self.is_killed_srv = self.create_service(
-            String,
+            GetStatus,
             "is_killed",
             self._is_killed_cb,
         )
@@ -92,11 +93,12 @@ class ThrustAndKillNode(
             self.killed = True
         self.send_packet(HeartbeatSetPacket())
 
-    def _is_killed_cb(self, request: String, response: String):
-        if self.killed:
-            response.data = "True"
-        else:
-            response.data = "False"
+    def _is_killed_cb(
+        self,
+        _: GetStatus.Request,
+        response: GetStatus.Response,
+    ) -> GetStatus.Response:
+        response.status = self.killed
         return response
 
     def _thruster_efforts_cb(self, msg: ThrusterEfforts):

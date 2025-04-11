@@ -1,0 +1,4 @@
+# Represents the on/off state of a particular aspect of a system
+
+---
+bool status     # the status of the system (aka, on/off, alive/dead)
