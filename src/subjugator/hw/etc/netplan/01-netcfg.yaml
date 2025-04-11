@@ -1,0 +1,14 @@
+---
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    eno1:
+      dhcp4: true
+    enx0050b617e178:
+      dhcp4: false
+      addresses:
+        - 192.168.194.60/24
+     # routes:
+     #   - to: default
+     #     via: 192.168.194.1
