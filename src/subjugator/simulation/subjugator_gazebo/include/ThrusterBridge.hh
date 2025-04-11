@@ -52,10 +52,10 @@ class ThrusterBridge : public gz::sim::System, public gz::sim::ISystemConfigure,
 
     // Callback for receiving thruster efforts //
     void receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts const &msg);
-    void receiveGazeboCallback(subjugator_msgs::msg::ThrusterEfforts const &msg);
+    void receiveGazeboCallback(gz::msgs::Double const &msg);
 
     // Thruster efforts storage - FLV = Front Left Vertical, BRH = Back Right Horizontal //
-    std::vector<float> thrusterEfforts_;
+    std::vector<std::string> thrusterNames{ flh, frh, blh, brh, flv, frv, blv, brv };
     float flh;
     float frh;
     float blh;

@@ -35,11 +35,10 @@ void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
         "/thruster_efforts", 1, std::bind(&thrusterBridge::ThrusterBridge::receiveEffortCallback, this, _1));
 
     // Gazebo transport node
-    // change to proper gz::msgs:
-    std::function<void(subjugator_msgs::msg::ThrusterEfforts const &)> callback =
+    std::function<void(gz::msgs::Double const &)> callback =
         std::bind(&ThrusterBridge::receiveGazeboCallback, this, _1);
 
-    gz_node.Subscribe("/thruster_efforts", callback);
+    gz_node.Advertise("/model/FLH/joint/FLH_dir_joint/cmd_thrust", callback);
 }
 
 void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts const &msg)
@@ -55,21 +54,31 @@ void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts
     frv = msg.thrust_frv;
     blv = msg.thrust_blv;
     brv = msg.thrust_brv;
+
+    for (int i = 0; i < 8; i++)
+    {
+        std::string topicName = "/model/ " + thrusterNames[i] + "/joint/" + thrusterNames[i] + "_dir_joint/cmd_thrust";
+        gz_node.Advertise(topicName, )
+    }
+
+    std::cout << "KEITHING IT" << std::endl;
 }
 
-void ThrusterBridge::receiveGazeboCallback(subjugator_msgs::msg::ThrusterEfforts const &msg)
+void ThrusterBridge::receiveGazeboCallback(gz::msgs::Double const &msg)
 {
     // Process the received thruster efforts message
-    std::cout << "[ThrusterBridge] Received Thruster Efforts: " << std::endl;
+    std::cout << "[Gazebo Node] Received Thruster Efforts: " << std::endl;
 
-    flh = msg.thrust_flh;
-    frh = msg.thrust_frh;
-    blh = msg.thrust_blh;
-    brh = msg.thrust_brh;
-    flv = msg.thrust_flv;
-    frv = msg.thrust_frv;
-    blv = msg.thrust_blv;
-    brv = msg.thrust_brv;
+    msg = flh
+
+    // flh = msg.thrust_flh;
+    // frh = msg.thrust_frh;
+    // blh = msg.thrust_blh;
+    // brh = msg.thrust_brh;
+    // flv = msg.thrust_flv;
+    // frv = msg.thrust_frv;
+    // blv = msg.thrust_blv;
+    // brv = msg.thrust_brv;
 }
 
 // PostUpdate() -  //
