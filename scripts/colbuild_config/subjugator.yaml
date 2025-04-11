@@ -1,0 +1,7 @@
+---
+packages:
+  - subjugator_msgs
+  - subjugator_description
+  - subjugator_controller
+  - subjugator_keyboard_control
+  - subjugator_localization
