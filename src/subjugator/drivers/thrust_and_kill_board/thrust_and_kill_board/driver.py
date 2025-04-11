@@ -5,8 +5,10 @@ from __future__ import annotations
 import contextlib
 
 import rclpy
-from electrical_protocol import AckPacket, NackPacket, Packet, SerialDeviceNode
+from electrical_protocol import AckPacket, NackPacket, SerialDeviceNode
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
+from rclpy.duration import Duration
+from rclpy.time import Time
 from std_msgs.msg import String
 from subjugator_msgs.msg import ThrusterEfforts
 
@@ -26,14 +28,17 @@ def msg_to_string(msg):
     return " ".join(f"{byte:02x}" for byte in msg)
 
 
+SendPackets = ThrustSetPacket | HeartbeatSetPacket
+ReceivePackets = HeartbeatReceivePacket | AckPacket | NackPacket
+
+
 class ThrustAndKillNode(
-    SerialDeviceNode[
-        ThrustSetPacket | HeartbeatSetPacket,
-        HeartbeatReceivePacket | AckPacket | NackPacket,
-    ],
+    SerialDeviceNode[SendPackets, ReceivePackets],
 ):
 
     killed: bool = True
+    heartbeat_timeout = Duration(seconds=1.25)
+    last_heartbeat: Time
 
     def __init__(self):
         # Port parameter
@@ -62,6 +67,11 @@ class ThrustAndKillNode(
         )
         self.connect(port_val, baudrate_val)
         # TODO (kill, cbrxyz): uf-mil/mil2#85
+        self.is_killed_srv = self.create_service(
+            String,
+            "is_killed",
+            self._is_killed_cb,
+        )
         self.thruster_sub = self.create_subscription(
             ThrusterEfforts,
             "thruster_efforts",
@@ -69,8 +79,29 @@ class ThrustAndKillNode(
             10,
         )
         self.test_pub = self.create_publisher(String, "thrust_set", 10)
+        # Heartbeat
+        self.last_heartbeat = self.get_clock().now()
+        self.heartbeat_timer = self.create_timer(1.0, self._heartbeat_send_cb)
+
+    def _heartbeat_send_cb(self):
+        if (self.get_clock().now() - self.last_heartbeat) > self.heartbeat_timeout:
+            self.get_logger().error(
+                "Heartbeat timeout. Resetting thrust and kill board.",
+            )
+            self.reset()
+            self.killed = True
+        self.send_packet(HeartbeatSetPacket())
+
+    def _is_killed_cb(self, request: String, response: String):
+        if self.killed:
+            response.data = "True"
+        else:
+            response.data = "False"
+        return response
 
     def _thruster_efforts_cb(self, msg: ThrusterEfforts):
+        if self.killed:
+            return
         self.send_packet(ThrustSetPacket(ThrusterId.FLH, min(msg.thrust_flh, 1)))
         self.send_packet(ThrustSetPacket(ThrusterId.FRH, min(msg.thrust_frh, 1)))
         self.send_packet(ThrustSetPacket(ThrusterId.FLV, min(msg.thrust_flv, 1)))
@@ -90,7 +121,10 @@ class ThrustAndKillNode(
         self.send_packet(ThrustSetPacket(ThrusterId.BLV, 0))
         self.send_packet(ThrustSetPacket(ThrusterId.BRV, 0))
 
-    def on_packet_received(self, packet: Packet):
+    def on_packet_received(self, packet: ReceivePackets):
+        if isinstance(packet, HeartbeatReceivePacket):
+            self.last_heartbeat = self.get_clock().now()
+            self.killed = False
         self.get_logger().error(f"Received packet: {packet}")
 
 
