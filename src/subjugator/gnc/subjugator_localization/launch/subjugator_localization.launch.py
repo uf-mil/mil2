@@ -15,7 +15,7 @@ def generate_launch_description():
     return LaunchDescription(
         [
             Node(
-                package="robot_localization",
+                package="subjugator_localization",
                 executable="ekf_node",
                 name="subjugator_localization",
                 parameters=[config_file],
