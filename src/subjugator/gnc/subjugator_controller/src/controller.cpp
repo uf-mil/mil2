@@ -8,8 +8,11 @@ PIDController::PIDController() : Node("pid_controller")
     sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "odometry/filtered", 10, [this](nav_msgs::msg::Odometry::UniquePtr msg) { this->odom_cb(std::move(msg)); });
     sub_goal_trajectory_ = this->create_subscription<geometry_msgs::msg::Pose>(
-        "trajectory", 10,
+        "goal/trajectory", 10,
         [this](geometry_msgs::msg::Pose::UniquePtr msg) { this->goal_trajectory_cb(std::move(msg)); });
+    sub_relative_goal_trajectory_ = this->create_subscription<geometry_msgs::msg::Pose>(
+        "goal/trajectory_relative", 10,
+        [this](geometry_msgs::msg::Pose::UniquePtr msg) { this->relative_goal_trajectory_cb(std::move(msg)); });
     pub_cmd_wrench_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", rclcpp::QoS(1).reliable());
 
     // callback to send 0 cmd_wrench on shutdown
@@ -157,6 +160,21 @@ void PIDController::goal_trajectory_cb(geometry_msgs::msg::Pose::UniquePtr const
     last_goal_trajectory_ << msg->position.x, msg->position.y, msg->position.z, msg->orientation.x, msg->orientation.y,
         msg->orientation.z, msg->orientation.w;
     RCLCPP_INFO(this->get_logger(), "heard goal: '%s'", std::to_string(msg->position.x).c_str());
+}
+
+void PIDController::relative_goal_trajectory_cb(geometry_msgs::msg::Pose::UniquePtr const msg)
+{
+    Eigen::Matrix<double, 7, 1> relative_goal;
+    relative_goal << msg->position.x, msg->position.y, msg->position.z, msg->orientation.x, msg->orientation.y,
+        msg->orientation.z, msg->orientation.w;
+
+    // add relative xyz position to last odom
+    last_goal_trajectory_(Eigen::seq(0, 2)) = last_odom_(Eigen::seq(0, 2)) + relative_goal(Eigen::seq(0, 2));
+    last_goal_trajectory_(Eigen::seq(3, 6)) = relative_goal(Eigen::seq(3, 6)); // dont add orientation, take as absolute
+    RCLCPP_INFO(this->get_logger(), "heard relative goal: '%s' '%s' '%s '%s' '%s' '%s' '%s'", std::to_string(relative_goal(0)).c_str(),
+                std::to_string(relative_goal(1)).c_str(), std::to_string(relative_goal(2)).c_str(),
+                std::to_string(relative_goal(3)).c_str(), std::to_string(relative_goal(4)).c_str(),
+                std::to_string(relative_goal(5)).c_str(), std::to_string(relative_goal(6)).c_str());
 }
 
 void PIDController::shutdown()
