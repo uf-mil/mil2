@@ -12,6 +12,8 @@ PIDController::PIDController() : Node("pid_controller")
         [this](geometry_msgs::msg::Pose::UniquePtr msg) { this->goal_trajectory_cb(std::move(msg)); });
     pub_cmd_wrench_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", rclcpp::QoS(1).reliable());
 
+    this->pub_pose_error_ = this->create_publisher<geometry_msgs::msg::Wrench>("pose_error", 10);
+
     // callback to send 0 cmd_wrench on shutdown
     using rclcpp::contexts::get_global_default_context;
     get_global_default_context()->add_pre_shutdown_callback(
@@ -106,17 +108,30 @@ void PIDController::control_loop()
             commands[i] = pid_vec_[i].compute_command(errors[i], dt_s);
         }
 
+	Eigen::Vector3d goal_euler = goal_quat.toRotationMatrix().eulerAngles(0,1,2);
+	Eigen::Vector3d odom_euler = odom_quat.toRotationMatrix().eulerAngles(0,1,2);
+
         // publish as cmd_wrench
         publish_commands(commands);
+        // publish the errors
+        auto pub_pose_err_msg = geometry_msgs::msg::Wrench();
+        pub_pose_err_msg.force.x = errors[0];
+        pub_pose_err_msg.force.y = errors[1];
+        pub_pose_err_msg.force.z = errors[2];
+        pub_pose_err_msg.torque.x = errors[3];
+        pub_pose_err_msg.torque.y = errors[4];
+        pub_pose_err_msg.torque.z = errors[5];
+        this->pub_pose_error_->publish(pub_pose_err_msg);
+
         // log goal and odom
         RCLCPP_INFO(this->get_logger(), "goal: '%s' '%s' '%s' '%s' '%s' '%s'",
                     std::to_string(last_goal_trajectory_(0)).c_str(), std::to_string(last_goal_trajectory_(1)).c_str(),
-                    std::to_string(last_goal_trajectory_(2)).c_str(), std::to_string(last_goal_trajectory_(3)).c_str(),
-                    std::to_string(last_goal_trajectory_(4)).c_str(), std::to_string(last_goal_trajectory_(5)).c_str());
+                    std::to_string(last_goal_trajectory_(2)).c_str(), std::to_string(goal_euler(0)).c_str(),
+                    std::to_string(goal_euler(1)).c_str(), std::to_string(goal_euler(2)).c_str());
         RCLCPP_INFO(this->get_logger(), "odom: '%s' '%s' '%s' '%s' '%s' '%s'", std::to_string(last_odom_(0)).c_str(),
                     std::to_string(last_odom_(1)).c_str(), std::to_string(last_odom_(2)).c_str(),
-                    std::to_string(last_odom_(3)).c_str(), std::to_string(last_odom_(4)).c_str(),
-                    std::to_string(last_odom_(5)).c_str());
+                    std::to_string(odom_euler(0)).c_str(), std::to_string(odom_euler(1)).c_str(),
+                    std::to_string(odom_euler(2)).c_str());
         RCLCPP_INFO(this->get_logger(), "errors: '%s' '%s' '%s' '%s' '%s' '%s'", std::to_string(errors[0]).c_str(),
                     std::to_string(errors[1]).c_str(), std::to_string(errors[2]).c_str(),
                     std::to_string(errors[3]).c_str(), std::to_string(errors[4]).c_str(),
@@ -125,6 +140,9 @@ void PIDController::control_loop()
                     std::to_string(commands[1]).c_str(), std::to_string(commands[2]).c_str(),
                     std::to_string(commands[3]).c_str(), std::to_string(commands[4]).c_str(),
                     std::to_string(commands[5]).c_str());
+        
+        
+
 
         last_cmd_time_ = tnow;
         rclcpp::spin_some(this->get_node_base_interface());

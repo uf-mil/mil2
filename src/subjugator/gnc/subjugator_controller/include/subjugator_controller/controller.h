@@ -41,4 +41,7 @@ class PIDController : public rclcpp::Node
     std::array<control_toolbox::Pid, 6> pid_vec_;
     void control_loop();
     rclcpp::Time last_cmd_time_;
+
+    // Error Publishers
+    rclcpp::Publisher<geometry_msgs::msg::Wrench>::SharedPtr pub_pose_error_;
 };
