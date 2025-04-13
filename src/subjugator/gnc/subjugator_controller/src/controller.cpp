@@ -109,17 +109,20 @@ void PIDController::control_loop()
             commands[i] = pid_vec_[i].compute_command(errors[i], dt_s);
         }
 
+        Eigen::Vector3d goal_euler = goal_quat.toRotationMatrix().eulerAngles(0, 1, 2);
+        Eigen::Vector3d odom_euler = odom_quat.toRotationMatrix().eulerAngles(0, 1, 2);
+
         // publish as cmd_wrench
         publish_commands(commands);
         // log goal and odom
         RCLCPP_INFO(this->get_logger(), "goal: '%s' '%s' '%s' '%s' '%s' '%s'",
                     std::to_string(last_goal_trajectory_(0)).c_str(), std::to_string(last_goal_trajectory_(1)).c_str(),
-                    std::to_string(last_goal_trajectory_(2)).c_str(), std::to_string(last_goal_trajectory_(3)).c_str(),
-                    std::to_string(last_goal_trajectory_(4)).c_str(), std::to_string(last_goal_trajectory_(5)).c_str());
+                    std::to_string(last_goal_trajectory_(2)).c_str(), std::to_string(goal_euler(0)).c_str(),
+                    std::to_string(goal_euler(1)).c_str(), std::to_string(goal_euler(2)).c_str());
         RCLCPP_INFO(this->get_logger(), "odom: '%s' '%s' '%s' '%s' '%s' '%s'", std::to_string(last_odom_(0)).c_str(),
                     std::to_string(last_odom_(1)).c_str(), std::to_string(last_odom_(2)).c_str(),
-                    std::to_string(last_odom_(3)).c_str(), std::to_string(last_odom_(4)).c_str(),
-                    std::to_string(last_odom_(5)).c_str());
+                    std::to_string(odom_euler(0)).c_str(), std::to_string(odom_euler(1)).c_str(),
+                    std::to_string(odom_euler(2)).c_str());
         RCLCPP_INFO(this->get_logger(), "errors: '%s' '%s' '%s' '%s' '%s' '%s'", std::to_string(errors[0]).c_str(),
                     std::to_string(errors[1]).c_str(), std::to_string(errors[2]).c_str(),
                     std::to_string(errors[3]).c_str(), std::to_string(errors[4]).c_str(),
@@ -170,11 +173,13 @@ void PIDController::relative_goal_trajectory_cb(geometry_msgs::msg::Pose::Unique
 
     // add relative xyz position to last odom
     last_goal_trajectory_(Eigen::seq(0, 2)) = last_odom_(Eigen::seq(0, 2)) + relative_goal(Eigen::seq(0, 2));
-    last_goal_trajectory_(Eigen::seq(3, 6)) = relative_goal(Eigen::seq(3, 6)); // dont add orientation, take as absolute
-    RCLCPP_INFO(this->get_logger(), "heard relative goal: '%s' '%s' '%s '%s' '%s' '%s' '%s'", std::to_string(relative_goal(0)).c_str(),
-                std::to_string(relative_goal(1)).c_str(), std::to_string(relative_goal(2)).c_str(),
-                std::to_string(relative_goal(3)).c_str(), std::to_string(relative_goal(4)).c_str(),
-                std::to_string(relative_goal(5)).c_str(), std::to_string(relative_goal(6)).c_str());
+    last_goal_trajectory_(Eigen::seq(3, 6)) =
+        relative_goal(Eigen::seq(3, 6));  // dont add orientation, take as absolute
+    RCLCPP_INFO(this->get_logger(), "heard relative goal: '%s' '%s' '%s '%s' '%s' '%s' '%s'",
+                std::to_string(relative_goal(0)).c_str(), std::to_string(relative_goal(1)).c_str(),
+                std::to_string(relative_goal(2)).c_str(), std::to_string(relative_goal(3)).c_str(),
+                std::to_string(relative_goal(4)).c_str(), std::to_string(relative_goal(5)).c_str(),
+                std::to_string(relative_goal(6)).c_str());
 }
 
 void PIDController::shutdown()
