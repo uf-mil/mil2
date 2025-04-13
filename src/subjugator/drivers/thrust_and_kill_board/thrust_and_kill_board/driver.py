@@ -100,7 +100,7 @@ def main(args=None):
     with contextlib.suppress(KeyboardInterrupt):
         rclpy.spin(thrust_kill_node)
     thrust_kill_node.reset()
-    rclpy.shutdown()
+    rclpy.try_shutdown()
 
 
 if __name__ == "__main__":
