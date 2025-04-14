@@ -90,27 +90,6 @@ void ThrusterManager::timer_callback()
     }
 
     auto msg = subjugator_msgs::msg::ThrusterEfforts();
-
-    // check that the allocated thrust is not over the safety limit, and if it is, rescale all thrusters by safety_limit
-    // / biggest thrust value
-    double biggest_thrust = 0;
-    bool over_safety_limit = false;
-    for (int i = 0; i < thrust_values.size(); i++)
-    {
-        if (thrust_values[i] > biggest_thrust)
-        {
-            biggest_thrust = thrust_values[i];
-            if (biggest_thrust > safety_limit_)
-            {
-                over_safety_limit = true;
-            }
-        }
-    }
-    if (over_safety_limit)
-    {
-        thrust_values = thrust_values * (safety_limit_ / biggest_thrust);
-    }
-
     msg.thrust_frh = thrust_values[0];
     msg.thrust_flh = thrust_values[1];
     msg.thrust_brh = thrust_values[2];
