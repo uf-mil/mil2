@@ -1,6 +1,7 @@
 #include "mil_tools/hardware/system_info.hpp"
 
 #include <gtest/gtest.h>
+
 #include <cstdlib>
 #include <string>
 
@@ -12,9 +13,9 @@ TEST(system_info, get_cpu_architecture)
     char buffer[10];
     std::string operandA = "";
 
-    while (!feof(pipe)) 
+    while (!feof(pipe))
     {
-        if (fgets(buffer, 10, pipe) != nullptr) 
+        if (fgets(buffer, 10, pipe) != nullptr)
         {
             operandA += buffer;
         }
@@ -23,9 +24,9 @@ TEST(system_info, get_cpu_architecture)
     pclose(pipe);
 
     // Remove the newline (if any)
-    if (!operandA.empty() && operandA[operandA.length()-1] == '\n') 
+    if (!operandA.empty() && operandA[operandA.length() - 1] == '\n')
     {
-        operandA.erase(operandA.length()-1);
+        operandA.erase(operandA.length() - 1);
     }
 
     // Store the result of the get_cpu_architecture function for our comparison

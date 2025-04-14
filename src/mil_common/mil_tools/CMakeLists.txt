@@ -17,9 +17,10 @@ find_package(Eigen3 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 
-add_library(${PROJECT_NAME} src/geometry/Rotation.cpp src/fs/path.cpp
-                            src/os.cpp src/os/FileDescriptor.cpp src/string.cpp 
-                            src/hardware/system_info.cpp)
+add_library(
+  ${PROJECT_NAME}
+  src/geometry/Rotation.cpp src/fs/path.cpp src/os.cpp
+  src/os/FileDescriptor.cpp src/string.cpp src/hardware/system_info.cpp)
 include_directories(include ${EIGEN3_INCLUDE_DIR})
 ament_target_dependencies(${PROJECT_NAME} rclcpp Eigen3 tf2_geometry_msgs)
 ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
@@ -76,10 +77,11 @@ if(BUILD_TESTING)
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
            $<INSTALL_INTERFACE:include>)
   target_link_libraries(${PROJECT_NAME}_itertools_test ${PROJECT_NAME})
-  
-  ament_add_gtest(${PROJECT_NAME}_cpu_architecture_test test/hardware/system_info.cpp)
+
+  ament_add_gtest(${PROJECT_NAME}_cpu_architecture_test
+                  test/hardware/system_info.cpp)
   target_include_directories(
-    ${PROJECT_NAME}_cpu_architecture_test 
+    ${PROJECT_NAME}_cpu_architecture_test
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
            $<INSTALL_INTERFACE:include>)
   target_link_libraries(${PROJECT_NAME}_cpu_architecture_test ${PROJECT_NAME})
