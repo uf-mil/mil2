@@ -59,6 +59,10 @@ class IMUSubscriber(Node):
                 if deviance >= 18:
                     suggestion = "Try rotating the sub 180 degrees in the "
 
+                elif deviance >= 8:
+                    suggestion = "Try rotation the sub 90 degrees in the "
+
+                if deviance >= 8:
                     match (self.test_counter):
 
                         case 0:
@@ -119,24 +123,22 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write("\033[2J\033[H")
                 sys.stdout.write(
-                    "Orient X-Axis of IMU Up, achieve +/- 0.1 deviance to continue tests\n",
+                    f"Orient X-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
                 sys.stdout.write(
                     f"Expected: \t{self.x_axis_test[0]} \t{self.x_axis_test[1]} \t{self.x_axis_test[2]}\n",
                 )
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
 
-                sys.stdout.write(
-                    f"Deviance: \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
-                )
-
-                if len(suggestion) != 0:
-                    sys.stdout.write(f"\nSuggestion: {self.generate_suggestion()}\n")
-
+                # If all of the deviances are within the threshold, then we'll start/update the timer telling the user
+                # how much longer to maintain the position
                 if all(
                     deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
                     for deviance in self.linear_acceleration_deviances
                 ):
+                    sys.stdout.write(
+                        f"\033[1;32mDeviance:\033[0m \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
+                    )
 
                     # If the countdown is running, we'll check if we've met the time threshold
                     if self.test_countdown:
@@ -164,6 +166,15 @@ class IMUSubscriber(Node):
 
                 # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
                 else:
+                    sys.stdout.write(
+                        f"\033[1;31mDeviance:\033[0m \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
+                    )
+
+                    if len(suggestion) != 0:
+                        sys.stdout.write(
+                            f"\nSuggestion: {self.generate_suggestion()}\n",
+                        )
+
                     self.test_countdown = False
 
                 sys.stdout.flush()
@@ -186,7 +197,7 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write("\033[2J\033[H")
                 sys.stdout.write(
-                    "Orient Y-Axis of IMU Up, achieve +/- 0.1 deviance to continue tests\n",
+                    f"Orient Y-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
                 sys.stdout.write(
                     f"Expected: \t{self.y_axis_test[0]} \t{self.y_axis_test[1]} \t{self.y_axis_test[2]}\n",
@@ -194,17 +205,13 @@ class IMUSubscriber(Node):
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
                 sys.stdout.flush()
 
-                sys.stdout.write(
-                    f"Deviance: \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
-                )
-
-                if len(suggestion) != 0:
-                    sys.stdout.write(f"\nSuggestion: {self.generate_suggestion()}\n")
-
                 if all(
                     deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
                     for deviance in self.linear_acceleration_deviances
                 ):
+                    sys.stdout.write(
+                        f"\033[1;32mDeviance:\033[0m \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
+                    )
 
                     # If the countdown is running, we'll check if we've met the time threshold
                     if self.test_countdown:
@@ -232,6 +239,15 @@ class IMUSubscriber(Node):
 
                 # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
                 else:
+                    sys.stdout.write(
+                        f"\033[1;31mDeviance:\033[0m \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
+                    )
+
+                    if len(suggestion) != 0:
+                        sys.stdout.write(
+                            f"\nSuggestion: {self.generate_suggestion()}\n",
+                        )
+
                     self.test_countdown = False
 
                 sys.stdout.flush()
@@ -255,7 +271,7 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write("\033[2J\033[H")
                 sys.stdout.write(
-                    "Orient Z-Axis of IMU Up, achieve +/- 0.1 deviance to continue tests\n",
+                    f"Orient Z-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
                 sys.stdout.write(
                     f"Expected: \t{self.z_axis_test[0]} \t{self.z_axis_test[1]} \t{self.z_axis_test[2]}\n",
@@ -263,17 +279,13 @@ class IMUSubscriber(Node):
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
                 sys.stdout.flush()
 
-                sys.stdout.write(
-                    f"Deviance: \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
-                )
-
-                if len(suggestion) != 0:
-                    sys.stdout.write(f"\nSuggestion: {self.generate_suggestion()}\n")
-
                 if all(
                     deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
                     for deviance in self.linear_acceleration_deviances
                 ):
+                    sys.stdout.write(
+                        f"\033[1;32mDeviance:\033[0m \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
+                    )
 
                     # If the countdown is running, we'll check if we've met the time threshold
                     if self.test_countdown:
@@ -301,6 +313,15 @@ class IMUSubscriber(Node):
 
                 # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
                 else:
+                    sys.stdout.write(
+                        f"\033[1;31mDeviance:\033[0m \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
+                    )
+
+                    if len(suggestion) != 0:
+                        sys.stdout.write(
+                            f"\nSuggestion: {self.generate_suggestion()}\n",
+                        )
+
                     self.test_countdown = False
 
                 sys.stdout.flush()
