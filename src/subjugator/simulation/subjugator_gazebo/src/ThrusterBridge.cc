@@ -15,14 +15,10 @@ ThrusterBridge::~ThrusterBridge()
 {
 }
 
-// Configure() -  //
+// Configure() -  Create ROS node that subscribes to /thruster_efforts & setup Gazebo Publishers //
 void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                                gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr)
 {
-    std::cout << std::endl;
-    std::cout << "KEITHTHHHHHH" << std::endl;
-    std::cout << std::endl;
-
     // Initialize the ROS node and publisher
     if (!rclcpp::ok())
     {
@@ -34,54 +30,46 @@ void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
     this->thrustSubscription = this->thrustNode->create_subscription<subjugator_msgs::msg::ThrusterEfforts>(
         "/thruster_efforts", 1, std::bind(&thrusterBridge::ThrusterBridge::receiveEffortCallback, this, _1));
 
-    // Gazebo transport node
-    std::function<void(gz::msgs::Double const &)> callback =
-        std::bind(&ThrusterBridge::receiveGazeboCallback, this, _1);
-
-    gz_node.Advertise("/model/FLH/joint/FLH_dir_joint/cmd_thrust", callback);
+    // Gazebo Publishers
+    std::vector<std::string> thrusterNames = { "FLH", "FRH", "BLH", "BRH", "FLV", "FRV", "BLV", "BRV" };
+    for (auto const &thruster : thrusterNames)
+    {
+        // Full topic name for Gazebo with msg type gz::msgs::Double
+        std::string topicName = "/model/" + thruster + "/joint/" + thruster + "_dir_joint/cmd_thrust";
+        auto pub = gz_node.Advertise<gz::msgs::Double>(topicName);
+        publishers[thruster] = pub;
+    }
 }
 
+// receiveEffortCallback() -  Whenever ROS2 node receives message call this //
+// Update thrusterEfforts Map and publish to Gazebo //
 void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts const &msg)
 {
     // Process the received thruster efforts message
     std::cout << "[ThrusterBridge] Received Thruster Efforts: " << std::endl;
 
-    flh = msg.thrust_flh;
-    frh = msg.thrust_frh;
-    blh = msg.thrust_blh;
-    brh = msg.thrust_brh;
-    flv = msg.thrust_flv;
-    frv = msg.thrust_frv;
-    blv = msg.thrust_blv;
-    brv = msg.thrust_brv;
+    thrusterEfforts["FLH"] = msg.thrust_flh;
+    thrusterEfforts["FRH"] = msg.thrust_frh;
+    thrusterEfforts["BLH"] = msg.thrust_blh;
+    thrusterEfforts["BRH"] = msg.thrust_brh;
+    thrusterEfforts["FLV"] = msg.thrust_flv;
+    thrusterEfforts["FRV"] = msg.thrust_frv;
+    thrusterEfforts["BLV"] = msg.thrust_blv;
+    thrusterEfforts["BRV"] = msg.thrust_brv;
 
-    for (int i = 0; i < 8; i++)
+    // Iterate through thrusterEfforts Map
+    for (auto const &[thrusterName, thrustValue] : thrusterEfforts)
     {
-        std::string topicName = "/model/ " + thrusterNames[i] + "/joint/" + thrusterNames[i] + "_dir_joint/cmd_thrust";
-        gz_node.Advertise(topicName, )
+        gz::msgs::Double thrustMsg;
+        thrustMsg.set_data(thrustValue);
+        publishers[thrusterName].Publish(thrustMsg);
+
+        // std::cout << "Publishing to: /model/" << thrusterName << "/joint/" << thrusterName << "_dir_joint/cmd_thrust"
+        // << std::endl; std::cout << "Thrust Value: " << thrustValue << std::endl;
     }
-
-    std::cout << "KEITHING IT" << std::endl;
 }
 
-void ThrusterBridge::receiveGazeboCallback(gz::msgs::Double const &msg)
-{
-    // Process the received thruster efforts message
-    std::cout << "[Gazebo Node] Received Thruster Efforts: " << std::endl;
-
-    msg = flh
-
-    // flh = msg.thrust_flh;
-    // frh = msg.thrust_frh;
-    // blh = msg.thrust_blh;
-    // brh = msg.thrust_brh;
-    // flv = msg.thrust_flv;
-    // frv = msg.thrust_frv;
-    // blv = msg.thrust_blv;
-    // brv = msg.thrust_brv;
-}
-
-// PostUpdate() -  //
+// PostUpdate() -  Run the ROS node //
 void ThrusterBridge::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm)
 {
     //  Check if the simulation is paused or running
@@ -90,7 +78,7 @@ void ThrusterBridge::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::Entity
         return;
     }
 
-    // Spin the ROS node to process incoming messages
+    // Spin the ROS node
     rclcpp::spin_some(this->thrustNode);
 }
 
