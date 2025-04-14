@@ -46,6 +46,39 @@ class IMUSubscriber(Node):
 
         self.subscription
 
+    # Looks at the deviances and suggests the next action a user should take to calibrate
+    def generate_suggestion(self):
+
+        # If the test_counter is between 0 and 2, that means we're running the linear acceleration based tests
+        if self.test_counter <= 2:
+
+            # If any of the deviances are in the 18-20 range, that means the user is on the right track, except they've
+            # flipped the sub 180 degrees from what it should be
+            for deviance in self.linear_acceleration_deviances:
+
+                if deviance >= 18:
+                    suggestion = "Try rotating the sub 180 degrees in the "
+
+                    match (self.test_counter):
+
+                        case 0:
+                            suggestion += "x-axis\n"
+
+                        case 1:
+                            suggestion += "y-axis\n"
+
+                        case 2:
+                            suggestion += "z-axis\n"
+
+                        case _:
+                            return ""
+
+                    return suggestion
+
+            return ""
+
+        return ""
+
     def listener_callback(self, msg):
 
         # Rounded linear acceleration values
@@ -63,6 +96,8 @@ class IMUSubscriber(Node):
         self.linear_acceleration_averages[2] = (
             self.linear_acceleration_averages[2] + z
         ) / 2
+
+        suggestion = self.generate_suggestion()
 
         match (self.test_counter):
 
@@ -94,6 +129,9 @@ class IMUSubscriber(Node):
                 sys.stdout.write(
                     f"Deviance: \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
                 )
+
+                if len(suggestion) != 0:
+                    sys.stdout.write(f"\nSuggestion: {self.generate_suggestion()}\n")
 
                 if all(
                     deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
@@ -160,6 +198,9 @@ class IMUSubscriber(Node):
                     f"Deviance: \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
                 )
 
+                if len(suggestion) != 0:
+                    sys.stdout.write(f"\nSuggestion: {self.generate_suggestion()}\n")
+
                 if all(
                     deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
                     for deviance in self.linear_acceleration_deviances
@@ -225,6 +266,9 @@ class IMUSubscriber(Node):
                 sys.stdout.write(
                     f"Deviance: \t{self.linear_acceleration_deviances[0]} \t{self.linear_acceleration_deviances[1]} \t{self.linear_acceleration_deviances[2]}\n",
                 )
+
+                if len(suggestion) != 0:
+                    sys.stdout.write(f"\nSuggestion: {self.generate_suggestion()}\n")
 
                 if all(
                     deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
