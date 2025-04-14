@@ -21,19 +21,19 @@ class ImuSubscriber(Node):
             os.mkfifo("imu_pipe")
 
     def imu_callback(self, msg):
-        time.sleep(0.1) # Delay for imu callback
+        time.sleep(0.1) # Delay so that thread is not blocking
         self.get_logger().info("Imu received")
-        print(msg)
+        imu_data = msg
 
-def main(args=None):
-    rclpy.init(args=args)
+imu_node = ImuSubscriber()
 
-    # Declare node and spin it
-    node = ImuSubscriber()
-    rclpy.spin(node)
-
-    node.destroy_node()
-    rclpy.shutdown()
-
-if __name__ == '__main__':
-    main()
+def run_thread(args=None):
+    def spin():
+        rclpy.init(args=args)
+        # Declare node and spin it
+        rclpy.spin(imu_node)
+        imu_node.destroy_node()
+        rclpy.shutdown()
+        
+    thread = threading.Thread(target=spin, daemon=True)
+    thread.start()
