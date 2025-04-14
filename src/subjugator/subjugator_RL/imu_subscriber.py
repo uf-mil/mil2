@@ -7,7 +7,7 @@ import os
 
 class ImuSubscriber(Node):
     def __init__(self):
-        super().init('imu_subscriber')
+        super().__init__('imu_subscriber')
         self.imu_subscription = self.create_subscription(
             Imu,
             '/imu/data_raw', #topic for sub9 cam
@@ -15,21 +15,18 @@ class ImuSubscriber(Node):
             10
         )
         self.imu_subscription 
-
-        # Make pipe for imu
-        if not os.path.exists("imu_pipe"):
-            os.mkfifo("imu_pipe")
+        self.imu_data = None
 
     def imu_callback(self, msg):
         time.sleep(0.1) # Delay so that thread is not blocking
-        self.get_logger().info("Imu received")
+        #self.get_logger().info("Imu received")
         imu_data = msg
 
+rclpy.init()
 imu_node = ImuSubscriber()
 
-def run_thread(args=None):
+def run(args=None):
     def spin():
-        rclpy.init(args=args)
         # Declare node and spin it
         rclpy.spin(imu_node)
         imu_node.destroy_node()
