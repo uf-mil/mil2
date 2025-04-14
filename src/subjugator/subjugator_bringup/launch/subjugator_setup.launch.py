@@ -11,7 +11,12 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    # Configure ROS nodes for launch
+    # Args
+    gui_cmd = DeclareLaunchArgument(
+        "gui",
+        default_value="true",
+        description="whether to launch the gui",
+    )
 
     # Setup project paths
     pkg_project_bringup = get_package_share_directory("subjugator_bringup")
@@ -71,7 +76,7 @@ def generate_launch_description():
             "-d",
             os.path.join(pkg_project_bringup, "config", "subjugator.rviz"),
         ],
-        condition=IfCondition(LaunchConfiguration("rviz")),
+        condition=IfCondition(LaunchConfiguration("gui")),
     )
 
     thruster_manager = IncludeLaunchDescription(
@@ -82,11 +87,7 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument(
-                "rviz",
-                default_value="true",
-                description="Open RViz.",
-            ),
+            gui_cmd,
             robot_state_publisher_node,
             # joint_state_publisher_node,
             rviz,
