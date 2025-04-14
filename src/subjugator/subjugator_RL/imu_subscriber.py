@@ -18,9 +18,9 @@ class ImuSubscriber(Node):
         self.imu_data = None
 
     def imu_callback(self, msg):
-        time.sleep(0.1) # Delay so that thread is not blocking
+        time.sleep(0.1) # Unblock thread so other things can run
         #self.get_logger().info("Imu received")
-        imu_data = msg
+        self.imu_data = msg
 
 rclpy.init()
 imu_node = ImuSubscriber()

@@ -7,8 +7,8 @@ import random
 import time
 import os
 import threading
-from imu_subscriber import ImuSubscriber
-from imu_subscriber import main as imu_main
+import imu_subscriber
+import cam_subscriber
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50,80,3]
@@ -17,9 +17,9 @@ SHAPE = [50,80,3]
 class SubEnv(gym.Env):
 
     # Is threading needed? Might add unnecessary computation that could slow down training --
-    imu_thread = threading.Thread(target=imu_main)
-    imu_thread.daemon = True  # The thread will exit when the main program exits
-    imu_thread.start()
+    imu_subscriber.run()
+    cam_subscriber.run()
+    # Example of getting data: data = imu_subscriber.imu_node.imu_data
 
     def __init__(self, render_mode = "rgb_array"):
 
@@ -42,18 +42,16 @@ class SubEnv(gym.Env):
 
 
     def _get_obs(self):
-        # Get image from RL_subscriber through pipe
-        with open("image_pipe", 'rb') as pipe:
-            img_data = pipe.read()
-            if img_data:
-                image = np.frombuffer(img_data, dtype=np.uint8).reshape((SHAPE[0], SHAPE[1], SHAPE[2]))
+        # Get image from RL_subscriber through thread
+        image = cam_subscriber.cam_node.cam_data
         
-        # We need imu version of above based on imu_node --
+        # imu version of above based on imu_node --
+        imu = imu_subscriber.imu_node.imu_data
         
-        # Get object distance via the buoy_finder (possibly through a subscriber) --       
+        # Get object distance via the buoy_finder (either through subscriber thread, or pipe) --       
         
-        # imu and object_distance are yet to be implemented --
-        return {"image": image, imu, object_distance }
+        # object_distance has yet to be implemented --
+        return {"image": image, "imu": imu, "object_distance": object_distance }
     
     # Unneeded, can be used for debugging
     def _get_info(self):
