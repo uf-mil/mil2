@@ -131,6 +131,7 @@ list_lan_devices() {
 		echo "Usage:   list_lan_devices <subnet>"
 		echo "Example: list_lan_devices 192.168.37.1/24"
 	fi
-	source ./install/setup.bash # Source the install script
-	cd "$prev_dir" || return    # Return to the original directory
+	nmap -sP "$1" -oG - | awk '/Up$/{print $2}'
 }
+
+alias list_mil_devices="list_lan_devices 192.168.37.1/24"
