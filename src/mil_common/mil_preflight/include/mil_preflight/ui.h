@@ -34,15 +34,13 @@ class UIBase
     {
         try
         {
-            creator_ =
-                boost::dll::import_alias<Creator>(uiName, uiName, 
-                boost::dll::load_mode::append_decorations |
-                boost::dll::load_mode::search_system_folders);
+            creator_ = boost::dll::import_alias<Creator>(uiName, uiName,
+                                                         boost::dll::load_mode::append_decorations |
+                                                             boost::dll::load_mode::search_system_folders);
         }
         catch (boost::system::system_error const& e)
         {
-            error_ = "Failed to load the ui: " + uiName;
-            std::cerr << e.code().message() << std::endl;
+            error_ = "Failed to load the ui: " + uiName + ": " + e.code().message();
             return std::make_shared<UIBase>();
         }
 
