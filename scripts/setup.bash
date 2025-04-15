@@ -75,28 +75,28 @@ subnet_ip() {
 # This will build the repository from wherever you are and take you back into the mil2 repo
 colbuild() {
 	local prev_dir
-	prev_dir=$(pwd)                # Store the current directory
-	cd $MIL_REPO || return         # Change to your workspace
+	prev_dir=$(pwd)        # Store the current directory
+	cd $MIL_REPO || return # Change to your workspace
 
-	local packages=();
-	local verbose_flags="";
+	local packages=()
+	local verbose_flags=""
 	# Optionally add verbose flags
-	for arg in $@; do
+	for arg in "$@"; do
 		if [ "$arg" == "--verbose" ]; then
-			verbose_flags="--event-handlers console_cohesion+ --cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON";
+			verbose_flags="--event-handlers console_cohesion+ --cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON"
 		else
 			packages+=("$arg") # Add packages to local variable
-		fi 
+		fi
 	done
 
 	if [ "${#packages[@]}" -eq 0 ]; then
 		colcon build --symlink-install $verbose_flags # Build the workspace
 	else
-		colcon build --symlink-install --packages-select ${packages[@]} $verbose_flags # Build the workspace
-  fi
+		colcon build --symlink-install --packages-select "${packages[@]}" $verbose_flags # Build the workspace
+	fi
 
-	source ./install/setup.bash    # Source the install script
-	cd "$prev_dir" || return       # Return to the original directory
+	source ./install/setup.bash # Source the install script
+	cd "$prev_dir" || return    # Return to the original directory
 }
 
 # make it cb as another option
