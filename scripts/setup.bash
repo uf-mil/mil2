@@ -73,7 +73,7 @@ subnet_ip() {
 }
 
 # This will build the repository from wherever you are and take you back into the mil2 repo
-colbuild() {
+cb() {
 	local prev_dir
 	prev_dir=$(pwd)        # Store the current directory
 	cd $MIL_REPO || return # Change to your workspace
@@ -99,13 +99,8 @@ colbuild() {
 	cd "$prev_dir" || return    # Return to the original directory
 }
 
-# make it cb as another option
-cb() {
-	colbuild "$@"
-}
-
-# Autocomplete for colbuild based on ROS 2 packages
-_colbuild_autocomplete() {
+# Autocomplete for cb based on ROS 2 packages
+_cb_autocomplete() {
 	local cur
 	cur="${COMP_WORDS[COMP_CWORD]}" # Get the current word being typed
 	local packages
@@ -125,11 +120,10 @@ _colbuild_autocomplete() {
 	fi
 }
 
-# Bind the autocomplete function to the colbuild command
-complete -F _colbuild_autocomplete colbuild
-complete -F _colbuild_autocomplete cb
-complete -F _colbuild_autocomplete colcon_cd
-complete -F _colbuild_autocomplete ccd
+# Bind the autocomplete function to the cb command
+complete -F _cb_autocomplete cb
+complete -F _cb_autocomplete colcon_cd
+complete -F _cb_autocomplete ccd
 
 # Print all devices on the specified subnet / network prefix
 list_lan_devices() {
