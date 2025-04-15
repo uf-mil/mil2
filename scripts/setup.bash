@@ -78,8 +78,29 @@ colbuild() {
 	local prev_dir
 	prev_dir=$(pwd)        # Store the current directory
 	cd $MIL_REPO || return # Change to your workspace
+	SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 	if [ $# -eq 0 ]; then
 		colcon build --symlink-install # Build the workspace
+	elif [ "$1" = "sub" ]; then
+		echo "Building subjugator packages..."
+		CONFIG_FILE="$SCRIPT_DIR/colbuild_config/subjugator.yaml"
+		PACKAGE_LIST=$(yq '.packages[]' "$CONFIG_FILE" | xargs)
+		colcon build --symlink-install --packages-select $PACKAGE_LIST
+	elif [ "$1" = "nav" ]; then
+		echo "Building navigator packages..."
+		CONFIG_FILE="$SCRIPT_DIR/colbuild_config/navigator.yaml"
+		PACKAGE_LIST=$(yq '.packages[]' "$CONFIG_FILE" | xargs)
+		colcon build --symlink-install --packages-select $PACKAGE_LIST
+	elif [ "$1" = "rover" ]; then
+		echo "Building rover packages..."
+		CONFIG_FILE="$SCRIPT_DIR/colbuild_config/rover.yaml"
+		PACKAGE_LIST=$(yq '.packages[]' "$CONFIG_FILE" | xargs)
+		colcon build --symlink-install --packages-select $PACKAGE_LIST
+	elif [ "$1" = "drone" ]; then
+		echo "Building drone packages..."
+		CONFIG_FILE="$SCRIPT_DIR/colbuild_config/drone.yaml"
+		PACKAGE_LIST=$(yq '.packages[]' "$CONFIG_FILE" | xargs)
+		colcon build --symlink-install --packages-select $PACKAGE_LIST
 	else
 		colcon build --symlink-install --packages-select "$@" # Build the workspace
 	fi
