@@ -1,0 +1,37 @@
+#pragma once
+
+#include <memory>
+#include <string>
+
+#include <Eigen/Dense>
+#include <rclcpp/rclcpp.hpp>
+
+#include <geometry_msgs/msg/pose.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+
+// TODO:
+// need a subscriber to path/list of poses (perhaps nav_msgs/Path)
+// need a subscriber to odom
+// need a publisher to goal/trajectory (absolute)
+
+// design plans:
+// helper function to calculate closest pose in path?
+// param to configure the 'acceptable' distance to goal before publishing the next one
+
+// questions:
+// how to search for closest pose, or start at beginning?
+// how to handle new paths coming in: stop and do that instead?
+
+class TrajectoryPlanner : public rclcpp::Node
+{
+  public:
+    TrajectoryPlanner();
+
+  private:
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscriber_;
+    rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr goal_publisher_;
+
+    Eigen::Matrix<double, 7, 1> odom_;
+
+    void odom_cb(nav_msgs::msg::Odometry::UniquePtr const msg);
+};
