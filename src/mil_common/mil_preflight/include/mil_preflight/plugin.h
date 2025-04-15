@@ -30,13 +30,11 @@ class PluginBase : public rclcpp::Node
 
     static std::shared_ptr<PluginBase> create(std::string const& pluginName)
     {
-        std::filesystem::path binPath = std::filesystem::canonical("/proc/self/exe").parent_path();
-        std::filesystem::path pluginPath = binPath / ".." / "lib" / pluginName;
-
         try
         {
-            creator_ = boost::dll::import_alias<Creator>(pluginPath.string(), pluginName,
-                                                         boost::dll::load_mode::append_decorations);
+            creator_ = boost::dll::import_alias<Creator>(pluginName, pluginName,
+                                                         boost::dll::load_mode::append_decorations |
+                                                         boost::dll::load_mode::search_system_folders);
         }
         catch (boost::system::system_error const& e)
         {
