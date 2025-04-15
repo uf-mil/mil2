@@ -42,6 +42,7 @@ class UIBase
         catch (boost::system::system_error const& e)
         {
             error_ = "Failed to load the ui: " + uiName;
+            std::cerr << e.code().message() << std::endl;
             return std::make_shared<UIBase>();
         }
 
