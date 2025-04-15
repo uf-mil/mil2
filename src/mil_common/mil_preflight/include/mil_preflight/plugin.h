@@ -34,7 +34,7 @@ class PluginBase : public rclcpp::Node
         {
             creator_ = boost::dll::import_alias<Creator>(pluginName, pluginName,
                                                          boost::dll::load_mode::append_decorations |
-                                                         boost::dll::load_mode::search_system_folders);
+                                                             boost::dll::load_mode::search_system_folders);
         }
         catch (boost::system::system_error const& e)
         {
