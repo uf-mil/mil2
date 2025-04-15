@@ -1,4 +1,7 @@
+#include <ostream>
+
 #include <Eigen/Dense>
+
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 namespace mil_tools::geometry
@@ -94,7 +97,20 @@ class Rotation
     geometry_msgs::msg::Quaternion quat_msg() const;
     geometry_msgs::msg::Vector3 rot_vec_msg() const;
     Eigen::Vector4d quat_vec() const;
+
+    ////////////////////////////////////////
+    // Operators
+    ////////////////////////////////////////
     bool operator==(Rotation const& other) const;
+    bool operator!=(Rotation const& other) const;
+    Rotation operator*(Rotation const& other) const;
+    Rotation operator-() const;
+    friend std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, Rotation const& obj);
+
+    ////////////////////////////////////////
+    // Special operations
+    ////////////////////////////////////////
+    void normalize();
 };
 
 }  // namespace mil_tools::geometry

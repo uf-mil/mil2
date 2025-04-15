@@ -1,6 +1,3 @@
-#include <boost/asio.hpp>
-#include <boost/smart_ptr/make_shared.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
 #include <chrono>
 #include <limits>
 #include <memory>
@@ -8,9 +5,13 @@
 #include <string>
 #include <thread>
 
+#include "rclcpp/rclcpp.hpp"
+#include <boost/asio.hpp>
+#include <boost/smart_ptr/make_shared.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
+
 #include "mil_msgs/msg/depth_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
-#include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/empty.hpp"
 
 using tcp = boost::asio::ip::tcp;

@@ -1,0 +1,107 @@
+{
+    "actuators": {
+        "plugin": "actuator_plugin",
+        "actions": {
+            "FLH Thruster": [
+                "/thruster_efforts",
+                "FLH",
+                "0.2"
+            ],
+            "FRH Thruster": [
+                "/thruster_efforts",
+                "FRH",
+                "0.2"
+            ],
+            "BLH Thruster": [
+                "/thruster_efforts",
+                "BLH",
+                "0.2"
+            ],
+            "BRH Thruster": [
+                "/thruster_efforts",
+                "BRH",
+                "0.2"
+            ],
+            "FLV Thruster": [
+                "/thruster_efforts",
+                "FLV",
+                "0.2"
+            ],
+            "FRV Thruster": [
+                "/thruster_efforts",
+                "FRV",
+                "0.2"
+            ],
+            "BLV Thruster": [
+                "/thruster_efforts",
+                "BLV",
+                "0.2"
+            ],
+            "BRV Thruster": [
+                "/thruster_efforts",
+                "BRV",
+                "0.2"
+            ]
+        }
+    },
+    "setup": {
+        "plugin": "setup_plugin",
+        "actions": {
+            "O-rings": [
+                "Grease O-rings with Molykote 55 every time a pressure vessel is closed."
+            ],
+            "Deploy sub": [
+                "Check for bubbles coming out of every pressure vessel, make sure buoyancy is correct"
+            ]
+        }
+    },
+    "nodes": {
+        "plugin": "node_plugin",
+        "actions": {
+            "/odom_estimator": [
+                "/odom_estimator"
+            ],
+            "/transform_odometry": [
+                "/transform_odometry"
+            ],
+            "/c3_trajectory_generator": [
+                "/c3_trajectory_generator"
+            ],
+            "/adaptive_controller": [
+                "/adaptive_controller"
+            ],
+            "/thruster_mapper": [
+                "/thruster_mapper"
+            ],
+            "/mission_runner": [
+                "/mission_runner"
+            ]
+        }
+    },
+    "topics": {
+        "plugin": "topic_plugin",
+        "actions": {
+            "/camera/front/right/image_raw": [
+                "/camera/front/right/image_raw"
+            ],
+            "/camera/down/image_raw": [
+                "/camera/down/image_raw"
+            ],
+            "/camera/front/left/image_raw": [
+                "/camera/front/left/image_raw"
+            ],
+            "/dvl": [
+                "/dvl"
+            ],
+            "/depth": [
+                "/depth"
+            ],
+            "/imu/data_raw": [
+                "/imu/data_raw"
+            ],
+            "/imu/mag": [
+                "/imu/mag"
+            ]
+        }
+    }
+}

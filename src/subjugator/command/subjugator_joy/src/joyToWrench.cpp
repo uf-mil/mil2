@@ -2,8 +2,9 @@
 #include <memory>
 #include <string>
 
-#include "geometry_msgs/msg/wrench.hpp"
 #include "rclcpp/rclcpp.hpp"
+
+#include "geometry_msgs/msg/wrench.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 
 using namespace std;

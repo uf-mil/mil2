@@ -31,7 +31,7 @@
         <pose>0 0 0 0 0 0</pose>
         <always_on>1</always_on>
         <update_rate>8</update_rate>
-        <topic>/dvl/velocity</topic>
+        <topic>/dvl/odom</topic>
         <gz:dvl>
           <type>phased_array</type>
           <arrangement degrees="true">
@@ -93,7 +93,7 @@
     <gazebo>
       <plugin filename="DVLBridge" name="dave_ros_gz_plugins::DVLBridge">
         <!-- Grabbed in DVL Bridge script -->
-        <topic>/dvl/velocity</topic>
+        <topic>/dvl/odom</topic>
       </plugin>
     </gazebo>
   </xacro:macro>

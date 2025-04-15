@@ -6,6 +6,8 @@ on:
   schedule:
     # Run every hour
     - cron: '0 * * * *'
+  workflow_call:
+  workflow_dispatch:
 
 jobs:
   ufl:
@@ -16,12 +18,15 @@ jobs:
       - name: zobelisk
         run: |
           ping -c 1 zobelisk.mil.ufl.edu &> /dev/null
-      - name: workstation1
-        run: |
-          ping -c 1 workstation1.mil.ufl.edu &> /dev/null
+      # - name: workstation1
+      #   run: |
+      #     ping -c 1 workstation1.mil.ufl.edu &> /dev/null
       - name: workstation2
         run: |
           ping -c 1 workstation2.mil.ufl.edu &> /dev/null
+      - name: nas
+        run: |
+          ping -c 1 nas.mil.ufl.edu &> /dev/null
 
   # TODO uf-mil/mil2#94
   # milnet:
@@ -50,3 +55,12 @@ jobs:
       - name: subjugator website
         run: |
           ping -c 1 subjugator.org &> /dev/null
+
+  internal:
+    name: internal visibility healthcheck
+    runs-on:
+      group: mala-lab-noble
+    steps:
+      - name: zobelisk
+        run: |
+          ping -c 1 192.168.37.23 &> /dev/null

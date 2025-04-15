@@ -14,13 +14,8 @@ find_package(geometry_msgs REQUIRED)
 add_executable(joy_node src/joyToWrench.cpp)
 ament_target_dependencies(joy_node rclcpp sensor_msgs geometry_msgs)
 
-install(TARGETS
-  joy_node
-  DESTINATION lib/${PROJECT_NAME})
+install(TARGETS joy_node DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME}
-)
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 ament_package()
