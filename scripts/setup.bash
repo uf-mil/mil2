@@ -36,6 +36,7 @@ alias srcbrc="source ~/.bashrc"
 alias search_root='sudo find / ... | grep -i'
 alias search='find . -print | grep -i'
 alias fd="fdfind"
+alias imu-socat="sudo socat PTY,link=/dev/ttyV0,mode=777 TCP:192.168.37.61:10001"
 
 # potentially borrowed from forrest
 autopush() {
@@ -76,30 +77,24 @@ colbuild() {
 	local prev_dir
 	prev_dir=$(pwd)                # Store the current directory
 	cd $MIL_REPO || return         # Change to your workspace
-	
+
 	local packages=();
-	local verbose_count=0;
-	#see if there is verbose in the input
+	local verbose_flags="";
+	# Optionally add verbose flags
 	for arg in $@; do
 		if [ "$arg" == "--verbose" ]; then
-			verbose_count=1;
+			verbose_flags="--event-handlers console_cohesion+ --cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON";
 		else
-			packages+=("$arg") # adding all the packages
+			packages+=("$arg") # Add packages to local variable
 		fi 
 	done
-	#checking for package parameters, $@ list of args
-	if [ "${#packages[@]}" -gt 0 ]; then
-		if [ "$verbose_count" -eq 1 ]; then #build with all the extra stuff
-			colcon build --symlink-install --packages-select ${packages[@]} \
-				--event-handlers console_cohesion+ \
-				--cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON
-		else
-			colcon build --symlink-install --packages-select ${packages[@]}
-		fi
+
+	if [ "${#packages[@]}" -eq 0 ]; then
+		colcon build --symlink-install $verbose_flags # Build the workspace
 	else
-		# Build all packages
-		colcon build --symlink-install
-	fi # end if statement
+		colcon build --symlink-install --packages-select ${packages[@]} $verbose_flags # Build the workspace
+  fi
+
 	source ./install/setup.bash    # Source the install script
 	cd "$prev_dir" || return       # Return to the original directory
 }
@@ -109,14 +104,39 @@ cb() {
 	colbuild "$@"
 }
 
+# Autocomplete for colbuild based on ROS 2 packages
+_colbuild_autocomplete() {
+	local cur
+	cur="${COMP_WORDS[COMP_CWORD]}" # Get the current word being typed
+	local packages
+
+	# Fetch the list of packages from the ROS 2 workspace (replace this with your workspace)
+	packages=$(cd $MIL_REPO && colcon list --names-only)
+
+	mapfile -t package_array <<<"$packages"
+
+	mapfile -t replacement <<<"$(compgen -W "${package_array[*]}" -- "$cur")"
+
+	if [ ${#replacement[@]} -eq 0 ] || [ -z "$cur" ]; then
+		COMPREPLY=("${package_array[@]}")
+	else
+		# Filter packages based on the current word (autocomplete logic)
+		COMPREPLY=("${replacement[0]}")
+	fi
+}
+
+# Bind the autocomplete function to the colbuild command
+complete -F _colbuild_autocomplete colbuild
+complete -F _colbuild_autocomplete cb
+complete -F _colbuild_autocomplete colcon_cd
+complete -F _colbuild_autocomplete ccd
+
 # Print all devices on the specified subnet / network prefix
 list_lan_devices() {
 	if [ $# -lt 1 ]; then
 		echo "Usage:   list_lan_devices <subnet>"
 		echo "Example: list_lan_devices 192.168.37.1/24"
 	fi
-	nmap -sP "$1" -oG - | awk '/Up$/{print $2}'
+	source ./install/setup.bash # Source the install script
+	cd "$prev_dir" || return    # Return to the original directory
 }
-
-# List all devices on the MIL network currently by scanning
-alias list_mil_devices="list_lan_devices 192.168.37.1/24"

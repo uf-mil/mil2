@@ -1,10 +1,12 @@
 #include "DepthSensor.hh"
 
-#include <gz/common/Console.hh>
-#include <gz/plugin/Register.hh>  // For GZ_ADD_PLUGIN
 #include <iostream>
 #include <random>
+
 #include <rclcpp/rclcpp.hpp>
+
+#include <gz/common/Console.hh>
+#include <gz/plugin/Register.hh>  // For GZ_ADD_PLUGIN
 
 // Register plugin so Gazebo can see it
 GZ_ADD_PLUGIN(depth_sensor::DepthSensor, gz::sim::System, depth_sensor::DepthSensor::ISystemConfigure,

@@ -1,6 +1,6 @@
 import math
 
-center = (0.254, 0, 0)
+center = (0.357185, 0, 0)
 
 print("Horizontal thrusters (angled)\n")
 

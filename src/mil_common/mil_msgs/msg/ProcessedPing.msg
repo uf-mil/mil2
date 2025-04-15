@@ -1,0 +1,3 @@
+geometry_msgs/Vector3 origin_direction_body
+uint32 frequency
+float64 origin_distance_m
