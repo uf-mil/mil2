@@ -32,13 +32,12 @@ class UIBase
 
     static std::shared_ptr<UIBase> create(std::string const& uiName)
     {
-        std::filesystem::path binPath = std::filesystem::canonical("/proc/self/exe").parent_path();
-        std::filesystem::path uiPath = binPath / ".." / "lib" / uiName;
-
         try
         {
             creator_ =
-                boost::dll::import_alias<Creator>(uiPath.string(), uiName, boost::dll::load_mode::append_decorations);
+                boost::dll::import_alias<Creator>(uiName, uiName, 
+                boost::dll::load_mode::append_decorations |
+                boost::dll::load_mode::search_system_folders);
         }
         catch (boost::system::system_error const& e)
         {
