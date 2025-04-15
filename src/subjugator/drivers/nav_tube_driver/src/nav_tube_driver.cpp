@@ -14,6 +14,8 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "std_msgs/msg/empty.hpp"
 
+#include <iostream>
+
 using tcp = boost::asio::ip::tcp;
 
 class NavTubeDriver : public rclcpp::Node
