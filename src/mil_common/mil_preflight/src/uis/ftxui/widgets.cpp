@@ -517,7 +517,15 @@ TestsPage::TestsPage(std::string const& filePath)
     Component bottom = Container::Horizontal({ checkBox | vcenter | flex, runButton });
     Add(Container::Vertical({ main_ | flex, Renderer([] { return separator(); }), bottom }));
 
-    initialize(filePath);
+    if (!initialize(filePath))
+    {
+        Dialog::Option option;
+        option.buttonLabels = { "Ok" };
+        option.title = "Error";
+        option.question = "Failed to read the config file: " + filePath;
+        std::shared_ptr<Dialog> dialog = std::make_shared<Dialog>(std::move(option));
+        dialog->show();
+    }
 }
 
 TestsPage::~TestsPage()
