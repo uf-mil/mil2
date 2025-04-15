@@ -39,7 +39,7 @@ class IMUSubscriber(Node):
         # Subscribes to the IMU topic
         self.subscription = self.create_subscription(
             Imu,
-            "/imu/data_raw",
+            "/imu/data",
             self.listener_callback,
             10,
         )
