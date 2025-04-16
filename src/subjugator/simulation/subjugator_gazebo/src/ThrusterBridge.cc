@@ -61,6 +61,14 @@ void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts
     thrusterEfforts["BLV"] = msg.thrust_blv;
     thrusterEfforts["BRV"] = msg.thrust_brv;
 
+    std::cout << "Thruster Values into Gazebo: " << std::endl;
+    // Print the thrusterEfforts Map
+    // for (const auto &[thrusterName, thrustValue] : thrusterEfforts)
+    // {
+    //     std::cout << "Thruster: " << thrusterName << ", Thrust Value: " << thrustValue << std::endl;
+    // }
+    // std::cout << std::endl;
+
     // Iterate through thrusterEfforts Map
     for (auto const &[thrusterName, thrustValue] : thrusterEfforts)
     {
