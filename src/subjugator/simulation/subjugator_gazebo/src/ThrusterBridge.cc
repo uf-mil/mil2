@@ -39,6 +39,10 @@ void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
         auto pub = gz_node.Advertise<gz::msgs::Double>(topicName);
         publishers[thruster] = pub;
     }
+
+    // Get Thruster Force Parameters
+    this->max_force_pos = this->thrustNode->get_parameter("max_force_pos").as_double();
+    this->max_force_neg = this->thrustNode->get_parameter("max_force_neg").as_double();
 }
 
 // receiveEffortCallback() -  Whenever ROS2 node receives message call this //
@@ -61,7 +65,8 @@ void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts
     for (auto const &[thrusterName, thrustValue] : thrusterEfforts)
     {
         gz::msgs::Double thrustMsg;
-        thrustMsg.set_data(thrustValue);
+        double scaledThrust = (thrustValue > 0) ? thrustValue / this->max_force_pos : thrustValue / this->max_force_neg;
+        thrustMsg.set_data(scaledThrust);
         publishers[thrusterName].Publish(thrustMsg);
 
         // std::cout << "Publishing to: /model/" << thrusterName << "/joint/" << thrusterName << "_dir_joint/cmd_thrust"

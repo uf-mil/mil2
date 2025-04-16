@@ -51,6 +51,10 @@ class ThrusterBridge : public gz::sim::System, public gz::sim::ISystemConfigure,
     // Thruster efforts storage - FLV = Front Left Vertical, BRH = Back Right Horizontal //
     std::unordered_map<std::string, float> thrusterEfforts;
     std::unordered_map<std::string, gz::transport::Node::Publisher> publishers;
+
+    // Thruster Force Outputs //
+    double max_force_pos;
+    double max_force_neg;
 };
 
 }  // namespace thrusterBridge
