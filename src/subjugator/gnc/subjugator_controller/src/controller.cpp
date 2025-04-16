@@ -65,6 +65,11 @@ PIDController::PIDController() : Node("pid_controller")
                                            param_map_["imin"].first[i], param_map_["antiwindup"].first[i]);
     }
 
+    if (!this->is_enabled)
+    {
+        RCLCPP_INFO(this->get_logger(), "PID controller is disabled. Call enable_controller service to start.");
+    }
+
     // wait to hear odom msg
     RCLCPP_INFO(this->get_logger(), "Waiting for odometry msg...");
     while (!this->heard_odom)
@@ -77,11 +82,6 @@ PIDController::PIDController() : Node("pid_controller")
     last_goal_trajectory_ = last_odom_;
     last_cmd_time_ = this->get_clock()->now();
 
-    if (!this->is_enabled)
-    {
-        RCLCPP_INFO(this->get_logger(), "PID controller is disabled. Call enable_controller service to start.");
-    }
-
     control_loop();
 }
 
@@ -92,6 +92,8 @@ void PIDController::control_loop()
     {
         if (!is_enabled)
         {
+            rclcpp::spin_some(this->get_node_base_interface());
+            rate.sleep();
             continue;
         }
 
@@ -224,22 +226,16 @@ void PIDController::reset(std::shared_ptr<std_srvs::srv::Empty::Request> const r
     }
     for (size_t i = 0; i < pid_vec_.size(); i++)
     {
+        // reset pid instances (call reset(true) to keep the integral term instead)
+        pid_vec_[i].reset();
         pid_vec_[i].set_gains(param_map_["kp"].first[i], param_map_["ki"].first[i], param_map_["kd"].first[i],
                               param_map_["imax"].first[i], param_map_["imin"].first[i],
                               param_map_["antiwindup"].first[i]);
     }
 
-    // wait to hear odom msg
-    RCLCPP_INFO(this->get_logger(), "Waiting for odometry msg...");
-    while (!this->heard_odom)
-    {
-        rclcpp::spin_some(this->get_node_base_interface());
-    }
-    RCLCPP_INFO(this->get_logger(), "Heard odometry msg. Starting control loop.");
-
     // set starting command to current odom msg (stationkeep)
-    last_goal_trajectory_ = last_odom_;
-    last_cmd_time_ = this->get_clock()->now();
+    this->last_goal_trajectory_ = this->last_odom_;
+    this->last_cmd_time_ = this->get_clock()->now();
 
-    control_loop();
+    RCLCPP_INFO(this->get_logger(), "Done resetting PID controller.");
 }
