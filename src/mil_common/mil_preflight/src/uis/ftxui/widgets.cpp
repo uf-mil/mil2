@@ -250,7 +250,7 @@ class TestTab : public ComponentBase, public Test
 
     bool isChecked()
     {
-        return option_.transform(checked_);
+        return option_.transform(checked_) || nChecked_ > 0;
     }
 
     bool transform(bool checked)
