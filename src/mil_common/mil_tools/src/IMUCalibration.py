@@ -53,7 +53,7 @@ class IMUSubscriber(Node):
             10,
         )
 
-        self.subscription
+        # self.subscription
 
     # Looks at the deviances and suggests the next action a user should take to calibrate
     def generate_suggestion(self):
@@ -308,17 +308,12 @@ class IMUSubscriber(Node):
 
                         if (current_time - self.start_time) >= self.timer_threshold:
 
-                            print(
-                                print(f"Start Time: {self.start_time.seconds}")
-                                print(f"Current Time: {current_time.seconds}")
-                                print(f"Threshold: {self.timer_threshold.seconds}")
-                                "\nSufficient deviance met, continuing to next test...\n",
-                            )
+                            "\nSufficient deviance met, continuing to next test...\n",
 
-                            sleep(2)
-                            self.test_counter += 1
 
-                            # After this, we'll be moving onto the magnetometer tests so we need to modify the subscriber object
+                            # Kill the accelerometer subscriber so we can create a new subscriber for magnetometer
+                            self.destroy_subscription(self.subscription)
+                            
                             self.subscription = self.create_subscription(
                                 MagneticField,
                                 "/imu/mag",
@@ -326,7 +321,9 @@ class IMUSubscriber(Node):
                                 10,
                             )
 
-                            # self.subscription
+                            sleep(2)
+                            self.test_counter += 1
+
 
                         else:
                             sys.stdout.write(
@@ -353,6 +350,7 @@ class IMUSubscriber(Node):
                     self.test_countdown = False
 
                 sys.stdout.flush()
+
 
             # (Magnetometer Test) x-axis
             case 3:
@@ -605,6 +603,8 @@ def main(args=None):
 
     # Keep the node alive/listening
     rclpy.spin(minimal_subscriber)
+
+    print("Reaches this point")
 
 
 if __name__ == "__main__":
