@@ -15,12 +15,13 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(control_toolbox REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 add_executable(subjugator_controller src/node.cpp src/controller.cpp)
 ament_target_dependencies(subjugator_controller rclcpp nav_msgs control_toolbox
-                          Eigen3)
+                          Eigen3 std_srvs)
 target_include_directories(subjugator_controller PRIVATE ${EIGEN3_INCLUDE_DIR}
                                                          include)
 
