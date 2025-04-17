@@ -6,6 +6,11 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu, MagneticField
 
+# ANSI codes for colored output
+RED_START = "\033[1;91m"
+GREEN_START = "\033[1;32m"
+COLOR_END = "\033[0m"
+
 
 class IMUSubscriber(Node):
 
@@ -43,16 +48,25 @@ class IMUSubscriber(Node):
 
         self.MAGNETOMETER_DEVIANCE_THRESHOLD = 1e-5
 
-        # Subscribes to the IMU topic for accelerometer data
-        self.subscription = self.create_subscription(
-            Imu,
-            "/imu/data",
-            self.listener_callback,
-            10,
-        )
+        if self.test_counter < 3:
+            # Subscribes to the IMU topic for accelerometer data
+            self.subscription = self.create_subscription(
+                Imu,
+                "/imu/data",
+                self.listener_callback,
+                10,
+            )
+
+        else:
+            self.subscription = self.create_subscription(
+                MagneticField,
+                "/imu/mag",
+                self.listener_callback,
+                10,
+            )
 
     # Looks at the deviances and suggests the next action a user should take to calibrate
-    def generate_suggestion(self):
+    def print_suggestion(self):
 
         # If the test_counter is between 0 and 2, that means we're running the linear acceleration based tests
         if self.test_counter <= 2:
@@ -62,10 +76,10 @@ class IMUSubscriber(Node):
             for deviance in self.deviances:
 
                 if deviance >= 18:
-                    suggestion = "Try rotating the sub 180 degrees in the "
+                    suggestion = "\n\nTry rotating the sub 180 degrees in the "
 
                 elif deviance >= 8:
-                    suggestion = "Try rotation the sub 90 degrees in the "
+                    suggestion = "\n\nTry rotating the sub 90 degrees in the "
 
                 if deviance >= 8:
                     match (self.test_counter):
@@ -80,13 +94,56 @@ class IMUSubscriber(Node):
                             suggestion += "z-axis\n"
 
                         case _:
-                            return ""
+                            pass
 
-                    return suggestion
+            sys.stdout.write(suggestion)
 
-            return ""
+    def print_deviances(self):
 
-        return ""
+        # Since I'm incorporating color codes to indicate if a deviance is within the threshold or not, I'll make it a string
+        # that I can append text to so that I can reduce the number of if-statements I need
+
+        formatted_deviance_string = ""
+        deviance_to_compare = 0
+
+        # For the linear acceleration tests
+        if self.test_counter < 3:
+            deviance_to_compare = self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
+
+        else:
+            deviance_to_compare = self.MAGNETOMETER_DEVIANCE_THRESHOLD
+
+        if all(deviance <= deviance_to_compare for deviance in self.deviances):
+            sys.stdout.write(
+                f"{GREEN_START}Deviance:{COLOR_END}\t{self.deviances[0]} \t{self.deviances[1]} \t{self.deviances[2]}\n",
+            )
+
+        else:
+
+            formatted_deviance_string += f"{RED_START}Deviance:{COLOR_END}\t"
+
+            if self.deviances[0] > deviance_to_compare:
+                formatted_deviance_string += (
+                    f"{RED_START}{self.deviances[0]}{COLOR_END} \t"
+                )
+            else:
+                formatted_deviance_string += f"{self.deviances[0]} \t"
+
+            if self.deviances[1] > deviance_to_compare:
+                formatted_deviance_string += (
+                    f"{RED_START}{self.deviances[1]}{COLOR_END} \t"
+                )
+            else:
+                formatted_deviance_string += f"{self.deviances[1]} \t"
+
+            if self.deviances[2] > deviance_to_compare:
+                formatted_deviance_string += (
+                    f"{RED_START}{self.deviances[2]}{COLOR_END} \t"
+                )
+            else:
+                formatted_deviance_string += f"{self.deviances[2]} \t"
+
+            sys.stdout.write(formatted_deviance_string)
 
     def listener_callback(self, msg):
 
@@ -105,8 +162,6 @@ class IMUSubscriber(Node):
         self.averages[0] = (self.averages[0] + x) / 2
         self.averages[1] = (self.averages[1] + y) / 2
         self.averages[2] = (self.averages[2] + z) / 2
-
-        suggestion = self.generate_suggestion()
 
         match (self.test_counter):
 
@@ -135,15 +190,16 @@ class IMUSubscriber(Node):
                 )
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
 
+                self.print_deviances()
+
+                self.print_suggestion()
+
                 # If all of the deviances are within the threshold, then we'll start/update the timer telling the user
                 # how much longer to maintain the position
                 if all(
                     deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
                     for deviance in self.deviances
                 ):
-                    sys.stdout.write(
-                        f"\033[1;32mDeviance:\033[0m \t{self.deviances[0]} \t{self.deviances[1]} \t{self.deviances[2]}\n",
-                    )
 
                     # If the countdown is running, we'll check if we've met the time threshold
                     if self.test_countdown:
@@ -171,15 +227,6 @@ class IMUSubscriber(Node):
 
                 # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
                 else:
-                    sys.stdout.write(
-                        f"\033[1;31mDeviance:\033[0m \t{self.deviances[0]} \t{self.deviances[1]} \t{self.deviances[2]}\n",
-                    )
-
-                    if len(suggestion) != 0:
-                        sys.stdout.write(
-                            f"\nSuggestion: {self.generate_suggestion()}\n",
-                        )
-
                     self.test_countdown = False
 
                 sys.stdout.flush()
@@ -208,15 +255,17 @@ class IMUSubscriber(Node):
                     f"Expected: \t{self.y_linear_test[0]} \t{self.y_linear_test[1]} \t{self.y_linear_test[2]}\n",
                 )
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
+
+                self.print_deviances()
+
+                self.print_suggestion()
+
                 sys.stdout.flush()
 
                 if all(
                     deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
                     for deviance in self.deviances
                 ):
-                    sys.stdout.write(
-                        f"\033[1;32mDeviance:\033[0m \t{self.deviances[0]} \t{self.deviances[1]} \t{self.deviances[2]}\n",
-                    )
 
                     # If the countdown is running, we'll check if we've met the time threshold
                     if self.test_countdown:
@@ -244,14 +293,6 @@ class IMUSubscriber(Node):
 
                 # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
                 else:
-                    sys.stdout.write(
-                        f"\033[1;31mDeviance:\033[0m \t{self.deviances[0]} \t{self.deviances[1]} \t{self.deviances[2]}\n",
-                    )
-
-                    if len(suggestion) != 0:
-                        sys.stdout.write(
-                            f"\nSuggestion: {self.generate_suggestion()}\n",
-                        )
 
                     self.test_countdown = False
 
@@ -282,15 +323,17 @@ class IMUSubscriber(Node):
                     f"Expected: \t{self.z_linear_test[0]} \t{self.z_linear_test[1]} \t{self.z_linear_test[2]}\n",
                 )
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
+
+                self.print_deviances()
+
+                self.print_suggestion()
+
                 sys.stdout.flush()
 
                 if all(
                     deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
                     for deviance in self.deviances
                 ):
-                    sys.stdout.write(
-                        f"\033[1;32mDeviance:\033[0m \t{self.deviances[0]} \t{self.deviances[1]} \t{self.deviances[2]}\n",
-                    )
 
                     # If the countdown is running, we'll check if we've met the time threshold
                     if self.test_countdown:
@@ -328,14 +371,6 @@ class IMUSubscriber(Node):
 
                 # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
                 else:
-                    sys.stdout.write(
-                        f"\033[1;31mDeviance:\033[0m \t{self.deviances[0]} \t{self.deviances[1]} \t{self.deviances[2]}\n",
-                    )
-
-                    if len(suggestion) != 0:
-                        sys.stdout.write(
-                            f"\nSuggestion: {self.generate_suggestion()}\n",
-                        )
 
                     self.test_countdown = False
 
@@ -367,15 +402,16 @@ class IMUSubscriber(Node):
                 )
 
                 sys.stdout.write(f"\rActual: \t{x:.1e} \t{y:.1e} \t{z:.1e}\n")
+
+                self.print_deviances()
+                self.print_suggestion()
+
                 sys.stdout.flush()
 
                 if all(
                     deviance <= self.MAGNETOMETER_DEVIANCE_THRESHOLD
                     for deviance in self.deviances
                 ):
-                    sys.stdout.write(
-                        f"\033[1;32mDeviance:\033[0m \t{self.deviances[0]:.1e} \t{self.deviances[1]:.1e} \t{self.deviances[2]:.1e}\n",
-                    )
 
                     # If the countdown is running, we'll check if we've met the time threshold
                     if self.test_countdown:
@@ -403,14 +439,6 @@ class IMUSubscriber(Node):
 
                 # If the current magnetometer values are not within the deviance, then we need to set test_countdown to false
                 else:
-                    sys.stdout.write(
-                        f"\033[1;31mDeviance:\033[0m \t{self.deviances[0]:.1e} \t{self.deviances[1]:.1e} \t{self.deviances[2]:.1e}\n",
-                    )
-
-                    if len(suggestion) != 0:
-                        sys.stdout.write(
-                            f"\nSuggestion: {self.generate_suggestion()}\n",
-                        )
 
                     self.test_countdown = False
 
@@ -442,15 +470,16 @@ class IMUSubscriber(Node):
                 )
 
                 sys.stdout.write(f"\rActual: \t{x:.1e} \t{y:.1e} \t{z:.1e}\n")
+
+                self.print_deviances()
+                self.print_suggestion()
+
                 sys.stdout.flush()
 
                 if all(
                     deviance <= self.MAGNETOMETER_DEVIANCE_THRESHOLD
                     for deviance in self.deviances
                 ):
-                    sys.stdout.write(
-                        f"\033[1;32mDeviance:\033[0m \t{self.deviances[0]:.1e} \t{self.deviances[1]:.1e} \t{self.deviances[2]:.1e}\n",
-                    )
 
                     # If the countdown is running, we'll check if we've met the time threshold
                     if self.test_countdown:
@@ -478,14 +507,6 @@ class IMUSubscriber(Node):
 
                 # If the current magnetometer values are not within the deviance, then we need to set test_countdown to false
                 else:
-                    sys.stdout.write(
-                        f"\033[1;31mDeviance:\033[0m \t{self.deviances[0]:.1e} \t{self.deviances[1]:.1e} \t{self.deviances[2]:.1e}\n",
-                    )
-
-                    if len(suggestion) != 0:
-                        sys.stdout.write(
-                            f"\nSuggestion: {self.generate_suggestion()}\n",
-                        )
 
                     self.test_countdown = False
 
@@ -517,15 +538,16 @@ class IMUSubscriber(Node):
                 )
 
                 sys.stdout.write(f"\rActual: \t{x:.1e} \t{y:.1e} \t{z:.1e}\n")
+
+                self.print_deviances()
+                self.print_suggestion()
+
                 sys.stdout.flush()
 
                 if all(
                     deviance <= self.MAGNETOMETER_DEVIANCE_THRESHOLD
                     for deviance in self.deviances
                 ):
-                    sys.stdout.write(
-                        f"\033[1;32mDeviance:\033[0m \t{self.deviances[0]:.1e} \t{self.deviances[1]:.1e} \t{self.deviances[2]:.1e}\n",
-                    )
 
                     # If the countdown is running, we'll check if we've met the time threshold
                     if self.test_countdown:
@@ -553,14 +575,6 @@ class IMUSubscriber(Node):
 
                 # If the current magnetometer values are not within the deviance, then we need to set test_countdown to false
                 else:
-                    sys.stdout.write(
-                        f"\033[1;31mDeviance:\033[0m \t{self.deviances[0]:.1e} \t{self.deviances[1]:.1e} \t{self.deviances[2]:.1e}\n",
-                    )
-
-                    if len(suggestion) != 0:
-                        sys.stdout.write(
-                            f"\nSuggestion: {self.generate_suggestion()}\n",
-                        )
 
                     self.test_countdown = False
 
