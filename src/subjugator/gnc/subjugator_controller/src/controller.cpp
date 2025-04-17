@@ -4,7 +4,7 @@ PIDController::PIDController() : Node("pid_controller")
 {
     this->is_shutdown = false;
     this->heard_odom = false;
-    this->is_enabled = true;  // TODO false by default
+    this->is_enabled = false;
 
     // create subscriptions and publishers
     sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>(
@@ -22,6 +22,12 @@ PIDController::PIDController() : Node("pid_controller")
         "reset_controller",
         [this](std::shared_ptr<std_srvs::srv::Empty::Request> const request,
                std::shared_ptr<std_srvs::srv::Empty::Response> response) { this->reset(request, response); });
+
+    // create enable / disable service
+    this->enable_service_ = this->create_service<std_srvs::srv::SetBool>(
+        "enable_controller",
+        [this](std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+               std::shared_ptr<std_srvs::srv::SetBool::Response> response) { this->enable_cb(request, response); });
 
     // callback to send 0 cmd_wrench on shutdown
     using rclcpp::contexts::get_global_default_context;
@@ -68,6 +74,11 @@ PIDController::PIDController() : Node("pid_controller")
     if (!this->is_enabled)
     {
         RCLCPP_INFO(this->get_logger(), "PID controller is disabled. Call enable_controller service to start.");
+    }
+    // wait to be enabled
+    while (!this->is_enabled)
+    {
+        rclcpp::spin_some(this->get_node_base_interface());
     }
 
     // wait to hear odom msg
@@ -210,8 +221,8 @@ void PIDController::publish_zero_command()
     RCLCPP_INFO(this->get_logger(), "Sending 0 cmd_wrench.");
 }
 
-void PIDController::reset(std::shared_ptr<std_srvs::srv::Empty::Request> const request,
-                          std::shared_ptr<std_srvs::srv::Empty::Response> response)
+void PIDController::reset(std::shared_ptr<std_srvs::srv::Empty::Request> const,
+                          std::shared_ptr<std_srvs::srv::Empty::Response>)
 {
     RCLCPP_INFO(this->get_logger(), "Resetting PID controller.");
 
@@ -238,4 +249,26 @@ void PIDController::reset(std::shared_ptr<std_srvs::srv::Empty::Request> const r
     this->last_cmd_time_ = this->get_clock()->now();
 
     RCLCPP_INFO(this->get_logger(), "Done resetting PID controller.");
+}
+
+// callback for service to enable or disable the controller, does NOT reset the controller or goal
+void PIDController::enable_cb(std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+                              std::shared_ptr<std_srvs::srv::SetBool::Response> response)
+{
+    // set is_enabled_ variable
+    this->is_enabled = request->data;
+
+    if (this->is_enabled)
+    {
+        RCLCPP_INFO(this->get_logger(), "PID controller enabled.");
+    }
+    else
+    {
+        RCLCPP_INFO(this->get_logger(), "PID controller disabled.");
+    }
+
+    // start with zero thrust
+    this->publish_zero_command();
+
+    response->success = true;
 }
