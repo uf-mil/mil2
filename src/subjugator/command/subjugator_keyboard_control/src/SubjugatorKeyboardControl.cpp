@@ -1,4 +1,6 @@
 #include "subjugator_keyboard_control/SubjugatorKeyboardControl.h"
+#include <poll.h>
+#include <unistd.h>
 
 using namespace std::chrono_literals;
 using namespace std::chrono;
@@ -99,7 +101,7 @@ void SubjugatorKeyboardControl::keyboardLoop()
         { &key_a, base_linear_, &current_force_y },          { &key_d, -base_linear_, &current_force_y },
         { &key_x, base_linear_, &current_force_z },          { &key_z, -base_linear_, &current_force_z },
     };
-    auto const timeout = milliseconds(150);
+    auto const timeout = milliseconds(500);
 
     while (running_)
     {
@@ -116,86 +118,90 @@ void SubjugatorKeyboardControl::keyboardLoop()
         current_force_x = 0.0, current_force_y = 0.0, current_force_z = 0.0;
         current_torque_x = 0.0, current_torque_y = 0.0, current_torque_z = 0.0;
 
-        int ch = getchar();
-        if (ch == -1)
-        {
-            // Do nothing. Avoids additional nesting or use of goto
-        }
-        else if (ch == 27)
-        {  // Possible arrow key escape sequence
-            if (getchar() == 91)
-            {
-                int ch3 = getchar();
-                if (ch3 == 'A')
+        // need to prevent blocking so that we can get real time input
+        pollfd fd;
+        fd.fd = STDIN_FILENO; //terminal
+        fd.events = POLLIN; //only looking where there is input
+
+        int ret = poll(&fd, 1, 0); //10 ms timeout to see if there is input
+        if (ret>0){
+            int ch = getchar();
+            if (ch == 27)
+            {  // Possible arrow key escape sequence
+                if (getchar() == 91)
                 {
-                    arrow_up.pressed = true;
-                    arrow_up.last_time = now;
-                }
-                else if (ch3 == 'B')
-                {
-                    arrow_down.pressed = true;
-                    arrow_down.last_time = now;
-                }
-                else if (ch3 == 'C')
-                {
-                    arrow_right.pressed = true;
-                    arrow_right.last_time = now;
-                }
-                else if (ch3 == 'D')
-                {
-                    arrow_left.pressed = true;
-                    arrow_left.last_time = now;
-                }
-                else
-                {
-                    RCLCPP_INFO(this->get_logger(), "Unknown escape sequence");
+                    int ch3 = getchar();
+                    if (ch3 == 'A')
+                    {
+                        arrow_up.pressed = true;
+                        arrow_up.last_time = now;
+                    }
+                    else if (ch3 == 'B')
+                    {
+                        arrow_down.pressed = true;
+                        arrow_down.last_time = now;
+                    }
+                    else if (ch3 == 'C')
+                    {
+                        arrow_right.pressed = true;
+                        arrow_right.last_time = now;
+                    }
+                    else if (ch3 == 'D')
+                    {
+                        arrow_left.pressed = true;
+                        arrow_left.last_time = now;
+                    }
+                    else
+                    {
+                        RCLCPP_INFO(this->get_logger(), "Unknown escape sequence");
+                    }
                 }
             }
-        }
-        else
-        {
-            // Process normal keys:
-            switch (ch)
+            else
             {
-                case 'w':
-                    key_w.pressed = true;
-                    key_w.last_time = now;
-                    break;
-                case 's':
-                    key_s.pressed = true;
-                    key_s.last_time = now;
-                    break;
-                case 'a':
-                    key_a.pressed = true;
-                    key_a.last_time = now;
-                    break;
-                case 'd':
-                    key_d.pressed = true;
-                    key_d.last_time = now;
-                    break;
-                case 'e':
-                    key_e.pressed = true;
-                    key_e.last_time = now;
-                    break;
-                case 'r':
-                    key_r.pressed = true;
-                    key_r.last_time = now;
-                    break;
-                case 'z':
-                    key_z.pressed = true;
-                    key_z.last_time = now;
-                    break;
-                case 'x':
-                    key_x.pressed = true;
-                    key_x.last_time = now;
-                    break;
-                case 'q':
-                    running_ = false;
-                    rclcpp::shutdown();
-                    break;
-                default:
-                    RCLCPP_INFO(this->get_logger(), "Unknown command: %c", static_cast<char>(ch));
-                    break;
+                // Process normal keys:
+                switch (ch)
+                {
+                    case 'w':
+                        key_w.pressed = true;
+                        key_w.last_time = now;
+                        break;
+                    case 's':
+                        key_s.pressed = true;
+                        key_s.last_time = now;
+                        break;
+                    case 'a':
+                        key_a.pressed = true;
+                        key_a.last_time = now;
+                        break;
+                    case 'd':
+                        key_d.pressed = true;
+                        key_d.last_time = now;
+                        break;
+                    case 'e':
+                        key_e.pressed = true;
+                        key_e.last_time = now;
+                        break;
+                    case 'r':
+                        key_r.pressed = true;
+                        key_r.last_time = now;
+                        break;
+                    case 'z':
+                        key_z.pressed = true;
+                        key_z.last_time = now;
+                        break;
+                    case 'x':
+                        key_x.pressed = true;
+                        key_x.last_time = now;
+                        break;
+                    case 'q':
+                        running_ = false;
+                        rclcpp::shutdown();
+                        break;
+                    default:
+                        RCLCPP_INFO(this->get_logger(), "Unknown command: %c", static_cast<char>(ch));
+                        break;
+                }
             }
         }
 
