@@ -4,8 +4,7 @@ from time import sleep
 
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Imu
-from sensor_msgs.msg import MagneticField
+from sensor_msgs.msg import Imu, MagneticField
 
 
 class IMUSubscriber(Node):
@@ -24,14 +23,13 @@ class IMUSubscriber(Node):
         self.y_mag_test = [0, 4.5e-5, 0]
         self.z_mag_test = [0, 0, 4.5e-5]
 
-
         # Time that the robot has to stay in one position before the test is successful/passes
         self.timer_threshold = datetime.timedelta(seconds=5)
         self.test_countdown = False
         self.start_time = 0
 
         # Index of which IMU test we're on
-        self.test_counter = 2
+        self.test_counter = 0
 
         # Averages of the linear acceleration components
         self.averages = [0.0, 0.0, 0.0]
@@ -52,8 +50,6 @@ class IMUSubscriber(Node):
             self.listener_callback,
             10,
         )
-
-        # self.subscription
 
     # Looks at the deviances and suggests the next action a user should take to calibrate
     def generate_suggestion(self):
@@ -95,7 +91,7 @@ class IMUSubscriber(Node):
     def listener_callback(self, msg):
 
         # Rounded linear acceleration values
-        if (self.test_counter < 3):
+        if self.test_counter < 3:
             x = round(msg.linear_acceleration.x, 2)
             y = round(msg.linear_acceleration.y, 2)
             z = round(msg.linear_acceleration.z, 2)
@@ -106,15 +102,9 @@ class IMUSubscriber(Node):
             z = round(msg.magnetic_field.z, 6)
 
         # # Update the averages (not the best technique since they're both weight equally, but it's the simplest)
-        self.averages[0] = (
-            self.averages[0] + x
-        ) / 2
-        self.averages[1] = (
-            self.averages[1] + y
-        ) / 2
-        self.averages[2] = (
-            self.averages[2] + z
-        ) / 2
+        self.averages[0] = (self.averages[0] + x) / 2
+        self.averages[1] = (self.averages[1] + y) / 2
+        self.averages[2] = (self.averages[2] + z) / 2
 
         suggestion = self.generate_suggestion()
 
@@ -308,12 +298,13 @@ class IMUSubscriber(Node):
 
                         if (current_time - self.start_time) >= self.timer_threshold:
 
-                            "\nSufficient deviance met, continuing to next test...\n",
-
+                            print(
+                                "\nSufficient deviance met, continuing to next test...\n",
+                            )
 
                             # Kill the accelerometer subscriber so we can create a new subscriber for magnetometer
                             self.destroy_subscription(self.subscription)
-                            
+
                             self.subscription = self.create_subscription(
                                 MagneticField,
                                 "/imu/mag",
@@ -323,7 +314,6 @@ class IMUSubscriber(Node):
 
                             sleep(2)
                             self.test_counter += 1
-
 
                         else:
                             sys.stdout.write(
@@ -350,7 +340,6 @@ class IMUSubscriber(Node):
                     self.test_countdown = False
 
                 sys.stdout.flush()
-
 
             # (Magnetometer Test) x-axis
             case 3:
@@ -379,7 +368,6 @@ class IMUSubscriber(Node):
 
                 sys.stdout.write(f"\rActual: \t{x:.1e} \t{y:.1e} \t{z:.1e}\n")
                 sys.stdout.flush()
-
 
                 if all(
                     deviance <= self.MAGNETOMETER_DEVIANCE_THRESHOLD
@@ -456,7 +444,6 @@ class IMUSubscriber(Node):
                 sys.stdout.write(f"\rActual: \t{x:.1e} \t{y:.1e} \t{z:.1e}\n")
                 sys.stdout.flush()
 
-
                 if all(
                     deviance <= self.MAGNETOMETER_DEVIANCE_THRESHOLD
                     for deviance in self.deviances
@@ -504,7 +491,6 @@ class IMUSubscriber(Node):
 
                 sys.stdout.flush()
 
-
             # # (Magnetometer Test) z-axis
             case 5:
 
@@ -532,7 +518,6 @@ class IMUSubscriber(Node):
 
                 sys.stdout.write(f"\rActual: \t{x:.1e} \t{y:.1e} \t{z:.1e}\n")
                 sys.stdout.flush()
-
 
                 if all(
                     deviance <= self.MAGNETOMETER_DEVIANCE_THRESHOLD
@@ -580,7 +565,6 @@ class IMUSubscriber(Node):
                     self.test_countdown = False
 
                 sys.stdout.flush()
-
 
             case _:
                 sys.exit(0)
