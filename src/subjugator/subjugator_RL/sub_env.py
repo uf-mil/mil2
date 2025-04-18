@@ -9,6 +9,7 @@ import os
 import threading
 import imu_subscriber
 import cam_subscriber
+import subprocess
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50,80,3]
@@ -116,7 +117,12 @@ class SubEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
-        # Find initial position of sub and place it there (if possible within the ROS environment, or simply send it to initial position) --
+        # Run the launch file to reset the gazebo
+        command = ["ros2", "launch", "subjugator_bringup", "gazebo.launch.py"]
+        subprocess.run(command, capture_output=True, text=True, check=True)
+
+        # Wait for 15 seconds for gazebo to open
+        time.sleep(15)
 
         observation = self._get_obs(self)
         info = self._get_info(self)
