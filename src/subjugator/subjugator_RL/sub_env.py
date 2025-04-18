@@ -158,3 +158,7 @@ register(
     id="SubjugatorAgent-v0",
     entry_point=SubEnv
 )
+
+if __name__ == '__main__':
+    env = SubEnv()
+    env.reset()
