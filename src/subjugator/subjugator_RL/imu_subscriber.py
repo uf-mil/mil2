@@ -23,14 +23,11 @@ class ImuSubscriber(Node):
         #self.get_logger().info("Imu received")
         self.imu_data = msg
 
-
-
-
 def safe_rclpy_init():
     try:
-	rclpy.init()
+        rclpy.init()
     except RuntimeError:
-	pass
+        pass
 
 safe_rclpy_init()
 imu_node = ImuSubscriber()
