@@ -39,8 +39,6 @@ class SubEnv(gym.Env):
              'torque' : spaces.Box(low=-50, high=50, shape=(3,), dtype=np.float32)
             })
 
-        self.imu_node = ImuSubscriber()
-
 
 
     def calculate_red_amount(self, image):
