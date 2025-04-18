@@ -29,8 +29,8 @@ class FTXUI : public UIBase
         }
         else
         {
-            auto binPath = std::filesystem::canonical("/proc/self/exe").parent_path();
-            fileName = binPath / ".." / "cfg" / "config.json";
+            boost::filesystem::path filePath = boost::process::search_path("mil_preflight");
+            fileName = (filePath.parent_path() / "config.json").string();
         }
 
         Component backButton = Button(
