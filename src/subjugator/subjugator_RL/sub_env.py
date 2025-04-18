@@ -15,13 +15,25 @@ import subprocess
 SHAPE = [50,80,3]
 
 #to be finished
-class SubEnv(gym.Env):
+class SubEnv(gym.Env):   
 
-    imu_subscriber.run()
-    cam_subscriber.run()
     # Example of getting data: data = imu_subscriber.imu_node.imu_data
 
     def __init__(self, render_mode = "rgb_array"):
+        
+        # Run the launch file to reset the gazebo
+        subprocess.Popen([
+            "gnome-terminal",
+            "--",
+            "bash", "-c",
+            "source /opt/ros/jazzy/setup.bash && source ~/mil2/install/setup.bash && ros2 launch subjugator_bringup gazebo.launch.py; exec bash"
+        ])
+
+        cam_subscriber.run()
+        imu_subscriber.run()
+
+        # Wait for 15 seconds for gazebo to open
+        time.sleep(15)
 
         #camera rgb space
         self.observation_space = spaces.Dict({
@@ -38,8 +50,6 @@ class SubEnv(gym.Env):
             {'force'  : spaces.Box(low=-50, high=50, shape=(3,), dtype=np.float32),
              'torque' : spaces.Box(low=-50, high=50, shape=(3,), dtype=np.float32)
             })
-
-        self.imu_node = ImuSubscriber()
 
 
 
