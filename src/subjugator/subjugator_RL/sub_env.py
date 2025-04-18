@@ -16,13 +16,14 @@ SHAPE = [50,80,3]
 
 #to be finished
 class SubEnv(gym.Env):   
+    proc = None
 
     # Example of getting data: data = imu_subscriber.imu_node.imu_data
 
     def __init__(self, render_mode = "rgb_array"):
         
         # Run the launch file to reset the gazebo
-        subprocess.Popen([
+        self.proc = subprocess.Popen([
             "gnome-terminal",
             "--",
             "bash", "-c",
@@ -125,6 +126,7 @@ class SubEnv(gym.Env):
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
+        self.proc.terminate()
 
         # Run the launch file to reset the gazebo
         command = ["ros2", "launch", "subjugator_bringup", "gazebo.launch.py"]
