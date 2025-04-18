@@ -95,6 +95,8 @@
       <nRabsR>-750</nRabsR>
       <nR>-750</nR>
     </plugin>
+
+    <plugin filename="ThrusterBridge" name="thrusterBridge::ThrusterBridge"/>
   </gazebo>
 
   <!-- Cameras -->
