@@ -126,7 +126,11 @@ class SubEnv(gym.Env):
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        self.proc.terminate()
+
+            # Kill the previous gazebo process if it exists
+        if self.proc:
+            self.proc.terminate()
+            self.proc.wait()  # Wait for it to close properly
 
         # Run the launch file to reset the gazebo
         command = ["ros2", "launch", "subjugator_bringup", "gazebo.launch.py"]
