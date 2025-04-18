@@ -35,9 +35,6 @@ imu_node = ImuSubscriber()
 def run():
     global imu_node, executor
 
-    if rclpy.ok():
-      rclpy.shutdown()
-
     safe_rclpy_init()
 
     imu_node = ImuSubscriber()
