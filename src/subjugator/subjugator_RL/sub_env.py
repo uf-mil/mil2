@@ -108,9 +108,8 @@ class SubEnv(gym.Env):
 
         # Also define termination (when to end)
         terminated = False
-        if (self.object_distance < 2){
+        if (self.object_distance < 2):
             terminated = True
-        }
     
         return observation, reward, terminated, False, info
     
