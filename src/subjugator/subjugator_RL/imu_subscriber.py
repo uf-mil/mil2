@@ -4,7 +4,7 @@ from sensor_msgs.msg import Imu
 import threading
 import time
 import os
-
+from rclpy.executors import SingleThreadedExecutor
 class ImuSubscriber(Node):
     def __init__(self):
         super().__init__('imu_subscriber')
@@ -22,11 +22,20 @@ class ImuSubscriber(Node):
         #self.get_logger().info("Imu received")
         self.imu_data = msg
 
-rclpy.init()
+
 imu_node = ImuSubscriber()
+def safe_rclpy_init():
+    try:
+	rclpy.init()
+    except RuntimeError:
+	pass
 
 def run():
     global imu_node, executor
+
+    if rclpy.ok():
+      rclpy.shutdown()
+
     rclpy.init()
 
     imu_node = ImuSubscriber()
