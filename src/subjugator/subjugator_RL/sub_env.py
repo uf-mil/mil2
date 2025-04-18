@@ -153,10 +153,11 @@ class SubEnv(gym.Env):
 
 # subscriber for IMU
 # Register the environment in the gym
-register(
-    id="SubjugatorAgent-v0",
-    entry_point=SubEnv
-)
+# register(
+#     id="SubjugatorAgent-v0",
+#     entry_point=SubEnv
+# )
+
 
 if __name__ == '__main__':
     env = SubEnv()
