@@ -80,3 +80,12 @@ colbuild() {
 	source ./install/setup.bash    # Source the install script
 	cd "$prev_dir" || return       # Return to the original directory
 }
+
+rm_symlink_dirs() {
+	cd "$MIL_REPO" || return
+
+	echo "Removing auto-generated symlinked Python directories..."
+	find build -type d -path "*/ament_cmake_python/*/*" -exec rm -rf {} +
+
+	echo "Done."
+}
