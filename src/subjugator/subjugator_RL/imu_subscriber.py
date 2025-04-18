@@ -25,12 +25,20 @@ class ImuSubscriber(Node):
 rclpy.init()
 imu_node = ImuSubscriber()
 
-def run(args=None):
+def run():
+    global imu_node, executor
+    rclpy.init()
+
+    imu_node = ImuSubscriber()
+    executor = SingleThreadedExecutor()
+    executor.add_node(imu_node)
+
     def spin():
-        # Declare node and spin it
-        rclpy.spin(imu_node)
-        imu_node.destroy_node()
-        rclpy.shutdown()
-        
+        try:
+            executor.spin()
+        finally:
+            imu_node.destroy_node()
+            rclpy.shutdown()
+
     thread = threading.Thread(target=spin, daemon=True)
     thread.start()
