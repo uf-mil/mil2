@@ -11,7 +11,7 @@ import os
 
 cvBridge = CvBridge()
 
-class cam_subscriber(Node):
+class CamSubscriber(Node):
     def __init__(self):
         super().__init__('cam_subscriber')
         self.cam_subscription = self.create_subscription(
@@ -21,10 +21,7 @@ class cam_subscriber(Node):
             10
         )
         self.cam_subscription
-
-        # Make pipe for image
-        if not os.path.exists("image_pipe"):
-            os.mkfifo("image_pipe")
+        self.cam_data = None
     
 
     def image_callback(self, msg):
@@ -57,21 +54,17 @@ class cam_subscriber(Node):
         cv2.imshow("Pooled image", pooled_image)
         cv2.waitKey(20)
 
-        with open("image_pipe", 'wb') as pipe:
-                print("Writing to Image pipe")
-                pipe.write(pooled_image.tobytes())
+        self.cam_data = pooled_image
+        time.sleep(0.1)
         
-def main(args=None):
-    rclpy.init(args=args)
+cam_node = CamSubscriber()
 
-    # Declare node and spin it
-    node = cam_subscriber()
-    rclpy.spin(node)
+def run(args=None):
+    def spin():
+        # Declare node and spin it
+        rclpy.spin(cam_node)
+        cam_node.destroy_node()
+        rclpy.shutdown()
         
-
-
-    node.destroy_node()
-    rclpy.shutdown()
-
-if __name__ == '__main__':
-    main()
+    thread = threading.Thread(target=spin, daemon=True)
+    thread.start()

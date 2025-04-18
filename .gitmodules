@@ -4,3 +4,9 @@
 [submodule "src/subjugator/drivers/waterlinked_dvl"]
 	path = src/subjugator/drivers/waterlinked_dvl
 	url = https://github.com/uf-mil/waterlinked_dvl.git
+[submodule "src/mil_common/perception/vision_stack"]
+	path = src/mil_common/perception/vision_stack
+	url = https://github.com/uf-mil/vision_stack.git
+[submodule "ext/FTXUI"]
+	path = ext/FTXUI
+	url = https://github.com/ArthurSonzogni/FTXUI.git

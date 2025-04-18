@@ -7,8 +7,8 @@ import random
 import time
 import os
 import threading
-from imu_subscriber import ImuSubscriber
-from imu_subscriber import main as imu_main
+import imu_subscriber
+import cam_subscriber
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50,80,3]
@@ -16,6 +16,14 @@ SHAPE = [50,80,3]
 #to be finished
 class SubEnv(gym.Env):
 
+<<<<<<< HEAD
+=======
+    # Is threading needed? Might add unnecessary computation that could slow down training --
+    imu_subscriber.run()
+    cam_subscriber.run()
+    # Example of getting data: data = imu_subscriber.imu_node.imu_data
+
+>>>>>>> ceb3dc351a9e992f5700afb762676984a7c2a3b2
     def __init__(self, render_mode = "rgb_array"):
 
         #IMU field
@@ -26,10 +34,16 @@ class SubEnv(gym.Env):
         #camera rgb space
         self.observation_space = spaces.Dict({
                 'image'                 : spaces.Box(0, 255, shape=(SHAPE[0], SHAPE[1], SHAPE[2]), dtype=np.uint8),
+<<<<<<< HEAD
                 'orientation': spaces.Box(low=-1.0, high=1.0, shape=(4,)),
                 'angular_velocity': spaces.Box(low=-np.inf, high=np.inf, shape=(3,)),
                 'linear_acceleration': spaces.Box(low=-np.inf, high=np.inf, shape=(3,))
         })
+=======
+                'orientation'           : spaces.Box(low = -np.inf, high = np.inf, shape=(4,))
+                'object_distance'       : spaces.Box(low = 0, high = 100, shape=(1,), dtype=np.float32),
+            })
+>>>>>>> ceb3dc351a9e992f5700afb762676984a7c2a3b2
 
 
         #Force_x
@@ -39,15 +53,19 @@ class SubEnv(gym.Env):
             })
 
         self.imu_node = ImuSubscriber()
+<<<<<<< HEAD
 
        
 
         # self.sketch = None
         # self.setup = True
+=======
+>>>>>>> ceb3dc351a9e992f5700afb762676984a7c2a3b2
 
 
 
     def _get_obs(self):
+<<<<<<< HEAD
         # Get image from RL_subscriber through pipe
         try:
             with open("image_pipe", 'rb') as pipe:
@@ -96,6 +114,57 @@ class SubEnv(gym.Env):
         red_percentage = (total_red / max_possible_red) * 100
         
         return total_red, avg_red, red_percentage
+=======
+        # Get image from RL_subscriber through thread
+        image = cam_subscriber.cam_node.cam_data
+        
+        # imu version of above based on imu_node --
+        imu = imu_subscriber.imu_node.imu_data
+        
+        # Get object distance via the buoy_finder (either through subscriber thread, or pipe) --       
+        
+        # object_distance has yet to be implemented --
+        return {"image": image, "imu": imu, "object_distance": object_distance }
+    
+    # Unneeded, can be used for debugging
+    def _get_info(self):
+        print("Getting info")
+
+
+    def step(self, action):
+        # Send action to the environment
+        self._publish_action_as_wrench(self, action)
+
+        # Get observation from the environment (especially object_distance)
+        observation = self._get_obs(self)
+
+        # Get extra info (mostly for debugging)
+        info = self._get_info(self)
+
+        # Define rules for rewarding - must be within range of 2 and 5 meters of object
+        if (self.object_distance < 2 or self.object_distance > 5):
+            reward = 1
+        else:
+            reward = 0
+
+        # Also define termination (when to end)
+        terminated = False
+        if (self.object_distance < 2){
+            terminated = True
+        }
+    
+        return observation, reward, terminated, False, info
+    
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+
+        # Find initial position of sub and place it there (if possible within the ROS environment, or simply send it to initial position) --
+
+        observation = self._get_obs(self)
+        info = self._get_info(self)
+
+        return observation, info
+>>>>>>> ceb3dc351a9e992f5700afb762676984a7c2a3b2
 
 
     def _publish_action_as_wrench(self, action):
@@ -120,6 +189,7 @@ class SubEnv(gym.Env):
             print("Writing to wrench publisher")
             pipe.write(wrench_msg.tobytes())
 
+<<<<<<< HEAD
     def calculate_reward(self, observation):
         image = observation['image']
 
@@ -137,9 +207,10 @@ class SubEnv(gym.Env):
         #if()
         #reward
         observation = self._get_obs(self)
+=======
+>>>>>>> ceb3dc351a9e992f5700afb762676984a7c2a3b2
 # subscriber for IMU
 # Register the environment in the gym
-
 register(
     id="SubjugatorAgent-v0",
     entry_point=SubEnv

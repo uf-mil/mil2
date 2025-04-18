@@ -21,12 +21,14 @@
 #include <gz/msgs/camera_info.pb.h>
 #include <gz/msgs/image.pb.h>
 
-#include <gz/math/Angle.hh>
-#include <gz/sim/System.hh>
 #include <memory>
 #include <mutex>
-#include <opencv2/opencv.hpp>
+
 #include <rclcpp/rclcpp.hpp>
+
+#include <gz/math/Angle.hh>
+#include <gz/sim/System.hh>
+#include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/image.hpp>
 
 namespace dave_gz_sensor_plugins

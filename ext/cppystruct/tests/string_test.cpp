@@ -1,8 +1,8 @@
-#include <catch.hpp>
-
 #include "constexpr_compare.h"
 #include "constexpr_require.h"
 #include "cppystruct.h"
+
+#include <catch.hpp>
 
 TEST_CASE("consume string", "[cppystruct::string]")
 {

@@ -1,7 +1,8 @@
 #include "ExamplePlugin.hh"
 
-#include <gz/plugin/Register.hh>
 #include <iostream>
+
+#include <gz/plugin/Register.hh>
 
 // Add plugins to gazebo simulator alongside its dependencies
 GZ_ADD_PLUGIN(dvl_sensor::ExamplePlugin, gz::sim::System, dvl_sensor::ExamplePlugin::ISystemPostUpdate)

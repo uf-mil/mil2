@@ -1,7 +1,8 @@
+---
 # ROS-Gazebo bridge configuration
 
 # IMU configuration.
-- ros_topic_name: "/imu/data_raw"
+- ros_topic_name: "/imu/data"
   gz_topic_name: "/imu/data_raw"
   ros_type_name: "sensor_msgs/msg/Imu"
   gz_type_name: "gz.msgs.IMU"
