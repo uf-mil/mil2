@@ -5,6 +5,7 @@ import threading
 import time
 import os
 from rclpy.executors import SingleThreadedExecutor
+
 class ImuSubscriber(Node):
     def __init__(self):
         super().__init__('imu_subscriber')
@@ -23,12 +24,16 @@ class ImuSubscriber(Node):
         self.imu_data = msg
 
 
-imu_node = ImuSubscriber()
+
+
 def safe_rclpy_init():
     try:
 	rclpy.init()
     except RuntimeError:
 	pass
+
+safe_rclpy_init()
+imu_node = ImuSubscriber()
 
 def run():
     global imu_node, executor
@@ -36,7 +41,7 @@ def run():
     if rclpy.ok():
       rclpy.shutdown()
 
-    rclpy.init()
+    safe_rclpy_init()
 
     imu_node = ImuSubscriber()
     executor = SingleThreadedExecutor()
