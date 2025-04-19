@@ -65,6 +65,33 @@ Rotation::Rotation(geometry_msgs::msg::Vector3 const& rot_vec)
     quat_.z() = sy * cp * cr - cy * sp * sr;
 }
 
+Rotation::Rotation(std::initializer_list<double> const& init_list)
+{
+    if (init_list.size() == 3)
+    {
+        auto it = init_list.begin();
+        double cy = cos(*(it + 2) * 0.5);
+        double sy = sin(*(it + 2) * 0.5);
+        double cp = cos(*(it + 1) * 0.5);
+        double sp = sin(*(it + 1) * 0.5);
+        double cr = cos(*it * 0.5);
+        double sr = sin(*it * 0.5);
+        quat_.w() = cy * cp * cr + sy * sp * sr;
+        quat_.x() = cy * cp * sr - sy * sp * cr;
+        quat_.y() = sy * cp * sr + cy * sp * cr;
+        quat_.z() = sy * cp * cr - cy * sp * sr;
+    }
+    else if (init_list.size() == 4)
+    {
+        auto it = init_list.begin();
+        quat_ = Eigen::Quaterniond(*(it + 3), *(it), *(it + 1), *(it + 2));
+    }
+    else
+    {
+        throw std::invalid_argument("Invalid initializer list size for Rotation constructor");
+    }
+}
+
 Rotation::Rotation()
 {
     quat_ = Eigen::Quaterniond(1, 0, 0, 0);
@@ -126,9 +153,24 @@ bool Rotation::operator!=(Rotation const& other) const
     return !(*this == other);
 }
 
+Rotation Rotation::operator+(double scalar) const
+{
+    return Rotation{ quat_.x(), quat_.y(), quat_.z(), quat_.w() + scalar };
+}
+
 Rotation Rotation::operator*(Rotation const& other) const
 {
     return Rotation(quat_ * other.quat_);
+}
+
+Rotation Rotation::operator/(double scalar) const
+{
+    return Rotation(Eigen::Vector4d{ quat_.x() / scalar, quat_.y() / scalar, quat_.z() / scalar, quat_.w() / scalar });
+}
+
+Rotation Rotation::operator*(double scalar) const
+{
+    return Rotation(Eigen::Vector4d{ quat_.x() * scalar, quat_.y() * scalar, quat_.z() * scalar, quat_.w() * scalar });
 }
 
 Rotation Rotation::operator-() const
@@ -142,11 +184,26 @@ void Rotation::normalize()
     quat_.normalize();
 }
 
+void Rotation::inverse()
+{
+    quat_ = quat_.inverse();
+}
+
+void Rotation::conjugate()
+{
+    quat_ = quat_.conjugate();
+}
+
 std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, Rotation const& obj)
 {
     os << "Rotation<x=" << obj.quat_x() << " y=" << obj.quat_y() << " z=" << obj.quat_z() << " w=" << obj.quat_w()
        << " roll_deg=" << obj.roll_deg() << " pitch_deg=" << obj.pitch_deg() << " yaw_deg=" << obj.yaw_deg() << ">";
     return os;
+}
+
+Rotation Rotation::imaginary() const
+{
+    return Rotation(Eigen::Vector4d{ quat_.x(), quat_.y(), quat_.z(), 0 });
 }
 
 }  // namespace mil_tools::geometry
