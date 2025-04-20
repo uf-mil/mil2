@@ -25,7 +25,10 @@ class TestsPage : public ComponentBase, public Job
     Component main_;
 
     int selector_ = 0;
+    std::vector<int> actionSelectors_;
     bool selectAll_ = false;
+    size_t nSelected_ = 0;
+
     std::atomic<size_t> currentTest_ = 0;
     std::atomic<bool> running_ = false;
 
@@ -36,7 +39,6 @@ class TestsPage : public ComponentBase, public Job
     std::optional<std::reference_wrapper<Test>> createTest(std::string&& name, std::string&& plugin) final;
     void onFinish(Job::Report&& report) final;
 
-    Element Render();
     bool OnEvent(Event event) final;
 };
 

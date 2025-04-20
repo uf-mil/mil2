@@ -34,7 +34,7 @@ install(TARGETS ${PROJECT_NAME} mil_preflight_backend
         DESTINATION bin # Install to install/bin/
 )
 
-install(FILES cfg/config.json DESTINATION cfg)
+install(FILES cfg/config.json DESTINATION bin)
 
 add_library(ftx_ui SHARED src/uis/ftxui/ui.cpp src/uis/ftxui/widgets.cpp)
 
