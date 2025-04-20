@@ -21,7 +21,9 @@ add_library(${PROJECT_NAME} src/geometry/Rotation.cpp src/fs/path.cpp
                             src/os.cpp src/os/FileDescriptor.cpp src/string.cpp)
 include_directories(include ${EIGEN3_INCLUDE_DIR})
 ament_target_dependencies(${PROJECT_NAME} rclcpp Eigen3 tf2_geometry_msgs)
+ament_export_dependencies(${PROJECT_NAME} rclcpp Eigen3 tf2_geometry_msgs)
 ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_include_directories(include/${PROJECT_NAME})
 
 install(
   TARGETS ${PROJECT_NAME}
