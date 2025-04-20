@@ -10,10 +10,31 @@ import threading
 import imu_subscriber
 import cam_subscriber
 import subprocess
+import os, subprocess, pathlib
 from rclpy.executors import SingleThreadedExecutor
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50,80,3]
+
+# ROS environment crashes in spanwed terminal without using this
+def clean_ros_env() -> dict:
+    env = os.environ.copy()
+
+    # 1) Remove only the variables that the opencv wheel polluted
+    for v in ("QT_PLUGIN_PATH", "QT_QPA_PLATFORM_PLUGIN_PATH", "QML2_IMPORT_PATH"):
+        env.pop(v, None)
+
+    # 2) Strip every LD_LIBRARY_PATH component that contains "/cv2/"
+    if "LD_LIBRARY_PATH" in env:
+        env["LD_LIBRARY_PATH"] = ":".join(
+            p for p in env["LD_LIBRARY_PATH"].split(":") if "/cv2/" not in p
+        )
+
+    # 3) Ensure XDG_RUNTIME_DIR is sane (needed by rclcpp logging)
+    env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    pathlib.Path(env["XDG_RUNTIME_DIR"]).mkdir(parents=True, exist_ok=True)
+
+    return env
 
 #to be finished
 class SubEnv(gym.Env):   
@@ -24,12 +45,16 @@ class SubEnv(gym.Env):
     def __init__(self, render_mode = "rgb_array"):
         
         # Run the launch file to reset the gazebo
-        self.proc = subprocess.Popen([
-            "gnome-terminal",
-            "--",
-            "bash", "-c",
-            "source /opt/ros/jazzy/setup.bash && source ~/mil2/install/setup.bash && ros2 launch subjugator_bringup gazebo.launch.py; exec bash"
-        ])
+        self.proc = subprocess.Popen(
+            [
+                "gnome-terminal", "--",
+                "bash", "-c",
+                "source /opt/ros/jazzy/setup.bash && "
+                "source ~/mil2/install/setup.bash && "
+                "ros2 launch subjugator_bringup gazebo.launch.py; exec bash"
+            ],
+            env=clean_ros_env(),
+        )
 
         cam_subscriber.run()
         imu_subscriber.run()
