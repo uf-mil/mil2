@@ -19,13 +19,13 @@ PIDController::PIDController() : Node("pid_controller")
 
     // create reset service
     this->reset_service_ = this->create_service<std_srvs::srv::Empty>(
-        "reset_controller",
+        "~/reset",
         [this](std::shared_ptr<std_srvs::srv::Empty::Request> const request,
                std::shared_ptr<std_srvs::srv::Empty::Response> response) { this->reset(request, response); });
 
     // create enable / disable service
     this->enable_service_ = this->create_service<std_srvs::srv::SetBool>(
-        "enable_controller",
+        "~/enable",
         [this](std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
                std::shared_ptr<std_srvs::srv::SetBool::Response> response) { this->enable_cb(request, response); });
 
