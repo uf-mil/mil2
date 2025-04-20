@@ -9,6 +9,9 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <build_depend>libsdl2-dev</build_depend>
+  <exec_depend>libsdl2-dev</exec_depend>
+
   <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
   <export>

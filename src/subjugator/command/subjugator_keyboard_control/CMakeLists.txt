@@ -8,6 +8,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(SDL2 REQUIRED)
 
 add_executable(subjugator_keyboard_control src/node.cpp
                                            src/SubjugatorKeyboardControl.cpp)
@@ -15,7 +16,11 @@ add_executable(subjugator_keyboard_control src/node.cpp
 target_include_directories(
   subjugator_keyboard_control
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-         $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
+         $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+  PRIVATE ${SDL2_INCLUDE_DIRS})
+target_link_libraries(subjugator_keyboard_control
+        ${SDL2_LIBRARIES}
+)
 target_compile_features(subjugator_keyboard_control PUBLIC c_std_99 cxx_std_17)
 
 ament_target_dependencies(subjugator_keyboard_control rclcpp geometry_msgs)

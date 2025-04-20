@@ -60,26 +60,49 @@ SubjugatorKeyboardControl::~SubjugatorKeyboardControl()
 
 void SubjugatorKeyboardControl::initTerminal()
 {
-    tcgetattr(STDIN_FILENO, &old_terminal_settings_);
-    termios new_settings = old_terminal_settings_;
-    new_settings.c_lflag &= ~(ICANON | ECHO);
-    new_settings.c_cc[VMIN] = 0;   // Set non-blocking input
-    new_settings.c_cc[VTIME] = 1;  // 0.1 second timeout
-    // These flags are necessary so doesn't always return -1
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
-    terminal_initialized_ = true;
-}
+    // Initialize SDL video for real key events
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        RCLCPP_ERROR(get_logger(), "SDL_Init Error: %s", SDL_GetError());
+        return;
+    }
+    window_ = SDL_CreateWindow(
+        "subj_ctl",
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,
+        600, 400,
+        SDL_WINDOW_SHOWN               // <-- must be SHOWN, not HIDDEN
+    );
+    SDL_RaiseWindow(window_);
 
-void SubjugatorKeyboardControl::restoreTerminal() const
-{
-    if (terminal_initialized_)
-    {
-        tcsetattr(STDIN_FILENO, TCSANOW, &old_terminal_settings_);
+
+    // Enable raw terminal mode to disable echo and line buffering
+    if (tcgetattr(STDIN_FILENO, &old_tio_) == 0) {
+        termios new_tio = old_tio_;
+        new_tio.c_lflag &= ~(ICANON | ECHO);    // non-canonical, no echo
+        new_tio.c_cc[VMIN] = 0;                 // non-blocking read
+        new_tio.c_cc[VTIME] = 1;                // 0.1s timeout
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &new_tio) == 0) {
+            termios_initialized_ = true;
+        } else {
+            RCLCPP_WARN(get_logger(), "Failed to set raw terminal mode");
+        }
+    } else {
+        RCLCPP_WARN(get_logger(), "Failed to get terminal attributes");
     }
 }
 
+
+void SubjugatorKeyboardControl::restoreTerminal() const
+{
+    if (window_) {
+        SDL_DestroyWindow(window_);
+    }
+    SDL_Quit();
+
+    if (termios_initialized_) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &old_tio_);
+    }
+}
 void SubjugatorKeyboardControl::keyboardLoop()
 {
     KeyState arrow_up, arrow_down, arrow_left, arrow_right;
@@ -99,105 +122,53 @@ void SubjugatorKeyboardControl::keyboardLoop()
         { &key_a, base_linear_, &current_force_y },          { &key_d, -base_linear_, &current_force_y },
         { &key_x, base_linear_, &current_force_z },          { &key_z, -base_linear_, &current_force_z },
     };
-    auto const timeout = milliseconds(150);
+    auto const timeout = milliseconds(500);
 
+    SDL_Event e;
     while (running_)
     {
         auto now = steady_clock::now();
 
-        // Update key timeouts first?
-        for (auto key : keys)
-        {
-            if (now - key->last_time > timeout)
-                key->pressed = false;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_KEYDOWN && !e.key.repeat) {
+                switch (e.key.keysym.sym) {
+                    case SDLK_w:     key_w.pressed = true;     key_w.last_time = now; break;
+                    case SDLK_s:     key_s.pressed = true;     key_s.last_time = now; break;
+                    case SDLK_a:     key_a.pressed = true;     key_a.last_time = now; break;
+                    case SDLK_d:     key_d.pressed = true;     key_d.last_time = now; break;
+                    case SDLK_e:     key_e.pressed = true;     key_e.last_time = now; break;
+                    case SDLK_r:     key_r.pressed = true;     key_r.last_time = now; break;
+                    case SDLK_x:     key_x.pressed = true;     key_x.last_time = now; break;
+                    case SDLK_z:     key_z.pressed = true;     key_z.last_time = now; break;
+                    case SDLK_UP:    arrow_up.pressed = true;    arrow_up.last_time = now;    break;
+                    case SDLK_DOWN:  arrow_down.pressed = true;  arrow_down.last_time = now;  break;
+                    case SDLK_RIGHT: arrow_right.pressed = true; arrow_right.last_time = now; break;
+                    case SDLK_LEFT:  arrow_left.pressed = true;  arrow_left.last_time = now;  break;
+                    case SDLK_q:     running_ = false; rclcpp::shutdown();                   break;
+                    default:        break;
+                }
+            }
+            else if (e.type == SDL_KEYUP) {
+                switch (e.key.keysym.sym) {
+                    case SDLK_w:   key_w.pressed = false;   break;
+                    case SDLK_s:   key_s.pressed = false;   break;
+                    case SDLK_a:   key_a.pressed = false;   break;
+                    case SDLK_d:   key_d.pressed = false;   break;
+                    case SDLK_e:   key_e.pressed = false;   break;
+                    case SDLK_r:   key_r.pressed = false;   break;
+                    case SDLK_x:   key_x.pressed = false;   break;
+                    case SDLK_z:   key_z.pressed = false;   break;
+                    case SDLK_UP:    arrow_up.pressed = false;    break;
+                    case SDLK_DOWN:  arrow_down.pressed = false;  break;
+                    case SDLK_RIGHT: arrow_right.pressed = false; break;
+                    case SDLK_LEFT:  arrow_left.pressed = false;  break;
+                    default:          break;
+                }
+            }
         }
-
         // Reset every time
         current_force_x = 0.0, current_force_y = 0.0, current_force_z = 0.0;
         current_torque_x = 0.0, current_torque_y = 0.0, current_torque_z = 0.0;
-
-        int ch = getchar();
-        if (ch == -1)
-        {
-            // Do nothing. Avoids additional nesting or use of goto
-        }
-        else if (ch == 27)
-        {  // Possible arrow key escape sequence
-            if (getchar() == 91)
-            {
-                int ch3 = getchar();
-                if (ch3 == 'A')
-                {
-                    arrow_up.pressed = true;
-                    arrow_up.last_time = now;
-                }
-                else if (ch3 == 'B')
-                {
-                    arrow_down.pressed = true;
-                    arrow_down.last_time = now;
-                }
-                else if (ch3 == 'C')
-                {
-                    arrow_right.pressed = true;
-                    arrow_right.last_time = now;
-                }
-                else if (ch3 == 'D')
-                {
-                    arrow_left.pressed = true;
-                    arrow_left.last_time = now;
-                }
-                else
-                {
-                    RCLCPP_INFO(this->get_logger(), "Unknown escape sequence");
-                }
-            }
-        }
-        else
-        {
-            // Process normal keys:
-            switch (ch)
-            {
-                case 'w':
-                    key_w.pressed = true;
-                    key_w.last_time = now;
-                    break;
-                case 's':
-                    key_s.pressed = true;
-                    key_s.last_time = now;
-                    break;
-                case 'a':
-                    key_a.pressed = true;
-                    key_a.last_time = now;
-                    break;
-                case 'd':
-                    key_d.pressed = true;
-                    key_d.last_time = now;
-                    break;
-                case 'e':
-                    key_e.pressed = true;
-                    key_e.last_time = now;
-                    break;
-                case 'r':
-                    key_r.pressed = true;
-                    key_r.last_time = now;
-                    break;
-                case 'z':
-                    key_z.pressed = true;
-                    key_z.last_time = now;
-                    break;
-                case 'x':
-                    key_x.pressed = true;
-                    key_x.last_time = now;
-                    break;
-                case 'q':
-                    running_ = false;
-                    rclcpp::shutdown();
-                    break;
-                default:
-                    RCLCPP_INFO(this->get_logger(), "Unknown command: %c", static_cast<char>(ch));
-                    break;
-            }
-        }
 
         for (auto& effect : letter_effects)
         {
