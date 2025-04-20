@@ -56,7 +56,6 @@ jobs:
         run: |
           ping -c 1 subjugator.org &> /dev/null
 
-<<<<<<< HEAD
   internal:
     name: internal visibility healthcheck
     runs-on:
@@ -65,7 +64,6 @@ jobs:
       - name: zobelisk
         run: |
           ping -c 1 192.168.37.23 &> /dev/null
-=======
   account-access:
     name: SMTP Access Check
     runs-on: ubuntu-latest
@@ -87,7 +85,8 @@ jobs:
               username = account.get("username")
               password = account.get("password")
               if not server or not username or not password:
-                  print(f"Malformed JSON or missing credentials for account: {account}")
+                  print(f"Malformed JSON or missing credentials for
+                        account: {account}")
                   exit(1)
               try:
                   mail = imaplib.IMAP4_SSL(server)
@@ -102,4 +101,3 @@ jobs:
                   print(f"Error for account {server}: {e}")
                   exit(1)
           EOF
->>>>>>> 41d3e20 (add account-access check to ci)
