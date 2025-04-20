@@ -202,7 +202,8 @@ mil_system_install \
 	ros-jazzy-tf2-sensor-msgs \
 	ros-jazzy-tf-transformations \
 	ros-jazzy-velodyne \
-	ros-jazzy-vision-msgs
+	ros-jazzy-vision-msgs \
+	ros-jazzy-nav2-util
 
 cat <<EOF
 $(color "$Pur")
