@@ -18,9 +18,7 @@ target_include_directories(
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
          $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
   PRIVATE ${SDL2_INCLUDE_DIRS})
-target_link_libraries(subjugator_keyboard_control
-        ${SDL2_LIBRARIES}
-)
+target_link_libraries(subjugator_keyboard_control ${SDL2_LIBRARIES})
 target_compile_features(subjugator_keyboard_control PUBLIC c_std_99 cxx_std_17)
 
 ament_target_dependencies(subjugator_keyboard_control rclcpp geometry_msgs)

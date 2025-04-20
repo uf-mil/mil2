@@ -61,45 +61,48 @@ SubjugatorKeyboardControl::~SubjugatorKeyboardControl()
 void SubjugatorKeyboardControl::initTerminal()
 {
     // Initialize SDL video for real key events
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0)
+    {
         RCLCPP_ERROR(get_logger(), "SDL_Init Error: %s", SDL_GetError());
         return;
     }
-    window_ = SDL_CreateWindow(
-        "subj_ctl",
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        600, 400,
-        SDL_WINDOW_SHOWN               // <-- must be SHOWN, not HIDDEN
+    window_ = SDL_CreateWindow("subj_ctl", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 600, 400,
+                               SDL_WINDOW_SHOWN  // <-- must be SHOWN, not HIDDEN
     );
     SDL_RaiseWindow(window_);
 
-
     // Enable raw terminal mode to disable echo and line buffering
-    if (tcgetattr(STDIN_FILENO, &old_tio_) == 0) {
+    if (tcgetattr(STDIN_FILENO, &old_tio_) == 0)
+    {
         termios new_tio = old_tio_;
-        new_tio.c_lflag &= ~(ICANON | ECHO);    // non-canonical, no echo
-        new_tio.c_cc[VMIN] = 0;                 // non-blocking read
-        new_tio.c_cc[VTIME] = 1;                // 0.1s timeout
-        if (tcsetattr(STDIN_FILENO, TCSANOW, &new_tio) == 0) {
+        new_tio.c_lflag &= ~(ICANON | ECHO);  // non-canonical, no echo
+        new_tio.c_cc[VMIN] = 0;               // non-blocking read
+        new_tio.c_cc[VTIME] = 1;              // 0.1s timeout
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &new_tio) == 0)
+        {
             termios_initialized_ = true;
-        } else {
+        }
+        else
+        {
             RCLCPP_WARN(get_logger(), "Failed to set raw terminal mode");
         }
-    } else {
+    }
+    else
+    {
         RCLCPP_WARN(get_logger(), "Failed to get terminal attributes");
     }
 }
 
-
 void SubjugatorKeyboardControl::restoreTerminal() const
 {
-    if (window_) {
+    if (window_)
+    {
         SDL_DestroyWindow(window_);
     }
     SDL_Quit();
 
-    if (termios_initialized_) {
+    if (termios_initialized_)
+    {
         tcsetattr(STDIN_FILENO, TCSANOW, &old_tio_);
     }
 }
@@ -129,40 +132,110 @@ void SubjugatorKeyboardControl::keyboardLoop()
     {
         auto now = steady_clock::now();
 
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_KEYDOWN && !e.key.repeat) {
-                switch (e.key.keysym.sym) {
-                    case SDLK_w:     key_w.pressed = true;     key_w.last_time = now; break;
-                    case SDLK_s:     key_s.pressed = true;     key_s.last_time = now; break;
-                    case SDLK_a:     key_a.pressed = true;     key_a.last_time = now; break;
-                    case SDLK_d:     key_d.pressed = true;     key_d.last_time = now; break;
-                    case SDLK_e:     key_e.pressed = true;     key_e.last_time = now; break;
-                    case SDLK_r:     key_r.pressed = true;     key_r.last_time = now; break;
-                    case SDLK_x:     key_x.pressed = true;     key_x.last_time = now; break;
-                    case SDLK_z:     key_z.pressed = true;     key_z.last_time = now; break;
-                    case SDLK_UP:    arrow_up.pressed = true;    arrow_up.last_time = now;    break;
-                    case SDLK_DOWN:  arrow_down.pressed = true;  arrow_down.last_time = now;  break;
-                    case SDLK_RIGHT: arrow_right.pressed = true; arrow_right.last_time = now; break;
-                    case SDLK_LEFT:  arrow_left.pressed = true;  arrow_left.last_time = now;  break;
-                    case SDLK_q:     running_ = false; rclcpp::shutdown();                   break;
-                    default:        break;
+        while (SDL_PollEvent(&e))
+        {
+            if (e.type == SDL_KEYDOWN && !e.key.repeat)
+            {
+                switch (e.key.keysym.sym)
+                {
+                    case SDLK_w:
+                        key_w.pressed = true;
+                        key_w.last_time = now;
+                        break;
+                    case SDLK_s:
+                        key_s.pressed = true;
+                        key_s.last_time = now;
+                        break;
+                    case SDLK_a:
+                        key_a.pressed = true;
+                        key_a.last_time = now;
+                        break;
+                    case SDLK_d:
+                        key_d.pressed = true;
+                        key_d.last_time = now;
+                        break;
+                    case SDLK_e:
+                        key_e.pressed = true;
+                        key_e.last_time = now;
+                        break;
+                    case SDLK_r:
+                        key_r.pressed = true;
+                        key_r.last_time = now;
+                        break;
+                    case SDLK_x:
+                        key_x.pressed = true;
+                        key_x.last_time = now;
+                        break;
+                    case SDLK_z:
+                        key_z.pressed = true;
+                        key_z.last_time = now;
+                        break;
+                    case SDLK_UP:
+                        arrow_up.pressed = true;
+                        arrow_up.last_time = now;
+                        break;
+                    case SDLK_DOWN:
+                        arrow_down.pressed = true;
+                        arrow_down.last_time = now;
+                        break;
+                    case SDLK_RIGHT:
+                        arrow_right.pressed = true;
+                        arrow_right.last_time = now;
+                        break;
+                    case SDLK_LEFT:
+                        arrow_left.pressed = true;
+                        arrow_left.last_time = now;
+                        break;
+                    case SDLK_q:
+                        running_ = false;
+                        rclcpp::shutdown();
+                        break;
+                    default:
+                        break;
                 }
             }
-            else if (e.type == SDL_KEYUP) {
-                switch (e.key.keysym.sym) {
-                    case SDLK_w:   key_w.pressed = false;   break;
-                    case SDLK_s:   key_s.pressed = false;   break;
-                    case SDLK_a:   key_a.pressed = false;   break;
-                    case SDLK_d:   key_d.pressed = false;   break;
-                    case SDLK_e:   key_e.pressed = false;   break;
-                    case SDLK_r:   key_r.pressed = false;   break;
-                    case SDLK_x:   key_x.pressed = false;   break;
-                    case SDLK_z:   key_z.pressed = false;   break;
-                    case SDLK_UP:    arrow_up.pressed = false;    break;
-                    case SDLK_DOWN:  arrow_down.pressed = false;  break;
-                    case SDLK_RIGHT: arrow_right.pressed = false; break;
-                    case SDLK_LEFT:  arrow_left.pressed = false;  break;
-                    default:          break;
+            else if (e.type == SDL_KEYUP)
+            {
+                switch (e.key.keysym.sym)
+                {
+                    case SDLK_w:
+                        key_w.pressed = false;
+                        break;
+                    case SDLK_s:
+                        key_s.pressed = false;
+                        break;
+                    case SDLK_a:
+                        key_a.pressed = false;
+                        break;
+                    case SDLK_d:
+                        key_d.pressed = false;
+                        break;
+                    case SDLK_e:
+                        key_e.pressed = false;
+                        break;
+                    case SDLK_r:
+                        key_r.pressed = false;
+                        break;
+                    case SDLK_x:
+                        key_x.pressed = false;
+                        break;
+                    case SDLK_z:
+                        key_z.pressed = false;
+                        break;
+                    case SDLK_UP:
+                        arrow_up.pressed = false;
+                        break;
+                    case SDLK_DOWN:
+                        arrow_down.pressed = false;
+                        break;
+                    case SDLK_RIGHT:
+                        arrow_right.pressed = false;
+                        break;
+                    case SDLK_LEFT:
+                        arrow_left.pressed = false;
+                        break;
+                    default:
+                        break;
                 }
             }
         }
