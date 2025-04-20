@@ -16,10 +16,10 @@ find_package(geometry_msgs REQUIRED)
 add_executable(depth_driver src/depth_driver.cpp)
 target_include_directories(
   depth_driver PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                         $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
+                      $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 target_compile_features(depth_driver PUBLIC c_std_99 cxx_std_17)
-ament_target_dependencies(depth_driver geometry_msgs "rclcpp" "std_msgs" "nav_msgs"
-                          "mil_msgs")
+ament_target_dependencies(depth_driver geometry_msgs "rclcpp" "std_msgs"
+                          "nav_msgs" "mil_msgs")
 
 install(TARGETS depth_driver DESTINATION lib/${PROJECT_NAME})
 

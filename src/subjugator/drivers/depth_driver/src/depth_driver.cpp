@@ -1,4 +1,5 @@
 #include <chrono>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -9,13 +10,11 @@
 #include <boost/asio.hpp>
 #include <boost/smart_ptr/make_shared.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
-#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "mil_msgs/msg/depth_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "std_msgs/msg/empty.hpp"
-
-#include <iostream>
 
 using tcp = boost::asio::ip::tcp;
 
@@ -23,7 +22,7 @@ class DepthDriver : public rclcpp::Node
 {
   private:
     rclcpp::Publisher<mil_msgs::msg::DepthStamped>::SharedPtr pub_;
-    rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_; // JOSEPH
+    rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_;  // JOSEPH
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     nav_msgs::msg::Odometry recent_odom_msg_;
 
@@ -69,7 +68,7 @@ class DepthDriver : public rclcpp::Node
 DepthDriver::DepthDriver() : rclcpp::Node("depth_driver")
 {
     pub_ = this->create_publisher<mil_msgs::msg::DepthStamped>("depth", 10);
-    pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("depth/pose", 10); // JOSEPH
+    pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("depth/pose", 10);  // JOSEPH
     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "odom", 10, std::bind(&DepthDriver::odom_callback, this, std::placeholders::_1));
 
@@ -198,13 +197,13 @@ void DepthDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
 
                 // JOSEPH
                 auto pose_msg = geometry_msgs::msg::PoseWithCovarianceStamped();
-                pose_msg.header = msg.header; // re-use same header as b4
+                pose_msg.header = msg.header;  // reuse same header as b4
                 pose_msg.pose.pose.position.z = msg.depth;
                 pose_msg.pose.covariance[14] = 0.01;
-                pose_msg.pose.pose.orientation.w = 1.0; // idk what this does
-                
-                pose_pub_->publish(pose_msg); 
-                
+                pose_msg.pose.pose.orientation.w = 1.0;  // idk what this does
+
+                pose_pub_->publish(pose_msg);
+
                 buffer = boost::asio::buffer(backing, sizeof(backing));
             }
         }
