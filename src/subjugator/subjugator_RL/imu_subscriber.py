@@ -20,7 +20,7 @@ class ImuSubscriber(Node):
 
     def imu_callback(self, msg):
         time.sleep(0.1) # Unblock thread so other things can run
-        #self.get_logger().info("Imu received")
+        self.get_logger().info("Imu received")
         self.imu_data = msg
 
 def safe_rclpy_init():
@@ -32,21 +32,12 @@ def safe_rclpy_init():
 safe_rclpy_init()
 imu_node = ImuSubscriber()
 
-def run():
-    global imu_node, executor
-
-    safe_rclpy_init()
-
-    imu_node = ImuSubscriber()
-    executor = SingleThreadedExecutor()
-    executor.add_node(imu_node)
-
-    def spin():
-        try:
-            executor.spin()
-        finally:
-            imu_node.destroy_node()
-            rclpy.shutdown()
-
-    thread = threading.Thread(target=spin, daemon=True)
-    thread.start()
+# def run(args=None):
+#     def spin():
+#         # Declare node and spin it
+#         rclpy.spin(imu_node)
+#         imu_node.destroy_node()
+#         rclpy.shutdown()
+        
+#     thread = threading.Thread(target=spin, daemon=True)
+#     thread.start()

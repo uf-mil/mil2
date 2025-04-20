@@ -9,9 +9,8 @@ import os
 import threading
 import imu_subscriber
 import cam_subscriber
-import subprocess
 import os, subprocess, pathlib
-from rclpy.executors import SingleThreadedExecutor
+from rclpy.executors import MultiThreadedExecutor
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50,80,3]
@@ -56,8 +55,15 @@ class SubEnv(gym.Env):
             env=clean_ros_env(),
         )
 
-        cam_subscriber.run()
-        imu_subscriber.run()
+        imu_node = imu_subscriber.ImuSubscriber()
+        cam_node = cam_subscriber.CamSubscriber()
+
+        exec_ = MultiThreadedExecutor(num_threads=2)   # or 4 – up to you
+        exec_.add_node(imu_node)
+        exec_.add_node(cam_node)
+
+        spin_thread = threading.Thread(target=exec_.spin, daemon=True)
+        spin_thread.start()
 
         # Wait for 15 seconds for gazebo to open
         time.sleep(15)

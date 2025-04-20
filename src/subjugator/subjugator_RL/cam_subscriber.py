@@ -57,6 +57,9 @@ class CamSubscriber(Node):
         self.cam_data = pooled_image
         time.sleep(0.1)
         
+
+# Not needed, use an executor to run the node instead in separate file
+
 cam_node = CamSubscriber()
 
 def run(args=None):
