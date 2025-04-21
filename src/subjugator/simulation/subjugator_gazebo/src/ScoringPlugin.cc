@@ -23,7 +23,7 @@ void ScoringPlugin::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf
     if (sdf->HasElement("gate_name"))
         this->gateModelName_ = sdf->Get<std::string>("gate_name");
     else
-        gzerr << "[ScoringPlugin] Missing <gate_name> parameter in SDF!\n";
+        std::cout << "[ScoringPlugin] Missing <gate_name> parameter in SDF!\n" << std::endl;
 
     ecm.Each<gz::sim::components::Name>(
         [&](gz::sim::Entity const &_entity, gz::sim::components::Name const *_nameComp)
@@ -40,7 +40,8 @@ void ScoringPlugin::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf
         rclcpp::init(0, nullptr);
 
     this->rosNode_ = std::make_shared<rclcpp::Node>("scoring_plugin_node");
-    this->scorePub_ = this->rosNode_->create_publisher<std_msgs::msg::Int32>("/score", 10);
+    this->scorePub_ = this->rosNode_->create_publisher<std_msgs::msg::Int32>("/score", 5);
+    this->eventPub_ = this->rosNode_->create_publisher<std_msgs::msg::String>("/score_events", 5);
 }
 
 void ScoringPlugin::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm)
@@ -60,7 +61,7 @@ void ScoringPlugin::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
                 if (_nameComp->Data() == this->gateModelName_)
                 {
                     this->gateEntity_ = _entity;
-                    gzdbg << "[ScoringPlugin] Found gate entity in PostUpdate: " << _entity << std::endl;
+                    std::cout << "[ScoringPlugin] Found gate entity in PostUpdate: " << _entity << std::endl;
                 }
                 return true;
             });
@@ -72,11 +73,10 @@ void ScoringPlugin::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
         }
     }
 
-    // Get positions
     auto subPoseComp = ecm.Component<gz::sim::components::Pose>(this->subEntity_);
     auto gatePoseComp = ecm.Component<gz::sim::components::Pose>(this->gateEntity_);
 
-    // Cannot proceed if either position is missing
+    // Stop if either position is missing
     if (!subPoseComp || !gatePoseComp)
     {
         return;
@@ -84,37 +84,246 @@ void ScoringPlugin::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
     gz::math::Pose3d subPose = subPoseComp->Data();
     gz::math::Pose3d gatePose = gatePoseComp->Data();
 
-    // Detect pass
+    double dist = subPose.Pos().Distance(gatePose.Pos());
+
+    if (dist < 5.0 && !inGateStyleZone_ && !gatePassed_)
+    {
+        // Starting the style zone
+        inGateStyleZone_ = true;
+        initialPose_ = subPose;
+
+        styleRecord_.lastRoll = subPose.Rot().Roll() * 180.0 / M_PI;
+        styleRecord_.lastPitch = subPose.Rot().Pitch() * 180.0 / M_PI;
+        styleRecord_.lastYaw = subPose.Rot().Yaw() * 180.0 / M_PI;
+        styleRecord_.accumulatedRoll = 0.0;
+        styleRecord_.accumulatedPitch = 0.0;
+        styleRecord_.accumulatedYaw = 0.0;
+        styleRecord_.rollCounter = 0;
+        styleRecord_.pitchCounter = 0;
+        styleRecord_.yawCounter = 0;
+
+        // Start the style timer
+        styleStartTime_ = this->rosNode_->now();
+        styleTimerActive_ = true;
+        timeLimitReached_ = false;
+
+        std_msgs::msg::String event_msg;
+        event_msg.data = "Style zone entered! Rotate and get extra points";
+        this->eventPub_->publish(event_msg);
+    }
+    if (dist > 5.0 && inGateStyleZone_)
+    {
+        ResetStyleTracking();
+
+        std_msgs::msg::String event_msg;
+        event_msg.data = "Style zone left!";
+        this->eventPub_->publish(event_msg);
+    }
+
+    if (inGateStyleZone_)
+    {
+        CheckForStylePoints(subPose);
+
+        // Check if style time is up
+        if (styleTimerActive_ && (this->rosNode_->now() - styleStartTime_).seconds() > STYLE_TIME_LIMIT)
+        {
+            styleTimerActive_ = false;
+            timeLimitReached_ = true;
+            std_msgs::msg::String event_msg;
+            event_msg.data = "Style time limit reached!";
+            this->eventPub_->publish(event_msg);
+        }
+    }
+
     bool passed = this->SubPassedThroughGate(subPose, gatePose);
-    if (passed && !this->gatePassed_)
+    if (passed && !this->gatePassed_ && inGateStyleZone_)
     {
         double DegreesDiff = getAngleBetweenVectors(subPose, gatePose);
-        if (DegreesDiff > 5.0)
+        int basePoints = 0;
+        std::string angleMessage;
+
+        bool hasPerformedStyleManeuvers =
+            styleRecord_.rollChanged || styleRecord_.pitchChanged || styleRecord_.yawChanged;
+
+        if (hasPerformedStyleManeuvers || DegreesDiff > 5.0)
         {
-            this->score_ += 80;
-            std::cout << "awarding 80 points: angle penalty" << std::endl;
+            basePoints = 80;
+            angleMessage = "angle penalty";
         }
         else
         {
-            this->score_ += 100;
-            std::cout << "awarding 100 points: Perfect!" << std::endl;
+            basePoints = 100;
+            angleMessage = "Perfect!";
         }
 
-        std::cout << "Sub passed through gate! Score: " << this->score_ << std::endl;
+        // Calculate style points
+        int stylePoints = 0;
+        if (!timeLimitReached_)
+        {
+            stylePoints = CalculateStylePoints();
+        }
+        this->score_ += basePoints + stylePoints;
+
+        std::cout << "Sub passed through gate!" << std::endl;
+        std::cout << "Base points: " << basePoints << " (" << angleMessage << ")" << std::endl;
+        std::cout << "Style points: " << stylePoints << std::endl;
+        std::cout << "Total score: " << this->score_ << std::endl;
+
         this->gatePassed_ = true;
 
         // Publish score
-        std_msgs::msg::Int32 msg;
-        msg.data = this->score_;
-        this->scorePub_->publish(msg);
+        std_msgs::msg::Int32 score_msg;
+        score_msg.data = this->score_;
+        this->scorePub_->publish(score_msg);
+
+        // Publish event message
+        std_msgs::msg::String event_msg;
+        event_msg.data = "Gate passed! Base points: " + std::to_string(basePoints) +
+                         ", Style points: " + std::to_string(stylePoints) + ", Total: " + std::to_string(this->score_);
+        this->eventPub_->publish(event_msg);
+
+        ResetStyleTracking();
     }
+}
+
+double ScoringPlugin::angleChange(double previous, double current)
+{
+    double diff = current - previous;
+
+    // Handle wrap-around for angles
+    if (diff > 180.0)
+    {
+        diff -= 360.0;
+    }
+    else if (diff < -180.0)
+    {
+        diff += 360.0;
+    }
+
+    return diff;
+}
+
+void ScoringPlugin::CheckForStylePoints(gz::math::Pose3d const &currentPose)
+{
+    double currentRoll = currentPose.Rot().Roll() * 180.0 / M_PI;
+    double currentPitch = currentPose.Rot().Pitch() * 180.0 / M_PI;
+    double currentYaw = currentPose.Rot().Yaw() * 180.0 / M_PI;
+
+    // Calculate the change since last measurement
+    double rollDiff = angleChange(styleRecord_.lastRoll, currentRoll);
+    double pitchDiff = angleChange(styleRecord_.lastPitch, currentPitch);
+    double yawDiff = angleChange(styleRecord_.lastYaw, currentYaw);
+
+    styleRecord_.accumulatedRoll += std::abs(rollDiff);
+    styleRecord_.accumulatedPitch += std::abs(pitchDiff);
+    styleRecord_.accumulatedYaw += std::abs(yawDiff);
+
+    // Update counters for 90° increments
+    int newRollCounter = static_cast<int>(styleRecord_.accumulatedRoll / 90.0);
+    int newPitchCounter = static_cast<int>(styleRecord_.accumulatedPitch / 90.0);
+    int newYawCounter = static_cast<int>(styleRecord_.accumulatedYaw / 90.0);
+
+    /* Check if we've crossed a new 90° threshold for roll
+    If so we record the number of rolls for future math!
+    Also, we make the value of rollChanged equals TRUE. */
+
+    if (newRollCounter > styleRecord_.rollCounter)
+    {
+        styleRecord_.rollChanged = true;
+
+        // publish points for each new 90-degree increment
+        for (int i = styleRecord_.rollCounter + 1; i <= newRollCounter; i++)
+        {
+            std_msgs::msg::String event_msg;
+            event_msg.data = "Roll maneuver detected! +" + std::to_string(ROLL_POINTS) + " style points! (Rotated " +
+                             std::to_string(i * 90) + "°)";
+            this->eventPub_->publish(event_msg);
+        }
+
+        styleRecord_.rollCounter = newRollCounter;
+    }
+
+    // Check the same thing for pitch
+    if (newPitchCounter > styleRecord_.pitchCounter)
+    {
+        styleRecord_.pitchChanged = true;
+
+        for (int i = styleRecord_.pitchCounter + 1; i <= newPitchCounter; i++)
+        {
+            std_msgs::msg::String event_msg;
+            event_msg.data = "Pitch maneuver detected! +" + std::to_string(PITCH_POINTS) + " style points! (Rotated " +
+                             std::to_string(i * 90) + "°)";
+            this->eventPub_->publish(event_msg);
+        }
+
+        styleRecord_.pitchCounter = newPitchCounter;
+    }
+
+    // Check the same thing for yaw
+    if (newYawCounter > styleRecord_.yawCounter)
+    {
+        styleRecord_.yawChanged = true;
+
+        for (int i = styleRecord_.yawCounter + 1; i <= newYawCounter; i++)
+        {
+            std_msgs::msg::String event_msg;
+            event_msg.data = "Yaw maneuver detected! +" + std::to_string(YAW_POINTS) + " style points! (Rotated " +
+                             std::to_string(i * 90) + "°)";
+            this->eventPub_->publish(event_msg);
+        }
+
+        styleRecord_.yawCounter = newYawCounter;
+    }
+
+    // Store current angles for next comparison
+    styleRecord_.lastRoll = currentRoll;
+    styleRecord_.lastPitch = currentPitch;
+    styleRecord_.lastYaw = currentYaw;
+}
+
+int ScoringPlugin::CalculateStylePoints()
+{
+    int points = 0;
+
+    if (styleRecord_.rollChanged)
+    {
+        points += ROLL_POINTS * styleRecord_.rollCounter;
+    }
+
+    if (styleRecord_.pitchChanged)
+    {
+        points += PITCH_POINTS * styleRecord_.pitchCounter;
+    }
+
+    if (styleRecord_.yawChanged)
+    {
+        points += YAW_POINTS * styleRecord_.yawCounter;
+    }
+
+    return points;
+}
+
+void ScoringPlugin::ResetStyleTracking()
+{
+    inGateStyleZone_ = false;
+    styleTimerActive_ = false;
+    styleRecord_ = OrientationRecord();
 }
 
 bool ScoringPlugin::SubPassedThroughGate(gz::math::Pose3d const &subPose, gz::math::Pose3d const &gatePose)
 {
-    // Very naive example: check distance
-    double dist = subPose.Pos().Distance(gatePose.Pos());
-    return (dist < 1.0);
+    gz::math::Pose3d subLocal = gatePose.Inverse() * subPose;
+
+    // Sub's local coordinates in the gate frame
+    auto x = subLocal.Pos().X();
+    auto y = subLocal.Pos().Y();
+    auto z = subLocal.Pos().Z();
+
+    bool inXRange = (x > -1.5 && x < 1.5);
+    bool inYRange = (y > -0.2 && y < 0.2);  // thickness of line sub is crossing
+    bool inZRange = (z > -1.5 && z < 1.5);  // depth
+
+    return (inXRange && inYRange && inZRange);
 }
 
 // For getting angle between sub and gate

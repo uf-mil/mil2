@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>nav_tube_driver</name>
+  <name>depth_driver</name>
   <version>0.0.0</version>
   <description>Reads depth sensor data and combines it with odometry to compensate for motion induced pressure.</description>
   <author>Andrew Knee</author>

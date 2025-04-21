@@ -9,17 +9,17 @@ constexpr int PUBLISH_RATE = 10;  // Hertz
 
 SubjugatorKeyboardControl::SubjugatorKeyboardControl()
   : Node("subjugator_keyboard_control")
-  , force_x_(0.0)
-  , force_y_(0.0)
-  , force_z_(0.0)
-  , torque_x_(0.0)
-  , torque_y_(0.0)
-  , torque_z_(0.0)
+  , force_x_(300.0)
+  , force_y_(300.0)
+  , force_z_(300.0)
+  , torque_x_(100000.0)
+  , torque_y_(100000.0)
+  , torque_z_(100000.0)
   , running_(true)
 {
     publisher_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", PUBLISH_RATE);
-    this->declare_parameter("linear_speed", 100.0);
-    this->declare_parameter("angular_speed", 100.0);
+    this->declare_parameter("linear_speed", 900.0);
+    this->declare_parameter("angular_speed", 10000000000.0);
     base_linear_ = this->get_parameter("linear_speed").as_double();
     base_angular_ = this->get_parameter("angular_speed").as_double();
 

@@ -1,0 +1,42 @@
+---
+/subjugator_localization:
+  ros__parameters:
+    imu0: "/imu/data"
+    imu0_config: [
+      false, false, false,
+      true, true, true,
+      false, false, false,
+      true, true, true,
+      true, true, true
+    ]
+    imu0_differential: false
+    imu0_relative: true
+    imu0_remove_gravitational_acceleration: true
+    imu0_queue_size: 10
+    odom0: "/dvl/odom"
+    odom0_config:
+      [
+        false, false, false,
+        false, false, false,
+        true, true, true,
+        false, false, false,
+        false, false, false,
+      ]
+    odom0_differential: false
+    odom0_relative: true
+    odom0_queue_size: 10
+#     pose0: "/depth/pose"
+#    pose0_config: [false, false, true,
+#                    false, false, false,
+#                    false, false, false,
+#                    false, false, false,
+#                    false, false, false]
+#     pose0_differential: true
+#     pose0_relative: true
+#     pose0_queue_size: 10
+    print_diagnostics: true
+    publish_acceleration: true
+#    debug: true
+#    debug_out_file: "/home/sub9/debug.txt"
+    frequency: 10.0
+    disabled_at_startup: true

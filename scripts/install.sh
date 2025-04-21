@@ -27,7 +27,7 @@ if [[ $NAME != *"Ubuntu"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu (you're using: ${NAME}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
-if [[ $VERSION != *"24.04"* ]]; then
+if [[ $VERSION != *"24.04"* && $VERSION != *"22.04.5 LTS (Jammy Jellyfish)"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu 24.04 (you're using: ${VERSION}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
@@ -191,16 +191,19 @@ mil_system_install ros-jazzy-desktop-full ros-jazzy-ros-gz
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
 mil_system_install \
+	nlohmann-json3-dev \
+	python3-colcon-common-extensions \
+	ros-jazzy-backward-ros \
+	ros-jazzy-control-toolbox \
+	ros-jazzy-generate-parameter-library \
+	ros-jazzy-geographic-msgs \
+	ros-jazzy-robot-localization \
 	ros-jazzy-rmw-cyclonedds-cpp \
 	ros-jazzy-tf2-sensor-msgs \
-	ros-jazzy-geographic-msgs \
-	ros-jazzy-vision-msgs \
+	ros-jazzy-tf-transformations \
 	ros-jazzy-velodyne \
-	ros-jazzy-backward-ros \
-	python3-colcon-common-extensions \
-	ros-jazzy-marine-acoustic-msgs \
-	ros-jazzy-generate-parameter-library \
-	nlohmann-json3-dev
+	ros-jazzy-vision-msgs \
+	ros-jazzy-nav2-util
 
 cat <<EOF
 $(color "$Pur")
@@ -263,7 +266,8 @@ mil_user_install_dependencies() {
 		ripgrep \
 		fzf \
 		aptitude \
-		lm-sensors
+		lm-sensors \
+		libboost-all-dev
 }
 
 # Add line to user's bashrc which source the repo's setup files
