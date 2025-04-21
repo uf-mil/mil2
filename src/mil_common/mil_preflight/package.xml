@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>mil_preflight</name>
-  <version>0.0.1</version>
+  <version>0.0.3</version>
   <description>Preflight is an automated testing tool that should be run after turning on and connecting to the robot to run a prelaunch hardware checklist and automated software checklist.</description>
   <maintainer email="zhangrenzhongzheng@outlook.com">zhongzheng</maintainer>
   <license>MIL</license>

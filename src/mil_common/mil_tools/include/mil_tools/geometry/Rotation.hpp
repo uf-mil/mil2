@@ -1,3 +1,4 @@
+#include <cmath>
 #include <ostream>
 
 #include <Eigen/Dense>
@@ -20,6 +21,15 @@ class Rotation
 
   public:
     ////////////////////////////////////////
+    // Helpful constructors
+    ////////////////////////////////////////
+    // Also equivalent to Rotation()
+    static Rotation identity()
+    {
+        return Rotation(Eigen::Quaterniond(1, 0, 0, 0));
+    }
+
+    ////////////////////////////////////////
     // Constructors
     ////////////////////////////////////////
     Rotation(std::array<double, 3> const& rot_vec);
@@ -31,6 +41,7 @@ class Rotation
     Rotation(Eigen::Vector4d const& quat);
     Rotation(geometry_msgs::msg::Quaternion const& quat);
     Rotation(geometry_msgs::msg::Vector3 const& rot_vec);
+    Rotation(std::initializer_list<double> const& init_list);
     Rotation();
 
     ////////////////////////////////////////
@@ -44,6 +55,11 @@ class Rotation
     {
         return quat_.w();
     };
+    // Alias for quat_w()
+    inline double real() const
+    {
+        return quat_.w();
+    }
     inline double quat_x() const
     {
         return quat_.x();
@@ -60,6 +76,10 @@ class Rotation
     {
         return quat_.norm();
     };
+    inline double abs_imag() const
+    {
+        return std::sqrt(quat_.x() * quat_.x() + quat_.y() * quat_.y() + quat_.z() * quat_.z());
+    }
 
     ////////////////////////////////////////
     // Euler accessors
@@ -103,14 +123,26 @@ class Rotation
     ////////////////////////////////////////
     bool operator==(Rotation const& other) const;
     bool operator!=(Rotation const& other) const;
+    Rotation operator+(double scalar) const;
     Rotation operator*(Rotation const& other) const;
+    Rotation operator*(double scalar) const;
+    Rotation operator/(double scalar) const;
     Rotation operator-() const;
     friend std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, Rotation const& obj);
+
+    ////////////////////////////////////////
+    // Math
+    ////////////////////////////////////////
+    // void pow(double exponent);
+    // void pow(Rotation const& exponent);
 
     ////////////////////////////////////////
     // Special operations
     ////////////////////////////////////////
     void normalize();
+    void inverse();
+    void conjugate();
+    Rotation imaginary() const;
 };
 
 }  // namespace mil_tools::geometry

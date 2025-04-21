@@ -82,6 +82,20 @@ if(BUILD_TESTING)
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
            $<INSTALL_INTERFACE:include>)
   target_link_libraries(${PROJECT_NAME}_rotation_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_math_test test/math.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_math_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_math_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_slerp_test test/geometry/Slerp.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_slerp_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_slerp_test ${PROJECT_NAME})
 endif()
 
 ament_package()
