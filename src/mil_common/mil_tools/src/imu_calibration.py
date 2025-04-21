@@ -35,7 +35,7 @@ class IMUSubscriber(Node):
         self.start_time = 0
 
         # Index of which IMU test we're on
-        self.test_counter = 2
+        self.test_counter = 0
 
         # Averages of the linear acceleration components
         self.averages = [0.0, 0.0, 0.0]
@@ -70,6 +70,12 @@ class IMUSubscriber(Node):
 
     # Looks at the deviances and suggests the next action a user should take to calibrate
     def print_suggestion(self):
+        """
+        For the linear acceleration/acceleromter tests, we can give a general suggestion to the user on which way to
+        turn or reorient the sub to meet the threshold requirements.
+
+        We can generate that suggestion by looking at the deviance values and what ranges they fall in.
+        """
 
         # If the test_counter is between 0 and 2, that means we're running the linear acceleration based tests
         if self.test_counter <= 2:
@@ -104,6 +110,10 @@ class IMUSubscriber(Node):
             sys.stdout.write(suggestion)
 
     def print_deviances(self):
+        """
+        Every test has to print the deviance values, so it's in a function to remove duplicate code. It also contains
+        some checks to help with formatting since magnetometer data is printed differently than accelerometer data.
+        """
 
         # Since I'm incorporating color codes to indicate if a deviance is within the threshold or not, I'll make it a string
         # that I can append text to so that I can reduce the number of if-statements I need
@@ -164,6 +174,14 @@ class IMUSubscriber(Node):
             sys.stdout.write(formatted_deviance_string)
 
     def update_timer_threshold(self):
+        """
+        Checks if the current IMU readings are within the deviance threshold. If so, then the program lets the timer
+        run down. If the readings stay within the deviance threshold by the time the counter reaches 0, then we proceed
+        to the next test, otherwise we reset the timer.
+
+        Returns a bool indicating whether a test succeeded (True, meaning the timer went all the way to 0 without deviances going
+        out of bounds), or of the test is still in progress (False).
+        """
 
         deviance_threshold = self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
 
@@ -211,6 +229,16 @@ class IMUSubscriber(Node):
         return False
 
     def listener_callback(self, msg):
+        """
+        Callback function that executes every time a message is received from the ROS 2 topic subscriber.
+
+        It checks if the average of the past + current data is within the deviance thresholds for the IMU test
+        that's being ran and checks if the threshold timer is met for each test.
+
+        If so, then the program moves onto the next text.
+
+        Currently the function has implementations for the linear acceleration and magnetometer data.
+        """
 
         # Rounded linear acceleration values
         if self.test_counter < 3:
@@ -383,7 +411,7 @@ class IMUSubscriber(Node):
                 sys.stdout.write(f"\rActual: \t{x:.1e} \t{y:.1e} \t{z:.1e}\n")
 
                 self.print_deviances()
-                self.print_suggestion()
+                # self.print_suggestion()
 
                 self.update_timer_threshold()
 
@@ -420,7 +448,7 @@ class IMUSubscriber(Node):
                 sys.stdout.write(f"\rActual: \t{x:.1e} \t{y:.1e} \t{z:.1e}\n")
 
                 self.print_deviances()
-                self.print_suggestion()
+                # self.print_suggestion()
 
                 self.update_timer_threshold()
 
@@ -456,26 +484,17 @@ class IMUSubscriber(Node):
                 sys.stdout.write(f"\rActual: \t{x:.1e} \t{y:.1e} \t{z:.1e}\n")
 
                 self.print_deviances()
-                self.print_suggestion()
+                # self.print_suggestion()
 
                 self.update_timer_threshold()
 
                 sys.stdout.flush()
 
             case _:
+                print("\nTesting complete\n")
                 sys.exit(0)
 
-        # Different pieces of data we can access from the topic
-        # .orientation (Quaternion)
-        # .oritentation_covariance (array)
-        # angular_velocity (Vector3)
-        # angular_velocity_covariance (array)
-        # linear_acceleration (Vector3)
-        # linear_acceleration_covariance (array)
-
-        # magnetometer_covariance
-        # magnetometer
-
+        # Small sleep to limit the number of data objects we process
         sleep(0.05)
 
 
