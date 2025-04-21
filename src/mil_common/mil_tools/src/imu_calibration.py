@@ -145,7 +145,7 @@ class IMUSubscriber(Node):
                 f"{GREEN_START}Deviance:{COLOR_END}\t{self.deviances[0]} \t{self.deviances[1]} \t{self.deviances[2]}\n",
             )
 
-        # Otherwise, we'll use red text to inidicate some or all of the deviances are not within the thresholds
+        # Otherwise, we'll use red text to indicate some or all of the deviances are not within the thresholds
         else:
 
             formatted_deviance_string += f"{RED_START}Deviance:{COLOR_END}\t"
