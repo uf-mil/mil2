@@ -10,6 +10,7 @@ from sensor_msgs.msg import Imu, MagneticField
 RED_START = "\033[1;91m"
 GREEN_START = "\033[1;32m"
 COLOR_END = "\033[0m"
+CLEAR_CONSOLE = "\033[2J\033[H"
 
 
 class IMUSubscriber(Node):
@@ -34,7 +35,7 @@ class IMUSubscriber(Node):
         self.start_time = 0
 
         # Index of which IMU test we're on
-        self.test_counter = 0
+        self.test_counter = 2
 
         # Averages of the linear acceleration components
         self.averages = [0.0, 0.0, 0.0]
@@ -48,8 +49,9 @@ class IMUSubscriber(Node):
 
         self.MAGNETOMETER_DEVIANCE_THRESHOLD = 1e-5
 
+        # The first 3 tests are for linear acceleration, so if test_counter is < 3, then we'll subscribe
+        # to the /imu/data topic
         if self.test_counter < 3:
-            # Subscribes to the IMU topic for accelerometer data
             self.subscription = self.create_subscription(
                 Imu,
                 "/imu/data",
@@ -57,6 +59,7 @@ class IMUSubscriber(Node):
                 10,
             )
 
+        # Otherwise if test counter is > 3, then we're running the magnetometer tests and can subscribe to /imu/mag
         else:
             self.subscription = self.create_subscription(
                 MagneticField,
@@ -112,40 +115,100 @@ class IMUSubscriber(Node):
         if self.test_counter < 3:
             deviance_to_compare = self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
 
+        # For the magnetometer tests
         else:
             deviance_to_compare = self.MAGNETOMETER_DEVIANCE_THRESHOLD
 
+        # The magnetometer values can make the formatting look messy if they're not all extended to the correct
+        # decimal place (in the case of whole number values), so I need to do some checks to reinforce formatting
+        # at the cost of some efficiency and copying
+        deviances_to_print = self.deviances
+
+        if self.test_counter > 2:
+
+            # Enforces the decimal to be to one place (EX: 1e-5 becomes 1.0e-5)
+            deviances_to_print = [f"{x:.1e}" for x in self.deviances]
+
+        # If all of the IMU deviances are within the thresholds, then we'll use a green text to indicate we're good
         if all(deviance <= deviance_to_compare for deviance in self.deviances):
             sys.stdout.write(
                 f"{GREEN_START}Deviance:{COLOR_END}\t{self.deviances[0]} \t{self.deviances[1]} \t{self.deviances[2]}\n",
             )
 
+        # Otherwise, we'll use red text to inidicate some or all of the deviances are not within the thresholds
         else:
 
             formatted_deviance_string += f"{RED_START}Deviance:{COLOR_END}\t"
 
             if self.deviances[0] > deviance_to_compare:
                 formatted_deviance_string += (
-                    f"{RED_START}{self.deviances[0]}{COLOR_END} \t"
+                    f"{RED_START}{deviances_to_print[0]}{COLOR_END} \t"
                 )
             else:
-                formatted_deviance_string += f"{self.deviances[0]} \t"
+                formatted_deviance_string += f"{deviances_to_print[0]} \t"
 
             if self.deviances[1] > deviance_to_compare:
                 formatted_deviance_string += (
-                    f"{RED_START}{self.deviances[1]}{COLOR_END} \t"
+                    f"{RED_START}{deviances_to_print[1]}{COLOR_END} \t"
                 )
             else:
-                formatted_deviance_string += f"{self.deviances[1]} \t"
+                formatted_deviance_string += f"{deviances_to_print[1]} \t"
 
             if self.deviances[2] > deviance_to_compare:
                 formatted_deviance_string += (
-                    f"{RED_START}{self.deviances[2]}{COLOR_END} \t"
+                    f"{RED_START}{deviances_to_print[2]}{COLOR_END} \t"
                 )
             else:
-                formatted_deviance_string += f"{self.deviances[2]} \t"
+                formatted_deviance_string += f"{deviances_to_print[2]} \t"
 
             sys.stdout.write(formatted_deviance_string)
+
+    def update_timer_threshold(self):
+
+        deviance_threshold = self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
+
+        # If test counter is above 2, that means we're on the magnetometer tests, so we'll need to update the
+        # deviance_threshold value
+        if self.test_counter > 2:
+            deviance_threshold = self.MAGNETOMETER_DEVIANCE_THRESHOLD
+
+        # If all of the deviances have been met, then we can check if we've passed the threshold timer yet
+        if all(deviance <= deviance_threshold for deviance in self.deviances):
+
+            # If the countdown timer is running for this test, we'll check if we've met the time threshold
+            if self.test_countdown:
+                current_time = datetime.datetime.now()
+
+                if current_time - self.start_time >= self.timer_threshold:
+
+                    print(
+                        "\nSufficient deviance met, continuing to next test...\n",
+                    )
+
+                    sleep(2)
+                    self.test_counter += 1
+
+                    # Return True to indicate that the test passed (in case I need to update the subscriber to a new topic)
+                    return True
+
+                else:
+                    sys.stdout.write(
+                        f"\nMaintain position for {round((self.timer_threshold - (current_time - self.start_time)).total_seconds(), 1)} more seconds...",
+                    )
+
+            else:
+
+                # Record the starting time so we know if the timer threshold is met next time we check
+                self.start_time = datetime.datetime.now()
+
+                self.test_countdown = True
+
+        # If the current IMU values are not within the deviance, then we need to set test_countdown to false
+        else:
+            self.test_countdown = False
+
+        # Indicates test hasn't passed (yet)
+        return False
 
     def listener_callback(self, msg):
 
@@ -155,6 +218,7 @@ class IMUSubscriber(Node):
             y = round(msg.linear_acceleration.y, 2)
             z = round(msg.linear_acceleration.z, 2)
 
+        # We'll use higher precision for the magnetometer values since they're so small
         else:
             x = round(msg.magnetic_field.x, 6)
             y = round(msg.magnetic_field.y, 6)
@@ -169,6 +233,8 @@ class IMUSubscriber(Node):
 
             # (Linear Acceleration Test) Point X-axis up
             case 0:
+
+                # Update deviance values
                 self.deviances[0] = round(
                     abs(self.averages[0] - self.x_linear_test[0]),
                     2,
@@ -183,58 +249,29 @@ class IMUSubscriber(Node):
                 )
 
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
-                sys.stdout.write("\033[2J\033[H")
+                sys.stdout.write(f"{CLEAR_CONSOLE}")
+
                 sys.stdout.write(
                     f"(Test 1) Orient X-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
+
                 sys.stdout.write(
                     f"Expected: \t{self.x_linear_test[0]} \t{self.x_linear_test[1]} \t{self.x_linear_test[2]}\n",
                 )
+
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
 
                 self.print_deviances()
-
                 self.print_suggestion()
 
-                # If all of the deviances are within the threshold, then we'll start/update the timer telling the user
-                # how much longer to maintain the position
-                if all(
-                    deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
-                    for deviance in self.deviances
-                ):
-
-                    # If the countdown is running, we'll check if we've met the time threshold
-                    if self.test_countdown:
-                        current_time = datetime.datetime.now()
-
-                        if current_time - self.start_time >= self.timer_threshold:
-
-                            print(
-                                "\nSufficient deviance met, continuing to next test...\n",
-                            )
-
-                            sleep(2)
-                            self.test_counter += 1
-
-                        else:
-                            sys.stdout.write(
-                                f"\nMaintain position for {round((self.timer_threshold - (current_time - self.start_time)).total_seconds(), 1)} more seconds...",
-                            )
-
-                    else:
-                        self.test_countdown = True
-
-                        # Record the starting time so we know if the timer threshold is met next time we check
-                        self.start_time = datetime.datetime.now()
-
-                # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
-                else:
-                    self.test_countdown = False
+                self.update_timer_threshold()
 
                 sys.stdout.flush()
 
             # (Linear Acceleration Test) Point Y-axis up
             case 1:
+
+                # Update deviance values
                 self.deviances[0] = round(
                     abs(self.averages[0] - self.y_linear_test[0]),
                     2,
@@ -249,60 +286,29 @@ class IMUSubscriber(Node):
                 )
 
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
-                sys.stdout.write("\033[2J\033[H")
+                sys.stdout.write(f"{CLEAR_CONSOLE}")
+
                 sys.stdout.write(
                     f"(Test 2) Orient Y-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
+
                 sys.stdout.write(
                     f"Expected: \t{self.y_linear_test[0]} \t{self.y_linear_test[1]} \t{self.y_linear_test[2]}\n",
                 )
+
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
 
                 self.print_deviances()
-
                 self.print_suggestion()
 
-                sys.stdout.flush()
-
-                if all(
-                    deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
-                    for deviance in self.deviances
-                ):
-
-                    # If the countdown is running, we'll check if we've met the time threshold
-                    if self.test_countdown:
-                        current_time = datetime.datetime.now()
-
-                        if current_time - self.start_time >= self.timer_threshold:
-
-                            print(
-                                "\nSufficient deviance met, continuing to next test...\n",
-                            )
-
-                            sleep(2)
-                            self.test_counter += 1
-
-                        else:
-                            sys.stdout.write(
-                                f"\nMaintain position for {round((self.timer_threshold - (current_time - self.start_time)).total_seconds(), 1)} more seconds...",
-                            )
-
-                    else:
-                        self.test_countdown = True
-
-                        # Record the starting time so we know if the timer threshold is met next time we check
-                        self.start_time = datetime.datetime.now()
-
-                # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
-                else:
-
-                    self.test_countdown = False
+                self.update_timer_threshold()
 
                 sys.stdout.flush()
 
             # (Linear Acceleration Test) Point Z-axis up
             case 2:
 
+                # Update deviance values
                 self.deviances[0] = round(
                     abs(self.averages[0] - self.z_linear_test[0]),
                     2,
@@ -317,70 +323,40 @@ class IMUSubscriber(Node):
                 )
 
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
-                sys.stdout.write("\033[2J\033[H")
+                sys.stdout.write(f"{CLEAR_CONSOLE}")
+
                 sys.stdout.write(
                     f"(Test 3) Orient Z-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
+
                 sys.stdout.write(
                     f"Expected: \t{self.z_linear_test[0]} \t{self.z_linear_test[1]} \t{self.z_linear_test[2]}\n",
                 )
+
                 sys.stdout.write(f"\rActual: \t{x} \t{y} \t{z}\n")
 
                 self.print_deviances()
-
                 self.print_suggestion()
 
-                sys.stdout.flush()
+                if self.update_timer_threshold():
 
-                if all(
-                    deviance <= self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD
-                    for deviance in self.deviances
-                ):
+                    # If the test passes, then we need to kill the accelerometer subscriber so
+                    # we can create a new subscriber for magnetometer
+                    self.destroy_subscription(self.subscription)
 
-                    # If the countdown is running, we'll check if we've met the time threshold
-                    if self.test_countdown:
-                        current_time = datetime.datetime.now()
-
-                        if (current_time - self.start_time) >= self.timer_threshold:
-
-                            print(
-                                "\nSufficient deviance met, continuing to next test...\n",
-                            )
-
-                            # Kill the accelerometer subscriber so we can create a new subscriber for magnetometer
-                            self.destroy_subscription(self.subscription)
-
-                            self.subscription = self.create_subscription(
-                                MagneticField,
-                                "/imu/mag",
-                                self.listener_callback,
-                                10,
-                            )
-
-                            sleep(2)
-                            self.test_counter += 1
-
-                        else:
-                            sys.stdout.write(
-                                f"\nMaintain position for {round((self.timer_threshold - (current_time - self.start_time)).total_seconds(), 1)} more seconds...",
-                            )
-
-                    else:
-                        self.test_countdown = True
-
-                        # Record the starting time so we know if the timer threshold is met next time we check
-                        self.start_time = datetime.datetime.now()
-
-                # If the current linear acceleration values are not within the deviance, then we need to set test_countdown to false
-                else:
-
-                    self.test_countdown = False
+                    self.subscription = self.create_subscription(
+                        MagneticField,
+                        "/imu/mag",
+                        self.listener_callback,
+                        10,
+                    )
 
                 sys.stdout.flush()
 
             # (Magnetometer Test) x-axis
             case 3:
 
+                # Update deviance values
                 self.deviances[0] = round(
                     abs(self.averages[0] - self.x_mag_test[0]),
                     6,
@@ -395,7 +371,8 @@ class IMUSubscriber(Node):
                 )
 
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
-                sys.stdout.write("\033[2J\033[H")
+                sys.stdout.write(f"{CLEAR_CONSOLE}")
+
                 sys.stdout.write(
                     f"(Test 4) Orient X-Axis of IMU towards Magnetic North, achieve +/- {self.MAGNETOMETER_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
@@ -408,47 +385,14 @@ class IMUSubscriber(Node):
                 self.print_deviances()
                 self.print_suggestion()
 
-                sys.stdout.flush()
-
-                if all(
-                    deviance <= self.MAGNETOMETER_DEVIANCE_THRESHOLD
-                    for deviance in self.deviances
-                ):
-
-                    # If the countdown is running, we'll check if we've met the time threshold
-                    if self.test_countdown:
-                        current_time = datetime.datetime.now()
-
-                        if current_time - self.start_time >= self.timer_threshold:
-
-                            print(
-                                "\nSufficient deviance met, continuing to next test...\n",
-                            )
-
-                            sleep(2)
-                            self.test_counter += 1
-
-                        else:
-                            sys.stdout.write(
-                                f"\nMaintain position for {round((self.timer_threshold - (current_time - self.start_time)).total_seconds(), 1)} more seconds...",
-                            )
-
-                    else:
-                        self.test_countdown = True
-
-                        # Record the starting time so we know if the timer threshold is met next time we check
-                        self.start_time = datetime.datetime.now()
-
-                # If the current magnetometer values are not within the deviance, then we need to set test_countdown to false
-                else:
-
-                    self.test_countdown = False
+                self.update_timer_threshold()
 
                 sys.stdout.flush()
 
             # (Magnetometer Test) y-axis
             case 4:
 
+                # Update our deviance values
                 self.deviances[0] = round(
                     abs(self.averages[0] - self.y_mag_test[0]),
                     6,
@@ -463,10 +407,12 @@ class IMUSubscriber(Node):
                 )
 
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
-                sys.stdout.write("\033[2J\033[H")
+                sys.stdout.write(f"{CLEAR_CONSOLE}")
+
                 sys.stdout.write(
                     f"(Test 5) Orient Y-Axis of IMU towards Magnetic North, achieve +/- {self.MAGNETOMETER_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
+
                 sys.stdout.write(
                     f"Expected: \t{self.y_mag_test[0]:.1e} \t{self.y_mag_test[1]:.1e} \t{self.y_mag_test[2]:.1e}\n",
                 )
@@ -476,47 +422,14 @@ class IMUSubscriber(Node):
                 self.print_deviances()
                 self.print_suggestion()
 
-                sys.stdout.flush()
-
-                if all(
-                    deviance <= self.MAGNETOMETER_DEVIANCE_THRESHOLD
-                    for deviance in self.deviances
-                ):
-
-                    # If the countdown is running, we'll check if we've met the time threshold
-                    if self.test_countdown:
-                        current_time = datetime.datetime.now()
-
-                        if current_time - self.start_time >= self.timer_threshold:
-
-                            print(
-                                "\nSufficient deviance met, continuing to next test...\n",
-                            )
-
-                            sleep(2)
-                            self.test_counter += 1
-
-                        else:
-                            sys.stdout.write(
-                                f"\nMaintain position for {round((self.timer_threshold - (current_time - self.start_time)).total_seconds(), 1)} more seconds...",
-                            )
-
-                    else:
-                        self.test_countdown = True
-
-                        # Record the starting time so we know if the timer threshold is met next time we check
-                        self.start_time = datetime.datetime.now()
-
-                # If the current magnetometer values are not within the deviance, then we need to set test_countdown to false
-                else:
-
-                    self.test_countdown = False
+                self.update_timer_threshold()
 
                 sys.stdout.flush()
 
             # # (Magnetometer Test) z-axis
             case 5:
 
+                # Update deviance values
                 self.deviances[0] = round(
                     abs(self.averages[0] - self.z_mag_test[0]),
                     6,
@@ -531,7 +444,8 @@ class IMUSubscriber(Node):
                 )
 
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
-                sys.stdout.write("\033[2J\033[H")
+                sys.stdout.write(f"{CLEAR_CONSOLE}")
+
                 sys.stdout.write(
                     f"(Test 6) Orient Z-Axis of IMU towards Magnetic North, achieve +/- {self.MAGNETOMETER_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
@@ -544,41 +458,7 @@ class IMUSubscriber(Node):
                 self.print_deviances()
                 self.print_suggestion()
 
-                sys.stdout.flush()
-
-                if all(
-                    deviance <= self.MAGNETOMETER_DEVIANCE_THRESHOLD
-                    for deviance in self.deviances
-                ):
-
-                    # If the countdown is running, we'll check if we've met the time threshold
-                    if self.test_countdown:
-                        current_time = datetime.datetime.now()
-
-                        if current_time - self.start_time >= self.timer_threshold:
-
-                            print(
-                                "\nSufficient deviance met, all done (:\n",
-                            )
-
-                            sleep(2)
-                            self.test_counter += 1
-
-                        else:
-                            sys.stdout.write(
-                                f"\nMaintain position for {round((self.timer_threshold - (current_time - self.start_time)).total_seconds(), 1)} more seconds...",
-                            )
-
-                    else:
-                        self.test_countdown = True
-
-                        # Record the starting time so we know if the timer threshold is met next time we check
-                        self.start_time = datetime.datetime.now()
-
-                # If the current magnetometer values are not within the deviance, then we need to set test_countdown to false
-                else:
-
-                    self.test_countdown = False
+                self.update_timer_threshold()
 
                 sys.stdout.flush()
 
@@ -592,6 +472,9 @@ class IMUSubscriber(Node):
         # angular_velocity_covariance (array)
         # linear_acceleration (Vector3)
         # linear_acceleration_covariance (array)
+
+        # magnetometer_covariance
+        # magnetometer
 
         sleep(0.05)
 
