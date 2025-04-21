@@ -71,6 +71,8 @@ class IMUSubscriber(Node):
         # If the test_counter is between 0 and 2, that means we're running the linear acceleration based tests
         if self.test_counter <= 2:
 
+            suggestion = ""
+
             # If any of the deviances are in the 18-20 range, that means the user is on the right track, except they've
             # flipped the sub 180 degrees from what it should be
             for deviance in self.deviances:
@@ -183,7 +185,7 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write("\033[2J\033[H")
                 sys.stdout.write(
-                    f"Orient X-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
+                    f"(Test 1) Orient X-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
                 sys.stdout.write(
                     f"Expected: \t{self.x_linear_test[0]} \t{self.x_linear_test[1]} \t{self.x_linear_test[2]}\n",
@@ -249,7 +251,7 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write("\033[2J\033[H")
                 sys.stdout.write(
-                    f"Orient Y-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
+                    f"(Test 2) Orient Y-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
                 sys.stdout.write(
                     f"Expected: \t{self.y_linear_test[0]} \t{self.y_linear_test[1]} \t{self.y_linear_test[2]}\n",
@@ -317,7 +319,7 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write("\033[2J\033[H")
                 sys.stdout.write(
-                    f"Orient Z-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
+                    f"(Test 3) Orient Z-Axis of IMU Up, achieve +/- {self.LINEAR_ACCELERATION_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
                 sys.stdout.write(
                     f"Expected: \t{self.z_linear_test[0]} \t{self.z_linear_test[1]} \t{self.z_linear_test[2]}\n",
@@ -395,7 +397,7 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write("\033[2J\033[H")
                 sys.stdout.write(
-                    f"Orient X-Axis of IMU towards Magnetic North, achieve +/- {self.MAGNETOMETER_DEVIANCE_THRESHOLD} deviance to continue tests\n",
+                    f"(Test 4) Orient X-Axis of IMU towards Magnetic North, achieve +/- {self.MAGNETOMETER_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
                 sys.stdout.write(
                     f"Expected: \t{self.x_mag_test[0]:.1e} \t{self.x_mag_test[1]:.1e} \t{self.x_mag_test[2]:.1e}\n",
@@ -463,7 +465,7 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write("\033[2J\033[H")
                 sys.stdout.write(
-                    f"Orient Y-Axis of IMU towards Magnetic North, achieve +/- {self.MAGNETOMETER_DEVIANCE_THRESHOLD} deviance to continue tests\n",
+                    f"(Test 5) Orient Y-Axis of IMU towards Magnetic North, achieve +/- {self.MAGNETOMETER_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
                 sys.stdout.write(
                     f"Expected: \t{self.y_mag_test[0]:.1e} \t{self.y_mag_test[1]:.1e} \t{self.y_mag_test[2]:.1e}\n",
@@ -531,7 +533,7 @@ class IMUSubscriber(Node):
                 # Overwrite the same line instead of stacking a bunch of messages in the terminal
                 sys.stdout.write("\033[2J\033[H")
                 sys.stdout.write(
-                    f"Orient Z-Axis of IMU towards Magnetic North, achieve +/- {self.MAGNETOMETER_DEVIANCE_THRESHOLD} deviance to continue tests\n",
+                    f"(Test 6) Orient Z-Axis of IMU towards Magnetic North, achieve +/- {self.MAGNETOMETER_DEVIANCE_THRESHOLD} deviance to continue tests\n",
                 )
                 sys.stdout.write(
                     f"Expected: \t{self.z_mag_test[0]:.1e} \t{self.z_mag_test[1]:.1e} \t{self.z_mag_test[2]:.1e}\n",
