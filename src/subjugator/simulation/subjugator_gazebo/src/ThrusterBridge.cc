@@ -1,5 +1,5 @@
 #include "ThrusterBridge.hh"
-
+#include <chrono>
 #include "gz/plugin/Register.hh"  // For GZ_ADD_PLUGIN
 
 #include <gz/common/Console.hh>
@@ -41,8 +41,16 @@ void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
     }
 
     // Get Thruster Force Parameters
-    this->max_force_pos = this->thrustNode->get_parameter("max_force_pos").as_double();
-    this->max_force_neg = this->thrustNode->get_parameter("max_force_neg").as_double();
+    auto parameters_client = std::make_shared<rclcpp::SyncParametersClient>(this->thrustNode, "thruster_manager");
+    while (!parameters_client->wait_for_service(std::chrono::seconds(1))) {
+      if (!rclcpp::ok()) {
+          RCLCPP_ERROR(this->thrustNode->get_logger(), "Interrupted while waiting for the service. Exiting.");
+          rclcpp::shutdown();
+      }
+      RCLCPP_INFO(this->thrustNode->get_logger(), "service not available, waiting again...");
+    }
+    double max_force_pos = parameters_client->get_parameter("max_force_pos", 1.0);
+    double max_force_neg = parameters_client->get_parameter("max_force_neg", 1.0);
 }
 
 // receiveEffortCallback() -  Whenever ROS2 node receives message call this //
