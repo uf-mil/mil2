@@ -17,22 +17,25 @@ find_package(Eigen3 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 
-add_library(${PROJECT_NAME} src/geometry/Rotation.cpp src/fs/path.cpp
-                            src/os.cpp src/os/FileDescriptor.cpp src/string.cpp)
-include_directories(include ${EIGEN3_INCLUDE_DIR})
+set(SOURCE_FILES src/geometry/Rotation.cpp src/fs/path.cpp src/os.cpp
+                 src/os/FileDescriptor.cpp src/string.cpp)
+add_library(${PROJECT_NAME} ${SOURCE_FILES})
+target_include_directories(
+  ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                         $<INSTALL_INTERFACE:include> ${EIGEN3_INCLUDE_DIR})
 ament_target_dependencies(${PROJECT_NAME} rclcpp Eigen3 tf2_geometry_msgs)
-ament_export_dependencies(${PROJECT_NAME} rclcpp Eigen3 tf2_geometry_msgs)
-ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
-ament_export_include_directories(include/${PROJECT_NAME})
+ament_export_dependencies(rclcpp Eigen3 tf2_geometry_msgs)
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_include_directories(include)
 
 install(
   TARGETS ${PROJECT_NAME}
-  EXPORT ${PROJECT_NAME}
+  EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-install(DIRECTORY include DESTINATION include/${PROJECT_NAME})
+install(DIRECTORY include/${PROJECT_NAME}/ DESTINATION include/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)

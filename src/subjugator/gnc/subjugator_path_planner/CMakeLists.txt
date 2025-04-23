@@ -21,12 +21,17 @@ find_package(tf2_geometry_msgs REQUIRED)
 # uncomment the following section in order to fill in further dependencies
 # manually. find_package(<dependency> REQUIRED)
 
-add_executable(subjugator_path_planner src/node.cpp)
-target_link_libraries(subjugator_path_planner mil_tools::geometry::Rotation)
-ament_target_dependencies(subjugator_path_planner Eigen3 mil_tools nav_msgs
-                          rclcpp tf2_geometry_msgs)
+add_executable(subjugator_path_planner src/node.cpp src/PathPlanner.cpp)
+ament_target_dependencies(
+  subjugator_path_planner
+  Eigen3
+  mil_tools
+  nav_msgs
+  rclcpp
+  tf2_geometry_msgs
+  mil_tools)
 target_include_directories(subjugator_path_planner
-                           PUBLIC ${mil_tools_INCLUDE_DIRS})
+                           PUBLIC ${mil_tools_INCLUDE_DIRS} include)
 
 install(TARGETS subjugator_path_planner DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
