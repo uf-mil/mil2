@@ -79,24 +79,31 @@ cb() {
 	cd $MIL_REPO || return # Change to your workspace
 
 	local packages=()
-	local verbose_flags=""
+	local colcon_flags=()
 	# Optionally add verbose flags
 	for arg in "$@"; do
-		if [ "$arg" == "--verbose" ]; then
-			verbose_flags="--event-handlers console_cohesion+ --cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON"
+		if [ "$arg" = "--verbose" ]; then
+			colcon_flags+=("--event-handlers" "console_cohesion+" "--cmake-args" "-DCMAKE_VERBOSE_MAKEFILE=ON")
+		elif [ "$arg" = "--generate-compile-commands" ]; then
+			colcon_flags+=("--cmake-args" "-DCMAKE_EXPORT_COMPILE_COMMANDS=1")
 		else
 			packages+=("$arg") # Add packages to local variable
 		fi
 	done
 
 	if [ "${#packages[@]}" -eq 0 ]; then
-		colcon build --symlink-install $verbose_flags # Build the workspace
+		colcon build --symlink-install "${colcon_flags[@]}" # Build the workspace
 	else
-		colcon build --symlink-install --packages-select "${packages[@]}" $verbose_flags # Build the workspace
+		colcon build --symlink-install "${colcon_flags[@]}" --packages-select "${packages[@]}" # Build the workspace
 	fi
 
-	source ./install/setup.bash # Source the install script
-	cd "$prev_dir" || return    # Return to the original directory
+	# source based on shell
+	if [ "$SHELL" = "/bin/bash" ]; then
+		source "$MIL_REPO/install/setup.bash"
+	elif [ "$SHELL" = "/bin/zsh" ]; then
+		source "$MIL_REPO/install/setup.zsh"
+	fi
+	cd "$prev_dir" || return # Return to the original directory
 }
 
 # Autocomplete for cb based on ROS 2 packages
