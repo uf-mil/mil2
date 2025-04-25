@@ -328,6 +328,16 @@ mil_user_setup_init_colcon() {
 	colcon build
 }
 
+# llvm stuff
+llvm() {
+	wget https://apt.llvm.org/llvm.sh
+	chmod +x llvm.sh
+	sudo ./llvm.sh 20
+	sudo apt install -y \
+		clang-format-20 \
+		clang-tidy-20
+}
+
 cat <<EOF
 $(color "$Pur")
 $(hash_header)
@@ -338,6 +348,7 @@ EOF
 
 mil_user_install_dependencies
 mil_user_setup_rc
+llvm
 set +u
 . /opt/ros/jazzy/setup.bash
 . "$SCRIPT_DIR/setup.bash"

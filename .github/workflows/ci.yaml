@@ -125,6 +125,17 @@ jobs:
       #     catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3 \
       #                 -DPYTHON_INCLUDE_DIR=/usr/include/python3.8 \
       #                 -j6
+        #
+      - name: Run clang-tidy
+        run: |
+          set +u
+          source $GITHUB_WORKSPACE/scripts/setup.bash
+          set -u
+          # Ensure that origin/main is up to date
+          git fetch origin
+          ALL_CHANGES=$(git diff --name-only origin/main \
+                        --ignore-submodules -- "*.cpp" "*.h" "*.hpp")
+          tidy $ALL_CHANGES
       - name: Run colcon tests
         run: |
           export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts

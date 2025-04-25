@@ -129,7 +129,9 @@ _cb_autocomplete() {
 #   tidy --fix            --> Fix changes
 #   tidy --diff-files     --> Look at files which have changed in git
 tidy() {
-	local packages=""
+	local packages=()
+	local all_packages=()
+	while IFS='|' read -r line; do all_packages+=("$line"); done < <(colcon list --names-only --base-paths $MIL_REPO)
 	local files=()
 	local clang_tidy_args=()
 	local dont_stop=false
@@ -137,7 +139,7 @@ tidy() {
 		if [ "$arg" = "--no-stop" ]; then
 			dont_stop=true
 		elif [ "$arg" = "--all" ]; then
-			packages=$(colcon list --names-only --base-paths $MIL_REPO)
+			while IFS='' read -r line; do packages+=("$line"); done < <(colcon list --names-only --base-paths $MIL_REPO)
 		elif [ "$arg" = "--fix" ]; then
 			clang_tidy_args+=("--fix")
 		elif [ "$arg" = "--verbose" ]; then
@@ -160,7 +162,18 @@ tidy() {
 			echo "Unknown option: $arg"
 			return 1
 		else
-			packages+=("$arg")
+			# If arg is package, then use in package array, otherwise only files
+			IFS="|"
+			if [[ "${IFS}${all_packages[*]}${IFS}" == *"${IFS}${arg}${IFS}"* ]]; then
+				echo ">>> found package: $arg"
+				packages+=("$arg")
+			elif [[ -f $arg ]]; then
+				echo ">>> found file: $arg"
+				files+=("$arg")
+			else
+				echo "Not file or package name: $arg"
+				return 1
+			fi
 		fi
 	done
 
