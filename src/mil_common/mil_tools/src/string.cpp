@@ -16,7 +16,7 @@ std::vector<std::string> split(std::string const &str, std::string const &delim)
     return result;
 }
 
-bool startswith(std::string s, std::string const &prefix)
+bool startswith(std::string const &s, std::string const &prefix)
 {
     if (prefix.size() > s.size())
     {
