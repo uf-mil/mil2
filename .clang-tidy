@@ -1,0 +1,54 @@
+---
+Checks:          '-*,
+                  bugprone-*,
+                  cppcoreguidelines-*,
+                  performance-*,
+                  llvm-namespace-comment,
+                  misc-*,
+                  modernize-redundant-void-arg,
+                  modernize-use-nullptr,
+                  modernize-use-default,
+                  modernize-use-override,
+                  modernize-loop-convert,
+                  readability-*
+                  -readability-identifier-naming.ClassCase,
+                  '
+HeaderFilterRegex: ''
+CheckOptions:
+  - key:             llvm-namespace-comment.ShortNamespaceLines
+    value:           '10'
+  - key:             llvm-namespace-comment.SpacesBeforeComments
+    value:           '2'
+  - key:             readability-braces-around-statements.ShortStatementLines
+    value:           '2'
+  # type names
+  # not enforcing this for now, since i believe having lowercase class names
+  # for simple/commonly used classes is okay
+  # - key:             readability-identifier-naming.ClassCase
+  #   value:           CamelCase
+  - key:             readability-identifier-naming.EnumCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.UnionCase
+    value:           CamelCase
+  # method names
+  - key:             readability-identifier-naming.MethodCase
+    value:           lower_case
+  # variable names
+  - key:             readability-identifier-naming.PrivateMemberCase
+    value:           lower_case
+  - key:             readability-identifier-naming.PrivateMemberSuffix
+    value:           '_'
+  - key:             readability-identifier-naming.ProtectedMemberCase
+    value:           lower_case
+  - key:             readability-identifier-naming.ProtectedMemberSuffix
+    value:           '_'
+  # const static or global variables are UPPER_CASE
+  - key:             readability-identifier-naming.EnumConstantCase
+    value:           UPPER_CASE
+  - key:             readability-identifier-naming.StaticConstantCase
+    value:           UPPER_CASE
+  - key:             readability-identifier-naming.ClassConstantCase
+    value:           UPPER_CASE
+  - key:             readability-identifier-naming.GlobalVariableCase
+    value:           UPPER_CASE
+...

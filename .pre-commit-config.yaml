@@ -13,7 +13,8 @@ repos:
     rev: v1.35.1
     hooks:
       - id: yamllint
-        exclude: ^src/subjugator/gnc/subjugator_thruster_manager/config|ext
+        exclude: "^src/subjugator/gnc/subjugator_thruster_manager/config\
+                  |ext|.clang-tidy"
   - repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:

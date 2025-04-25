@@ -133,7 +133,7 @@ tidy() {
 	local all_packages=()
 	while IFS='|' read -r line; do all_packages+=("$line"); done < <(colcon list --names-only --base-paths $MIL_REPO)
 	local files=()
-	local clang_tidy_args=()
+	local clang_tidy_args=("--config-file=.clang-tidy")
 	local dont_stop=false
 	for arg in "$@"; do
 		if [ "$arg" = "--no-stop" ]; then

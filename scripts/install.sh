@@ -325,7 +325,9 @@ add_hosts_entry "192.168.37.82 navigator-two"
 # Builds the MIL repo
 mil_user_setup_init_colcon() {
 	cd $SCRIPT_DIR/..
-	colcon build
+	set +u
+	cb --generate-compile-commands
+	set -u
 }
 
 # llvm stuff
