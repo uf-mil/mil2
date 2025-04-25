@@ -1,12 +1,12 @@
 #pragma once
 
-#include <rclcpp/rclcpp.hpp>
+#include <vector>
 
-#include "mil_tools/geometry/Rotation.hpp"
-#include "mil_tools/geometry/Slerp.hpp"
+#include <rclcpp/node.hpp>
+#include <rclcpp/publisher.hpp>
+#include <rclcpp/subscription.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
 
@@ -20,8 +20,8 @@ class PathPlanner : public rclcpp::Node
 
   public:
     PathPlanner();
-    void goal_pose_cb(geometry_msgs::msg::Pose::SharedPtr const msg);
-    void odom_cb(nav_msgs::msg::Odometry::SharedPtr const msg);
-    std::vector<geometry_msgs::msg::Pose> slerp(geometry_msgs::msg::Pose const &goal_pose);
-    std::vector<geometry_msgs::msg::Pose> generate_path(geometry_msgs::msg::Pose const &goal_pose);
+    void goal_pose_cb(geometry_msgs::msg::Pose::SharedPtr const &msg);
+    void odom_cb(nav_msgs::msg::Odometry::SharedPtr const &msg);
+    auto slerp(geometry_msgs::msg::Pose const &goal_pose) -> std::vector<geometry_msgs::msg::Pose>;
+    auto generate_path(geometry_msgs::msg::Pose const &goal_pose) -> std::vector<geometry_msgs::msg::Pose>;
 };

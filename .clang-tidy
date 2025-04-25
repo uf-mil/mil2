@@ -1,15 +1,13 @@
 ---
 Checks:          '-*,
                   bugprone-*,
+                  clang-analyzer-*,
                   cppcoreguidelines-*,
-                  performance-*,
                   llvm-namespace-comment,
                   misc-*,
-                  modernize-redundant-void-arg,
-                  modernize-use-nullptr,
-                  modernize-use-default,
-                  modernize-use-override,
-                  modernize-loop-convert,
+                  modernize-*,
+                  -modernize-use-trailing-return-type,
+                  performance-*,
                   readability-*
                   -readability-identifier-naming.ClassCase,
                   '

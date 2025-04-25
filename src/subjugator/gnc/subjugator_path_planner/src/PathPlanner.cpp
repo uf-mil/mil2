@@ -1,17 +1,20 @@
 #include "subjugator_path_planner/PathPlanner.hpp"
 
+#include "mil_tools/geometry/Rotation.hpp"
+#include "mil_tools/geometry/Slerp.hpp"
+
 PathPlanner::PathPlanner() : Node("path_planner_node"), segment_count_(10)
 {
     // Goal pose subscription
     goal_pose_sub_ = this->create_subscription<geometry_msgs::msg::Pose>(
-        "goal_pose", 10, std::bind(&PathPlanner::goal_pose_cb, this, std::placeholders::_1));
+        "goal_pose", 10, [this](geometry_msgs::msg::Pose::SharedPtr msg) { goal_pose_cb(msg); });
     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-        "odom", 10, std::bind(&PathPlanner::odom_cb, this, std::placeholders::_1));
+        "odom", 10, [this](nav_msgs::msg::Odometry::SharedPtr msg) { odom_cb(msg); });
     // Path publisher
     path_pub_ = this->create_publisher<nav_msgs::msg::Path>("planned_path", 10);
 }
 
-void PathPlanner::goal_pose_cb(geometry_msgs::msg::Pose::SharedPtr const msg)
+void PathPlanner::goal_pose_cb(geometry_msgs::msg::Pose::SharedPtr const &msg)
 {
     // Generate path
     auto path = generate_path(*msg);
@@ -30,7 +33,7 @@ void PathPlanner::goal_pose_cb(geometry_msgs::msg::Pose::SharedPtr const msg)
     path_pub_->publish(path_msg);
 }
 
-void PathPlanner::odom_cb(nav_msgs::msg::Odometry::SharedPtr const msg)
+void PathPlanner::odom_cb(nav_msgs::msg::Odometry::SharedPtr const &msg)
 {
     last_odom_ = *msg;
 }
@@ -38,9 +41,9 @@ void PathPlanner::odom_cb(nav_msgs::msg::Odometry::SharedPtr const msg)
 std::vector<geometry_msgs::msg::Pose> PathPlanner::slerp(geometry_msgs::msg::Pose const &goal_pose)
 {
     std::vector<geometry_msgs::msg::Pose> path;
-    mil_tools::geometry::Rotation start_rot{ last_odom_.pose.pose.orientation };
-    mil_tools::geometry::Rotation goal_rot{ goal_pose.orientation };
-    mil_tools::geometry::Slerp slerp(start_rot, goal_rot);
+    mil_tools::geometry::Rotation const start_rot{ last_odom_.pose.pose.orientation };
+    mil_tools::geometry::Rotation const goal_rot{ goal_pose.orientation };
+    mil_tools::geometry::Slerp const slerp(start_rot, goal_rot);
     for (int i = 0; i < segment_count_; ++i)
     {
         double t = static_cast<double>(i) / (segment_count_ - 1);

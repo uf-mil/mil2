@@ -1,3 +1,7 @@
+#include <memory>
+
+#include <rclcpp/rclcpp.hpp>
+
 #include "subjugator_path_planner/PathPlanner.hpp"
 
 int main(int argc, char *argv[])
