@@ -75,11 +75,9 @@ TEST(mil_tools_geometry_rotation, operators)
     // unary operator-() should return the inverse rotation
     Rotation r1{ Eigen::Vector3d{ 0.1, -0.2, 0.3 } };
     Rotation r1_inv{ -r1 };
-    std::cout << r1 << std::endl;
 
     // r1 * -r1 should be identity
     Rotation should_be_identity = r1 * r1_inv;
-    std::cout << should_be_identity << std::endl;
     EXPECT_TRUE(should_be_identity.quat().isApprox(identity.quat(), 1e-9));
 
     // composition of two known rotations

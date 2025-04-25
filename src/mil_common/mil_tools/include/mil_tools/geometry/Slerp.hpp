@@ -15,7 +15,7 @@ class Slerp
     bool equal;
 
   public:
-    Slerp(Rotation r1, Rotation r2)
+    Slerp(Rotation const& r1, Rotation const& r2)
     {
         left = r1;
         Rotation right = r2;

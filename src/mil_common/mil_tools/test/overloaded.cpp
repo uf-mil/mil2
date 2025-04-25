@@ -5,9 +5,9 @@
 TEST(Overloaded, Test)
 {
     auto f = mil_tools::overloaded::make{
-        [](int x) { return x + 1; },
-        [](double x) { return x + 2; },
-        [](auto x) { return x + "3"; },
+        [](int const& x) { return x + 1; },
+        [](double const& x) { return x + 2; },
+        [](auto const& x) { return x + "3"; },
     };
 
     EXPECT_EQ(f(1), 2);

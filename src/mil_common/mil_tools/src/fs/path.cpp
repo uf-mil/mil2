@@ -11,7 +11,7 @@ std::optional<std::string> home()
 
 std::string expanduser(std::string const &path)
 {
-    if (path.size() < 1 || path[0] != '~')
+    if (path.empty() || path[0] != '~')
         return path;
     auto home_opt = home();
     if (!home_opt)

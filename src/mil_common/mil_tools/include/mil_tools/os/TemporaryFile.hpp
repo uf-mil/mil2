@@ -23,13 +23,15 @@ class TemporaryFile
     std::string tmp_path_ = std::filesystem::temp_directory_path().string();
     void create()
     {
-        char* name = path().data();
-        int raw_fd = mkstemp(name);
+        std::string path_str = path();
+        std::vector<char> name(path_str.begin(), path_str.end());
+        name.push_back('\0');
+        int raw_fd = mkstemp(name.data());
         if (raw_fd < 0)
         {
             throw std::runtime_error("Failed to create temporary file " + path() + ": " + strerror(errno));
         }
-        name_ = mil_tools::string::removeprefix(name, tmp_path_);
+        name_ = mil_tools::string::removeprefix(name.data(), tmp_path_);
         fd_ = FileDescriptor(raw_fd);
     }
     FileDescriptor fd_;
