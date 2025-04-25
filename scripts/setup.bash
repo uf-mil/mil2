@@ -101,26 +101,17 @@ cb() {
 
 # Autocomplete for cb based on ROS 2 packages
 _cb_autocomplete() {
-	local cur
-	cur="${COMP_WORDS[COMP_CWORD]}" # Get the current word being typed
+	local current_phrase
+	current_phrase="${COMP_WORDS[COMP_CWORD]}"
 	local packages
 
 	# Fetch the list of packages from the ROS 2 workspace (replace this with your workspace)
-	packages=$(cd $MIL_REPO && colcon list --names-only)
-
-	mapfile -t package_array <<<"$packages"
-
-	mapfile -t replacement <<<"$(compgen -W "${package_array[*]}" -- "$cur")"
-
-	if [ ${#replacement[@]} -eq 0 ] || [ -z "$cur" ]; then
-		COMPREPLY=("${package_array[@]}")
-	else
-		# Filter packages based on the current word (autocomplete logic)
-		COMPREPLY=("${replacement[0]}")
-	fi
+	packages=$(colcon list --names-only --base-paths $MIL_REPO)
+	COMPREPLY=()
+	while IFS='' read -r line; do COMPREPLY+=("$line"); done < <(compgen -W "$packages" -- "$current_phrase")
 }
 
-# Bind the autocomplete function to the cb command
+# bash autocompletion
 complete -F _cb_autocomplete cb
 complete -F _cb_autocomplete colcon_cd
 complete -F _cb_autocomplete ccd
