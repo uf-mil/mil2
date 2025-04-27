@@ -1,4 +1,8 @@
-#include "subjugator_trajectory_planner/trajectory_planner.h"
+#include <memory>
+
+#include <rclcpp/rclcpp.hpp>
+
+#include "subjugator_trajectory_planner/TrajectoryPlanner.hpp"
 
 int main(int argc, char *argv[])
 {

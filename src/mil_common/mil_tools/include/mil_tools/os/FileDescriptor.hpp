@@ -33,8 +33,8 @@ class FileDescriptor
     explicit operator int() const;
     FileDescriptor(FileDescriptor const&) = delete;
     FileDescriptor& operator=(FileDescriptor const&) = delete;
-    FileDescriptor(FileDescriptor&& other);
-    FileDescriptor& operator=(FileDescriptor&& other);
+    FileDescriptor(FileDescriptor&& other) noexcept;
+    FileDescriptor& operator=(FileDescriptor&& other) noexcept;
     void close();
     std::vector<char> read(int size);
     std::string read_as_string(int size);

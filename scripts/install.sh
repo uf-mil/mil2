@@ -325,7 +325,19 @@ add_hosts_entry "192.168.37.82 navigator-two"
 # Builds the MIL repo
 mil_user_setup_init_colcon() {
 	cd $SCRIPT_DIR/..
-	colcon build
+	set +u
+	cb --generate-compile-commands
+	set -u
+}
+
+# llvm stuff
+llvm() {
+	wget https://apt.llvm.org/llvm.sh
+	chmod +x llvm.sh
+	sudo ./llvm.sh 20
+	sudo apt install -y \
+		clang-format-20 \
+		clang-tidy-20
 }
 
 cat <<EOF
@@ -338,6 +350,7 @@ EOF
 
 mil_user_install_dependencies
 mil_user_setup_rc
+llvm
 set +u
 . /opt/ros/jazzy/setup.bash
 . "$SCRIPT_DIR/setup.bash"

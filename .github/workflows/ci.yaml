@@ -103,28 +103,33 @@ jobs:
         run: |
           python3 -m pip config set global.break-system-packages true
           pip3 install -r requirements.txt
-      # We want to run a full test suite in CI - this includes the BlueView
-      # tests!
-      # - name: Install BlueView Sonar SDK
-      #   run: |
-      #     cd $GITHUB_WORKSPACE/catkin_ws/src/mil
-      #     ./scripts/hw/install_bvtsdk --pass ${{ secrets.ZOBELISK_PASSWORD }}
-      #     ls mil_common/drivers/mil_blueview_driver
-      #     echo $PWD
       - name: Install system dependencies and build
         run: |
           # Needed for /etc/update-manager/release-upgrades
           sudo apt-get install -y ubuntu-release-upgrader-core
           rm -rf build install log
-          export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
+          export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
           ALLOW_NONSTANDARD_DIR=1 ./scripts/install.sh
-      # - name: Run catkin_make
-      #   run: |
-      #     cd $GITHUB_WORKSPACE/catkin_ws
-      #     source /opt/ros/noetic/setup.bash
-      #     catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3 \
-      #                 -DPYTHON_INCLUDE_DIR=/usr/include/python3.8 \
-      #                 -j6
+      # - name: tmate
+      #   uses: mxschmitt/action-tmate@v2
+      - name: Run clang-tidy
+        run: |
+          set +u
+          export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
+          source $GITHUB_WORKSPACE/scripts/setup.bash
+          set -u
+          # Ensure that origin/main is up to date
+          git fetch origin
+          ALL_CHANGES=()
+          while IFS='' read -r line; do
+            ALL_CHANGES+=("$line")
+          done < <(
+            git diff --name-only origin/main \
+              --ignore-submodules \
+              -- "*.cpp" "*.h" "*.hpp"
+          )
+          cd $GITHUB_WORKSPACE
+          tidy "${ALL_CHANGES[@]}"
       - name: Run colcon tests
         run: |
           export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
