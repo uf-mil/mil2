@@ -227,3 +227,10 @@ list_lan_devices() {
 }
 
 alias list_mil_devices="list_lan_devices 192.168.37.1/24"
+
+# aliases for localization and controller service calls
+alias start-localization="ros2 service call /subjugator_localization/enable std_srvs/srv/Empty"
+alias reset-localization="ros2 service call /subjugator_localization/reset std_srvs/srv/Empty"
+alias start-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: true}"'
+alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: false}"'
+alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"

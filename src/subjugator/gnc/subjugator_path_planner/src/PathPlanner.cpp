@@ -11,7 +11,7 @@ PathPlanner::PathPlanner() : Node("path_planner_node"), segment_count_(10)
     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "odom", 10, [this](nav_msgs::msg::Odometry::SharedPtr msg) { odom_cb(msg); });
     // Path publisher
-    path_pub_ = this->create_publisher<nav_msgs::msg::Path>("planned_path", 10);
+    path_pub_ = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 }
 
 void PathPlanner::goal_pose_cb(geometry_msgs::msg::Pose::SharedPtr const &msg)
