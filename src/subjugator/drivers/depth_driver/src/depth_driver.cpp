@@ -178,7 +178,7 @@ void DepthDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
             {
                 msg.header.stamp = rclcpp::Clock().now();
 
-                uint64_t bits = be64toh(*reinterpret_cast<uint64_t *>(&backing[2]));
+                uint64_t bits = be64toh(*reinterpret_cast<uint64_t *>(&backing[3]));
                 double pressure = *reinterpret_cast<double *>(&bits);
                 if (recent_odom_msg_.header.stamp.sec > msg.header.stamp.sec)
                 {

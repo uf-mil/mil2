@@ -25,15 +25,15 @@
     odom0_differential: false
     odom0_relative: true
     odom0_queue_size: 10
-#     pose0: "/depth/pose"
-#    pose0_config: [false, false, true,
-#                    false, false, false,
-#                    false, false, false,
-#                    false, false, false,
-#                    false, false, false]
-#     pose0_differential: true
-#     pose0_relative: true
-#     pose0_queue_size: 10
+    # pose0: "/depth/pose"
+    # pose0_config: [false, false, true,
+    #                 false, false, false,
+    #                 false, false, false,
+    #                 false, false, false,
+    #                 false, false, false]
+    # pose0_differential: false
+    # pose0_relative: false
+    # pose0_queue_size: 10
     print_diagnostics: true
     publish_acceleration: true
 #    debug: true
