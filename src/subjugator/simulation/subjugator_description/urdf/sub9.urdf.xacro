@@ -121,7 +121,7 @@
   />
 
   <!--Depth Sensor-->
-  <xacro:mil_depth_sensor name="depth_sensor" namespace="/depth" parent="base_link" xyz="0.3 0 0" rpy="0 0 0" update_rate="5" frame_id="depth_sensor_frame" noise_mean="0.0" noise_stddev="0"/>
+  <xacro:mil_depth_sensor name="depth_sensor" namespace="/depth" parent="base_link" xyz="0.3 0 0" rpy="0 0 0" update_rate="5" frame_id="depth_sensor_link" noise_mean="0.0" noise_stddev="0"/>
 
   <!--MIL HYDROPHONE CALL-->
   <xacro:mil_hydrophone name="hydrophone_sensor" parent="base_link" xyz="0.10 -0.034274 -0.22" rpy="0 1.57 .7853981634"/>
