@@ -322,6 +322,9 @@ add_hosts_entry "192.168.37.60 sub9-mil"
 add_hosts_entry "192.168.37.61 navtube"
 add_hosts_entry "192.168.37.82 navigator-two"
 
+# Install pre-commit hooks for git
+pre-commit install
+
 # Builds the MIL repo
 mil_user_setup_init_colcon() {
 	cd $SCRIPT_DIR/..
