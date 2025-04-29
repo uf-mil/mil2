@@ -98,6 +98,7 @@ cb() {
 	done
 
 	if [ "${#packages[@]}" -eq 0 ]; then
+		rm_symlink_dirs                                     # remove symlink directories
 		colcon build --symlink-install "${colcon_flags[@]}" # Build the workspace
 	else
 		colcon build --symlink-install "${colcon_flags[@]}" --packages-select "${packages[@]}" # Build the workspace
