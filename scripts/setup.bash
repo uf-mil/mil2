@@ -73,13 +73,9 @@ subnet_ip() {
 	ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){2}37\.[0-9]*' | grep -v '127.0.0.1'
 }
 
+# This will remove symlink directories (fixes issue moving from plain colcon build to --symlink-install)
 rm_symlink_dirs() {
-	cd "$MIL_REPO" || return
-
-	echo "Removing auto-generated symlinked Python directories..."
-	find build -type d -path "*/ament_cmake_python/*/*" -exec rm -rf {} +
-
-	echo "Done."
+	find "$MIL_REPO/build" -type d -path "*/ament_cmake_python/*/*" -exec rm -rf {} +
 }
 
 # This will build the repository from wherever you are and take you back into the mil2 repo
