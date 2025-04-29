@@ -73,6 +73,14 @@ subnet_ip() {
 	ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){2}37\.[0-9]*' | grep -v '127.0.0.1'
 }
 
+# This will remove symlink directories (fixes issue moving from plain colcon build to --symlink-install)
+rm_symlink_dirs() {
+	local build_dir="$MIL_REPO/build"
+	if [ -d "$build_dir" ]; then
+		find "$build_dir" -type d -path "*/ament_cmake_python/*/*" -exec rm -rf {} +
+	fi
+}
+
 # This will build the repository from wherever you are and take you back into the mil2 repo
 cb() {
 	local prev_dir
@@ -93,6 +101,7 @@ cb() {
 	done
 
 	if [ "${#packages[@]}" -eq 0 ]; then
+		rm_symlink_dirs                                     # remove symlink directories
 		colcon build --symlink-install "${colcon_flags[@]}" # Build the workspace
 	else
 		colcon build --symlink-install "${colcon_flags[@]}" --packages-select "${packages[@]}" # Build the workspace
