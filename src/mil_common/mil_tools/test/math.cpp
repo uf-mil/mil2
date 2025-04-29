@@ -51,3 +51,9 @@ TEST(mil_tools_math, is_close_large_values)
     EXPECT_TRUE(mil_tools::math::is_close(a, b, 1e-5));
     EXPECT_FALSE(mil_tools::math::is_close(a, b));  // default epsilon too small
 }
+
+int main(int argc, char **argv)
+{
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}

@@ -1,4 +1,5 @@
 #include <chrono>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -10,16 +11,18 @@
 #include <boost/smart_ptr/make_shared.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
 
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "mil_msgs/msg/depth_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "std_msgs/msg/empty.hpp"
 
 using tcp = boost::asio::ip::tcp;
 
-class NavTubeDriver : public rclcpp::Node
+class DepthDriver : public rclcpp::Node
 {
   private:
     rclcpp::Publisher<mil_msgs::msg::DepthStamped>::SharedPtr pub_;
+    rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_;  // JOSEPH
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     nav_msgs::msg::Odometry recent_odom_msg_;
 
@@ -54,23 +57,24 @@ class NavTubeDriver : public rclcpp::Node
     double calculate_pressure(uint16_t analog_input);
 
   public:
-    NavTubeDriver();
+    DepthDriver();
 
-    ~NavTubeDriver();
+    ~DepthDriver();
 
     void run();
     void odom_callback(nav_msgs::msg::Odometry::SharedPtr const msg);
 };
 
-NavTubeDriver::NavTubeDriver() : rclcpp::Node("nav_tube_driver")
+DepthDriver::DepthDriver() : rclcpp::Node("depth_driver")
 {
     pub_ = this->create_publisher<mil_msgs::msg::DepthStamped>("depth", 10);
+    pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("depth/pose", 10);  // JOSEPH
     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-        "odom", 10, std::bind(&NavTubeDriver::odom_callback, this, std::placeholders::_1));
+        "odom", 10, std::bind(&DepthDriver::odom_callback, this, std::placeholders::_1));
 
     ip_ = this->declare_parameter<std::string>("ip", "192.168.37.61");
     port_ = this->declare_parameter<int>("port", 33056);
-    frame_id_ = this->declare_parameter<std::string>("frame_id", "/depth");
+    frame_id_ = this->declare_parameter<std::string>("frame_id", "depth_sensor_frame");
 
     int hz__ = this->declare_parameter<int>("hz", 20);
 
@@ -89,7 +93,7 @@ NavTubeDriver::NavTubeDriver() : rclcpp::Node("nav_tube_driver")
     reinterpret_cast<uint16_t *>(&heartbeat_packet[2])[0] = nw_ordering;
 }
 
-NavTubeDriver::~NavTubeDriver()
+DepthDriver::~DepthDriver()
 {
     {
         std::lock_guard<std::mutex> lock(m);
@@ -98,12 +102,12 @@ NavTubeDriver::~NavTubeDriver()
     timer_thread.join();
 }
 
-void NavTubeDriver::odom_callback(nav_msgs::msg::Odometry::SharedPtr const ptr)
+void DepthDriver::odom_callback(nav_msgs::msg::Odometry::SharedPtr const ptr)
 {
     recent_odom_msg_ = *ptr;
 }
 
-boost::shared_ptr<tcp::socket> NavTubeDriver::connect()
+boost::shared_ptr<tcp::socket> DepthDriver::connect()
 {
     using ip_address = boost::asio::ip::address;
     tcp::endpoint endpoint(ip_address::from_string(ip_), port_);
@@ -117,7 +121,7 @@ boost::shared_ptr<tcp::socket> NavTubeDriver::connect()
     return socket;
 }
 
-void NavTubeDriver::send_heartbeat(boost::shared_ptr<tcp::socket> socket)
+void DepthDriver::send_heartbeat(boost::shared_ptr<tcp::socket> socket)
 {
     try
     {
@@ -141,7 +145,7 @@ void NavTubeDriver::send_heartbeat(boost::shared_ptr<tcp::socket> socket)
     }
 }
 
-void NavTubeDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
+void DepthDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
 {
     mil_msgs::msg::DepthStamped msg;
     msg.header.frame_id = frame_id_;
@@ -174,7 +178,7 @@ void NavTubeDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
             {
                 msg.header.stamp = rclcpp::Clock().now();
 
-                uint64_t bits = be64toh(*reinterpret_cast<uint64_t *>(&backing[2]));
+                uint64_t bits = be64toh(*reinterpret_cast<uint64_t *>(&backing[3]));
                 double pressure = *reinterpret_cast<double *>(&bits);
                 if (recent_odom_msg_.header.stamp.sec > msg.header.stamp.sec)
                 {
@@ -190,6 +194,16 @@ void NavTubeDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
                 }
 
                 pub_->publish(msg);
+
+                // JOSEPH
+                auto pose_msg = geometry_msgs::msg::PoseWithCovarianceStamped();
+                pose_msg.header = msg.header;  // reuse same header as b4
+                pose_msg.pose.pose.position.z = msg.depth;
+                pose_msg.pose.covariance[14] = 0.01;
+                pose_msg.pose.pose.orientation.w = 1.0;  // idk what this does
+
+                pose_pub_->publish(pose_msg);
+
                 buffer = boost::asio::buffer(backing, sizeof(backing));
             }
         }
@@ -203,7 +217,7 @@ void NavTubeDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
     }
 }
 
-void NavTubeDriver::run()
+void DepthDriver::run()
 {
     while (rclcpp::ok())
     {
@@ -213,7 +227,7 @@ void NavTubeDriver::run()
             boost::shared_ptr<tcp::socket> socket;
 
             socket = connect();
-            timer_thread = std::thread(&NavTubeDriver::send_heartbeat, this, socket);
+            timer_thread = std::thread(&DepthDriver::send_heartbeat, this, socket);
             initialized = true;
             read_messages(socket);
         }
@@ -238,7 +252,7 @@ int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
 
-    auto node = std::make_shared<NavTubeDriver>();
+    auto node = std::make_shared<DepthDriver>();
     node->run();
 
     rclcpp::shutdown();

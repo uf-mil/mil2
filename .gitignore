@@ -1,3 +1,6 @@
+# Outputs
+compile_commands.json
+
 # VSCode WSL Fix
 code.sh
 code_data/
