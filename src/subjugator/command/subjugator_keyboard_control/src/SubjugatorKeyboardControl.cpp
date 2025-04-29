@@ -1,4 +1,5 @@
 #include "subjugator_keyboard_control/SubjugatorKeyboardControl.h"
+
 #include <poll.h>
 #include <unistd.h>
 
@@ -120,11 +121,12 @@ void SubjugatorKeyboardControl::keyboardLoop()
 
         // need to prevent blocking so that we can get real time input
         pollfd fd;
-        fd.fd = STDIN_FILENO; //terminal
-        fd.events = POLLIN; //only looking where there is input
+        fd.fd = STDIN_FILENO;  // terminal
+        fd.events = POLLIN;    // only looking where there is input
 
-        int ret = poll(&fd, 1, 0); //10 ms timeout to see if there is input
-        if (ret>0){
+        int ret = poll(&fd, 1, 0);  // 10 ms timeout to see if there is input
+        if (ret > 0)
+        {
             int ch = getchar();
             if (ch == 27)
             {  // Possible arrow key escape sequence
