@@ -14,6 +14,7 @@
 
 #include <future>
 #include <stack>
+#include <atomic>
 
 namespace online_bagger
 {
@@ -92,47 +93,27 @@ class TopicList: public ComponentBase
     rclcpp::Clock clock;
 };
 
-class UIScreen
-{
-    public:
-    UIScreen(Component ui):
-        loop(&screen, ui)
-    {
-
-    }
-
-    ~UIScreen()
-    {
-    }
-
-    void shutdown()
-    {
-        screen.Exit();   
-    }
-
-    bool ok()
-    {
-        return !loop.HasQuitted();
-    }
-
-    void spin_once()
-    {
-        loop.RunOnce();
-    }
-
-    void refresh()
-    {
-        screen.PostEvent(Event::Custom);
-    }
-
-    private:
-    ScreenInteractive screen = ScreenInteractive::Fullscreen();
-    Loop loop;
-};
-
 class Client: public rclcpp::Node
 {
     public:
+    using BagOnlineGoalHandle = rclcpp_action::ClientGoalHandle<mil_msgs::action::BagOnline>;
+
+    enum class State
+    {
+        Waiting,
+        Ready,
+        Bagging
+    };
+
+    struct BagOptions
+    {
+        std::vector<std::string> topics;
+        std::string name;
+        float time;
+        std::function<void(float)> on_feedback;
+        std::function<void(bool,std::string&&)> on_result;
+    };
+
     Client():rclcpp::Node("online_bagger_client")
     {
         using namespace ftxui;
@@ -140,56 +121,147 @@ class Client: public rclcpp::Node
         action_client = rclcpp_action::create_client<mil_msgs::action::BagOnline>(this, BAG_ACTION_NAME);
         srv_client = create_client<mil_msgs::srv::BagTopics>(TOPIC_SERVICE_NAME);
 
+        alive_timer = create_wall_timer(std::chrono::milliseconds(100), std::bind(&Client::is_alive, this));
+    }
+    ~Client()
+    {
+
+    }
+
+    State get_state()
+    {
+        return state;
+    }
+
+    
+    std::shared_future<std::shared_ptr<mil_msgs::srv::BagTopics_Response>> 
+        get_bag_topics(std::function<void(rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture future)> callback)
+    {
+        auto request = std::make_shared<mil_msgs::srv::BagTopics::Request>();
+        return srv_client->async_send_request(request, callback).future;
+    }
+
+    std::shared_future<BagOnlineGoalHandle::SharedPtr>
+        start_bagging(const mil_msgs::action::BagOnline::Goal& goal,
+        const rclcpp_action::Client<mil_msgs::action::BagOnline>::SendGoalOptions& options)
+    {
+        state = State::Bagging;
+        return action_client->async_send_goal(goal, options);
+    }
+
+    void finish_bagging()
+    {
+        state = State::Ready;
+    }
+
+    private:
+
+    std::atomic<State> state;
+    rclcpp_action::Client<mil_msgs::action::BagOnline>::SharedPtr action_client;
+    rclcpp::Client<mil_msgs::srv::BagTopics>::SharedPtr srv_client;
+    rclcpp::TimerBase::SharedPtr alive_timer;
+
+    void is_alive()
+    {
+        if(state == State::Waiting && action_client->action_server_is_ready())
+        {
+            state = State::Ready;
+        }
+        else if(state == State::Ready && !action_client->action_server_is_ready())
+        {
+            state = State::Waiting;
+        }
+        else if(state == State::Bagging && !action_client->action_server_is_ready())
+        {
+            state = State::Waiting;
+        }
+    }
+    
+};
+
+class Tui
+{
+    public:
+    Tui()
+    {
+
+    }
+
+    ~Tui()
+    {
+
+    }
+
+    void spin(std::shared_ptr<Client> client)
+    {
         // Head
         Component ui_head = Renderer([]{return text("Online Bagger") | bold | center | flex;});
         // Body
+        std::shared_ptr<TopicList> ui_topic_list = std::make_shared<TopicList>();
         Component ui_name_input = Input(&name_input, InputOption::Default());
         Component ui_time_input = Input(&time_input, InputOption::Default()) | CatchEvent([](Event event) {
             return event.is_character() && !(std::isdigit(event.character()[0]) || event.character()[0] == '.');
           });
-        Component ui_body = Renderer(Container::Vertical({
-            ui_topic_list, ui_name_input, ui_time_input
-            }),[=]{
-                return vbox({
-                    text("Bag Topics") | vcenter,
-                    ui_topic_list->Render() | border,
-                    text("Bag File Name ") | vcenter, 
-                    ui_name_input->Render() | border,
-                    text("Bag Time ") | vcenter, 
-                    ui_time_input->Render() | border
-                }) | vscroll_indicator | frame;
-        });
+        Component ui_body = Container::Vertical({
+            Renderer([]{return text("Bag Topics") | vcenter;}),
+            ui_topic_list | border,
+            Renderer([]{return text("Bag File Name ") | vcenter;}), 
+            ui_name_input | border,
+            Renderer([]{return text("Bag Time ") | vcenter;}), 
+            ui_time_input | border
+        }) | vscroll_indicator | frame ;
 
         // Bottom
-        auto on_quit = [&]{rclcpp::shutdown();};
-        auto on_bag = [&]{
+        auto on_quit = [this]{screen.Exit();};
+        auto on_bag = [this, ui_topic_list, client]{
             bag_progress = 0.0f;
+
             mil_msgs::action::BagOnline::Goal goal; 
             goal.bag_name = name_input;
             goal.topics = ui_topic_list->get_selected();
             goal.bag_time = std::stof(time_input);
 
             auto goal_options = rclcpp_action::Client<mil_msgs::action::BagOnline>::SendGoalOptions();
-            goal_options.goal_response_callback = std::bind(&Client::handle_reponse, this, std::placeholders::_1);
-            goal_options.result_callback = std::bind(&Client::handle_result, this, std::placeholders::_1);
-            goal_options.feedback_callback = std::bind(&Client::handle_feedback, this, std::placeholders::_1, std::placeholders::_2);
-            action_client->async_send_goal(goal, goal_options);
+            goal_options.goal_response_callback = [this](Client::BagOnlineGoalHandle::SharedPtr goal_handle){
+                if(!goal_handle)
+                {
+                    screen.Post([this]{show_dialog("Failed", "Request is rejected by the online bagger server");});
+                }
+            };
+            goal_options.result_callback = [this, client = client](const Client::BagOnlineGoalHandle::WrappedResult& result){
+                std::string message = result.result->success ? "Succuessfully save bag file to " + result.result->filename :
+                                                            "Failed to bag topics: " + result.result->status;
+                screen.Post([this, message = std::move(message), success = result.result->success]{
+                    show_dialog(success ? "Success" : "Failed", message);
+                });
+                client->finish_bagging();
+            };
+            goal_options.feedback_callback = [this](
+                [[maybe_unused]]Client::BagOnlineGoalHandle::SharedPtr goal_handle, 
+                const std::shared_ptr<const mil_msgs::action::BagOnline::Feedback> feedback){
+                screen.Post([this, progress = feedback->progress]{bag_progress = progress;});
+            };
+
+            client->start_bagging(goal, goal_options);
         };
-        auto on_refresh = [=]{
-            auto request = std::make_shared<mil_msgs::srv::BagTopics::Request>();
-            srv_client->async_send_request(request, [&](
-                rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture future){
-                ui_topic_list->refresh(std::move(future.get()->topics));
+
+        auto on_refresh = [this, ui_topic_list, client]{
+            client->get_bag_topics([&](rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture future){
+                screen.Post([ui_topic_list, topics = std::move(future.get()->topics)] () mutable {
+                    ui_topic_list->refresh(std::move(topics));
+                });
             });
         };
 
-        Component ui_status_bar = Renderer([&]{
-            if(client_state == ClientState::Waiting)
+        Component ui_status_bar = Renderer([this, client]{
+            if(client->get_state() == Client::State::Waiting)
+            {
                 return hbox({
                     text("Connecting to bag server "), 
-                    spinner(15, now().nanoseconds() / 200'000'000)
+                    spinner(15, clock.now().nanoseconds() / 200'000'000)
                 });
-            else if(client_state == ClientState::Ready)
+            }
+            else if(client->get_state() == Client::State::Ready)
                 return filler();
             else
                 return gauge(bag_progress);
@@ -198,11 +270,11 @@ class Client: public rclcpp::Node
         Component ui_bottom_bar = Container::Horizontal({
             ui_status_bar | vcenter | xflex,
             Button("Quit", on_quit, ButtonOption::Border()) | align_right,
-            Maybe(Button("Refresh", on_refresh, ButtonOption::Border()), [&]{
-                return client_state != ClientState::Waiting;
+            Maybe(Button("Refresh", on_refresh, ButtonOption::Border()), [client]{
+                return client->get_state() != Client::State::Waiting;
             }) | align_right,
-            Maybe(Button("Bag", on_bag, ButtonOption::Border()), [&]{
-                return client_state == ClientState::Ready;
+            Maybe(Button("Bag", on_bag, ButtonOption::Border()), [client]{
+                return client->get_state() == Client::State::Ready;
             }) | align_right
         });
 
@@ -216,125 +288,53 @@ class Client: public rclcpp::Node
             ui_bottom_bar
         });
 
-        screens.emplace(main_ui);
+        on_refresh();
 
-        ui_timer = create_wall_timer(std::chrono::milliseconds(20), std::bind(&Client::refresh_ui, this));
-        alive_timer = create_wall_timer(std::chrono::milliseconds(100), std::bind(&Client::is_alive, this));
-    }
-    ~Client()
-    {
+        Loop loop(&screen, main_ui);
 
+        std::thread refresh_thread([&]{
+            while(!loop.HasQuitted())
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                screen.PostEvent(Event::Custom);
+            }
+        });
+
+        loop.Run();
+
+        refresh_thread.join();
     }
+
     private:
-
-    using BagOnlineGoalHandle = rclcpp_action::ClientGoalHandle<mil_msgs::action::BagOnline>;
-
-    enum class ClientState
-    {
-        Waiting,
-        Ready,
-        Bagging
-    }client_state = ClientState::Waiting;
-
-    float bag_progress = 0.0f;
-    std::string result_string;
-    rclcpp_action::Client<mil_msgs::action::BagOnline>::SharedPtr action_client;
-    rclcpp::Client<mil_msgs::srv::BagTopics>::SharedPtr srv_client;
-    rclcpp::TimerBase::SharedPtr ui_timer;
-    rclcpp::TimerBase::SharedPtr alive_timer;
-    std::shared_ptr<TopicList> ui_topic_list = std::make_shared<TopicList>();
-    
-    std::stack<UIScreen> screens;
-
-    std::string name_input = "bag";
+    rclcpp::Clock clock;
+    ScreenInteractive screen = ScreenInteractive::Fullscreen();
+    std::string name_input = "Bag";
     std::string time_input = "1";
-
-    void refresh_ui()
-    {
-        UIScreen& screen = screens.top();
-        if(screen.ok())
-        {
-            screen.spin_once();
-        }
-        else
-        {
-            screens.pop();
-            if(screens.size() == 0)
-                rclcpp::shutdown();
-        }
-    }
-
-    void is_alive()
-    {
-        if(client_state == ClientState::Waiting && action_client->action_server_is_ready())
-        {
-            auto request = std::make_shared<mil_msgs::srv::BagTopics::Request>();
-            srv_client->async_send_request(request, [&](
-                rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture future){
-                    client_state = ClientState::Ready;
-                    ui_topic_list->refresh(std::move(future.get()->topics));
-            });
-        }
-        else if(client_state == ClientState::Ready && !action_client->action_server_is_ready())
-        {
-            client_state = ClientState::Waiting;
-        }
-        else if(client_state == ClientState::Bagging && !action_client->action_server_is_ready())
-        {
-            client_state = ClientState::Waiting;
-        }
-        screens.top().refresh();
-    }
-
-    void handle_reponse(BagOnlineGoalHandle::SharedPtr goal_handle)
-    {
-        if(!goal_handle)
-        {
-            show_dialog("Failed", "Request is rejected by the online bagger server");
-        }
-    }
-
-    void handle_feedback([[maybe_unused]]BagOnlineGoalHandle::SharedPtr goal_handle, 
-        const std::shared_ptr<const mil_msgs::action::BagOnline::Feedback> feedback)
-    {
-        bag_progress = feedback->progress;
-    }
-
-    void handle_result(const BagOnlineGoalHandle::WrappedResult& result)
-    {
-        if(result.result->success)
-        {
-            show_dialog("Success", "Succuessfully save bag file to " + result.result->filename);
-        }
-        else
-        {
-            show_dialog("Failed", "Failed to bag topics: " + result.result->status);
-        }
-        
-        client_state = ClientState::Ready;
-    }
+    float bag_progress = 0.0f;
 
     void show_dialog(const std::string& title, const std::string& body)
     {
-        Component dialog_ui = Container::Vertical({});
-        UIScreen& screen = screens.emplace(dialog_ui | border);
+        ScreenInteractive dialog_screen = ScreenInteractive::Fullscreen();
 
         Component close_button = Button("X", [&]{
-            screen.shutdown();
+            dialog_screen.Exit();
         }, ButtonOption::Ascii());
 
-        dialog_ui->Add(Renderer(close_button,[=]{
-            return hbox({
-                text(title) | center |flex,
-                close_button->Render()
-            });
-        }));
+        Component dialog_ui = Container::Vertical({
+            Renderer(close_button,[=]{
+                return hbox({
+                    text(title) | center |flex,
+                    close_button->Render()
+                });
+            }),
+            Renderer([]{return separator();}),
+            Renderer([=]{return paragraph(body);})
+        });
 
-        dialog_ui->Add(Renderer([]{return separator();}));
-        dialog_ui->Add(Renderer([=]{return paragraph(body);}));
+        dialog_screen.Loop(dialog_ui);
     }
-    
 };
+
 }
 
 int main(int argc, char** argv) 
@@ -342,9 +342,17 @@ int main(int argc, char** argv)
     rclcpp::init(argc, argv);
     
     std::shared_ptr<online_bagger::Client> client = std::make_shared<online_bagger::Client>();
+
+    std::thread ui_thread([=]{
+        online_bagger::Tui tui;
+        tui.spin(client);
+        rclcpp::shutdown();
+    });
     
     rclcpp::spin(client);
     rclcpp::shutdown();
+
+    ui_thread.join();
 
     return 0;
 }
