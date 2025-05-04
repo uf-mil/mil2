@@ -9,7 +9,7 @@
 string bag_name
 
 # Space separated list of topics to bag. If empty string, all buffered topics will be bagged
-string topics
+string[] topics
 
 # Time in seconds
 float32 bag_time
