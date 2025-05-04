@@ -116,7 +116,10 @@ class Server: public rclcpp::Node
 
     float get_topic_duration(const std::string& topic)
     {
-        return (topic_messages[topic].back().first - topic_messages[topic].front().first).nanoseconds() / 1e-9;
+        if(topic_messages[topic].size() == 0)
+            return 0.0f;
+        
+        return (topic_messages[topic].back().first - topic_messages[topic].front().first).nanoseconds() / 1e-9f;
     }
 
     size_t get_time_index(const std::string& topic, float requested_seconds)
