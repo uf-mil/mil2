@@ -4,7 +4,7 @@
 
 #include "mil_msgs/action/bag_online.hpp"
 #include "mil_msgs/srv/bag_topics.hpp"
-#include "online_bagger/online_bagger.h"
+#include "online_bagger/common.hpp"
 
 #include <boost/process/environment.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -133,7 +133,7 @@ class Server: public rclcpp::Node
             return 0;
         
         float ratio = requested_seconds / topic_duration;
-        size_t index = topic_messages[topic].size() * (1 - std::min(ratio, 1.0f));
+        size_t index = topic_messages[topic].size() * (1 - std::clamp(ratio, 0.0f, 1.0f));
         return index;
     }
 
@@ -201,7 +201,6 @@ class Server: public rclcpp::Node
 
     void start_bagging(std::shared_ptr<BagOnlineGoalHandle> goal_handle)
     {
-        RCLCPP_INFO(get_logger(), "Start bagging");
         auto result = std::make_shared<mil_msgs::action::BagOnline::Result>();
         if(!streaming.exchange(false))
         {
@@ -213,7 +212,8 @@ class Server: public rclcpp::Node
         try
         {
             const auto goal = goal_handle->get_goal();
-            std::filesystem::path filename = get_bag_name(goal->bag_name).string();
+            result->filename = get_bag_name(goal->bag_name).string();
+            RCLCPP_INFO(get_logger(), "bag file path: %s", result->filename.c_str());
 
             float requested_seconds = goal->bag_time;
             const std::vector<std::string>& selected_topics = goal->topics;
@@ -246,9 +246,10 @@ class Server: public rclcpp::Node
                 goto ret;
             }
 
+            RCLCPP_INFO(get_logger(), "Start bagging");
             auto bag = std::make_shared<rosbag2_cpp::Writer>();
             rosbag2_storage::StorageOptions storage_options;
-            storage_options.uri = filename.string();
+            storage_options.uri = result->filename;
             bag->open(storage_options);
 
             goal_handle->publish_feedback(feedback);
@@ -269,9 +270,9 @@ class Server: public rclcpp::Node
                         goal_handle->publish_feedback(feedback);
                     }
                     msg_inc += 1;
-                    // empty deque when done writing to bag
-                    topic_messages[topic].clear();
                 }
+                // empty deque when done writing to bag
+                topic_messages[topic].clear();
             }
             feedback->progress = 1.0;
             goal_handle->publish_feedback(feedback);
@@ -279,6 +280,7 @@ class Server: public rclcpp::Node
 
             result->success = true;
         }
+        
         catch(const std::exception& e)
         {
             result->status = e.what();
