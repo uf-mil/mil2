@@ -1,3 +1,5 @@
+#pragma once
+
 namespace online_bagger
 {
 static constexpr char BAG_ACTION_NAME[] = "/online_bagger/bag";
