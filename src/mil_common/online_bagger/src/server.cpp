@@ -9,6 +9,7 @@
 #include <boost/process/environment.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/asio.hpp>
 
 #include <thread>
 #include <chrono>
@@ -21,7 +22,9 @@ class Server: public rclcpp::Node
 {
     public:
     
-    Server():rclcpp::Node("online_bagger_server")
+    Server():rclcpp::Node("online_bagger_server"),
+        work_guard(boost::asio::make_work_guard(context)),
+        work_thread([this]{context.run();})
     {
         get_params();
 
@@ -71,7 +74,8 @@ class Server: public rclcpp::Node
     }
     ~Server()
     {
-
+        work_guard.reset();
+        work_thread.join();
     }
 
     private:
@@ -89,6 +93,10 @@ class Server: public rclcpp::Node
     rclcpp::TimerBase::SharedPtr resubscriber;
     size_t iteration_count = 0;
 
+    boost::asio::io_context context;
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard;
+    std::thread work_thread;
+
     void handle_topics_req([[maybe_unused]]mil_msgs::srv::BagTopics::Request::ConstSharedPtr request,
         mil_msgs::srv::BagTopics::Response::SharedPtr response)
     {
@@ -104,6 +112,12 @@ class Server: public rclcpp::Node
         [[maybe_unused]]const rclcpp_action::GoalUUID & uuid, 
         [[maybe_unused]]std::shared_ptr<const mil_msgs::action::BagOnline::Goal> goal)
     {
+        if(!streaming)
+        {
+            RCLCPP_WARN(get_logger(), "Rejected goal because there is an ongoing goal");
+            return rclcpp_action::GoalResponse::REJECT;
+        }
+        
         RCLCPP_INFO(get_logger(), "Accepted goal from online bagger client");
         return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
     }
@@ -139,7 +153,9 @@ class Server: public rclcpp::Node
 
     void handle_accepted(std::shared_ptr<BagOnlineGoalHandle> goal_handle)
     {
-        std::thread(std::bind(&Server::start_bagging, this, std::placeholders::_1), goal_handle).detach();
+        context.post([this, goal_handle]{
+            start_bagging(goal_handle);
+        });
     }
 
     void bagger_callback(std::shared_ptr<rclcpp::SerializedMessage> msg, const std::string& topic)
@@ -202,18 +218,11 @@ class Server: public rclcpp::Node
     void start_bagging(std::shared_ptr<BagOnlineGoalHandle> goal_handle)
     {
         auto result = std::make_shared<mil_msgs::action::BagOnline::Result>();
-        if(!streaming.exchange(false))
-        {
-            result->status = "Bag Request came in while bagging, priority given to prior request",
-            result->success = false;
-            goto ret;
-        }
+        streaming = false;
 
         try
         {
             const auto goal = goal_handle->get_goal();
-            result->filename = get_bag_name(goal->bag_name).string();
-            RCLCPP_INFO(get_logger(), "bag file path: %s", result->filename.c_str());
 
             float requested_seconds = goal->bag_time;
             const std::vector<std::string>& selected_topics = goal->topics;
@@ -246,30 +255,36 @@ class Server: public rclcpp::Node
                 goto ret;
             }
 
-            RCLCPP_INFO(get_logger(), "Start bagging");
+            RCLCPP_INFO(get_logger(), "Start bagging, total messages %ld", total_messages);
             auto bag = std::make_shared<rosbag2_cpp::Writer>();
             rosbag2_storage::StorageOptions storage_options;
-            storage_options.uri = result->filename;
+            storage_options.uri = get_bag_name(goal->bag_name).string();
+            RCLCPP_INFO(get_logger(), "bag file path: %s", storage_options.uri.c_str());
+
             bag->open(storage_options);
 
             goal_handle->publish_feedback(feedback);
 
             auto topic_names_and_types = get_topic_names_and_types();
 
-            size_t msg_inc = 0;
+            size_t feedback_threshold = total_messages / 100;
             for(const auto& [topic, index] : bag_topics)
             {
-                for(auto it=topic_messages[topic].begin(); 
-                         it!=topic_messages[topic].end();
-                         it++)
+
+                for(size_t i=0;i<topic_messages[topic].size();i++)
                 {
-                    bag->write(it->second, topic, topic_names_and_types[topic][0],it->first);
-                    if(msg_inc % 50 == 0)  // send feedback every 50 messages
+                    const auto& [time, message] = topic_messages[topic][i];
+                    bag->write(message, 
+                                topic, 
+                                topic_names_and_types[topic][0],
+                                time);
+
+                    if(feedback_threshold == 0 || i % feedback_threshold == 0)  // send feedback every 50 messages
                     {
-                        feedback->progress = static_cast<float>(msg_inc) / total_messages;
+                        feedback->progress = static_cast<float>(i+1) / total_messages;
                         goal_handle->publish_feedback(feedback);
                     }
-                    msg_inc += 1;
+                    
                 }
                 // empty deque when done writing to bag
                 topic_messages[topic].clear();
@@ -277,7 +292,8 @@ class Server: public rclcpp::Node
             feedback->progress = 1.0;
             goal_handle->publish_feedback(feedback);
             bag->close();
-
+            
+            result->status = std::move(storage_options.uri);
             result->success = true;
         }
         
@@ -290,7 +306,7 @@ ret:
         if(result->success)
         {
             goal_handle->succeed(result);
-            RCLCPP_INFO(get_logger(), "Successfully bag to %s", result->filename.c_str());
+            RCLCPP_INFO(get_logger(), "Successfully bag to %s", result->status.c_str());
         }
         else
         {
@@ -304,6 +320,8 @@ ret:
     void subscribe()
     {   
         auto topic_names_and_types = get_topic_names_and_types();
+        std::vector<std::string> subscribed_topics;
+
         for (auto& [topic, info] : subscriber_list) 
         {
             auto& [time, subscribed] = info;

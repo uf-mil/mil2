@@ -16,10 +16,7 @@ Client::Client():rclcpp::Node("online_bagger_client")
     action_client = rclcpp_action::create_client<mil_msgs::action::BagOnline>(this, BAG_ACTION_NAME);
     srv_client = create_client<mil_msgs::srv::BagTopics>(TOPIC_SERVICE_NAME);
 
-    if(action_client->wait_for_action_server(std::chrono::seconds(1)) == true)
-        state = State::Ready;
-
-    alive_timer = create_wall_timer(std::chrono::milliseconds(100), std::bind(&Client::is_alive, this));
+    action_client->wait_for_action_server(std::chrono::milliseconds(500));
 }
 
 Client::~Client()
@@ -29,45 +26,66 @@ Client::~Client()
 
 Client::State Client::get_state()
 {
-    return state;
-}
-
+    if(!action_client->action_server_is_ready())
+        return State::Waiting;
     
-std::shared_future<std::shared_ptr<mil_msgs::srv::BagTopics_Response>> 
-    Client::get_bag_topics(std::function<void(rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture future)> callback)
+    if(!bagging)
+        return State::Ready;
+
+    return State::Bagging;
+}
+    
+Client::TopicsFuture Client::get_bag_topics(std::function<void(Client::TopicsFuture)> callback)
 {
+    std::shared_ptr<TopicsPromise> promise = std::make_shared<TopicsPromise>();
+    TopicsFuture future = promise->get_future().share();
+
     auto request = std::make_shared<mil_msgs::srv::BagTopics::Request>();
-    return srv_client->async_send_request(request, callback).future;
+    srv_client->async_send_request(request, [promise, future, callback](rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture response_future) {
+        promise->set_value(std::move(response_future.get()->topics));
+        if(callback)
+            callback(future);
+    });
+
+    return future;
 }
 
-std::shared_future<Client::BagOnlineGoalHandle::SharedPtr>
-    Client::start_bagging(const mil_msgs::action::BagOnline::Goal& goal,
-    const rclcpp_action::Client<mil_msgs::action::BagOnline>::SendGoalOptions& options)
+Client::BagFuture Client::bag(const Client::BagOptions& options)
 {
-    state = State::Bagging;
-    return action_client->async_send_goal(goal, options);
-}
+    std::shared_ptr<BagPromise> promise = std::make_shared<BagPromise>();
+    BagFuture future = promise->get_future().share();
 
-void Client::finish_bagging()
-{
-    action_client->async_cancel_all_goals();
-    state = State::Ready;
-}
+    bagging = true;
 
-void Client::is_alive()
-{
-    if(state == State::Waiting && action_client->action_server_is_ready())
+    rclcpp_action::Client<mil_msgs::action::BagOnline>::SendGoalOptions goal_options;
+    goal_options.goal_response_callback = [this, on_finish = options.on_finish, promise, future](Client::BagOnlineGoalHandle::SharedPtr goal_handle){
+        if(!goal_handle)
+        {
+            promise->set_value({false, "Bag request is rejected by the online bagger server."});
+            if(on_finish)
+                on_finish(future);
+            bagging = false;
+        }
+    };
+
+    if(options.on_progress)
     {
-        state = State::Ready;
+        goal_options.feedback_callback = [on_progress = options.on_progress]([[maybe_unused]]Client::BagOnlineGoalHandle::SharedPtr goal_handle, 
+            const std::shared_ptr<const mil_msgs::action::BagOnline::Feedback> feedback){
+            on_progress(feedback->progress);
+        };
     }
-    else if(state == State::Ready && !action_client->action_server_is_ready())
-    {
-        state = State::Waiting;
-    }
-    else if(state == State::Bagging && !action_client->action_server_is_ready())
-    {
-        state = State::Waiting;
-    }
+
+    goal_options.result_callback = [this, on_finish = options.on_finish, promise, future](const Client::BagOnlineGoalHandle::WrappedResult& result){
+        promise->set_value({result.result->success, std::move(result.result->status)});
+        if(on_finish)
+            on_finish(future);
+        bagging = false;
+    };
+
+    action_client->async_send_goal(options.goal, goal_options);
+
+    return future;
 }
 
 }

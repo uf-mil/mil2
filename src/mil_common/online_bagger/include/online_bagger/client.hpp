@@ -12,6 +12,8 @@ class Client: public rclcpp::Node
 {
     public:
     using BagOnlineGoalHandle = rclcpp_action::ClientGoalHandle<mil_msgs::action::BagOnline>;
+    using TopicsFuture = std::shared_future<std::vector<std::string>>;
+    using BagFuture = std::shared_future<std::pair<bool, std::string>>;
 
     enum class State
     {
@@ -20,28 +22,36 @@ class Client: public rclcpp::Node
         Bagging
     };
 
+    struct BagOptions
+    {
+        BagOptions()
+        {
+            goal.bag_time = 1.0f;
+        }
+
+        mil_msgs::action::BagOnline::Goal goal;
+        std::function<void(float)> on_progress = nullptr;
+        std::function<void(BagFuture)> on_finish = nullptr;
+    };
+
     Client();
     ~Client();
-
+    
     State get_state();
     
-    std::shared_future<std::shared_ptr<mil_msgs::srv::BagTopics_Response>> 
-        get_bag_topics(std::function<void(rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture future)> callback);
-
-    std::shared_future<BagOnlineGoalHandle::SharedPtr>
-        start_bagging(const mil_msgs::action::BagOnline::Goal& goal,
-        const rclcpp_action::Client<mil_msgs::action::BagOnline>::SendGoalOptions& options);
-
-    void finish_bagging();
+    TopicsFuture get_bag_topics(std::function<void(TopicsFuture)> callback = nullptr);
+    BagFuture bag(const BagOptions& options);
 
     private:
+    using TopicsPromise = std::promise<std::vector<std::string>>;
+    using BagPromise = std::promise<std::pair<bool,std::string>>;
 
-    std::atomic<State> state;
+    std::atomic<bool> bagging;
     rclcpp_action::Client<mil_msgs::action::BagOnline>::SharedPtr action_client;
     rclcpp::Client<mil_msgs::srv::BagTopics>::SharedPtr srv_client;
     rclcpp::TimerBase::SharedPtr alive_timer;
 
-    void is_alive();
+    std::function<void(State old_state, State new_state)> on_state_change;
     
 };
 

@@ -17,7 +17,7 @@ float32 bag_time
 
 bool success
 string status # Contains error information if success is False
-string filename # Full path to file where bag was written
+# string filename # Full path to file where bag was written
 
 ---
 
