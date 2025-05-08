@@ -109,65 +109,69 @@ class Tui
         Component ui_body = ui_topic_list | vscroll_indicator | frame ;
 
         // Bottom
-        auto on_quit = [this]{screen.Exit();};
+        auto on_quit = [this]{
+            exited = true;
+            screen.Exit();
+        };
         auto on_bag = [this, ui_topic_list, client]{
             bag_progress = 0.0f;
 
-            mil_msgs::action::BagOnline::Goal goal; 
-            goal.topics = ui_topic_list->get_selected();
-            goal.bag_time = 1.0f;
+            Client::BagOptions options; 
+            options.goal.topics = ui_topic_list->get_selected();
 
-            if(!ask_bag_detail(goal.bag_name, goal.bag_time))
+            if(!ask_bag_detail(options.goal.bag_name, options.goal.bag_time))
                 return;
 
-            auto goal_options = rclcpp_action::Client<mil_msgs::action::BagOnline>::SendGoalOptions();
-            goal_options.goal_response_callback = [this](Client::BagOnlineGoalHandle::SharedPtr goal_handle){
-                if(!goal_handle)
-                {
-                    screen.Post([this]{show_message("Failed", "Request is rejected by the online bagger server");});
-                }
-            };
-            goal_options.result_callback = [this, client = client](const Client::BagOnlineGoalHandle::WrappedResult& result){
-                std::string message = result.result->success ? "Succuessfully save bag file to " + result.result->filename :
-                                                            "Failed to bag topics: " + result.result->status;
-                screen.Post([this, message = std::move(message), success = result.result->success]{
-                    show_message(success ? "Success" : "Failed", message);
+            options.on_finish = [this](Client::BagFuture future){
+                screen.Post([this, future]{
+                    auto& result = future.get();
+                    std::string message = result.first ? "Succuessfully save bag file to " + result.second :
+                                                            "Failed to bag topics: " + result.second;
+                    show_message("Bag Result", message);
                 });
-                client->finish_bagging();
             };
-            goal_options.feedback_callback = [this](
-                [[maybe_unused]]Client::BagOnlineGoalHandle::SharedPtr goal_handle, 
-                const std::shared_ptr<const mil_msgs::action::BagOnline::Feedback> feedback){
-                screen.Post([this, progress = feedback->progress]{bag_progress = progress;});
+            
+            options.on_progress = [this](float progress){
+                bag_progress = progress;
+                screen.PostEvent(Event::Custom);
             };
 
-            client->start_bagging(goal, goal_options);
+            client->bag(options);
         };
 
         auto on_refresh = [this, ui_topic_list, client]{
-            client->get_bag_topics([&](rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture future){
-                screen.Post([ui_topic_list, topics = std::move(future.get()->topics)] () mutable {
+            client->get_bag_topics([&](Client::TopicsFuture future){
+                screen.Post([ui_topic_list, topics = std::move(future.get())] () mutable {
                     ui_topic_list->refresh(std::move(topics));
                 });
             });
         };
 
         Component ui_status_bar = Renderer([this, client]{
-            if(client->get_state() == Client::State::Waiting)
+            if(last_state == Client::State::Waiting)
             {
                 return hbox({
                     text("Connecting to bag server "), 
                     spinner(15, clock.now().nanoseconds() / 200'000'000)
                 });
             }
-            else if(client->get_state() == Client::State::Ready)
+            else if(last_state == Client::State::Ready)
+            {
                 return filler();
+            }
             else
-                return gauge(bag_progress);
+            {
+                return hbox({
+                    gauge(bag_progress),
+                    filler(),
+                });    
+            }
         });
 
+
+
         Component ui_bottom_bar = Container::Horizontal({
-            ui_status_bar | vcenter | xflex,
+            ui_status_bar | vcenter | flex,
             Button("Quit", on_quit, ButtonOption::Border()) | align_right,
             Maybe(Button("Refresh", on_refresh, ButtonOption::Border()), [client]{
                 return client->get_state() != Client::State::Waiting;
@@ -187,27 +191,36 @@ class Tui
             ui_bottom_bar
         });
 
-        on_refresh();
-
-        Loop loop(&screen, main_ui);
-
-        std::thread refresh_thread([&]{
-            while(!loop.HasQuitted())
+        last_state = Client::State::Waiting;
+        std::thread refresh_thread([this, client, &on_refresh]{
+            while(!exited)
             {
+                Client::State state = client->get_state();
+                if(state != Client::State::Bagging)
+                {
+                    screen.PostEvent(Event::Custom);
+                }
+                
+                if(state == Client::State::Ready && last_state == Client::State::Waiting)
+                {
+                    on_refresh();
+                }
+
+                last_state = state;
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                screen.PostEvent(Event::Custom);
             }
         });
 
-        loop.Run();
-
+        screen.Loop(main_ui);
         refresh_thread.join();
     }
 
     private:
+    std::atomic<bool> exited = false;
+    std::atomic<Client::State> last_state;
     rclcpp::Clock clock;
     ScreenInteractive screen = ScreenInteractive::Fullscreen();
-    float bag_progress = 0.0f;
+    std::atomic<float> bag_progress = 0.0f;
 
     bool ask_bag_detail(std::string& name, float& time)
     {
@@ -307,8 +320,8 @@ int main(int argc, char** argv)
     }
     else if(mode == Mode::LIST)
     {
-        auto future = client->get_bag_topics([](rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture future){
-            for(const std::string& topic : future.get()->topics)
+        auto future = client->get_bag_topics([](Client::TopicsFuture future){
+            for(const std::string& topic : future.get())
             {
                 std::cout << topic << std::endl;
             }
@@ -320,19 +333,19 @@ int main(int argc, char** argv)
     }
     else if(mode == Mode::BAG)
     {   
-        auto future = client->get_bag_topics([&]([[maybe_unused]]rclcpp::Client<mil_msgs::srv::BagTopics>::SharedFuture future){});
+        auto future = client->get_bag_topics();
 
         if(rclcpp::spin_until_future_complete(client, future, std::chrono::seconds(2)) == rclcpp::FutureReturnCode::SUCCESS)
         {
-            mil_msgs::action::BagOnline::Goal goal;
-            goal.topics = future.get()->topics;
-            goal.bag_time = 1.0f;
+            Client::BagOptions bag_options;
+            bag_options.goal.topics = std::move(future.get());
+            bag_options.goal.bag_time = 1.0f;
 
             po::options_description bag_opts("bag options");
             bag_opts.add_options()
-                ("name,n", po::value<std::string>(&goal.bag_name), "Bag name")
-                ("time,t", po::value<float>(&goal.bag_time), "Time in seconds")
-                ("topics,p", po::value<std::vector<std::string>>(&goal.topics)->multitoken(), "Topics to bag");
+                ("name,n", po::value<std::string>(&bag_options.goal.bag_name), "Bag name")
+                ("time,t", po::value<float>(&bag_options.goal.bag_time), "Time in seconds")
+                ("topics,p", po::value<std::vector<std::string>>(&bag_options.goal.topics)->multitoken(), "Topics to bag");
 
             po::variables_map bag_vm;
             po::store(po::command_line_parser(options)
@@ -341,29 +354,19 @@ int main(int argc, char** argv)
                     bag_vm);
             po::notify(bag_vm);
 
-            auto goal_options = rclcpp_action::Client<mil_msgs::action::BagOnline>::SendGoalOptions();
-            goal_options.goal_response_callback = [](online_bagger::Client::BagOnlineGoalHandle::SharedPtr goal_handle){
-                if(!goal_handle)
-                {
-                    std::cout << "Failed to bag: Request is rejected by the online bagger server.\n";
-                }
-            };
-            goal_options.result_callback = [&](const online_bagger::Client::BagOnlineGoalHandle::WrappedResult& result){
-                std::string message = result.result->success ? "Succuessfully save bag file to " + result.result->filename :
-                                                            "Failed to bag topics: " + result.result->status;
-                std::cout << message << ".\n";
-                client->finish_bagging();
+            bag_options.on_finish = [&](Client::BagFuture future){
+                auto& result = future.get();
+                std::string message =  result.first ? "Succuessfully save bag file to " + result.second :
+                                                            "Failed to bag topics: " + result.second;
+                std::cout << '\n' << message << ".\n";
                 rclcpp::shutdown();
             };
-            goal_options.feedback_callback = [&](
-                [[maybe_unused]]online_bagger::Client::BagOnlineGoalHandle::SharedPtr goal_handle, 
-                const std::shared_ptr<const mil_msgs::action::BagOnline::Feedback> feedback){
-                std::cout << "Bagging " << feedback->progress << "%\n";
+
+            bag_options.on_progress = [&](float progress){
+                std::cout << "Bagging\t" <<  static_cast<int>(progress * 100) << "%\r";
             };
 
-            auto bag_future = client->start_bagging(goal, goal_options);
-
-            rclcpp::spin(client);
+            auto bag_future = client->bag(bag_options);
 
             std::thread thread([&]{
                 while(bag_future.wait_for(std::chrono::seconds(1)) == std::future_status::timeout)
@@ -376,6 +379,8 @@ int main(int argc, char** argv)
                     }
                 }
             });
+
+            rclcpp::spin(client);
 
             thread.join();
         }

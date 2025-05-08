@@ -14,7 +14,10 @@ find_package(action_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
-set(action_files "action/MoveTo.action" "action/BagOnline.action")
+set(action_files 
+  "action/MoveTo.action" 
+  "action/BagOnline.action"
+)
 
 # File name is in CamelCase, but must import in snake_case
 set(msg_files
