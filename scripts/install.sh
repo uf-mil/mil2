@@ -88,7 +88,7 @@ EOF
 sudo apt-add-repository ppa:neovim-ppa/stable -y
 
 # Update apt
-sudo apt update
+sudo apt update || true
 
 # Installation for virtual machines
 # Installs the apt-add-repository command
@@ -146,7 +146,7 @@ $(hash_header)$(color "$Res")
 EOF
 
 # Ensure that locales are set up correctly
-sudo apt update && sudo apt install locales
+sudo apt update && sudo apt install locales || true
 sudo locale-gen en_US en_US.UTF-8
 sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 export LANG=en_US.UTF-8
@@ -172,7 +172,7 @@ sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key D2486D2D
 sudo curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list >/dev/null
 # Update apt again and install ros
-sudo apt update
+sudo apt update || true
 
 cat <<EOF
 $(color "$Pur")
