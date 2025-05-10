@@ -1,0 +1,9 @@
+{
+  "names": {
+    "ftxui": {
+      "cmake-args": [
+        "-DBUILD_SHARED_LIBS=ON"
+      ]
+    }
+  }
+}
