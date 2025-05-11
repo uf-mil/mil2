@@ -1,0 +1,56 @@
+---
+services:
+  mediawiki:
+    build:
+      context: ../../../
+      dockerfile: infra/services/milpedia/Dockerfile
+    container_name: mediawiki
+    ports:
+      - "3737:80"
+    links:
+      - database
+    volumes:
+      - images:/var/www/html/images
+    entrypoint: ["apache2-foreground"]
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_EMAIL=${SMTP_EMAIL}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - MARIADB_USER=${MARIADB_USER}
+      - MARIADB_PASS=${MARIADB_PASS}
+      - MARIADB_ROOT_PASS=${MARIADB_ROOT_PASS}
+      - ADMIN_PASS=${ADMIN_PASS}
+      - SERVER_LOCATION=${SERVER_LOCATION}
+      - WG_SECRET_KEY=${WG_SECRET_KEY}
+      - WG_UPGRADE_KEY=${WG_UPGRADE_KEY}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+
+  database:
+    image: mariadb
+    restart: always
+    container_name: mediawiki_database
+    environment:
+      MYSQL_DATABASE: my_wiki
+      MYSQL_USER: ${MARIADB_USER}
+      MYSQL_PASSWORD: ${MARIADB_PASS}
+      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASS}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "3738:3306"
+    volumes:
+      - db:/var/lib/mysql
+
+volumes:
+  images:
+    driver: local
+  db:
+    driver: local
