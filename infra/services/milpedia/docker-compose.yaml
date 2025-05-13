@@ -10,7 +10,7 @@ services:
     links:
       - database
     volumes:
-      - images:/var/www/html/images
+      - ./v/images:/var/www/html/images
     entrypoint: ["apache2-foreground"]
     depends_on:
       database:
@@ -47,7 +47,7 @@ services:
     ports:
       - "3738:3306"
     volumes:
-      - db:/var/lib/mysql
+      - ./v/db:/var/lib/mysql
 
 volumes:
   images:

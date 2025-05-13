@@ -5,6 +5,18 @@ Laboratory. Under the hood, it uses [Mediawiki](https://www.mediawiki.org/wiki/M
 
 An example compose file is provided in `docker-compose.yaml`.
 
+## Installation process
+
+The first installation of this container is not automatic. When launching for the
+first time, open a Bash shell in the container and delete `LocalSettings.php`.
+Then, refresh the browser, and you should see the option to setup the wiki in the
+web UI. Proceed with this, using the information from your `.env` file (differences
+will prevent your wiki from working after the first install).
+
+Then, take the container down and up again, and the wiki should work as expected!
+In the future, it would be ideal to make this automatic, but for now, it's not worth
+the time.
+
 ## Environment variables
 
 No environment variables have default values, and all must be supplied in order to
