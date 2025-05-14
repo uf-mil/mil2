@@ -341,6 +341,22 @@ llvm() {
 	sudo apt install -y \
 		clang-format-20 \
 		clang-tidy-20
+	rm llvm.sh
+}
+
+hadolint() {
+	ARCH=$(uname -m)
+	if [ "$ARCH" = "x86_64" ]; then
+		ARCH_URL="hadolint-Linux-x86_64"
+	elif [ "$ARCH" = "aarch64" ]; then
+		ARCH_URL="hadolint-Linux-arm64"
+	else
+		echo "Unsupported architecture: $ARCH"
+		return 1
+	fi
+
+	sudo wget -O /bin/hadolint "https://github.com/hadolint/hadolint/releases/download/v2.12.0/$ARCH_URL"
+	sudo chmod +x /bin/hadolint
 }
 
 cat <<EOF
@@ -354,6 +370,7 @@ EOF
 mil_user_install_dependencies
 mil_user_setup_rc
 llvm
+hadolint
 set +u
 . /opt/ros/jazzy/setup.bash
 . "$SCRIPT_DIR/setup.bash"

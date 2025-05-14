@@ -57,15 +57,14 @@ jobs:
       - name: Install pre-commit hooks
         run: |
           python --version
-          pip install "$(cat requirements.txt | grep pre-commit)"
+          pip install "$(grep pre-commit requirements.txt)"
       - name: Generate pre-commit cache key
         id: pre-commit_cache_key
         run: >
-          echo "::set-output
-          name=key::${{ env.CACHE_VERSION }}-${{ env.DEFAULT_PYTHON }}-${{
-          hashFiles('.pre-commit-config.yaml') }}"
+          echo "key=${{ env.CACHE_VERSION }}-${{ env.DEFAULT_PYTHON }}-${{
+          hashFiles('.pre-commit-config.yaml') }}" >> "$GITHUB_OUTPUT"
       - name: Restore base pre-commit environment
-        id: cache-pre-commmit
+        id: cache-pre-commit
         uses: actions/cache@v4
         with:
           path: ${{ env.PRE_COMMIT_CACHE }}
@@ -73,7 +72,7 @@ jobs:
             ${{ runner.os
             }}-pre-commit-${{ steps.pre-commit_cache_key.outputs.key }}
       - name: Install pre-commit dependencies if no cache
-        if: steps.cache-precommit.outputs.cache-hit != 'true'
+        if: steps.cache-pre-commit.outputs.cache-hit != 'true'
         run: |
           pre-commit install-hooks
       - name: Run pre-commit
@@ -89,7 +88,7 @@ jobs:
     steps:
       - name: Configure catkin workspace folder structure
         run: |
-          mkdir -p $GITHUB_WORKSPACE/catkin_ws/src
+          mkdir -p "$GITHUB_WORKSPACE"/catkin_ws/src
           sudo apt reinstall python3-pip
       - name: Check out code from GitHub
         uses: actions/checkout@v4
@@ -115,8 +114,8 @@ jobs:
       - name: Run clang-tidy
         run: |
           set +u
-          export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
-          source $GITHUB_WORKSPACE/scripts/setup.bash
+          export HOME="$GITHUB_WORKSPACE"/.. # Temporary fix for setup scripts
+          source "$GITHUB_WORKSPACE"/scripts/setup.bash
           set -u
           # Ensure that origin/main is up to date
           git fetch origin
@@ -128,7 +127,7 @@ jobs:
               --ignore-submodules \
               -- "*.cpp" "*.h" "*.hpp"
           )
-          cd $GITHUB_WORKSPACE
+          cd "$GITHUB_WORKSPACE"
           tidy "${ALL_CHANGES[@]}"
       - name: Run colcon tests
         run: |
