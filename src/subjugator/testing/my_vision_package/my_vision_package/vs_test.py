@@ -10,12 +10,14 @@ def main():
     vs = VisionStack(
                 layers=[
                     BinThresholdingLayer(150,250), # Converts image to grayscale if image is not grayscale and extracts pixels with values between 150 and 250.
-                    #CannyLayer(50,100), # Simplified canny filter that uses cv2.Canny to pass a canny filter over an image with the low value (50) threshold for soft edge detection and the high value (100) for strong edges detection.
+                    CannyLayer(50,100), # Simplified canny filter that uses cv2.Canny to pass a canny filter over an image with the low value (50) threshold for soft edge detection and the high value (100) for strong edges detection.
                 ],
                 unique_name="some_name_here" # TODO needs to be added
             )
 
     # Pass image through vision stack
+    print("check my_vision_package/my_vision_package/vs_test.py lines 19-21")
+    # you gotta update the path vro
     file_path = "/home/jh/mil2/src/subjugator/testing/my_vision_package/imgs/IMG_3063.jpg"
 
     # Open the image file
@@ -27,11 +29,12 @@ def main():
     # Convert the image to a NumPy array
     img_array = np.array(img)
 
-    # Pass img_array through vision_stack
-    vs.run(in_image = img_array, verbose = True) # TODO TYPO
-    # With verbose, if ros is running then topics will be created for each layer to visualize processing.
+    while True:
+        # Pass img_array through vision_stack
+        vs.run(in_image = img_array, verbose = True) # TODO TYPO
+        # With verbose, if ros is running then topics will be created for each layer to visualize processing.
 
-    time.sleep(500)
+        time.sleep(1)
 
     rclpy.shutdown()
 
