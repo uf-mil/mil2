@@ -1,12 +1,13 @@
 #include "ScoringPlugin.hh"
 
 #include <cmath>
+#include <iostream>
+
 #include <gz/common/Console.hh>
 #include <gz/math/Helpers.hh>
 #include <gz/plugin/Register.hh>
 #include <gz/sim/Model.hh>
 #include <gz/sim/components/Name.hh>
-#include <iostream>
 
 GZ_ADD_PLUGIN(scoring_plugin::ScoringPlugin, gz::sim::System, scoring_plugin::ScoringPlugin::ISystemConfigure,
               scoring_plugin::ScoringPlugin::ISystemPostUpdate)
@@ -203,23 +204,19 @@ double ScoringPlugin::angleChange(double previous, double current)
     return diff;
 }
 
-void ScoringPlugin::CheckForStylePoints(const gz::math::Pose3d &currentPose)
+void ScoringPlugin::CheckForStylePoints(gz::math::Pose3d const &currentPose)
 {
-    double currentRoll  = currentPose.Rot().Roll() * 180.0 / M_PI;
+    double currentRoll = currentPose.Rot().Roll() * 180.0 / M_PI;
     double currentPitch = currentPose.Rot().Pitch() * 180.0 / M_PI;
-    double currentYaw   = currentPose.Rot().Yaw() * 180.0 / M_PI;
+    double currentYaw = currentPose.Rot().Yaw() * 180.0 / M_PI;
 
-    double rollDiff = angleChange(styleRecord_.lastRoll,  currentRoll);
+    double rollDiff = angleChange(styleRecord_.lastRoll, currentRoll);
     double pitchDiff = angleChange(styleRecord_.lastPitch, currentPitch);
-    double yawDiff = angleChange(styleRecord_.lastYaw,   currentYaw);
+    double yawDiff = angleChange(styleRecord_.lastYaw, currentYaw);
 
     // Lambda function
-    auto updateAxis = [&](double diff,
-                          double &progress,
-                          int &quartersAwarded,
-                          bool &changedFlag,
-                          const std::string &name,
-                          int pointsPerQuarter)
+    auto updateAxis = [&](double diff, double &progress, int &quartersAwarded, bool &changedFlag,
+                          std::string const &name, int pointsPerQuarter)
     {
         progress += diff;
         int quartersNow = static_cast<int>(std::floor(std::abs(progress) / 90.0));
@@ -229,9 +226,8 @@ void ScoringPlugin::CheckForStylePoints(const gz::math::Pose3d &currentPose)
             for (int q = quartersAwarded + 1; q <= quartersNow; ++q)
             {
                 std_msgs::msg::String m;
-                m.data = name + " maneuver detected! +" +
-                         std::to_string(pointsPerQuarter) + " style points! (Rotated " +
-                         std::to_string(q * 90) + "°)";
+                m.data = name + " maneuver detected! +" + std::to_string(pointsPerQuarter) +
+                         " style points! (Rotated " + std::to_string(q * 90) + "°)";
                 eventPub_->publish(m);
             }
             quartersAwarded = quartersNow;
@@ -239,19 +235,19 @@ void ScoringPlugin::CheckForStylePoints(const gz::math::Pose3d &currentPose)
     };
 
     // Call the lambda 3 times for roll, pitch, yaw
-    updateAxis(rollDiff,  styleRecord_.accumulatedRoll,  styleRecord_.rollCounter,
-               styleRecord_.rollChanged, "Roll",  ROLL_POINTS);
+    updateAxis(rollDiff, styleRecord_.accumulatedRoll, styleRecord_.rollCounter, styleRecord_.rollChanged, "Roll",
+               ROLL_POINTS);
 
-    updateAxis(pitchDiff, styleRecord_.accumulatedPitch, styleRecord_.pitchCounter,
-               styleRecord_.pitchChanged, "Pitch", PITCH_POINTS);
+    updateAxis(pitchDiff, styleRecord_.accumulatedPitch, styleRecord_.pitchCounter, styleRecord_.pitchChanged, "Pitch",
+               PITCH_POINTS);
 
-    updateAxis(yawDiff,   styleRecord_.accumulatedYaw,   styleRecord_.yawCounter,
-               styleRecord_.yawChanged, "Yaw",   YAW_POINTS);
+    updateAxis(yawDiff, styleRecord_.accumulatedYaw, styleRecord_.yawCounter, styleRecord_.yawChanged, "Yaw",
+               YAW_POINTS);
 
     // Store current pose for next time
-    styleRecord_.lastRoll  = currentRoll;
+    styleRecord_.lastRoll = currentRoll;
     styleRecord_.lastPitch = currentPitch;
-    styleRecord_.lastYaw   = currentYaw;
+    styleRecord_.lastYaw = currentYaw;
 }
 
 int ScoringPlugin::CalculateStylePoints()
