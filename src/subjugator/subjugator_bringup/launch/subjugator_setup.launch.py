@@ -103,6 +103,20 @@ def generate_launch_description():
         ),
     )
 
+    path_planner = Node(
+        package="subjugator_path_planner",
+        executable="subjugator_path_planner",
+        name="subjugator_path_planner",
+        output="both",
+    )
+
+    trajectory_planner = Node(
+        package="subjugator_trajectory_planner",
+        executable="trajectory_planner",
+        name="subjugator_trajectory_planner",
+        output="both",
+    )
+
     return LaunchDescription(
         [
             gui_cmd,
@@ -112,5 +126,7 @@ def generate_launch_description():
             thruster_manager,
             localization,
             controller,
+            path_planner,
+            trajectory_planner,
         ],
     )

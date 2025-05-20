@@ -1,14 +1,11 @@
 #pragma once
 
-#include <limits>
-#include <memory>
-#include <string>
-
 #include <Eigen/Dense>
-#include <rclcpp/rclcpp.hpp>
+#include <rclcpp/node.hpp>
+#include <rclcpp/publisher.hpp>
+#include <rclcpp/subscription.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
-#include <nav2_util/geometry_utils.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
 

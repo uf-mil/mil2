@@ -178,7 +178,7 @@ void DepthDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
             {
                 msg.header.stamp = rclcpp::Clock().now();
 
-                uint64_t bits = be64toh(*reinterpret_cast<uint64_t *>(&backing[2]));
+                uint64_t bits = be64toh(*reinterpret_cast<uint64_t *>(&backing[3]));
                 double pressure = *reinterpret_cast<double *>(&bits);
                 if (recent_odom_msg_.header.stamp.sec > msg.header.stamp.sec)
                 {
@@ -198,8 +198,14 @@ void DepthDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
                 // JOSEPH
                 auto pose_msg = geometry_msgs::msg::PoseWithCovarianceStamped();
                 pose_msg.header = msg.header;  // reuse same header as b4
+                pose_msg.header.frame_id = "depth_sensor_link";
                 pose_msg.pose.pose.position.z = msg.depth;
+                pose_msg.pose.covariance[0] = 1e3;
+                pose_msg.pose.covariance[7] = 1e3;
                 pose_msg.pose.covariance[14] = 0.01;
+                pose_msg.pose.covariance[21] = 1e3;
+                pose_msg.pose.covariance[28] = 1e3;
+                pose_msg.pose.covariance[35] = 1e3;
                 pose_msg.pose.pose.orientation.w = 1.0;  // idk what this does
 
                 pose_pub_->publish(pose_msg);

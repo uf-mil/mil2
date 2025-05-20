@@ -19,7 +19,7 @@ find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(nav2_util)
 
-add_executable(trajectory_planner src/node.cpp src/trajectory_planner.cpp)
+add_executable(trajectory_planner src/node.cpp src/TrajectoryPlanner.cpp)
 ament_target_dependencies(trajectory_planner rclcpp nav_msgs geometry_msgs
                           Eigen3 nav2_util)
 target_include_directories(trajectory_planner PRIVATE ${EIGEN3_INCLUDE_DIR}

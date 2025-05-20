@@ -1,4 +1,8 @@
-#include "subjugator_trajectory_planner/trajectory_planner.h"
+#include "subjugator_trajectory_planner/TrajectoryPlanner.hpp"
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <nav2_util/geometry_utils.hpp>
 
 TrajectoryPlanner::TrajectoryPlanner() : Node("trajectory_planner")
 {
