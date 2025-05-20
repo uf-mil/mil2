@@ -203,82 +203,55 @@ double ScoringPlugin::angleChange(double previous, double current)
     return diff;
 }
 
-void ScoringPlugin::CheckForStylePoints(gz::math::Pose3d const &currentPose)
+void ScoringPlugin::CheckForStylePoints(const gz::math::Pose3d &currentPose)
 {
-    double currentRoll = currentPose.Rot().Roll() * 180.0 / M_PI;
+    double currentRoll  = currentPose.Rot().Roll() * 180.0 / M_PI;
     double currentPitch = currentPose.Rot().Pitch() * 180.0 / M_PI;
-    double currentYaw = currentPose.Rot().Yaw() * 180.0 / M_PI;
+    double currentYaw   = currentPose.Rot().Yaw() * 180.0 / M_PI;
 
-    // Calculate the change since last measurement
-    double rollDiff = angleChange(styleRecord_.lastRoll, currentRoll);
+    double rollDiff = angleChange(styleRecord_.lastRoll,  currentRoll);
     double pitchDiff = angleChange(styleRecord_.lastPitch, currentPitch);
-    double yawDiff = angleChange(styleRecord_.lastYaw, currentYaw);
+    double yawDiff = angleChange(styleRecord_.lastYaw,   currentYaw);
 
-    styleRecord_.accumulatedRoll += std::abs(rollDiff);
-    styleRecord_.accumulatedPitch += std::abs(pitchDiff);
-    styleRecord_.accumulatedYaw += std::abs(yawDiff);
-
-    // Update counters for 90° increments
-    int newRollCounter = static_cast<int>(styleRecord_.accumulatedRoll / 90.0);
-    int newPitchCounter = static_cast<int>(styleRecord_.accumulatedPitch / 90.0);
-    int newYawCounter = static_cast<int>(styleRecord_.accumulatedYaw / 90.0);
-
-    /* Check if we've crossed a new 90° threshold for roll
-    If so we record the number of rolls for future math!
-    Also, we make the value of rollChanged equals TRUE. */
-
-    if (newRollCounter > styleRecord_.rollCounter)
+    // Lambda function
+    auto updateAxis = [&](double diff,
+                          double &progress,
+                          int &quartersAwarded,
+                          bool &changedFlag,
+                          const std::string &name,
+                          int pointsPerQuarter)
     {
-        styleRecord_.rollChanged = true;
-
-        // publish points for each new 90-degree increment
-        for (int i = styleRecord_.rollCounter + 1; i <= newRollCounter; i++)
+        progress += diff;
+        int quartersNow = static_cast<int>(std::floor(std::abs(progress) / 90.0));
+        if (quartersNow > quartersAwarded)
         {
-            std_msgs::msg::String event_msg;
-            event_msg.data = "Roll maneuver detected! +" + std::to_string(ROLL_POINTS) + " style points! (Rotated " +
-                             std::to_string(i * 90) + "°)";
-            this->eventPub_->publish(event_msg);
+            changedFlag = true;
+            for (int q = quartersAwarded + 1; q <= quartersNow; ++q)
+            {
+                std_msgs::msg::String m;
+                m.data = name + " maneuver detected! +" +
+                         std::to_string(pointsPerQuarter) + " style points! (Rotated " +
+                         std::to_string(q * 90) + "°)";
+                eventPub_->publish(m);
+            }
+            quartersAwarded = quartersNow;
         }
+    };
 
-        styleRecord_.rollCounter = newRollCounter;
-    }
+    // Call the lambda 3 times for roll, pitch, yaw
+    updateAxis(rollDiff,  styleRecord_.accumulatedRoll,  styleRecord_.rollCounter,
+               styleRecord_.rollChanged, "Roll",  ROLL_POINTS);
 
-    // Check the same thing for pitch
-    if (newPitchCounter > styleRecord_.pitchCounter)
-    {
-        styleRecord_.pitchChanged = true;
+    updateAxis(pitchDiff, styleRecord_.accumulatedPitch, styleRecord_.pitchCounter,
+               styleRecord_.pitchChanged, "Pitch", PITCH_POINTS);
 
-        for (int i = styleRecord_.pitchCounter + 1; i <= newPitchCounter; i++)
-        {
-            std_msgs::msg::String event_msg;
-            event_msg.data = "Pitch maneuver detected! +" + std::to_string(PITCH_POINTS) + " style points! (Rotated " +
-                             std::to_string(i * 90) + "°)";
-            this->eventPub_->publish(event_msg);
-        }
+    updateAxis(yawDiff,   styleRecord_.accumulatedYaw,   styleRecord_.yawCounter,
+               styleRecord_.yawChanged, "Yaw",   YAW_POINTS);
 
-        styleRecord_.pitchCounter = newPitchCounter;
-    }
-
-    // Check the same thing for yaw
-    if (newYawCounter > styleRecord_.yawCounter)
-    {
-        styleRecord_.yawChanged = true;
-
-        for (int i = styleRecord_.yawCounter + 1; i <= newYawCounter; i++)
-        {
-            std_msgs::msg::String event_msg;
-            event_msg.data = "Yaw maneuver detected! +" + std::to_string(YAW_POINTS) + " style points! (Rotated " +
-                             std::to_string(i * 90) + "°)";
-            this->eventPub_->publish(event_msg);
-        }
-
-        styleRecord_.yawCounter = newYawCounter;
-    }
-
-    // Store current angles for next comparison
-    styleRecord_.lastRoll = currentRoll;
+    // Store current pose for next time
+    styleRecord_.lastRoll  = currentRoll;
     styleRecord_.lastPitch = currentPitch;
-    styleRecord_.lastYaw = currentYaw;
+    styleRecord_.lastYaw   = currentYaw;
 }
 
 int ScoringPlugin::CalculateStylePoints()
