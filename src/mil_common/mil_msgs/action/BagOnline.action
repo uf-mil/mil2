@@ -9,7 +9,7 @@
 string bag_name
 
 # Space separated list of topics to bag. If empty string, all buffered topics will be bagged
-string topics
+string[] topics
 
 # Time in seconds
 float32 bag_time
@@ -17,7 +17,7 @@ float32 bag_time
 
 bool success
 string status # Contains error information if success is False
-string filename # Full path to file where bag was written
+# string filename # Full path to file where bag was written
 
 ---
 
