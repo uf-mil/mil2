@@ -21,17 +21,5 @@ def generate_launch_description():
                 ],
                 output="screen",
             ),
-            Node(
-                package="subjugator_thruster_manager",
-                executable="forward_to_sim",
-                name="thruster_manager",
-                parameters=[
-                    os.path.join(
-                        get_package_share_directory("subjugator_thruster_manager"),
-                        "config",
-                        "thruster_manager.yaml",
-                    ),
-                ],
-            ),
         ],
     )
