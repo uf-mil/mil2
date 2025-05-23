@@ -8,11 +8,15 @@ import rclpy
 from electrical_protocol import AckPacket, NackPacket, Packet, SerialDeviceNode
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from std_msgs.msg import String
+from std_srvs.srv import Empty
 from subjugator_msgs.msg import ThrusterEfforts
 
 from thrust_and_kill_board.packets import (
     HeartbeatReceivePacket,
     HeartbeatSetPacket,
+    KillReceivePacket,
+    KillSetPacket,
+    KillStatus,
     ThrusterId,
     ThrustSetPacket,
 )
@@ -30,6 +34,7 @@ class ThrustAndKillNode(
     SerialDeviceNode[
         ThrustSetPacket | HeartbeatSetPacket,
         HeartbeatReceivePacket | AckPacket | NackPacket,
+        KillSetPacket | KillReceivePacket,
     ],
 ):
 
@@ -68,6 +73,22 @@ class ThrustAndKillNode(
             self._thruster_efforts_cb,
             10,
         )
+
+        self.thruster_heartbeat = self.create_publisher(
+            String,
+            "thruster_heartbeat",
+            10,
+        )
+
+        self.thrust_messages = self.create_publisher(
+            String,
+            "thruster_message",
+            10,
+        )
+
+        self.create_service(Empty, "kill", self._set_kill)
+        self.create_service(Empty, "unkill", self._unset_kill)
+
         self.test_pub = self.create_publisher(String, "thrust_set", 10)
 
     def _thruster_efforts_cb(self, msg: ThrusterEfforts):
@@ -91,7 +112,25 @@ class ThrustAndKillNode(
         self.send_packet(ThrustSetPacket(ThrusterId.BRV, 0))
 
     def on_packet_received(self, packet: Packet):
-        self.get_logger().error(f"Received packet: {packet}")
+        self.get_logger().info(f"Received packet: {packet}")
+
+        if isinstance(packet, HeartbeatReceivePacket):
+            self.thruster_heartbeat.publish(packet)
+        else:
+            self.thruster_message.publish(packet)
+
+        if isinstance(packet, KillReceivePacket):
+            self.get_logger().error(f"Received kill from thrusters: {packet}")
+
+    def _set_kill(self, request, response):
+        self.get_logger().info("Received kill request.")
+        self.send_packet(KillSetPacket(True, KillStatus.SOFTWARE_REQUESTED))
+        return response
+
+    def _unset_kill(self, request, response):
+        self.get_logger().info("Received unkill request.")
+        self.send_packet(KillSetPacket(False, KillStatus.SOFTWARE_REQUESTED))
+        return response
 
 
 def main(args=None):
