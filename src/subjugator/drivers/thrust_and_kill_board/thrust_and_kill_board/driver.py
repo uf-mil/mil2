@@ -21,7 +21,7 @@ from thrust_and_kill_board.packets import (
     ThrustSetPacket,
 )
 
-DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E6614C311B66C338-if00"
+DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E4624CF5C30F4A22-if00"
 DEFAULT_BAUDRATE = 115200
 
 
@@ -32,9 +32,8 @@ def msg_to_string(msg):
 
 class ThrustAndKillNode(
     SerialDeviceNode[
-        ThrustSetPacket | HeartbeatSetPacket,
-        HeartbeatReceivePacket | AckPacket | NackPacket,
-        KillSetPacket | KillReceivePacket,
+        ThrustSetPacket | HeartbeatSetPacket | KillSetPacket,
+        HeartbeatReceivePacket | AckPacket | NackPacket | KillReceivePacket,
     ],
 ):
 
@@ -80,9 +79,9 @@ class ThrustAndKillNode(
             10,
         )
 
-        self.thrust_messages = self.create_publisher(
+        self.thruster_messages = self.create_publisher(
             String,
-            "thruster_message",
+            "thruster_messages",
             10,
         )
 
@@ -112,12 +111,14 @@ class ThrustAndKillNode(
         self.send_packet(ThrustSetPacket(ThrusterId.BRV, 0))
 
     def on_packet_received(self, packet: Packet):
-        self.get_logger().info(f"Received packet: {packet}")
+        self.get_logger().info(f"Received packet: {packet.class_id}")
 
+        msg = String()
+        msg.data = str(packet)
         if isinstance(packet, HeartbeatReceivePacket):
-            self.thruster_heartbeat.publish(packet)
+            self.thruster_heartbeat.publish(msg)
         else:
-            self.thruster_message.publish(packet)
+            self.thruster_messages.publish(msg)
 
         if isinstance(packet, KillReceivePacket):
             self.get_logger().error(f"Received kill from thrusters: {packet}")
