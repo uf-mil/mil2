@@ -49,8 +49,9 @@ void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
       }
       RCLCPP_INFO(this->thrustNode->get_logger(), "service not available, waiting again...");
     }
-    double max_force_pos = parameters_client->get_parameter("max_force_pos", 1.0);
-    double max_force_neg = parameters_client->get_parameter("max_force_neg", 1.0);
+    max_force_pos = parameters_client->get_parameter("max_force_pos", 1.0);
+    max_force_neg = parameters_client->get_parameter("max_force_neg", 1.0);
+
 }
 
 // receiveEffortCallback() -  Whenever ROS2 node receives message call this //
@@ -58,8 +59,6 @@ void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
 void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts const &msg)
 {
     // Process the received thruster efforts message
-    // std::cout << "[ThrusterBridge] Received Thruster Efforts: " << std::endl;
-
     thrusterEfforts["FLH"] = msg.thrust_flh;
     thrusterEfforts["FRH"] = msg.thrust_frh;
     thrusterEfforts["BLH"] = msg.thrust_blh;
@@ -69,24 +68,14 @@ void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts
     thrusterEfforts["BLV"] = msg.thrust_blv;
     thrusterEfforts["BRV"] = msg.thrust_brv;
 
-    std::cout << "Thruster Values into Gazebo: " << std::endl;
-    // Print the thrusterEfforts Map
-    // for (const auto &[thrusterName, thrustValue] : thrusterEfforts)
-    // {
-    //     std::cout << "Thruster: " << thrusterName << ", Thrust Value: " << thrustValue << std::endl;
-    // }
-    // std::cout << std::endl;
 
     // Iterate through thrusterEfforts Map
     for (auto const &[thrusterName, thrustValue] : thrusterEfforts)
     {
         gz::msgs::Double thrustMsg;
-        double scaledThrust = (thrustValue > 0) ? thrustValue / this->max_force_pos : thrustValue / this->max_force_neg;
+        double scaledThrust = (thrustValue > 0) ? thrustValue * this->max_force_pos : thrustValue * this->max_force_neg;
         thrustMsg.set_data(scaledThrust);
         publishers[thrusterName].Publish(thrustMsg);
-
-        // std::cout << "Publishing to: /model/" << thrusterName << "/joint/" << thrusterName << "_dir_joint/cmd_thrust"
-        // << std::endl; std::cout << "Thrust Value: " << thrustValue << std::endl;
     }
 }
 

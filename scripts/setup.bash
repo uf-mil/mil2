@@ -235,6 +235,48 @@ list_lan_devices() {
 	nmap -sP "$1" -oG - | awk '/Up$/{print $2}'
 }
 
+function pub_wrench() {
+  if [ "$#" -ne 7 ]; then
+    echo "Usage: pub_wrench fx fy fz tx ty tz duration_seconds"
+    return 1
+  fi
+
+  local fx=$1
+  local fy=$2
+  local fz=$3
+  local tx=$4
+  local ty=$5
+  local tz=$6
+  local duration=$7
+
+  echo "Publishing force for ${duration} seconds..."
+
+  ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+  x: ${fx}
+  y: ${fy}
+  z: ${fz}
+torque:
+  x: ${tx}
+  y: ${ty}
+  z: ${tz}
+"
+
+  sleep "${duration}"
+
+  echo "Stopping force..."
+
+  ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+  x: 0.0
+  y: 0.0
+  z: 0.0
+torque:
+  x: 0.0
+  y: 0.0
+  z: 0.0
+"
+}
+
+
 alias list_mil_devices="list_lan_devices 192.168.37.1/24"
 
 # aliases for localization and controller service calls

@@ -53,8 +53,8 @@ class ThrusterBridge : public gz::sim::System, public gz::sim::ISystemConfigure,
     std::unordered_map<std::string, gz::transport::Node::Publisher> publishers;
 
     // Thruster Force Outputs //
-    double max_force_pos;
-    double max_force_neg;
+    double max_force_pos = 1.0;
+    double max_force_neg = 1.0;
 };
 
 }  // namespace thrusterBridge
