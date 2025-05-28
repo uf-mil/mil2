@@ -1,5 +1,6 @@
 #include "subjugator_thruster_manager/thruster_manager.h"
 
+#include <array>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -9,6 +10,7 @@
 #include <Eigen/Dense>
 
 #include "geometry_msgs/msg/wrench.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 
@@ -46,6 +48,10 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
         "cmd_wrench", 1,
         [this](geometry_msgs::msg::Wrench::SharedPtr const msg) -> void { this->wrench_callback(msg); });
 
+    localization_subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        "odometry/filtered", 1,
+        [this](nav_msgs::msg::Odometry::SharedPtr const msg) -> void { this->localization_callback(msg); });
+
     thrust_publisher_ = this->create_publisher<subjugator_msgs::msg::ThrusterEfforts>("thruster_efforts", 1);
     RCLCPP_INFO(this->get_logger(), "Publishing to: %s", thrust_publisher_->get_topic_name());
     timer_ = this->create_wall_timer(std::chrono::milliseconds(500), [this]() -> void { this->timer_callback(); });
@@ -58,6 +64,15 @@ void ThrusterManager::wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg)
     // msg->force.y,
     //             msg->force.z, msg->torque.x, msg->torque.y, msg->torque.z);
     this->reference_wrench_ << msg->force.x, msg->force.y, msg->force.z, msg->torque.x, msg->torque.y, msg->torque.z;
+}
+
+// Update wrench when new msg heard
+void ThrusterManager::localization_callback(nav_msgs::msg::Odometry::SharedPtr msg)
+{
+    this->linear_twist_ = { msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z };
+    RCLCPP_INFO(this->get_logger(), "x twist: %f", this->linear_twist_[0]);
+    RCLCPP_INFO(this->get_logger(), "y twist: %f", this->linear_twist_[1]);
+    RCLCPP_INFO(this->get_logger(), "z twist: %f", this->linear_twist_[2]);
 }
 
 // Compute and publish thruster efforts
