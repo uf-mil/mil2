@@ -4,6 +4,7 @@ from geometry_msgs.msg import Wrench
 from std_msgs.msg import String
 import numpy as np
 from nav_msgs.msg import Odometry
+from rcl_interfaces.msg import SetParametersResult
 
 class WrenchTuner(Node):
 
@@ -86,7 +87,7 @@ class WrenchTuner(Node):
                 if param.name == name:
                     self.params[i] = param.value
                     self.get_logger().info(f"{name} updated to {param.value}")
-        return rclpy.parameter.ParameterEventHandler.Result(successful=True)
+        return SetParametersResult(successful=True)
 
 
 def main(args=None):
