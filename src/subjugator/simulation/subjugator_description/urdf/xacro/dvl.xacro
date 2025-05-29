@@ -85,7 +85,7 @@
           <maximum_range>200.</maximum_range>
           <minimum_range>0.3</minimum_range>
           <!-- ENU to FSD -->
-          <reference_frame>0 0 0 3.14 0 -1.57</reference_frame>
+          <reference_frame>0 0 0 0 0 0</reference_frame>
         </gz:dvl>
       </sensor>
     </gazebo>

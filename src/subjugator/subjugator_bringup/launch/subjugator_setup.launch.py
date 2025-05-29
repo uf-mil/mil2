@@ -95,7 +95,22 @@ def generate_launch_description():
                 "subjugator_localization.launch.py",
             ),
         ),
+        launch_arguments={
+            "params_file": os.path.join(
+                pkg_localization,
+                "config",
+                "localization_parameters.yaml",
+            ),
+        }.items(),
     )
+
+    depth_to_pose = Node(
+        package="subjugator_localization",
+        executable="depth_to_pose_node.py",
+        name="depth_to_pose",
+        output="screen",
+    )
+
 
     controller = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -124,6 +139,7 @@ def generate_launch_description():
             # joint_state_publisher_node,
             rviz,
             thruster_manager,
+            depth_to_pose,
             localization,
             controller,
             path_planner,

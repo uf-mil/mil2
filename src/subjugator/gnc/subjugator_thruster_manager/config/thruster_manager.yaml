@@ -4,7 +4,7 @@
     # Columns correspond to each thruster in order:
     # FRH, FLH, BRH, BLH, FRV, FLV, BRV, BLV
     tam:
-      x:  [0.86602540378, 0.86602540378,  0.86602540378,  0.86602540378,0.0,      0.0,      0.0,      0.0     ]
+      x:  [.86602540378, 0.86602540378,  0.86602540378,  0.86602540378,0.0,      0.0,      0.0,      0.0     ]
       y:  [0.5,           -0.5,           -0.5,           0.5,          0.0,      0.0,      0.0,      0.0     ]
       z:  [0.0,           0.0,            0.0,            0.0,          1.0,      1.0,      1.0,      1.0     ]
       rx: [0.0,           0.0,            0.0,            0.0,          -0.14922,  0.14922,  -0.14922,  0.14922 ] # roll
@@ -13,3 +13,23 @@
     thruster_cap: 1.0
     max_force_pos: 51.5
     max_force_neg: 40.2
+
+
+    drag.surge: 0.0
+    drag.sway: 0.0
+    drag.heave: 0.0
+    drag.roll: 0.0
+    drag.pitch: 0.0
+    drag.yaw: 0.0
+
+    drag.asymmetric_roll_from_x: 0.0
+    drag.asymmetric_roll_from_y: 0.0
+    asymmetric_roll_from_z: 0.0
+
+    drag.asymmetric_pitch_from_x: 0.0
+    drag.asymmetric_pitch_from_y: 0.0
+    drag.asymmetric_pitch_from_z: 0.0
+
+    drag.asymmetric_yaw_from_x: 0.0
+    drag.asymmetric_yaw_from_y: 20.0
+    drag.asymmetric_yaw_from_z: 0.0
