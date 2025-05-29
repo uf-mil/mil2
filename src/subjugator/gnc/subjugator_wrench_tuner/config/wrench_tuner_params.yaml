@@ -1,0 +1,8 @@
+wrench_tuner:
+  ros__parameters:
+    c1: 0.0
+    c2: 0.0
+    c3: 0.0
+    c4: 0.0
+    c5: 0.0
+    c6: 0.0
