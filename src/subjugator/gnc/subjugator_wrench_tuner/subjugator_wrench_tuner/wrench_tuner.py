@@ -1,3 +1,4 @@
+
 import numpy as np
 import rclpy
 from geometry_msgs.msg import Wrench
@@ -6,9 +7,11 @@ from rcl_interfaces.msg import SetParametersResult
 from rclpy.node import Node
 
 
+
 class WrenchTuner(Node):
 
     def __init__(self):
+
         super().__init__("wrench_tuner")
         self.cmd_subscription = self.create_subscription(
             Wrench,
@@ -16,10 +19,12 @@ class WrenchTuner(Node):
             self.listener_callback,
             10,
         )
+
         self.cmd_subscription  # prevent unused variable warning
 
         self.odom_subscription = self.create_subscription(
             Odometry,
+
             "odometry/filtered",
             self.odometry_callback,
             10,
@@ -54,12 +59,12 @@ class WrenchTuner(Node):
             self.get_parameter("rz").value,
         ]
 
+
         self.add_on_set_parameters_callback(self.parameter_callback)
 
         self.velocity = np.zeros(3)
 
     def listener_callback(self, msg):
-
         self.cmd_wrench = np.array(
             [
                 msg.force.x,
@@ -91,6 +96,7 @@ class WrenchTuner(Node):
             ],
         )
 
+
         self.sum_wrench = self.cmd_wrench + self.drag_wrench
 
         control_wrench = Wrench()
@@ -118,6 +124,7 @@ class WrenchTuner(Node):
             for i, name in enumerate(
                 ["c1", "c2", "c3", "c4", "c5", "c6", "rx", "ry", "rz"],
             ):
+
                 if param.name == name:
                     self.params[i] = param.value
                     self.get_logger().info(f"{name} updated to {param.value}")
@@ -140,3 +147,4 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
+
