@@ -14,13 +14,12 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(subjugator_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 add_executable(thruster_manager src/thruster_manager.cpp)
-ament_target_dependencies(thruster_manager rclcpp geometry_msgs nav_msgs subjugator_msgs)
+ament_target_dependencies(thruster_manager rclcpp geometry_msgs subjugator_msgs)
 target_include_directories(thruster_manager PRIVATE ${EIGEN3_INCLUDE_DIR}
                                                     include)
 

@@ -23,14 +23,14 @@ class DepthToPose(Node):
     def cb(self, msg: DepthStamped):
         p = PoseWithCovarianceStamped()
         p.header.stamp = msg.header.stamp
-        p.header.frame_id = "base_link"  # <- the key change
+        p.header.frame_id = "odom"  # <- the key change
 
         # Gazebo water depth: positive downward ⇒ world Z is -depth
         p.pose.pose.position.z = -msg.depth
         p.pose.pose.orientation.w = 1.0  
         p.pose.covariance[0] = 1e3
         p.pose.covariance[7] = 1e3
-        p.pose.covariance[14] = 0.01
+        p.pose.covariance[14] = 0.0025
         p.pose.covariance[21] = 1e3
         p.pose.covariance[28] = 1e3
         p.pose.covariance[35] = 1e3    # variance on Z (0.1 m²)
