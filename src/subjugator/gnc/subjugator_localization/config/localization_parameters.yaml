@@ -38,6 +38,17 @@
     pose0_differential: false
     pose0_relative: false
     pose0_queue_size: 10
+
+    pose1: "/i/am/joe/handsome"
+    pose1_config: [true, true, false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    pose1_differential: false
+    pose1_relative: false
+    pose1_queue_size: 10
+
     print_diagnostics: true
     publish_acceleration: true
     debug: true
