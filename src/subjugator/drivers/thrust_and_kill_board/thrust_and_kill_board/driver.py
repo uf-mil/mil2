@@ -89,7 +89,7 @@ class ThrustAndKillNode(
         self.create_service(Empty, "kill", self._set_kill)
         self.create_service(Empty, "unkill", self._unset_kill)
 
-        self.send_heartbeat_timer = self.create_timer(1.0, self._send_heartbeat)
+        self.send_heartbeat_timer = self.create_timer(0.9, self._send_heartbeat)
         self.check_heartbeat_timer = self.create_timer(0.5, self._check_heartbeat)
         self.last_heartbeat_time = time.monotonic()
         self.heartbeat_timedout = False
@@ -121,11 +121,12 @@ class ThrustAndKillNode(
 
     def on_packet_received(self, packet: Packet):
         if isinstance(packet, HeartbeatReceivePacket):
-            self.thruster_heartbeat.publish(packet)
             self.last_heartbeat_time = time.monotonic()
         else:
-            self.get_logger().info(f"Received packet: {packet}")
-            self.thruster_message.publish(packet)
+            self.get_logger().debug(f"Thrust Board received packet: {packet}")
+            packet_msg = String()
+            packet_msg.data = str(packet)
+            self.thruster_messages.publish(packet_msg)
 
         if isinstance(packet, KillReceivePacket):
             self.get_logger().error(f"Received kill packet from thrusters: {packet}")
@@ -141,11 +142,9 @@ class ThrustAndKillNode(
         return response
 
     def _send_heartbeat(self):
-        self.get_logger().debug("Heartbeat sent to thrust board")
         self.send_packet(HeartbeatSetPacket())
 
     def _check_heartbeat(self):
-        self.get_logger().debug("Checking thrust board heartbeat.")
         if time.monotonic() - self.last_heartbeat_time > 1:
             self.get_logger().error(
                 "Thrust board heartbeat timeout! Rejecting further thruster commands.",
