@@ -329,7 +329,7 @@ pre-commit install
 mil_user_setup_init_colcon() {
 	cd $SCRIPT_DIR/..
 	set +u
-	cb mil_msgs subjugator_msgs subjugator_description electrical_protocol mil_tools luxonis_cam magnetic_compensation subjugator_controller subjugator_joy subjugator_keyboard_control subjugator_localization subjugator_trajectory_planner subjugator_path_planner thrust_and_kill_board subjugator_thruster_manager subjugator_gazebo depth_driver mil_passive_sonar --generate-compile-commands
+	cb --generate-compile-commands
 	set -u
 
 }
