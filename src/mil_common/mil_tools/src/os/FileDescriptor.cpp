@@ -14,13 +14,13 @@ FileDescriptor::operator int() const
     return fd_;
 };
 
-FileDescriptor::FileDescriptor(FileDescriptor&& other)
+FileDescriptor::FileDescriptor(FileDescriptor&& other) noexcept
 {
     fd_ = other.fd_;
     other.fd_ = -1;
 }
 
-FileDescriptor& FileDescriptor::operator=(FileDescriptor&& other)
+FileDescriptor& FileDescriptor::operator=(FileDescriptor&& other) noexcept
 {
     if (this != &other)
     {

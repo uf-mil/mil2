@@ -11,15 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(subjugator_msgs REQUIRED)
 find_package(Boost REQUIRED COMPONENTS thread chrono filesystem system)
-
-set(_OLD_CMAKE_POSITION_INDEPENDENT_CODE ${CMAKE_POSITION_INDEPENDENT_CODE})
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-set(FTXUI_BINARY_DIR ${CMAKE_BINARY_DIR}/ftxui-build)
-set(FTXUI_SOURCE_DIR ${CMAKE_SOURCE_DIR}/../../../ext/FTXUI)
-add_subdirectory(${FTXUI_SOURCE_DIR} ${FTXUI_BINARY_DIR})
-
-set(CMAKE_POSITION_INDEPENDENT_CODE ${_OLD_CMAKE_POSITION_INDEPENDENT_CODE})
+find_package(ftxui REQUIRED)
 
 add_executable(${PROJECT_NAME} src/frontend.cpp)
 include_directories(include ${ftxui_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
@@ -34,7 +26,7 @@ install(TARGETS ${PROJECT_NAME} mil_preflight_backend
         DESTINATION bin # Install to install/bin/
 )
 
-install(FILES cfg/config.json DESTINATION cfg)
+install(FILES cfg/config.json DESTINATION bin)
 
 add_library(ftx_ui SHARED src/uis/ftxui/ui.cpp src/uis/ftxui/widgets.cpp)
 
