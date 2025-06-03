@@ -1,3 +1,5 @@
+# TODO add localization, pid running
+
 import rclpy
 import json
 from rclpy.node import Node
@@ -7,6 +9,11 @@ from collections import defaultdict, deque
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from sensor_msgs.msg import Imu
+import math
+from geometry_msgs.msg import PoseWithCovarianceStamped
+
+from rich.console import Console
+from rich.table import Table
 
 class TopicHz(Node):
     def __init__(self):
@@ -22,9 +29,11 @@ class TopicHz(Node):
 
         self.add_topic("/imu/data", Imu)
         self.add_topic("/dvl/odom", Odometry)
+        self.add_topic("/depth/pose", PoseWithCovarianceStamped)
 
         # Timer to print frequencies every 2 seconds TODO del me
         self.create_timer(2.0, self.report_frequencies)
+        # self.create_timer(0.5, self.print_it)
 
     def add_topic(self, new_topic_name: str, topic_msg_type):
         if new_topic_name in self.subscriptions_.keys():
@@ -36,6 +45,27 @@ class TopicHz(Node):
             self._make_callback(new_topic_name),
             10
         )
+
+    def print_it(self, frequencies: dict[str, float]):
+        # Create a Console object
+        console = Console()
+        console.clear()
+
+        # Create a Table object
+        table = Table(title="Topic Status Table")
+
+        # Add columns
+        table.add_column("Topic Name", style="cyan", no_wrap=True)
+        table.add_column("Hz", justify="right", style="magenta")
+        table.add_column("Status", style="green")
+
+        # Add some example rows
+        for name, hz in frequencies.items():
+            status_emoji = ":white_check_mark:" if math.floor(hz) != 0 else ":x:"
+            table.add_row(name, str(hz), status_emoji)
+
+        # Print the table to the console
+        console.print(table)
 
     # curry = yummy
     def _make_callback(self, topic_name):
@@ -59,7 +89,6 @@ class TopicHz(Node):
                 frequencies[topic]=0
                 continue
 
-
             # calculate Hz
             intervals = [
                 t2 - t1 for t1, t2 in zip(timestamps, list(timestamps)[1:])
@@ -67,7 +96,8 @@ class TopicHz(Node):
             avg_interval = sum(intervals) / len(intervals)
             hz = 1.0 / avg_interval if avg_interval > 0 else 0.0
             frequencies[topic]=hz
-        self.to_json_and_publish(frequencies)
+        # self.to_json_and_publish(frequencies)
+        self.print_it(frequencies)
 
     def to_json_and_publish(self, frequencies: dict[str, float]):
         json_dict:str = json.dumps(frequencies)
