@@ -1,8 +1,8 @@
 ---
 /subjugator_localization:
   ros__parameters:
-    world_frame: base_link
-    odom_frame: base_link
+    world_frame: odom
+    odom_frame: odom
     base_link_frame: base_link
 
     imu0: "/imu/data"
@@ -17,6 +17,7 @@
     imu0_relative: true
     imu0_remove_gravitational_acceleration: true
     imu0_queue_size: 10
+
     odom0: "/dvl/odom"
     odom0_config:
       [
@@ -42,5 +43,5 @@
     publish_acceleration: true
     debug: true
     debug_out_file: "/home/sub9/debug.txt"
-    frequency: 10.0
+    frequency: 7.0
     disabled_at_startup: true
