@@ -251,7 +251,7 @@ function pub_wrench() {
 
   echo "Publishing force for ${duration} seconds..."
 
-  ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+  ros2 topic pub --once /control_wrench geometry_msgs/msg/Wrench "force:
   x: ${fx}
   y: ${fy}
   z: ${fz}
@@ -265,7 +265,7 @@ torque:
 
   echo "Stopping force..."
 
-  ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+  ros2 topic pub --once /control_wrench geometry_msgs/msg/Wrench "force:
   x: 0.0
   y: 0.0
   z: 0.0

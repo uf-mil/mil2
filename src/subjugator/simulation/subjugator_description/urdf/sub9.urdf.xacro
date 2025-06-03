@@ -88,12 +88,12 @@
       <yV>-50</yV>
       <zWabsW>-5</zWabsW>
       <zW>-50</zW>
-      <kPabsP>-650</kPabsP>
-      <kP>-650</kP>
-      <mQabsQ>-750</mQabsQ>
-      <mQ>-750</mQ>
-      <nRabsR>-750</nRabsR>
-      <nR>-750</nR>
+      <kPabsP>-25</kPabsP>
+      <kP>-50</kP>
+      <mQabsQ>-25</mQabsQ>
+      <mQ>-50</mQ>
+      <nRabsR>-25</nRabsR>
+      <nR>-50</nR>
     </plugin>
 
     <plugin filename="ThrusterBridge" name="thrusterBridge::ThrusterBridge"/>

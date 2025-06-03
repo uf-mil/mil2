@@ -31,5 +31,5 @@
     drag.asymmetric_pitch_from_z: 0.0
 
     drag.asymmetric_yaw_from_x: 0.0
-    drag.asymmetric_yaw_from_y: 20.0
+    drag.asymmetric_yaw_from_y: 0.0
     drag.asymmetric_yaw_from_z: 0.0

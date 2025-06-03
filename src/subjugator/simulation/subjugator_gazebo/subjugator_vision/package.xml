@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>subjugator_vision</name>
+  <version>0.0.0</version>
+  <description>Vision utilities for the Subjugator simulator (image saver, later detection nodes).</description>
+
+  <!-- Maintainer / licence -->
+  <maintainer email="carlos@example.com">Carlos Chavez</maintainer>
+  <license>MIT</license>
+
+  <!-- Build -->
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <!-- Runtime deps -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>opencv-python</exec_depend>
+
+  <!-- Optional test deps -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+</package>
