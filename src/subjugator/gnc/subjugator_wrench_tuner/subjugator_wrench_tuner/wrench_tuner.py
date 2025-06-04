@@ -5,7 +5,6 @@ from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.node import Node
 
-
 class WrenchTuner(Node):
 
     def __init__(self):
