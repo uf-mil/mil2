@@ -198,7 +198,7 @@ class Server : public rclcpp::Node
 
         if (!bag_name.has_filename())
         {
-            bag_name.replace_filename(date + '-' + time);
+            bag_name.replace_filename(time);
         }
 
         if (bag_name.extension() != "bag")
