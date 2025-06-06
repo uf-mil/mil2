@@ -1,5 +1,5 @@
 ---
 /thrust_and_kill_board:
   ros__parameters:
-    port: /dev/serial/by-id/usb-Raspberry_Pi_Pico_E6614C311B66C338-if00
+    port: /dev/serial/by-id/usb-Raspberry_Pi_Pico_E4624CF5C30F4A22-if00
     baudrate: 115200

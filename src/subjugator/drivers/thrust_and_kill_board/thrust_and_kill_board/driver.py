@@ -3,21 +3,26 @@
 from __future__ import annotations
 
 import contextlib
+import time
 
 import rclpy
 from electrical_protocol import AckPacket, NackPacket, Packet, SerialDeviceNode
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from std_msgs.msg import String
+from std_srvs.srv import Empty
 from subjugator_msgs.msg import ThrusterEfforts
 
 from thrust_and_kill_board.packets import (
     HeartbeatReceivePacket,
     HeartbeatSetPacket,
+    KillReceivePacket,
+    KillSetPacket,
+    KillStatus,
     ThrusterId,
     ThrustSetPacket,
 )
 
-DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E6614C311B66C338-if00"
+DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E4624CF5C30F4A22-if00"
 DEFAULT_BAUDRATE = 115200
 
 
@@ -28,8 +33,8 @@ def msg_to_string(msg):
 
 class ThrustAndKillNode(
     SerialDeviceNode[
-        ThrustSetPacket | HeartbeatSetPacket,
-        HeartbeatReceivePacket | AckPacket | NackPacket,
+        ThrustSetPacket | HeartbeatSetPacket | KillSetPacket,
+        HeartbeatReceivePacket | AckPacket | NackPacket | KillReceivePacket,
     ],
 ):
 
@@ -68,17 +73,41 @@ class ThrustAndKillNode(
             self._thruster_efforts_cb,
             10,
         )
-        self.test_pub = self.create_publisher(String, "thrust_set", 10)
+
+        self.thruster_heartbeat = self.create_publisher(
+            String,
+            "thruster_heartbeat",
+            10,
+        )
+
+        self.thruster_messages = self.create_publisher(
+            String,
+            "thruster_messages",
+            10,
+        )
+
+        self.create_service(Empty, "kill", self._set_kill)
+        self.create_service(Empty, "unkill", self._unset_kill)
+
+        self.send_heartbeat_timer = self.create_timer(0.9, self._send_heartbeat)
+        self.check_heartbeat_timer = self.create_timer(0.5, self._check_heartbeat)
+        self.last_heartbeat_time = time.monotonic()
+        self.heartbeat_timedout = False
 
     def _thruster_efforts_cb(self, msg: ThrusterEfforts):
-        self.send_packet(ThrustSetPacket(ThrusterId.FLH, min(msg.thrust_flh, 1)))
-        self.send_packet(ThrustSetPacket(ThrusterId.FRH, min(msg.thrust_frh, 1)))
-        self.send_packet(ThrustSetPacket(ThrusterId.FLV, min(msg.thrust_flv, 1)))
-        self.send_packet(ThrustSetPacket(ThrusterId.FRV, min(msg.thrust_frv, 1)))
-        self.send_packet(ThrustSetPacket(ThrusterId.BLH, min(msg.thrust_blh, 1)))
-        self.send_packet(ThrustSetPacket(ThrusterId.BRH, min(msg.thrust_brh, 1)))
-        self.send_packet(ThrustSetPacket(ThrusterId.BLV, min(msg.thrust_blv, 1)))
-        self.send_packet(ThrustSetPacket(ThrusterId.BRV, min(msg.thrust_brv, 1)))
+        if not self.heartbeat_timedout:
+            self.send_packet(ThrustSetPacket(ThrusterId.FLH, min(msg.thrust_flh, 1)))
+            self.send_packet(ThrustSetPacket(ThrusterId.FRH, min(msg.thrust_frh, 1)))
+            self.send_packet(ThrustSetPacket(ThrusterId.FLV, min(msg.thrust_flv, 1)))
+            self.send_packet(ThrustSetPacket(ThrusterId.FRV, min(msg.thrust_frv, 1)))
+            self.send_packet(ThrustSetPacket(ThrusterId.BLH, min(msg.thrust_blh, 1)))
+            self.send_packet(ThrustSetPacket(ThrusterId.BRH, min(msg.thrust_brh, 1)))
+            self.send_packet(ThrustSetPacket(ThrusterId.BLV, min(msg.thrust_blv, 1)))
+            self.send_packet(ThrustSetPacket(ThrusterId.BRV, min(msg.thrust_brv, 1)))
+        else:
+            self.get_logger().error(
+                "Cannot set thrusters. Thrust board heartbeat timed out!",
+            )
 
     def reset(self):
         self.send_packet(ThrustSetPacket(ThrusterId.FLH, 0))
@@ -91,7 +120,42 @@ class ThrustAndKillNode(
         self.send_packet(ThrustSetPacket(ThrusterId.BRV, 0))
 
     def on_packet_received(self, packet: Packet):
-        self.get_logger().error(f"Received packet: {packet}")
+        if isinstance(packet, HeartbeatReceivePacket):
+            self.last_heartbeat_time = time.monotonic()
+        else:
+            self.get_logger().debug(f"Thrust Board received packet: {packet}")
+            packet_msg = String()
+            packet_msg.data = str(packet)
+            self.thruster_messages.publish(packet_msg)
+
+        if isinstance(packet, KillReceivePacket):
+            self.get_logger().error(f"Received kill packet from thrusters: {packet}")
+
+    def _set_kill(self, request, response):
+        self.get_logger().info("Received kill service request.")
+        self.send_packet(KillSetPacket(True, KillStatus.SOFTWARE_REQUESTED))
+        return response
+
+    def _unset_kill(self, request, response):
+        self.get_logger().info("Received unkill service request.")
+        self.send_packet(KillSetPacket(False, KillStatus.SOFTWARE_REQUESTED))
+        return response
+
+    def _send_heartbeat(self):
+        self.send_packet(HeartbeatSetPacket())
+
+    def _check_heartbeat(self):
+        if time.monotonic() - self.last_heartbeat_time > 1:
+            self.get_logger().error(
+                "Thrust board heartbeat timeout! Rejecting further thruster commands.",
+            )
+            self.heartbeat_timedout = True
+        else:
+            if not self.heartbeat_timedout:
+                self.get_logger().debug("Thrust board heartbeat is live.")
+            else:
+                self.get_logger().error("Thrust board heartbeat re-established!")
+                self.heartbeat_timedout = False
 
 
 def main(args=None):

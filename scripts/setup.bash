@@ -38,7 +38,8 @@ alias search_root='sudo find / ... | grep -i'
 alias search='find . -print | grep -i'
 alias fd="fdfind"
 alias imu-socat="sudo socat PTY,link=/dev/ttyV0,mode=777 TCP:192.168.37.61:10001"
-
+alias kill="ros2 service call /kill std_srvs/srv/Empty && stop-controller"
+alias unkill="ros2 service call /unkill std_srvs/srv/Empty"
 # potentially borrowed from forrest
 autopush() {
 	git push origin +"${1:-HEAD}":refs/heads/autopush-"$USER"-"$(uuidgen --random | cut -c1-8)"-citmp
