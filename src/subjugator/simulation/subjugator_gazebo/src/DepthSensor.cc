@@ -24,7 +24,6 @@ void DepthSensor::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf:
 {
     // std::cout << "[DepthSensor] Attached to entity ID:" << _entity << std::endl;
     this->modelEntity_ = _entity;
-    std::cout << "DEPTH SENSOR IS WORKING" << std::endl;
     
     // Getting values from SDF
     if (_sdf->HasElement("frame_id"))
