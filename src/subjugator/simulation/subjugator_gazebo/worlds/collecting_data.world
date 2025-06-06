@@ -186,7 +186,7 @@
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -215,14 +215,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>

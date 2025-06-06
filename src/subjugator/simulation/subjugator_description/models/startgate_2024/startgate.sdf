@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <sdf version='1.7'>
-  <model name='startgate_2025'>
+  <model name='startgate_2024'>
     <static>true</static>
     <link name='base_link'>
       <pose frame=''>0 0 0 0 -0 0</pose>
@@ -20,7 +20,7 @@
         <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <uri>file://startgate_2025/startgate.dae</uri>
+            <uri>file://startgate_2024/startgate.dae</uri>
           </mesh>
         </geometry>
       </collision>
@@ -28,7 +28,7 @@
         <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <uri>file://startgate_2025/startgate.dae</uri>
+            <uri>file://startgate_2024/startgate.dae</uri>
           </mesh>
         </geometry>
       </visual>
