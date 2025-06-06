@@ -138,7 +138,7 @@ class SubEnv(gym.Env):
                 '-s', '/world/robosub_2024/create',
                 '--reqtype', 'gz.msgs.EntityFactory',
                 '--reptype', 'gz.msgs.Boolean',
-                '--req', 'sdf_filename: "src/subjugator/simulation/subjugator_description/urdf/sub9.urdf.xacro"'
+                '--req', 'sdf_filename: "../simulation/subjugator_description/urdf/sub9.urdf.xacro"'
             ]
             
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
