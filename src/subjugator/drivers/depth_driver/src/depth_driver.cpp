@@ -198,7 +198,7 @@ void DepthDriver::read_messages(boost::shared_ptr<tcp::socket> socket)
                 // JOSEPH
                 auto pose_msg = geometry_msgs::msg::PoseWithCovarianceStamped();
                 pose_msg.header = msg.header;  // reuse same header as b4
-                pose_msg.header.frame_id = "depth_sensor_link";
+                pose_msg.header.frame_id = "odom";
                 pose_msg.pose.pose.position.z = msg.depth * -1;
                 pose_msg.pose.covariance[0] = 1e3;
                 pose_msg.pose.covariance[7] = 1e3;

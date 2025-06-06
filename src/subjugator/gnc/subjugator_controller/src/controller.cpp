@@ -87,7 +87,7 @@ PIDController::PIDController() : Node("pid_controller")
     {
         rclcpp::spin_some(this->get_node_base_interface());
     }
-    RCLCPP_INFO(this->get_logger(), "Heard odometry msg. Starting control loop.");
+    // RCLCPP_INFO(this->get_logger(), "Heard odometry msg. Starting control loop.");
 
     // set starting command to first odom msg (stationkeep)
     last_goal_trajectory_ = last_odom_;
@@ -108,7 +108,7 @@ void PIDController::control_loop()
             continue;
         }
 
-        RCLCPP_INFO(this->get_logger(), "control loop");
+        // RCLCPP_INFO(this->get_logger(), "control loop");
 
         rclcpp::Time tnow = this->get_clock()->now();
         double dt_s = (tnow - last_cmd_time_).seconds();
@@ -146,6 +146,7 @@ void PIDController::control_loop()
         // publish as cmd_wrench
         publish_commands(commands);
         // log goal and odom
+        /*
         RCLCPP_INFO(this->get_logger(), "goal: '%s' '%s' '%s' '%s' '%s' '%s'",
                     std::to_string(last_goal_trajectory_(0)).c_str(), std::to_string(last_goal_trajectory_(1)).c_str(),
                     std::to_string(last_goal_trajectory_(2)).c_str(), std::to_string(goal_euler(0)).c_str(),
@@ -162,6 +163,7 @@ void PIDController::control_loop()
                     std::to_string(commands[1]).c_str(), std::to_string(commands[2]).c_str(),
                     std::to_string(commands[3]).c_str(), std::to_string(commands[4]).c_str(),
                     std::to_string(commands[5]).c_str());
+        */
 
         last_cmd_time_ = tnow;
         rclcpp::spin_some(this->get_node_base_interface());

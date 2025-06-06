@@ -1,12 +1,9 @@
-
 import numpy as np
 import rclpy
 from geometry_msgs.msg import Wrench
 from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.node import Node
-
-
 
 class WrenchTuner(Node):
 
@@ -24,7 +21,6 @@ class WrenchTuner(Node):
 
         self.odom_subscription = self.create_subscription(
             Odometry,
-
             "odometry/filtered",
             self.odometry_callback,
             10,
@@ -59,7 +55,6 @@ class WrenchTuner(Node):
             self.get_parameter("rz").value,
         ]
 
-
         self.add_on_set_parameters_callback(self.parameter_callback)
 
         self.velocity = np.zeros(3)
@@ -75,6 +70,26 @@ class WrenchTuner(Node):
                 msg.torque.z,
             ],
         )
+
+        if (
+            msg.force.x == 0.0
+            and msg.force.y == 0.0
+            and msg.force.z == 0.0
+            and msg.torque.x == 0.0
+            and msg.torque.y == 0.0
+            and msg.torque.z == 0.0
+        ):
+            self.get_logger().info("ignoring wrench")
+            control_wrench = Wrench()
+            control_wrench.force.x = 0
+            control_wrench.force.y = 0
+            control_wrench.force.z = 0
+            control_wrench.torque.x = 0
+            control_wrench.torque.y = 0
+            control_wrench.torque.z = 0
+
+            self.control_wrench_publisher.publish(msg)
+            return
 
         # square the velocity as it has a quadratic effect on drag
         self.vx = self.velocity[0] ** 2
@@ -95,7 +110,6 @@ class WrenchTuner(Node):
                 self.params[5] * (self.rx * self.vy - self.ry * self.vx),
             ],
         )
-
 
         self.sum_wrench = self.cmd_wrench + self.drag_wrench
 
@@ -147,4 +161,3 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
-
