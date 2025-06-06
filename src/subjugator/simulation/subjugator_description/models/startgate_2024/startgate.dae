@@ -100,7 +100,7 @@
               <color sid="emission">0 0 0 1</color>
             </emission>
             <diffuse>
-              <texture texture="Slide4_png-sampler" texcoord="Gate2_v1-mesh-map-0"/>
+              <texture texture="Slide4_png-sampler" texcoord="TEXCOORD"/>
             </diffuse>
             <index_of_refraction>
               <float sid="ior">1.45</float>
@@ -267,25 +267,25 @@
           <bind_material>
             <technique_common>
               <instance_material symbol="Steel_-_Satin-material" target="#Steel_-_Satin-material">
-                <bind_vertex_input semantic="Gate2_v1-mesh-map-0" input_semantic="TEXCOORD" input_set="0"/>
+                <bind_vertex_input semantic="TEXCOORD" input_semantic="TEXCOORD" input_set="0"/>
               </instance_material>
               <instance_material symbol="Opaque_192_192_192_-material" target="#Opaque_192_192_192_-material">
-                <bind_vertex_input semantic="Gate2_v1-mesh-map-0" input_semantic="TEXCOORD" input_set="0"/>
+                <bind_vertex_input semantic="TEXCOORD" input_semantic="TEXCOORD" input_set="0"/>
               </instance_material>
               <instance_material symbol="Red-material" target="#Red-material">
-                <bind_vertex_input semantic="Gate2_v1-mesh-map-0" input_semantic="TEXCOORD" input_set="0"/>
+                <bind_vertex_input semantic="TEXCOORD" input_semantic="TEXCOORD" input_set="0"/>
               </instance_material>
               <instance_material symbol="Black-material" target="#Black-material">
-                <bind_vertex_input semantic="Gate2_v1-mesh-map-0" input_semantic="TEXCOORD" input_set="0"/>
+                <bind_vertex_input semantic="TEXCOORD" input_semantic="TEXCOORD" input_set="0"/>
               </instance_material>
               <instance_material symbol="Left_Side_Image-material" target="#Left_Side_Image-material">
-                <bind_vertex_input semantic="Gate2_v1-mesh-map-0" input_semantic="TEXCOORD" input_set="0"/>
+                <bind_vertex_input semantic="TEXCOORD" input_semantic="TEXCOORD" input_set="0"/>
               </instance_material>
               <instance_material symbol="Right_Side_Image-material" target="#Right_Side_Image-material">
-                <bind_vertex_input semantic="Gate2_v1-mesh-map-0" input_semantic="TEXCOORD" input_set="0"/>
+                <bind_vertex_input semantic="TEXCOORD" input_semantic="TEXCOORD" input_set="0"/>
               </instance_material>
               <instance_material symbol="Opaque_255_0_0_-material" target="#Opaque_255_0_0_-material">
-                <bind_vertex_input semantic="Gate2_v1-mesh-map-0" input_semantic="TEXCOORD" input_set="0"/>
+                <bind_vertex_input semantic="TEXCOORD" input_semantic="TEXCOORD" input_set="0"/>
               </instance_material>
             </technique_common>
           </bind_material>
@@ -296,8 +296,4 @@
   <scene>
     <instance_visual_scene url="#Scene"/>
   </scene>
-<<<<<<< HEAD
 </COLLADA>
-=======
-</COLLADA>
->>>>>>> b42c8ec6e72bfc4f90bd56ecaa2ff14cd079588a
