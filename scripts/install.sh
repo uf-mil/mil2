@@ -331,7 +331,6 @@ mil_user_setup_init_colcon() {
 	set +u
 	cb --generate-compile-commands
 	set -u
-
 }
 
 # llvm stuff
