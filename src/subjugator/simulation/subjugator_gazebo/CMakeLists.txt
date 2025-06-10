@@ -49,10 +49,10 @@ add_library(DVLBridge SHARED src/DVLBridge.cc)
 # Plugin 3: DepthSensor
 add_library(DepthSensor SHARED src/DepthSensor.cc)
 
-# Plugin 3: Hydrophone
+# Plugin 4: Hydrophone
 add_library(Hydrophone SHARED src/Hydrophone.cc)
 
-# Plugin 4: Thruster Bridge
+# Plugin 5: Thruster Bridge
 add_library(ThrusterBridge SHARED src/ThrusterBridge.cc)
 
 # Ensures plugin can see include directory to access its header files

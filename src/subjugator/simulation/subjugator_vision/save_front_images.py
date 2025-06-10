@@ -10,7 +10,7 @@ from cv_bridge import CvBridge
 
 class FrontCamSaver(Node):
     def __init__(self):
-        super().__init__('image_saver')
+        super().__init__('front_cam_saver')
 
         default_dir = os.path.join(os.path.expanduser("~"), "sim_images/front")
 

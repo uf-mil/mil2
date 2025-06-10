@@ -13,7 +13,7 @@
                    true,  true,  true ]
     imu0_differential: false
     imu0_relative: true
-    imu0_remove_gravitational_acceleration: true
+    imu0_remove_gravitational_acceleration: false
     imu0_queue_size: 10
 
     odom0: /dvl/odom

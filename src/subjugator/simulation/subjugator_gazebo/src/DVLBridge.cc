@@ -23,37 +23,26 @@
  namespace dave_ros_gz_plugins
  {
  
- /* -------------------------------------------------------------------------- */
- /*                              Helper struct                                 */
- /* -------------------------------------------------------------------------- */
  struct DVLBridge::PrivateData
  {
-   std::mutex                                           mutex;
-   gz::transport::Node                                  gz_node;
+   std::mutex mutex;
+   gz::transport::Node gz_node;
  
-   /// Topic that Gazebo publishes the DVLVelocityTracking message on
-   std::string                                          dvl_topic{"/dvl/velocity"};
+   std::string dvl_topic{"/dvl/velocity"};
  
-   /// ROS publisher we create for /dvl/odom (nav_msgs/Odometry)
    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr dvl_pub;
  
-   /// Entity that this plugin is attached to (the sub’s model)
-   gz::sim::Entity                                      baseEntity{gz::sim::kNullEntity};
+   gz::sim::Entity baseEntity{gz::sim::kNullEntity};
  
-   /// Latest pose of the base link in the WORLD frame (cached in PostUpdate)
-   gz::math::Pose3d                                     lastBasePose{0, 0, 0, 0, 0, 0};
+   gz::math::Pose3d lastBasePose{0, 0, 0, 0, 0, 0};
  };
  
- /* -------------------------------------------------------------------------- */
- /*                               Constructor                                  */
- /* -------------------------------------------------------------------------- */
+
  DVLBridge::DVLBridge()
  : dataPtr(std::make_unique<PrivateData>())
  {}
  
- /* -------------------------------------------------------------------------- */
- /*                                 Configure                                  */
- /* -------------------------------------------------------------------------- */
+
  void DVLBridge::Configure(const gz::sim::Entity &_entity,
                            const std::shared_ptr<const sdf::Element> &_sdf,
                            gz::sim::EntityComponentManager &,
@@ -68,31 +57,26 @@
    auto node = std::make_shared<rclcpp::Node>("dvl_bridge_node");
    this->ros_node_ = node;
  
-   /* -- Which Gazebo topic should we subscribe to? -------------------------- */
    if (_sdf->HasElement("topic"))
      this->dataPtr->dvl_topic = _sdf->Get<std::string>("topic");
  
    gzmsg << "[DVLBridge] Gazebo DVL topic: " << this->dataPtr->dvl_topic << '\n';
  
-   /* -- Set-up Gazebo subscriber ------------------------------------------- */
    std::function<void(const gz::msgs::DVLVelocityTracking &)> cb =
        std::bind(&DVLBridge::receiveGazeboCallback, this, std::placeholders::_1);
  
    this->dataPtr->gz_node.Subscribe(this->dataPtr->dvl_topic, std::move(cb));
- 
-   /* -- ROS publisher ------------------------------------------------------- */
    this->dataPtr->dvl_pub =
        node->create_publisher<nav_msgs::msg::Odometry>("/dvl/odom", 10);
  }
  
- /* -------------------------------------------------------------------------- */
- /*                         Gazebo->ROS callback                               */
- /* -------------------------------------------------------------------------- */
+ // Gazebo->ROS callback 
+ 
  void DVLBridge::receiveGazeboCallback(const gz::msgs::DVLVelocityTracking &msg)
  {
    std::scoped_lock lk(this->dataPtr->mutex);
  
-   /* ---------- Convert world-frame velocity to body frame ------------------ */
+   // Convert world-frame velocity to body frame 
    gz::math::Vector3d v_world(msg.velocity().mean().x(),
                               msg.velocity().mean().y(),
                               msg.velocity().mean().z());
@@ -103,31 +87,28 @@
  
    gz::math::Vector3d v_body = q_w2b * v_world;
  
-   /* ---------- Populate ROS Odometry message ------------------------------ */
+   // Populate ROS Odometry message 
    nav_msgs::msg::Odometry odom;
-   odom.header.stamp.sec     = msg.header().stamp().sec();
+   odom.header.stamp.sec = msg.header().stamp().sec();
    odom.header.stamp.nanosec = msg.header().stamp().nsec();
-   odom.header.frame_id      = "base_link";
-   odom.child_frame_id       = "dvl_sensor_link";
+   odom.header.frame_id = "odom";
+   odom.child_frame_id = "base_link";
  
    odom.twist.twist.linear.x = v_body.X();
    odom.twist.twist.linear.y = v_body.Y();
    odom.twist.twist.linear.z = v_body.Z();
  
-   // DVL does not provide pose – leave zeros
    odom.pose.pose.orientation.w = 1.0;
  
-   /* --- give EKF non-zero covariance on vx,vy,vz -------------------------- */
-   constexpr double var = 0.0004;        // (0.1 m s⁻¹ σ)²
+   constexpr double var = 0.0025;           // DVL does not provide pose – leave zeros
+
    for (int k = 0; k < 3; ++k)
      odom.twist.covariance[k * 6 + k] = var;
  
    this->dataPtr->dvl_pub->publish(odom);
  }
  
- /* -------------------------------------------------------------------------- */
- /*                               PostUpdate                                   */
- /* -------------------------------------------------------------------------- */
+
  void DVLBridge::PostUpdate(const gz::sim::UpdateInfo &_info,
                             const gz::sim::EntityComponentManager &_ecm)
  {

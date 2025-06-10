@@ -132,6 +132,15 @@ def generate_launch_description():
         output="both",
     )
 
+    wrench_tuner = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("subjugator_wrench_tuner"),
+                "launch",
+                "wrench_tuner_launch.py",
+            ),
+        ),
+    )
     return LaunchDescription(
         [
             gui_cmd,
@@ -144,5 +153,6 @@ def generate_launch_description():
             controller,
             path_planner,
             trajectory_planner,
+            wrench_tuner,
         ],
     )

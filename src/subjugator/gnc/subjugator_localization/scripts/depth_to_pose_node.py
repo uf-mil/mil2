@@ -13,6 +13,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 class DepthToPose(Node):
     def __init__(self):
         super().__init__("depth_to_pose")
+        self.bias = None
         self.sub = self.create_subscription(
             DepthStamped, "/depth", self.cb, 10
         )
@@ -23,17 +24,21 @@ class DepthToPose(Node):
     def cb(self, msg: DepthStamped):
         p = PoseWithCovarianceStamped()
         p.header.stamp = msg.header.stamp
-        p.header.frame_id = "odom"  # <- the key change
+        p.header.frame_id = "odom" 
 
-        # Gazebo water depth: positive downward ⇒ world Z is -depth
-        p.pose.pose.position.z = -msg.depth
+        if self.bias is None:
+            self.bias = msg.depth
+
+        relative_depth = msg.depth - self.bias
+        p.pose.pose.position.z = -relative_depth
+        
         p.pose.pose.orientation.w = 1.0  
         p.pose.covariance[0] = 1e3
         p.pose.covariance[7] = 1e3
-        p.pose.covariance[14] = 0.0025
+        p.pose.covariance[14] = 0.000025
         p.pose.covariance[21] = 1e3
         p.pose.covariance[28] = 1e3
-        p.pose.covariance[35] = 1e3    # variance on Z (0.1 m²)
+        p.pose.covariance[35] = 1e3
         self.pub.publish(p)
 
 
