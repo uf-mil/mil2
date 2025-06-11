@@ -25,7 +25,11 @@ def generate_launch_description():
         launch_arguments={
             "gz_args": [
                 PathJoinSubstitution(
-                    [pkg_project_gazebo, "worlds", "robosub_2024.world"],  # CHANGE THIS
+                    [
+                        pkg_project_gazebo,
+                        "worlds",
+                        "farhorizontal.world",
+                    ],  # CHANGE THIS
                 ),
                 " --render-engine",
                 " ogre",
