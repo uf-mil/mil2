@@ -3,7 +3,7 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 
-#include "mil_preflight/job.h"
+#include "mil_preflight/ui.h"
 
 namespace mil_preflight
 {
