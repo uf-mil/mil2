@@ -19,9 +19,13 @@
 namespace mil_preflight
 {
 
+class Job;
+class Test;
+
 class Action
 {
   public:
+    friend class Test;
     struct Report
     {
         bool success;
@@ -65,130 +69,198 @@ class Action
         }
     };
 
-    // class Feedback
-    // {
-    // public:
-    //   Feedback() : impl_(std::make_shared<Impl>())
-    //   {
-    //   }
-
-    //   Feedback(Feedback&& feedback)
-    //   {
-    //     impl_ = std::move(feedback.impl_);
-    //   }
-    //   Feedback(Feedback const& feedback)
-    //   {
-    //     impl_ = feedback.impl_;
-    //   }
-    //   Feedback& operator=(Feedback&& feedback)
-    //   {
-    //     impl_ = std::move(feedback.impl_);
-    //     return *this;
-    //   }
-    //   Feedback& operator=(Feedback const& feedback)
-    //   {
-    //     impl_ = feedback.impl_;
-    //     return *this;
-    //   }
-
-    //   ~Feedback()
-    //   {
-    //   }
-
-    //   void set(int index)
-    //   {
-    //     std::unique_lock<std::mutex> lock(impl_->mutex_);
-    //     if (!impl_->answered_)
-    //     {
-    //       impl_->index_ = index;
-    //       impl_->answered_ = true;
-    //       impl_->cond_.notify_all();
-    //     }
-    //   }
-
-    //   int get() const
-    //   {
-    //     std::unique_lock<std::mutex> lock(impl_->mutex_);
-    //     impl_->cond_.wait(lock, [this] { return impl_->answered_; });
-    //     return impl_->index_;
-    //   }
-
-    // private:
-    //   struct Impl
-    //   {
-    //     int index_ = -1;
-    //     bool answered_ = false;
-    //     std::condition_variable cond_;
-    //     std::mutex mutex_;
-    //   };
-
-    //   std::shared_ptr<Impl> impl_;
-    // };
-
     Action() {};
     ~Action() {};
 
-    virtual void onStart() = 0;
-    virtual void onFinish(Report const& report) = 0;
     virtual std::string const& getName() const = 0;
     virtual std::vector<std::string> const& getParameters() const = 0;
-    virtual std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) = 0;
 
   protected:
-    std::vector<std::string> stdouts_;
-    std::vector<std::string> stderrs_;
+    virtual void onStart() = 0;
+    virtual void onFinish(Report const& report) = 0;
+    virtual std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) = 0;
+
+  private:
+    enum class State
+    {
+        START,
+        STDOUT,
+        SUMMERY,
+        QUESTION,
+        OPTIONS,
+    };
+
+    Action::Report run(boost::process::ipstream& out, boost::process::ipstream& err, boost::process::opstream& in)
+    {
+        onStart();
+
+        Action::Report actionReport;
+        State state = State::START;
+
+        std::string line;
+
+        std::string question;
+        std::vector<std::string> options;
+
+        while (true)
+        {
+            if (state == State::START)
+            {
+                try
+                {
+                    in << getName() << std::endl;
+                    for (std::string const& parameter : getParameters())
+                    {
+                        in << parameter << std::endl;
+                    }
+                    in << GS << std::endl;
+                }
+                catch (std::exception const& e)
+                {
+                    actionReport.summery = "Broken pipe: " + std::string(e.what());
+                    break;
+                }
+                state = State::STDOUT;
+            }
+            else if (state == State::STDOUT)
+            {
+                if (!std::getline(out, line))
+                {
+                    actionReport.summery = "Broken pipe";
+                    break;
+                }
+
+                if (line[0] == ACK)
+                {
+                    state = State::SUMMERY;
+                    actionReport.success = true;
+                }
+                else if (line[0] == NCK)
+                {
+                    state = State::SUMMERY;
+                }
+                else if (line[0] == BEL)
+                {
+                    state = State::QUESTION;
+                }
+                else
+                {
+                    actionReport.stdouts.push_back(std::move(line));
+                }
+            }
+            else if (state == State::QUESTION)
+            {
+                if (!std::getline(out, question, GS))
+                {
+                    actionReport.summery = "Broken pipe";
+                    break;
+                }
+
+                state = State::OPTIONS;
+            }
+            else if (state == State::OPTIONS)
+            {
+                if (!std::getline(out, line, GS))
+                {
+                    actionReport.summery = "Broken pipe";
+                    break;
+                }
+
+                if (line[0] == EOT)
+                {
+                    std::shared_future<int> feedback = onQuestion(std::move(question), std::move(options));
+                    try
+                    {
+                        in << feedback.get() << std::endl;
+                        options.clear();
+                    }
+                    catch (std::exception const& e)
+                    {
+                        actionReport.summery = "Broken pipe: " + std::string(e.what());
+                        break;
+                    }
+                    state = State::STDOUT;
+                }
+                else
+                {
+                    options.push_back(std::move(line));
+                }
+            }
+            else if (state == State::SUMMERY)
+            {
+                if (!std::getline(out, actionReport.summery))
+                {
+                    break;
+                }
+
+                while (std::getline(err, line))
+                {
+                    if (line[0] == EOT)
+                        break;
+                    actionReport.stderrs.push_back(std::move(line));
+                }
+
+                break;
+            }
+        }
+
+        onFinish(actionReport);
+        return actionReport;
+    }
 };
 
 class Test
 {
   public:
+    friend class Job;
     using Report = std::unordered_map<std::string, Action::Report>;
 
     Test() {};
     ~Test() {};
 
+    virtual std::string const& getName() const = 0;
+    virtual std::string const& getPlugin() const = 0;
+
+  protected:
     virtual std::optional<std::reference_wrapper<Action>> createAction(std::string&& name,
                                                                        std::vector<std::string>&& parameters) = 0;
     virtual std::optional<std::reference_wrapper<Action>> nextAction() = 0;
     virtual void onFinish(Report const& report) = 0;
-    virtual std::string const& getName() const = 0;
-    virtual std::string const& getPlugin() const = 0;
-};
-
-class Question
-{
-  public:
-    Question()
-    {
-    }
-    ~Question()
-    {
-        answer(-1);
-    }
-
-    inline void answer(int index)
-    {
-        std::unique_lock<std::mutex> lock(mutex_);
-        if (!answered_)
-        {
-            index_ = index;
-            answered_ = true;
-            cond_.notify_all();
-        }
-    }
-
-    inline int ask()
-    {
-        std::unique_lock<std::mutex> lock(mutex_);
-        cond_.wait(lock, [this] { return answered_; });
-        return index_;
-    }
 
   private:
-    int index_ = -1;
-    bool answered_ = false;
-    std::condition_variable cond_;
-    std::mutex mutex_;
+    boost::filesystem::path binPath_ = boost::process::search_path("mil_preflight_backend");
+
+    Test::Report run()
+    {
+        boost::process::ipstream childOut;
+        boost::process::ipstream childErr;
+        boost::process::opstream childIn;
+        std::vector<std::string> args;
+
+        boost::process::child backend = boost::process::child(
+            binPath_.string(), getPlugin(), boost::process::std_in<childIn, boost::process::std_out> childOut,
+            boost::process::std_err > childErr);
+
+        Test::Report testReport;
+        std::optional<std::reference_wrapper<Action>> actionOptional = nextAction();
+
+        while (actionOptional.has_value())
+        {
+            Action& action = actionOptional.value();
+            Action::Report actionReport = action.run(childOut, childErr, childIn);
+
+            testReport.emplace(action.getName(), std::move(actionReport));
+            actionOptional = nextAction();
+        }
+
+        if (!childIn.fail())
+            childIn << EOT << std::endl;
+
+        backend.join();
+        onFinish(testReport);
+
+        return testReport;
+    }
 };
 
 class Job
@@ -201,7 +273,11 @@ class Job
     {
         initialize(filePath);
     }
-    ~Job() {};
+    ~Job()
+    {
+        if (future_.valid())
+            future_.wait();
+    };
 
     bool initialize(std::string const& filePath)
     {
@@ -246,18 +322,30 @@ class Job
         return true;
     }
 
+    void runAsync()
+    {
+        future_ = std::async(std::launch::async, std::bind(&Job::run, this));
+    }
+
     void run()
     {
-        if (isRunning())
-            return;
+        Job::Report jobReport;
+        std::optional<std::reference_wrapper<Test>> testOptional = nextTest();
 
-        future_ = std::async(std::launch::async, std::bind(&Job::runJob, this));
+        while (testOptional.has_value())
+        {
+            Test& test = testOptional.value();
+            Test::Report testReport = test.run();
+
+            jobReport.emplace(test.getName(), std::move(testReport));
+            testOptional = nextTest();
+        }
+
+        onFinish(std::move(jobReport));
     }
 
     void cancel()
     {
-        if (backend_.valid() && backend_.joinable())
-            backend_.terminate();
     }
 
     bool isRunning()
@@ -277,173 +365,6 @@ class Job
     virtual void onFinish(Report&& report) = 0;
 
   private:
-    enum class State
-    {
-        START,
-        STDOUT,
-        SUMMERY,
-        QUESTION,
-        OPTIONS,
-    };
-
     std::future<void> future_;
-    boost::process::child backend_;
-    std::filesystem::path binPath_ = std::filesystem::canonical("/proc/self/exe").parent_path();
-
-    void runJob()
-    {
-        Job::Report jobReport;
-        while (true)
-        {
-            std::optional<std::reference_wrapper<Test>> testOptional = nextTest();
-            if (!testOptional.has_value())
-                break;
-
-            Test& test = testOptional.value();
-
-            boost::process::ipstream childOut;
-            boost::process::ipstream childErr;
-            boost::process::opstream childIn;
-            std::vector<std::string> args;
-
-            backend_ = boost::process::child((binPath_ / "mil_preflight_backend").string(), test.getPlugin(),
-                                             boost::process::std_in<childIn, boost::process::std_out> childOut,
-                                             boost::process::std_err > childErr);
-
-            std::string line;
-
-            std::string question;
-            std::vector<std::string> options;
-
-            Test::Report testReport;
-            while (true)
-            {
-                std::optional<std::reference_wrapper<Action>> actionOptional = test.nextAction();
-                if (!actionOptional.has_value())
-                    break;
-
-                Action& action = actionOptional.value();
-                action.onStart();
-
-                Action::Report actionReport;
-                State state = State::START;
-
-                while (true)
-                {
-                    if (state == State::START)
-                    {
-                        try
-                        {
-                            childIn << action.getName() << std::endl;
-                            for (std::string const& parameter : action.getParameters())
-                            {
-                                childIn << parameter << std::endl;
-                            }
-                            childIn << GS << std::endl;
-                        }
-                        catch (std::exception const& e)
-                        {
-                            actionReport.summery = "Broken pipe: " + std::string(e.what());
-                            break;
-                        }
-                        state = State::STDOUT;
-                    }
-                    else if (state == State::STDOUT)
-                    {
-                        if (!std::getline(childOut, line))
-                        {
-                            actionReport.summery = "Broken pipe";
-                            break;
-                        }
-
-                        if (line[0] == ACK)
-                        {
-                            state = State::SUMMERY;
-                            actionReport.success = true;
-                        }
-                        else if (line[0] == NCK)
-                        {
-                            state = State::SUMMERY;
-                        }
-                        else if (line[0] == BEL)
-                        {
-                            state = State::QUESTION;
-                        }
-                        else
-                        {
-                            actionReport.stdouts.push_back(std::move(line));
-                        }
-                    }
-                    else if (state == State::QUESTION)
-                    {
-                        if (!std::getline(childOut, question, GS))
-                        {
-                            actionReport.summery = "Broken pipe";
-                            break;
-                        }
-
-                        state = State::OPTIONS;
-                    }
-                    else if (state == State::OPTIONS)
-                    {
-                        if (!std::getline(childOut, line, GS))
-                        {
-                            actionReport.summery = "Broken pipe";
-                            break;
-                        }
-
-                        if (line[0] == EOT)
-                        {
-                            std::shared_future<int> feedback =
-                                action.onQuestion(std::move(question), std::move(options));
-                            try
-                            {
-                                childIn << feedback.get() << std::endl;
-                                options.clear();
-                            }
-                            catch (std::exception const& e)
-                            {
-                                actionReport.summery = "Broken pipe: " + std::string(e.what());
-                                break;
-                            }
-                            state = State::STDOUT;
-                        }
-                        else
-                        {
-                            options.push_back(std::move(line));
-                        }
-                    }
-                    else if (state == State::SUMMERY)
-                    {
-                        if (!std::getline(childOut, actionReport.summery))
-                        {
-                            break;
-                        }
-
-                        while (std::getline(childErr, line))
-                        {
-                            if (line[0] == EOT)
-                                break;
-                            actionReport.stderrs.push_back(std::move(line));
-                        }
-
-                        break;
-                    }
-                }
-
-                action.onFinish(actionReport);
-                testReport.emplace(action.getName(), std::move(actionReport));
-            }
-
-            if (!childIn.fail())
-                childIn << EOT << std::endl;
-
-            backend_.join();
-            test.onFinish(testReport);
-            jobReport.emplace(test.getName(), std::move(testReport));
-        }
-
-        onFinish(std::move(jobReport));
-    }
 };
 }  // namespace mil_preflight
