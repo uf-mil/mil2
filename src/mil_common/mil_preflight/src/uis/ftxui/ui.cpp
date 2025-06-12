@@ -5,6 +5,7 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 
+#include "mil_preflight/uis/ftxui/dialog.h"
 #include "mil_preflight/uis/ftxui/reportsPage.h"
 #include "mil_preflight/uis/ftxui/testsPage.h"
 
@@ -98,8 +99,19 @@ class FTXUI : public UIBase
 
         root = std::make_shared<Root>();
 
-        Component tests_page = std::make_shared<mil_preflight::TestsPage>(filename) | flex;
-        Component reports_page = std::make_shared<mil_preflight::ReportsPage>() | flex;
+        auto tests_page = std::make_shared<mil_preflight::TestsPage>([this](TestsPage& page) { run_job_async(page); });
+
+        if (!create_job(filename, *tests_page))
+        {
+            Dialog::Option option;
+            option.buttonLabels = { "Ok" };
+            option.title = "Error";
+            option.question = "Failed to read the config file: " + filename;
+            std::shared_ptr<Dialog> dialog = std::make_shared<Dialog>(std::move(option));
+            dialog->show();
+        }
+
+        Component reports_page = std::make_shared<mil_preflight::ReportsPage>();
 
         Component about_page = Renderer(
             [this]

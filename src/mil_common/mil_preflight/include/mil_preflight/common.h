@@ -1,3 +1,5 @@
+#pragma once
+
 namespace mil_preflight
 {
 static constexpr char ETX = 0x03;
