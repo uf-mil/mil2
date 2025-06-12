@@ -456,7 +456,7 @@ TestsPage::TestsPage(std::string const& filePath)
         [=]
         {
             main_->TakeFocus();
-            run();
+            runAsync();
         },
         buttonOption);
 
