@@ -7,7 +7,7 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 
-#include "mil_preflight/job.h"
+#include "mil_preflight/ui.h"
 
 namespace mil_preflight
 {
@@ -16,7 +16,7 @@ using namespace ftxui;
 class TestsPage : public ComponentBase, public Job
 {
   public:
-    TestsPage(std::string const& filePath);
+    TestsPage(std::function<void(TestsPage& page)> onRun);
     ~TestsPage();
 
   private:

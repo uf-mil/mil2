@@ -450,7 +450,7 @@ bool TestTab::OnMouseEvent(Event event)
 
 // }
 
-TestsPage::TestsPage(std::string const& filePath)
+TestsPage::TestsPage(std::function<void(TestsPage& page)> onRun)
 {
     Components pages;
     Components tabs;
@@ -480,7 +480,7 @@ TestsPage::TestsPage(std::string const& filePath)
         [=]
         {
             main_->TakeFocus();
-            runAsync();
+            onRun(*this);
         },
         buttonOption);
 
@@ -516,22 +516,10 @@ TestsPage::TestsPage(std::string const& filePath)
     Component checkBox = Checkbox("Select all", &selectAll_, option);
     Component bottom = Container::Horizontal({ checkBox | vcenter | flex, runButton });
     Add(Container::Vertical({ main_ | flex, Renderer([] { return separator(); }), bottom }));
-
-    if (!initialize(filePath))
-    {
-        Dialog::Option option;
-        option.buttonLabels = { "Ok" };
-        option.title = "Error";
-        option.question = "Failed to read the config file: " + filePath;
-        std::shared_ptr<Dialog> dialog = std::make_shared<Dialog>(std::move(option));
-        dialog->show();
-    }
 }
 
 TestsPage::~TestsPage()
 {
-    if (running_)
-        cancel();
 }
 
 std::optional<std::reference_wrapper<Test>> TestsPage::nextTest()
