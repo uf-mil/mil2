@@ -33,6 +33,7 @@ rosidl_generate_interfaces(
   "srv/SetValve.srv"
   "srv/MotionPlan.srv"
   "srv/Sonar.srv"
+  "srv/StringTrigger.srv"
   DEPENDENCIES
   geometry_msgs
   std_msgs
