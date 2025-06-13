@@ -21,6 +21,7 @@ class WpNode(Node):
 
     def set_wp(self, req, res):
         self.wps.add_waypoint(req.wp_name, wp_manager.pose_from_odom(self.current_pose))
+        self.get_logger().info(f"adding new waypoint: {req.wp_name}")
         return res
 
     def goto_wp(self, req, res):
@@ -32,6 +33,7 @@ class WpNode(Node):
             return res
 
         goal: Pose = self.wps.waypoints[wp_name].as_geo_msg_pose()
+        self.get_logger().info(f"going to waypoint: {req.wp_name}")
 
 
         self.goal_pose_pub_.publish(goal)
