@@ -13,14 +13,38 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 import math
 from geometry_msgs.msg import PoseWithCovarianceStamped
+import subprocess
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.live import Live
+from rich.panel import Panel
 from rich.table import Table
 
-class TopicHz(Node):
+# TODO this won't work when there are two cameras...
+def find_dell_camera() -> str | None:
+    try:
+        output = subprocess.check_output(['v4l2-ctl', '--list-devices'], text=True)
+        devices = output.strip().split('\n\n')
+        for device_block in devices:
+            if 'Dell' in device_block:
+                # print("Dell camera found:")
+                return device_block
+        # print("Dell camera not found.")
+    except subprocess.CalledProcessError as e:
+        # print("Error running v4l2-ctl:", e)
+        pass
+    except FileNotFoundError:
+        # print("v4l2-ctl not installed.")
+        pass
+    return None
+
+class DashboardNode(Node):
     def __init__(self):
-        super().__init__('topic_hz')
+        super().__init__('dashboard_node')
+
+        self.console = Console()
+        self.live = Live(console=self.console, refresh_per_second=10, transient=False)
+        self.live.start()
 
         # stores subscriptions with their topic names
         self.subscriptions_: dict[str, Subscription] = {}
@@ -52,10 +76,26 @@ class TopicHz(Node):
     # 4. wrenches?
     # 5. cameras
     def print_it(self):
-        # Create a Console object
-        console = Console()
-        console.clear()
 
+        table = self.make_table_of_frequencies()
+        panel = self.make_panel_for_cam()
+
+        self.live.update(Group(panel, table))
+
+    def make_panel_for_cam(self) -> Panel:
+        cmd_output: None | str = find_dell_camera()
+
+        
+        panel: Panel
+        if cmd_output is not None:
+            panel = Panel.fit(cmd_output, title="Dell Camera Device Info", style="green")
+        else:
+            panel = Panel.fit("No camera", title="Dell Camera Device Info", style="red")
+
+        return panel
+
+
+    def make_table_of_frequencies(self) -> Table:
         frequencies = self.report_frequencies()
 
         # Create a Table object
@@ -75,9 +115,7 @@ class TopicHz(Node):
             hz:float = frequencies[topic_name]
             status_emoji = ":white_check_mark:" if math.floor(hz) != 0 else ":x:"
             table.add_row(topic_name, str(round(hz,2)), status_emoji)
-
-        # Print the table to the console
-        console.print(table)
+        return table
 
     # curry = yummy
     def _make_callback(self, topic_name):
@@ -113,9 +151,10 @@ class TopicHz(Node):
 def main(args=None):
     rclpy.init(args=args)
     
-    monitor = TopicHz()
+    monitor = DashboardNode()
     rclpy.spin(monitor)
     
+    monitor.live.stop()
     monitor.destroy_node()
     rclpy.shutdown()
 
