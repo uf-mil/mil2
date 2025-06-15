@@ -243,3 +243,47 @@ alias reset-localization="ros2 service call /subjugator_localization/reset std_s
 alias start-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: true}"'
 alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: false}"'
 alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"
+
+# aliases for the worlds coolest dashboard
+dashboard() {
+    SESSION_NAME="subjugator_dashboard"
+
+    # Check if the tmux session exists
+    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+        tmux attach-session -t "$SESSION_NAME"
+    else
+        echo "Creating new tmux session: $SESSION_NAME"
+        tmux new-session -s "$SESSION_NAME" "ros2 run dashboard dashboard"
+    fi
+}
+
+# list all tmux sessions, and let user join one
+tmux_ls() {
+    # Check if tmux is running
+    if ! tmux ls &>/dev/null; then
+        echo "No tmux sessions found."
+        return 1
+    fi
+
+    # Get list of sessions and format with attached clients
+    mapfile -t sessions < <(tmux list-sessions -F "#{session_name} #{session_attached} #{session_windows} #{session_created} #{session_id} #{session_many_attached} #{session_attached_clients}")
+
+    echo "Available tmux sessions:"
+    i=1
+    for session in "${sessions[@]}"; do
+        session_name=$(echo "$session" | awk '{print $1}')
+        attached_clients=$(echo "$session" | awk '{print $7}')
+        echo "[$i] $session_name (attached clients: $attached_clients)"
+        session_names[$i]="$session_name"
+        ((i++))
+    done
+
+    echo -n "Enter session number to attach (or press Enter to cancel): "
+    read -r choice
+
+    if [[ "$choice" =~ ^[0-9]+$ ]] && [[ -n "${session_names[$choice]}" ]]; then
+        tmux attach-session -t "${session_names[$choice]}"
+    else
+        echo "Cancelled or invalid choice."
+    fi
+}
