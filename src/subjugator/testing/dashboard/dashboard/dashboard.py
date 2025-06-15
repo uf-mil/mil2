@@ -3,13 +3,14 @@
 # wrenches
 # ping navtube, ping dvl:q
 
-
 import rclpy
 from rclpy.node import Node
 from rclpy.subscription import Subscription
 import time
 from collections import defaultdict, deque
 from nav_msgs.msg import Odometry
+from rich.align import Align
+from rich.padding import Padding
 from sensor_msgs.msg import Imu
 import math
 from geometry_msgs.msg import PoseWithCovarianceStamped, Wrench
@@ -43,6 +44,7 @@ class DashboardNode(Node):
         super().__init__('dashboard_node')
 
         self.console = Console()
+        self.console.clear()
         self.live = Live(console=self.console, refresh_per_second=10, transient=False)
         self.live.start()
 
@@ -87,8 +89,13 @@ class DashboardNode(Node):
         camera_panel = self.make_panel_for_cam()
         wrench_table = self.make_wrench_table()
 
+        group = Group(camera_panel, topic_table, wrench_table)
 
-        self.live.update(Group(camera_panel, topic_table, wrench_table))
+        panel = Panel.fit(group, title="SubjuGator Dashboard", border_style="green", padding=(1, 2))
+        panel = Align.center(panel)
+        panel = Padding(panel, (3, 0, 0, 0))
+
+        self.live.update(panel)
 
     def make_wrench_table(self) -> Table:
         table = Table(title="Wrench Message", show_header=True, header_style="bold magenta")
