@@ -1,26 +1,26 @@
 # TODO add localization, pid running
 
+# sensors, localization, wrenches, cameras exist??
+# ping navtube, ping dvl:q
+
+
 import rclpy
-import json
 from rclpy.node import Node
 from rclpy.subscription import Subscription
 import time
 from collections import defaultdict, deque
 from nav_msgs.msg import Odometry
-from std_msgs.msg import String
 from sensor_msgs.msg import Imu
 import math
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
 from rich.console import Console
+from rich.live import Live
 from rich.table import Table
 
 class TopicHz(Node):
     def __init__(self):
         super().__init__('topic_hz')
-
-        # publishes frequencies to a topic
-        self.pub_ = self.create_publisher(String, "/dashboard/hz", 10)
 
         # stores subscriptions with their topic names
         self.subscriptions_: dict[str, Subscription] = {}
@@ -30,10 +30,9 @@ class TopicHz(Node):
         self.add_topic("/imu/data", Imu)
         self.add_topic("/dvl/odom", Odometry)
         self.add_topic("/depth/pose", PoseWithCovarianceStamped)
+        self.add_topic("/odometry/filtered", Odometry) # UNTESTED
 
-        # Timer to print frequencies every 2 seconds TODO del me
-        self.create_timer(2.0, self.report_frequencies)
-        # self.create_timer(0.5, self.print_it)
+        self.create_timer(0.1, self.print_it)
 
     def add_topic(self, new_topic_name: str, topic_msg_type):
         if new_topic_name in self.subscriptions_.keys():
@@ -46,10 +45,18 @@ class TopicHz(Node):
             10
         )
 
-    def print_it(self, frequencies: dict[str, float]):
+    # print it does a bunch of stuff... 
+    # 1. report topics
+    # 2. is the sub launched?
+    # 3. is the sub killed? (sorta hard to check)
+    # 4. wrenches?
+    # 5. cameras
+    def print_it(self):
         # Create a Console object
         console = Console()
         console.clear()
+
+        frequencies = self.report_frequencies()
 
         # Create a Table object
         table = Table(title="Topic Status Table")
@@ -59,10 +66,15 @@ class TopicHz(Node):
         table.add_column("Hz", justify="right", style="magenta")
         table.add_column("Status", style="green")
 
-        # Add some example rows
-        for name, hz in frequencies.items():
+        for topic_name in self.subscriptions_.keys():
+            there_is_topic_data = topic_name in frequencies.keys()
+            if not there_is_topic_data:
+                table.add_row(topic_name, "0", ":x:")
+                continue
+
+            hz:float = frequencies[topic_name]
             status_emoji = ":white_check_mark:" if math.floor(hz) != 0 else ":x:"
-            table.add_row(name, str(hz), status_emoji)
+            table.add_row(topic_name, str(round(hz,2)), status_emoji)
 
         # Print the table to the console
         console.print(table)
@@ -74,19 +86,19 @@ class TopicHz(Node):
             self.timestamp_history[topic_name].append(now)
         return callback
 
-    def report_frequencies(self):
+    def report_frequencies(self) -> dict[str, float]:
         frequencies: dict[str, float] = {}
         for topic, timestamps in self.timestamp_history.items():
             # check for not enough data
             if len(timestamps) < 2:
-                frequencies[topic]=0
+                frequencies[topic]=0.0
                 continue
 
             # check for data stopped coming
             seconds_since_last_msg = abs(time.time() - timestamps[-1])
             timeout_seconds = 1
             if seconds_since_last_msg > timeout_seconds:
-                frequencies[topic]=0
+                frequencies[topic]=0.0
                 continue
 
             # calculate Hz
@@ -96,14 +108,7 @@ class TopicHz(Node):
             avg_interval = sum(intervals) / len(intervals)
             hz = 1.0 / avg_interval if avg_interval > 0 else 0.0
             frequencies[topic]=hz
-        # self.to_json_and_publish(frequencies)
-        self.print_it(frequencies)
-
-    def to_json_and_publish(self, frequencies: dict[str, float]):
-        json_dict:str = json.dumps(frequencies)
-        msg = String()
-        msg.data = json_dict
-        self.pub_.publish(msg)
+        return frequencies
 
 def main(args=None):
     rclpy.init(args=args)
