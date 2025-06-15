@@ -1,6 +1,6 @@
 # TODO add localization, pid running
 
-# sensors, localization, wrenches, cameras exist??
+# wrenches
 # ping navtube, ping dvl:q
 
 
@@ -12,7 +12,7 @@ from collections import defaultdict, deque
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 import math
-from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped, Wrench
 import subprocess
 
 from rich.console import Console, Group
@@ -58,6 +58,12 @@ class DashboardNode(Node):
 
         self.create_timer(0.1, self.print_it)
 
+        self.wrench_sub_ = self.create_subscription(Wrench, "/cmd/wrench", self.wrench_cb, 10)
+        self.most_recent_wrench: Wrench = Wrench()
+
+    def wrench_cb(self, msg):
+        self.most_recent_wrench = msg
+
     def add_topic(self, new_topic_name: str, topic_msg_type):
         if new_topic_name in self.subscriptions_.keys():
             raise Exception(f"topic name: {new_topic_name} already listened to")
@@ -77,10 +83,33 @@ class DashboardNode(Node):
     # 5. cameras
     def print_it(self):
 
-        table = self.make_table_of_frequencies()
-        panel = self.make_panel_for_cam()
+        topic_table = self.make_table_of_frequencies()
+        camera_panel = self.make_panel_for_cam()
+        wrench_table = self.make_wrench_table()
 
-        self.live.update(Group(panel, table))
+
+        self.live.update(Group(camera_panel, topic_table, wrench_table))
+
+    def make_wrench_table(self) -> Table:
+        table = Table(title="Wrench Message", show_header=True, header_style="bold magenta")
+
+        table.add_column("Component", justify="center", style="cyan", no_wrap=True)
+        table.add_column("X", justify="right")
+        table.add_column("Y", justify="right")
+        table.add_column("Z", justify="right")
+
+        # Add force and torque rows
+        table.add_row("Force",
+                      f"{self.most_recent_wrench.force.x:.3f}",
+                      f"{self.most_recent_wrench.force.y:.3f}",
+                      f"{self.most_recent_wrench.force.z:.3f}")
+
+        table.add_row("Torque",
+                      f"{self.most_recent_wrench.torque.x:.3f}",
+                      f"{self.most_recent_wrench.torque.y:.3f}",
+                      f"{self.most_recent_wrench.torque.z:.3f}")
+
+        return table
 
     def make_panel_for_cam(self) -> Panel:
         cmd_output: None | str = find_dell_camera()
