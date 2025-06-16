@@ -87,7 +87,6 @@
  
    gz::math::Vector3d v_body = q_w2b * v_world;
  
-   // Populate ROS Odometry message 
    nav_msgs::msg::Odometry odom;
    odom.header.stamp.sec = msg.header().stamp().sec();
    odom.header.stamp.nanosec = msg.header().stamp().nsec();
@@ -100,8 +99,7 @@
  
    odom.pose.pose.orientation.w = 1.0;
  
-   constexpr double var = 0.0025;           // DVL does not provide pose – leave zeros
-
+   constexpr double var = 0.0002;           // DVL does not provide pose
    for (int k = 0; k < 3; ++k)
      odom.twist.covariance[k * 6 + k] = var;
  
@@ -115,14 +113,12 @@
    if (_info.paused)
      return;
  
-   /* -- Cache current pose of the vehicle in world ENU --------------------- */
    if (auto poseComp =
            _ecm.Component<gz::sim::components::Pose>(this->dataPtr->baseEntity))
    {
      this->dataPtr->lastBasePose = poseComp->Data();
    }
  
-   /* -- Allow rclcpp to flush publications --------------------------------- */
    rclcpp::spin_some(this->ros_node_);
  }
  

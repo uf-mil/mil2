@@ -17,7 +17,7 @@
 
     <!-- Inertial Properties -->
     <inertial>
-      <origin rpy="0 0 0" xyz="0.3505 0 0"/>
+      <origin rpy="0 0 0" xyz="0.352 0 0"/>
       <!-- Need to be properly calculated at some point -->
       <mass value="20.5"/>
       <inertia ixx="2.4" ixy="0" ixz="0" iyy="2.4" iyz="0.0" izz="3.0"/>
@@ -35,7 +35,7 @@
       <!-- This collision is for calculating the buoyant forces-->
       <origin rpy="0 0 0" xyz="0.354 0 0"/>
       <geometry>
-        <sphere radius="0.1762"/>
+        <sphere radius="0.1695"/>
       </geometry>
     </collision>
 
@@ -82,18 +82,12 @@
   <gazebo>
     <plugin filename="gz-sim-hydrodynamics-system" name="gz::sim::systems::Hydrodynamics">
       <link_name>base_link</link_name>
-      <xUabsU>-25</xUabsU>
-      <xU>-50</xU>
-      <yVabsV>-25</yVabsV>
-      <yV>-50</yV>
-      <zWabsW>-25</zWabsW>
-      <zW>-50</zW>
-      <kPabsP>-25</kPabsP>
-      <kP>-50</kP>
-      <mQabsQ>-25</mQabsQ>
-      <mQ>-50</mQ>
-      <nRabsR>-25</nRabsR>
-      <nR>-50</nR>
+      <xU>-30</xU>   <xUabsU>-15</xUabsU>
+      <yV>-40</yV>   <yVabsV>-25</yVabsV>
+      <zW>-50</zW>   <zWabsW>-25</zWabsW>
+      <kP>-30</kP>   <kPabsP>-8</kPabsP>
+      <mQ>-35</mQ>   <mQabsQ>-10</mQabsQ>
+      <nR>-40</nR>   <nRabsR>-20</nRabsR>
     </plugin>
 
     <plugin filename="ThrusterBridge" name="thrusterBridge::ThrusterBridge"/>
@@ -114,12 +108,12 @@
     xyz="0.65164 -0.00588 0.052145"
     rpy="0 3.14159 1.570797"
     rate="210"
-    ax="0.015707963"
-    ay="0.015707963"
-    az="0.015707963"
-    lx="0.8825985"
-    ly="0.08825985"
-    lz="0.08825985"
+    ax="0.0"
+    ay="0.0"
+    az="0.0"
+    lx="0.0"
+    ly="0.0"
+    lz="0.0"
   />
 
   <!--Depth Sensor-->
