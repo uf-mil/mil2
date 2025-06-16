@@ -99,7 +99,7 @@
  
    odom.pose.pose.orientation.w = 1.0;
  
-   constexpr double var = 0.0002;           // DVL does not provide pose
+   constexpr double var = 0.00002;           // DVL does not provide pose
    for (int k = 0; k < 3; ++k)
      odom.twist.covariance[k * 6 + k] = var;
  
