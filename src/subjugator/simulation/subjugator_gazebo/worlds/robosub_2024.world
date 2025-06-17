@@ -368,14 +368,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -695,14 +695,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -1022,14 +1022,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -1349,14 +1349,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
