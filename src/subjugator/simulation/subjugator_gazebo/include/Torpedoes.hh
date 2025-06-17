@@ -10,6 +10,7 @@
 
 #include <gz/math/Pose3.hh>  // For gz::math::Pose3d
 #include <gz/sim/EntityComponentManager.hh>
+#include <gz/sim/EventManager.hh>
 #include <gz/sim/InstallationDirectories.hh>
 #include <gz/sim/Model.hh>
 #include <gz/sim/System.hh>  // For gz::sim::System
@@ -43,8 +44,8 @@ class Torpedoes : public gz::sim::System, public gz::sim::ISystemConfigure, publ
     gz::sim::Entity modelEntity_{ gz::sim::kNullEntity };      // World Entity
     gz::sim::Entity torpedoesEntity_{ gz::sim::kNullEntity };  // Torpedoes Entity
 
-    // World SDF //
-    std::shared_ptr<sdf::Element const> sdf_;
+    // Sub9 SDF //
+    std::shared_ptr<sdf::Element const> sub9_SDF;
 };
 
 }  // namespace torpedoes

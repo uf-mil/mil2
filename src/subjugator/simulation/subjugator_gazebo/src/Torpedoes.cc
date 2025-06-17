@@ -1,4 +1,5 @@
 #include "Torpedoes.hh"
+
 #include "gz/plugin/Register.hh"  // For GZ_ADD_PLUGIN
 
 #include <gz/common/Console.hh>
@@ -20,8 +21,8 @@ void Torpedoes::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::El
     // Gather necessary information for future GatherWorldInfo() call
     this->modelEntity_ = entity;
 
-    // Create copy of the SDF element to perform modifications due to const
-    this->sdf_ = sdf->Clone();
+    // Create copy of the Sub SDF element to perform modifications due to const
+    this->sub9_SDF = sdf->Clone();
 
     // Initialize the ROS node and publisher
     if (!rclcpp::ok())
