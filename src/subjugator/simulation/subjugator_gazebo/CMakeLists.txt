@@ -52,6 +52,9 @@ add_library(DepthSensor SHARED src/DepthSensor.cc)
 # Plugin 3: Hydrophone
 add_library(Hydrophone SHARED src/Hydrophone.cc)
 
+# Plugin 4: Torpedoes
+add_library(Torpedoes SHARED src/Torpedoes.cc)
+
 # Ensures plugin can see include directory to access its header files
 target_include_directories(ExamplePlugin PRIVATE include)
 
@@ -62,6 +65,8 @@ target_include_directories(DVLBridge PRIVATE include)
 target_include_directories(DepthSensor PRIVATE include)
 
 target_include_directories(Hydrophone PRIVATE include)
+
+target_include_directories(Torpedoes PRIVATE include)
 
 # Add additional needed libraries
 target_link_libraries(
@@ -83,6 +88,9 @@ target_link_libraries(Hydrophone gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
 # Link libraries for DepthSensor plugin
 target_link_libraries(DepthSensor gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
 
+# Link libraries for Torpedoes plugin
+target_link_libraries(Torpedoes gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
+
 # Specify dependencies using ament_target_dependencies
 ament_target_dependencies(
   ExamplePlugin
@@ -99,9 +107,11 @@ ament_target_dependencies(DepthSensor rclcpp mil_msgs sensor_msgs)
 
 ament_target_dependencies(Hydrophone rclcpp geometry_msgs mil_msgs)
 
+ament_target_dependencies(Torpedoes rclcpp geometry_msgs mil_msgs)
+
 # Install the plugins
 install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge Hydrophone DepthSensor
-        LIBRARY DESTINATION lib/${PROJECT_NAME})
+                Torpedoes LIBRARY DESTINATION lib/${PROJECT_NAME})
 
 # Install headers
 install(DIRECTORY include/ DESTINATION include)
