@@ -4,9 +4,7 @@ import subprocess
 import threading
 import time
 
-import cam_subscriber
 import gym
-import imu_subscriber
 import numpy as np
 import rclpy
 from geometry_msgs.msg import Pose, Vector3, Wrench
@@ -14,10 +12,10 @@ from gym import spaces
 from rclpy.executors import MultiThreadedExecutor
 
 # Shape of the image. L, W, # of channels
-SHAPE = [50, 80, 3]
+SHAPE = [50, 80, 3] 
 
 
-# ROS environment crashes in spanwed terminal without using this - cause by OpenCv depednencies
+# ROS environment crashes in spawned terminal without using this - caused by OpenCv depednencies
 def clean_ros_env() -> dict:
     env = os.environ.copy()
 
@@ -39,14 +37,19 @@ def clean_ros_env() -> dict:
 
 class SubEnv(gym.Env):
     proc = None
-
-    def __init__(self, render_mode="rgb_array"):
+    movement_publisher=None
+    def __init__(self, movement_publisher=None, render_mode="rgb_array"):
 
         # Initialize ROS2 if not already done
         if not rclpy.ok():
             rclpy.init()
 
-        self.node = rclpy.create_node("gym_env_node")
+        # Store callback functions from the GymNode
+        self.movement_publisher = movement_publisher
+
+        # Variables to store ros subscriber data
+        self.imu_data = None
+        self.cam_data = None
 
         # Store initial pose for reference (not used for reset anymore)
         self.initial_pose = Pose()
@@ -70,18 +73,6 @@ class SubEnv(gym.Env):
             ],
             env=clean_ros_env(),
         )
-
-        # creating IMU and Camera subscriber
-        imu_node = imu_subscriber.ImuSubscriber()
-        cam_node = cam_subscriber.CamSubscriber()
-
-        exec_ = MultiThreadedExecutor(num_threads=2)  # Reduced to 2 threads
-        exec_.add_node(imu_node)
-        exec_.add_node(cam_node)
-        exec_.add_node(self.node)  # for the gym env
-
-        spin_thread = threading.Thread(target=exec_.spin, daemon=True)
-        spin_thread.start()
 
         # Wait for 25 seconds for gazebo to open
         time.sleep(25)
@@ -221,10 +212,10 @@ class SubEnv(gym.Env):
 
     def _get_obs(self):
         # Get image from RL_subscriber through thread
-        image = cam_subscriber.cam_node.cam_data
+        image = self.cam_data
 
         # imu version of above based on imu_node --
-        imu = imu_subscriber.imu_node.imu_data
+        imu = self.imu_data
 
         # Get object distance via the buoy_finder (either through subscriber thread, or pipe) --
         object_distance = 10.0  # Placeholder - implement your distance calculation
@@ -275,23 +266,7 @@ class SubEnv(gym.Env):
         return observation, info
 
     def _publish_action_as_wrench(self, action):
-        force_action = action["force"]
-        torque_action = action["torque"]
-        wrench_msg = Wrench()
-
-        wrench_msg.force = Vector3(
-            x=float(force_action[0]), y=float(force_action[1]), z=float(force_action[2]),
-        )
-
-        wrench_msg.torque = Vector3(
-            x=float(torque_action[0]),
-            y=float(torque_action[1]),
-            z=float(torque_action[2]),
-        )
-
-        with open("wrench_msg_pipe", "wb") as pipe:
-            print("Writing to wrench publisher")
-            pipe.write(wrench_msg.SerializeToString())  # Fixed serialization
+        self.movement_publisher(action)
 
     def close(self):
         """Clean up resources"""
