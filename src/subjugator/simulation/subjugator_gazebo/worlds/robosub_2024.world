@@ -1465,8 +1465,8 @@
             </model>
             <include>
                 <name>Marble</name>
-                <uri>model:://subjugator_description/models/marble_dropper</uri>
-                <pose>0 0 0 0 0 0</pose>
+                <uri>package:://subjugator_description/models/marble_dropper</uri>
+                <pose>1 0 0 0 0 0</pose>
             </include>
             <include>
                 <name>Tubeworm_D</name>
