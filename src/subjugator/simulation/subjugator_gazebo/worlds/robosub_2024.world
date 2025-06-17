@@ -1466,7 +1466,7 @@
             <include>
                 <name>Marble</name>
                 <uri>package:://subjugator_description/models/marble_dropper</uri>
-                <pose>1 0 0 0 0 0</pose>
+                <pose>1.5 0 0 0 0 0</pose>
             </include>
             <include>
                 <name>Tubeworm_D</name>

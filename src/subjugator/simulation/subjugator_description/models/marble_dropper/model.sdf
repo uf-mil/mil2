@@ -11,10 +11,10 @@
             <inertial>
                 <mass>0.005</mass>
                 <inertia>
-                    <!-- 2/5 * M * R^2 -->
-                    <ixx>0.00000045</ixx>
-                    <iyy>0.00000045</iyy>
-                    <izz>0.00000045</izz>
+                    <!-- 2/5 * 0.005 * (0.009)^2 -->
+                    <ixx>0.000000162</ixx>
+                    <iyy>0.000000162</iyy>
+                    <izz>0.000000162</izz>
 
                     <ixy>0</ixy>
                     <ixz>0</ixz>
@@ -22,10 +22,10 @@
                 </inertia>
             </inertial>
 
-            <collision name="collision">
+            <collision name="collision_box">
                 <geometry>
                     <sphere>
-                        <radius>0.015</radius>
+                        <radius>0.009</radius>
                     </sphere>
                 </geometry>
             </collision>
@@ -33,7 +33,7 @@
             <visual name="visual">
                 <geometry>
                     <sphere>
-                        <radius>0.015</radius>
+                        <radius>0.009</radius>
                     </sphere>
                 </geometry>
             </visual>
