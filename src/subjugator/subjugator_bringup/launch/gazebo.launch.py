@@ -59,11 +59,27 @@ def generate_launch_description():
         output="screen",
     )
 
+<<<<<<< online_bagger
+    bagger = Node(
+        package="online_bagger",
+        executable="online_bagger_server_node",
+        parameters=[
+            {
+                # add topics to bag here
+                "topics": ["/imu/data"],
+            },
+=======
     return LaunchDescription(
         [
             gz_sim_world,
             gz_sim,
             subjugator_setup,
             bridge,
+>>>>>>> main
         ],
+        output="screen",
+    )
+
+    return LaunchDescription(
+        [gz_sim, subjugator_setup, bridge, bagger],
     )
