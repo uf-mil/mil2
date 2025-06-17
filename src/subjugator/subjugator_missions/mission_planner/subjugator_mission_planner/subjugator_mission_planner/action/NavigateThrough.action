@@ -1,0 +1,11 @@
+# Goal
+string object
+
+---
+# Result
+bool success
+string message
+
+---
+# Feedback (optional, we'll leave this for now)
+string status_message
