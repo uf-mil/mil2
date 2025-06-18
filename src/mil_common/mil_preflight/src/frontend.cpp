@@ -11,7 +11,8 @@ int main(int argc, char* argv[])
 
     std::shared_ptr<mil_preflight::UIBase> ui = mil_preflight::UIBase::create(argv[1]);
 
-    ui->initialize(argc - 1, &argv[1]);
+    if (!ui->initialize(argc - 1, &argv[1]))
+        return 1;
 
     return ui->spin();
 }

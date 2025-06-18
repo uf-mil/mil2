@@ -91,8 +91,6 @@ class Test
     virtual std::string const& getPlugin() const = 0;
 
   protected:
-    virtual std::optional<std::reference_wrapper<Action>> createAction(std::string&& name,
-                                                                       std::vector<std::string>&& parameters) = 0;
     virtual std::optional<std::reference_wrapper<Action>> nextAction() = 0;
     virtual void onFinish(Report const& report) = 0;
 };
@@ -107,7 +105,6 @@ class Job
     ~Job() {};
 
   protected:
-    virtual std::optional<std::reference_wrapper<Test>> createTest(std::string&& name, std::string&& plugin) = 0;
     virtual std::optional<std::reference_wrapper<Test>> nextTest() = 0;
     virtual void onFinish(Report&& report) = 0;
 };
@@ -131,9 +128,10 @@ class UIBase
         return -1;
     }
 
-    virtual void initialize([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
+    virtual bool initialize([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     {
         std::cout << error_ << std::endl;
+        return false;
     }
 
     static std::shared_ptr<UIBase> create(std::string const& uiName)
@@ -151,49 +149,6 @@ class UIBase
         }
 
         return creator_();
-    }
-
-    bool create_job(std::string const& filename, Job& job)
-    {
-        std::ifstream file(filename);
-        if (!file.is_open())
-        {
-            return false;
-        }
-
-        // Parse the configuration file
-        boost::property_tree::ptree root;
-        boost::property_tree::read_json(file, root);
-
-        for (auto& testPair : root)
-        {
-            std::string testName = std::move(testPair.first);
-            boost::property_tree::ptree& testNode = testPair.second;
-
-            std::optional<std::reference_wrapper<Test>> testOptional =
-                job.createTest(std::move(testName), testNode.get<std::string>("plugin"));
-            if (!testOptional.has_value())
-                continue;
-
-            Test& test = testOptional.value();
-
-            for (auto& actionPair : testNode.get_child("actions"))
-            {
-                std::string actionName = std::move(actionPair.first);
-                boost::property_tree::ptree& paramsArray = actionPair.second;
-
-                std::vector<std::string> parameters;
-                for (auto& param : paramsArray)
-                {
-                    parameters.push_back(std::move(param.second.get_value<std::string>()));
-                }
-
-                test.createAction(std::move(actionName), std::move(parameters));
-            }
-        }
-
-        file.close();
-        return true;
     }
 
     void run_job(Job& job)

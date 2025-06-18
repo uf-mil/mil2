@@ -84,32 +84,17 @@ class FTXUI : public UIBase
     {
     }
 
-    void initialize(int argc, char* argv[]) final
+    bool initialize(int argc, char* argv[]) final
     {
-        std::string filename;
-        if (argc > 1)
-        {
-            filename = argv[1];
-        }
-        else
-        {
-            boost::filesystem::path filepath = boost::process::search_path("mil_preflight");
-            filename = (filepath.parent_path() / "config.json").string();
-        }
+        std::optional<boost::property_tree::ptree> cfg = load_config(argc, argv);
+        if (!cfg)
+            return false;
 
         root = std::make_shared<Root>();
 
         auto tests_page = std::make_shared<mil_preflight::TestsPage>([this](TestsPage& page) { run_job_async(page); });
 
-        if (!create_job(filename, *tests_page))
-        {
-            Dialog::Option option;
-            option.buttonLabels = { "Ok" };
-            option.title = "Error";
-            option.question = "Failed to read the config file: " + filename;
-            std::shared_ptr<Dialog> dialog = std::make_shared<Dialog>(std::move(option));
-            dialog->show();
-        }
+        create_job(cfg.value(), tests_page);
 
         Component reports_page = std::make_shared<mil_preflight::ReportsPage>();
 
@@ -134,6 +119,8 @@ class FTXUI : public UIBase
         root->add_page("View Reports", reports_page, "Reports");
         root->add_page("About", about_page, "About");
         root->add_callback("Quit", [this] { screen.Exit(); });
+
+        return true;
     }
 
     ~FTXUI() final
@@ -153,6 +140,88 @@ class FTXUI : public UIBase
 
   private:
     std::shared_ptr<Root> root;
+
+    std::optional<boost::property_tree::ptree> load_config(int argc, char* argv[])
+    {
+        boost::filesystem::path filename;
+        if (argc > 1)
+        {
+            filename = argv[1];
+        }
+        else
+        {
+            filename = boost::process::search_path("mil_preflight").parent_path();
+            std::vector<std::string> filenames;
+            int selected = 0;
+
+            // Create the RadioBox component
+            for (auto const& entry : boost::filesystem::directory_iterator(filename))
+            {
+                if (entry.is_regular_file() && entry.path().extension() == ".json")
+                {
+                    filenames.push_back(entry.path().string());
+                }
+            }
+
+            if (filenames.size() > 0)
+            {
+                auto content = Radiobox(&filenames, &selected);
+                std::shared_ptr<Dialog> dialog = std::make_shared<Dialog>("Load config");
+                if (dialog->show(content, { "Go" }) == -1)
+                    return std::nullopt;
+            }
+            else
+            {
+                std::shared_ptr<MessageBox> message_box = std::make_shared<MessageBox>("Load config");
+                message_box->show("No config file found under\n" + filename.string(), { "Quit" });
+                return std::nullopt;
+            }
+            filename = filenames[selected];
+        }
+
+        // Parse the configuration file
+        boost::property_tree::ptree cfg;
+        try
+        {
+            boost::property_tree::read_json(filename.string(), cfg);
+        }
+        catch (boost::property_tree::json_parser_error const& e)
+        {
+            std::shared_ptr<MessageBox> message_box = std::make_shared<MessageBox>("Load config");
+            message_box->show("Failed to parse\n" + std::string(e.what()), { "Quit" });
+        }
+
+        return cfg;
+    }
+
+    void create_job(boost::property_tree::ptree& cfg, std::shared_ptr<TestsPage> tests_page)
+    {
+        for (auto& test_pair : cfg)
+        {
+            std::string test_name = std::move(test_pair.first);
+            boost::property_tree::ptree& test_node = test_pair.second;
+
+            std::shared_ptr<TestTab> test_tab =
+                tests_page->createTest(std::move(test_name), test_node.get<std::string>("plugin"));
+
+            if (!test_tab)
+                continue;
+
+            for (auto& action_pair : test_node.get_child("actions"))
+            {
+                std::string action_name = std::move(action_pair.first);
+                boost::property_tree::ptree& params_array = action_pair.second;
+
+                std::vector<std::string> parameters;
+                for (auto& param : params_array)
+                {
+                    parameters.push_back(std::move(param.second.get_value<std::string>()));
+                }
+
+                test_tab->createAction(std::move(action_name), std::move(parameters));
+            }
+        }
+    }
 };
 
 }  // namespace mil_preflight
