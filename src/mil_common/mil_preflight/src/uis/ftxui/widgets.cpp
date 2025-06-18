@@ -20,71 +20,6 @@ static std::queue<Job::Report> reportQueue;
 
 static std::queue<std::shared_ptr<Dialog>> questionQueue;
 
-struct ActionBoxOption
-{
-    std::string name;
-    std::vector<std::string> parameters;
-    std::function<void(bool)> onChange;
-    std::function<bool(bool)> transform;
-};
-
-class ActionBox : public ComponentBase, public Action
-{
-  public:
-    ActionBox(ActionBoxOption&& option);
-    ~ActionBox();
-
-    bool isChecked() const
-    {
-        return option_.transform(checked_);
-    }
-    void check()
-    {
-        checked_ = true;
-    }
-    void uncheck()
-    {
-        checked_ = false;
-    }
-    void reset()
-    {
-        state_ = State::NONE;
-    }
-
-    std::string const& getName() const final
-    {
-        return option_.name;
-    }
-    std::vector<std::string> const& getParameters() const final
-    {
-        return option_.parameters;
-    }
-
-  private:
-    enum class State
-    {
-        NONE,
-        RUNNING,
-        SUCCESS,
-        FAILED
-    };
-
-    bool checked_ = false;
-    bool hovered_ = false;
-    Box box_;
-    std::atomic<State> state_ = State::NONE;
-    ActionBoxOption option_;
-
-    Element Render() final;
-    bool OnEvent(Event event) final;
-    inline bool OnMouseEvent(Event event);
-    bool Focusable() const final;
-
-    void onStart() final;
-    void onFinish(Action::Report const& report) final;
-    std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) final;
-};
-
 ActionBox::ActionBox(ActionBoxOption&& option) : option_(std::move(option))
 {
 }
@@ -213,86 +148,16 @@ std::shared_future<int> ActionBox::onQuestion(std::string&& question, std::vecto
 {
     std::shared_ptr<std::promise<int>> feedback = std::make_shared<std::promise<int>>();
 
-    Dialog::Option option;
-    option.title = "Question for action " + option_.name;
-    option.question = std::move(question);
-    option.buttonLabels = std::move(options);
-
-    std::shared_ptr<Dialog> dialog = std::make_shared<Dialog>(std::move(option));
+    std::shared_ptr<MessageBox> dialog = std::make_shared<MessageBox>("Question for action " + getName());
     screen.Post(
         [=]
         {
-            int index = dialog->show();
+            int index = dialog->show(question, options);
             feedback->set_value(index);
         });
 
     return feedback->get_future().share();
 }
-
-struct TestTabOption
-{
-    std::string name;
-    std::string plugin;
-    std::function<void(bool)> onChange;
-    std::function<bool(bool)> transform;
-    Component childContainer;
-};
-
-class TestTab : public ComponentBase, public Test
-{
-  public:
-    TestTab(TestTabOption&& option) : option_(std::move(option))
-    {
-    }
-    ~TestTab()
-    {
-    }
-
-    bool isChecked()
-    {
-        return option_.transform(checked_) || nChecked_ > 0;
-    }
-
-    bool transform(bool checked)
-    {
-        return checked || option_.transform(checked_);
-    }
-
-    virtual std::string const& getPlugin() const
-    {
-        return option_.plugin;
-    }
-    virtual std::string const& getName() const
-    {
-        return option_.name;
-    }
-
-    std::optional<std::reference_wrapper<Action>> nextAction() final;
-    std::optional<std::reference_wrapper<Action>> createAction(std::string&& name,
-                                                               std::vector<std::string>&& parameters) final;
-    void onFinish(Test::Report const& report) final;
-
-  private:
-    bool hovered_ = false;
-    bool toggle_ = false;
-
-    size_t nChecked_ = 0;
-    size_t currentAction_ = 0;
-    bool checked_ = false;
-
-    TestTabOption option_;
-
-    Box box_;
-
-    Element Render() final;
-    bool OnEvent(Event event) final;
-    bool OnMouseEvent(Event event);
-
-    bool Focusable() const final
-    {
-        return true;
-    }
-};
 
 std::optional<std::reference_wrapper<Action>> TestTab::nextAction()
 {
@@ -310,8 +175,7 @@ std::optional<std::reference_wrapper<Action>> TestTab::nextAction()
     return std::nullopt;
 }
 
-std::optional<std::reference_wrapper<Action>> TestTab::createAction(std::string&& name,
-                                                                    std::vector<std::string>&& parameters)
+std::shared_ptr<ActionBox> TestTab::createAction(std::string&& name, std::vector<std::string>&& parameters)
 {
     ActionBoxOption option;
     option.name = std::move(name);
@@ -328,7 +192,7 @@ std::optional<std::reference_wrapper<Action>> TestTab::createAction(std::string&
 
     std::shared_ptr<ActionBox> action = std::make_shared<ActionBox>(std::move(option));
     option_.childContainer->Add(action);
-    return *action;
+    return action;
 }
 
 void TestTab::onFinish([[maybe_unused]] Test::Report const& report)
@@ -538,7 +402,7 @@ std::optional<std::reference_wrapper<Test>> TestsPage::nextTest()
     return std::nullopt;
 }
 
-std::optional<std::reference_wrapper<Test>> TestsPage::createTest(std::string&& name, std::string&& plugin)
+std::shared_ptr<TestTab> TestsPage::createTest(std::string&& name, std::string&& plugin)
 {
     actionSelectors_.push_back(0);
     Component list = Container::Vertical({}, &actionSelectors_.back());
@@ -561,7 +425,7 @@ std::optional<std::reference_wrapper<Test>> TestsPage::createTest(std::string&& 
     tabsContainer_->Add(tab);
     pagesContainer_->Add(list);
 
-    return *tab;
+    return tab;
 }
 
 void TestsPage::onFinish(Job::Report&& report)
