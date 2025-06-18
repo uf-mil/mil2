@@ -1,14 +1,13 @@
-import asyncio
 import math
 
 import rclpy
+import rclpy.task
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.node import Node
 from std_msgs.msg import String
-
-from subjugator_mission_planner.action import NavigateAroundObject
+from subjugator_msgs.action import NavigateAround
 
 
 class NavigateAroundObjectServer(Node):
@@ -18,7 +17,7 @@ class NavigateAroundObjectServer(Node):
         # Action server
         self._action_server = ActionServer(
             self,
-            NavigateAroundObject,
+            NavigateAround,
             "navigate_around_object",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
@@ -37,19 +36,19 @@ class NavigateAroundObjectServer(Node):
         # Publisher for goal poses
         self.goal_pub = self.create_publisher(Pose, "/goal_pose", 10)
 
-        # Internal state
-        self.current_detection = None
-        self.current_robot_pose = None
-
-        # Initialize relative position and heading of target object (need to get from cams)
-        self.distance_to_target = 0.0
-        self.heading_to_target = 0.0
-
+    # Called when a goal is received. Determines if using vision or dead-reckoning to orbit target
     def goal_callback(self, goal_request):
-        # TODO ADD CAPABILITY TO REJECT NAVIGATE AROUND ACTION IF OBJECT NOT DETECTED
-        self.get_logger().info(
-            f"Received goal to navigate around {goal_request.object}",
-        )
+        self.distance_to_orbit = goal_request.distance
+        if goal_request.object == "None":
+            self.get_logger().info(
+                f"Received no object to orbit. Goal set to orbit about point ahead of current pose by {goal_request.distance}",
+            )
+            self.use_vision = False
+        else:
+            self.get_logger().info(
+                f"Received goal to navigate around {goal_request.object} at a distance of {goal_request.distance}",
+            )
+            self.use_vision = True
         return GoalResponse.ACCEPT
 
     def cancel_callback(self, goal_handle):
@@ -57,88 +56,92 @@ class NavigateAroundObjectServer(Node):
         return CancelResponse.ACCEPT
 
     def perception_callback(self, msg):
-        self.current_detection = msg.data
-        # TODO NEED TO UPDATE DISTANCE AND HEADING FROM PERCEPTION
-        self.distance_to_target = 0.0
-        self.heading_to_target = 0
+        # TODO depending on how we implement perception
+        pass
 
+    # Gets current pose
     def odom_callback(self, msg):
-        self.current_robot_pose = msg.pose.pose
+        self.current_pose = msg.pose.pose
 
-    def generate_around_poses(self, robot_pose):
+    def generate_poses(self, currentPose):
+        # Generate array of 4 poses that will complete an orbit around the target:
+        #                2
+        #                |
+        #                |
+        #        3 - - Target - - 1
+        #                |
+        #                |
+        #               0/4
         poses = []
 
-        # Approximate object position in map frame
-        object_x = robot_pose.position.x + self.relative_distance * math.cos(
-            self.relative_bearing,
-        )
-        object_y = robot_pose.position.y + self.relative_distance * math.sin(
-            self.relative_bearing,
-        )
-        object_z = robot_pose.position.z
+        # Get object position relative to current pose
+        target_x = currentPose.position.x
+        target_y = currentPose.position.y + self.distance_to_orbit
+        target_z = currentPose.position.z
 
-        # distance to orbit object at
-        radius = 1.0
-
-        for angle_deg in [0, 90, 180, 270]:
+        # Find poses for completing orbit
+        for angle_deg in [90, 180, 270, 0]:
             angle_rad = math.radians(angle_deg)
             pose = Pose()
-            pose.position.x = object_x + radius * math.cos(angle_rad)
-            pose.position.y = object_y + radius * math.sin(angle_rad)
-            pose.position.z = object_z
+            pose.position.x = target_x + self.distance_to_orbit * math.sin(angle_rad)
+            pose.position.y = target_y + self.distance_to_orbit * math.cos(angle_rad)
+            pose.position.z = target_z
             pose.orientation.w = 1.0
             poses.append(pose)
 
         return poses
 
-    async def execute_callback(self, goal_handle):
-        target_object = goal_handle.request.object
-        self.get_logger().info(f"Executing NavigateAroundObject for: {target_object}")
+    def check_at_goal_pose(self, currentPose, goalPose, acceptableDist=0.1):
+        x_dist = currentPose.position.x - goalPose.position.x
+        y_dist = currentPose.position.y - goalPose.position.y
+        z_dist = currentPose.position.z - goalPose.position.z
 
-        object_detected = False
+        distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
+        return distance_to_goal < acceptableDist
 
-        while rclpy.ok():
-            if goal_handle.is_cancel_requested:
-                goal_handle.canceled()
-                result = NavigateAroundObject.Result()
-                result.success = False
-                result.message = "Canceled"
-                return result
+    def execute_callback(self, goal_handle):
 
-            if self.current_detection == target_object:
-                object_detected = True
-                break
+        # HARDCODED CURRENT POSE FOR TESTING, REMOVE
+        self.current_pose = Pose()
+        self.current_pose.position.x = 0.0
+        self.current_pose.position.y = 0.0
+        self.current_pose.position.z = 0.0
 
-            self.get_logger().info("Waiting for object detection...")
-            await asyncio.sleep(0.5)
+        orbit_distance = goal_handle.request.distance
+        # If using vision to navigate around object, keep object at center of camera frame
+        if self.use_vision:
+            target_object = goal_handle.request.object
 
-        if not object_detected:
-            goal_handle.abort()
-            result = NavigateAroundObject.Result()
-            result.success = False
-            result.message = "Object not detected"
-            return result
-
-        # Generate and publish poses
-        if self.current_robot_pose is None:
-            self.get_logger().error("No robot pose available!")
-            goal_handle.abort()
-            result = NavigateAroundObject.Result()
-            result.success = False
-            result.message = "Missing robot pose"
-            return result
-
-        waypoints = self.generate_around_poses(self.current_robot_pose)
-
-        for pose in waypoints:
-            self.goal_pub.publish(pose)
             self.get_logger().info(
-                f"Published pose: x={pose.position.x:.2f}, y={pose.position.y:.2f}",
+                f"Executing Navigate Around for: {target_object} at distance {orbit_distance} using vision",
             )
-            await asyncio.sleep(3.0)  # give time to move to pose
+
+        # If using dead-reckoning to navigate around object, generate a set of goal poses, then follow them around the object.
+        else:
+            self.get_logger().info(
+                f"Executing Navigate Around at distance {orbit_distance} using dead-reckoning",
+            )
+
+            # Generate goal poses for orbit
+            goal_poses = self.generate_poses(self.current_pose)
+
+            # Move to the poses
+            for pose in goal_poses:
+                self.goal_pub.publish(pose)
+                self.get_logger().info(
+                    f"Published pose: x={pose.position.x:.2f}, y={pose.position.y:.2f},z={pose.position.z:.2f}",
+                )
+                near_goal_pose = False
+                while not near_goal_pose:
+                    near_goal_pose = self.check_at_goal_pose(self.current_pose, pose)
+
+                    # slow down the loop
+                    self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
+                self.get_logger().info("Arrived at goal pose!")
+            self.get_logger().info("Completed orbit!")
 
         goal_handle.succeed()
-        result = NavigateAroundObject.Result()
+        result = NavigateAround.Result()
         result.success = True
         result.message = "Successfully navigated around object"
         return result

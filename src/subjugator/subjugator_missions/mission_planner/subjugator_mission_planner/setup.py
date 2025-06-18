@@ -4,6 +4,8 @@ package_name = "subjugator_mission_planner"
 
 setup(
     name=package_name,
+    include_package_data=True,
+    package_data={"": ["missions/*.yaml"]},
     version="0.0.1",
     packages=find_packages(include=[package_name, f"{package_name}.*"]),
     data_files=[
@@ -12,14 +14,8 @@ setup(
             ["resource/subjugator_mission_planner"],
         ),
         (f"share/{package_name}", ["package.xml"]),
-        (
-            f"share/{package_name}/action",
-            [
-                f"{package_name}/action/NavigateAround.action",
-                f"{package_name}/action/NavigateThrough.action",
-                f"{package_name}/action/SearchObject.action",
-            ],
-        ),
+        (f"share/{package_name}/missions", ["missions/prequal.yaml"]),
+        (f"share/{package_name}/launch", ["launch/mission_planner_launch.py"]),
     ],
     install_requires=["setuptools"],
     python_requires=">=3.8",
@@ -27,7 +23,7 @@ setup(
     maintainer="Adam McAleer",
     maintainer_email="amcaleer1127@gmail.com",
     description="Mission planner package with ROS2 action servers",
-    license="Apache-2.0",
+    license="",
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [

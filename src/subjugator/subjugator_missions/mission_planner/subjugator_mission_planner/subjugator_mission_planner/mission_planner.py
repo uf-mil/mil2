@@ -1,9 +1,11 @@
+import os
+
 import rclpy
 import yaml
+from ament_index_python.packages import get_package_share_directory
 from rclpy.action import ActionClient
 from rclpy.node import Node
-
-from subjugator_mission_planner.action import (
+from subjugator_msgs.action import (
     NavigateAround,
     NavigateThrough,
     SearchObject,
@@ -14,7 +16,10 @@ class MissionPlanner(Node):
     def __init__(self):
         super().__init__("mission_planner")
 
-        self.declare_parameter("mission_file", "mission.yaml")
+        package_share = get_package_share_directory("subjugator_mission_planner")
+        print(f"PATH: {package_share}")
+        default_mission_file = os.path.join(package_share, "missions", "prequal.yaml")
+        self.declare_parameter("mission_file", default_mission_file)
         mission_file = (
             self.get_parameter("mission_file").get_parameter_value().string_value
         )
@@ -86,6 +91,7 @@ class MissionPlanner(Node):
 
         goal_msg = SearchObject.Goal()
         goal_msg.object = params.get("object", "")
+        goal_msg.timeout = params.get("timeout", 10.0)
 
         self.executing_task = True
         self._send_goal(self.search_client, goal_msg)
@@ -107,7 +113,8 @@ class MissionPlanner(Node):
             return
 
         goal_msg = NavigateAround.Goal()
-        goal_msg.object_id = params.get("object_id", "")
+        goal_msg.object = params.get("object", "")
+        goal_msg.distance = params.get("distance", 0)
 
         self.executing_task = True
         self._send_goal(self.navigate_around_client, goal_msg)

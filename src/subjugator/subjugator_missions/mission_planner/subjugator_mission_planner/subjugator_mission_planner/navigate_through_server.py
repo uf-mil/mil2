@@ -4,8 +4,7 @@ import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.node import Node
 from std_msgs.msg import String
-
-from subjugator_mission_planner.action import NavigateThroughObject
+from subjugator_msgs.action import NavigateThrough
 
 
 class NavigateThroughObjectServer(Node):
@@ -14,7 +13,7 @@ class NavigateThroughObjectServer(Node):
 
         self._action_server = ActionServer(
             self,
-            NavigateThroughObject,
+            NavigateThrough,
             "navigate_through_object",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
@@ -52,7 +51,7 @@ class NavigateThroughObjectServer(Node):
         while rclpy.ok():
             if goal_handle.is_cancel_requested:
                 goal_handle.canceled()
-                result = NavigateThroughObject.Result()
+                result = NavigateThrough.Result()
                 result.success = False
                 result.message = "Canceled"
                 return result
@@ -72,7 +71,7 @@ class NavigateThroughObjectServer(Node):
                     self.get_logger().info("Successfully passed through!")
                     goal_handle.succeed()
 
-                    result = NavigateThroughObject.Result()
+                    result = NavigateThrough.Result()
                     result.success = True
                     result.message = "Passed through object"
                     return result
