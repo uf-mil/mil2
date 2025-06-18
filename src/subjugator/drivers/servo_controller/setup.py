@@ -18,6 +18,6 @@ setup(
     license="TODO: License declaration",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["fu = servo_controller.driver:main"],
+        "console_scripts": ["servo_driver = servo_controller.driver:main"],
     },
 )

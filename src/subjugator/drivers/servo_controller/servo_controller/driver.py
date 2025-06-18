@@ -1,5 +1,5 @@
-import Jetson.GPIO as GPIO
 import rclpy
+import RPi.GPIO as GPIO
 from rclpy.node import Node
 from subjugator_msgs.srv import Servo
 
