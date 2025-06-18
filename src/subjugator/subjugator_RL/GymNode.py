@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
+from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image
 
 import cv2
@@ -8,7 +9,9 @@ from cv_bridge import CvBridge
 import numpy as np
 from sub_env import SubEnv
 
+from multiprocessing import Process
 import threading
+import asyncio
 import time
 import os
 from geometry_msgs.msg import Wrench, Vector3
@@ -16,18 +19,18 @@ from geometry_msgs.msg import Wrench, Vector3
 
 class GymNode(Node):
     def __init__(self):
-        super().__init__('imu_subscriber')
+        super().__init__('GymNode')
         self.cvBridge = CvBridge()
         self.subEnv = SubEnv(movement_publisher=self.publish_action_as_wrench)
 
         # imu attributes initalized here
         self.imu_subscription = self.create_subscription(
-            Imu,
-            '/imu/data_raw', #topic for sub9 cam
+            Odometry,
+            '/odometry/filtered', #topic for sub9 cam
             self.imu_callback,
             10
         )
-        self.imu_data = None
+        # self.imu_data = None
 
         # cam attributes initialized here
         self.cam_subscription = self.create_subscription(
@@ -36,7 +39,7 @@ class GymNode(Node):
             self.image_callback,
             10
         )
-        self.cam_data = None
+        # self.cam_data = None
         
         #publisher for sub motion
         self.wrench_publisher = self.create_publisher(Wrench, 'cmd_wrench', 10)
@@ -123,25 +126,32 @@ safe_rclpy_init()
 #         self.cam_subscription
 #         self.cam_data = None
     
-
 if __name__ == "__main__":
     gym_node = GymNode()
-    try:
 
-        print("Environment reset successfully!")
+    def main():
+        try:
+            print("Environment reset successfully!")
 
-        # Test with random actions
-        for i in range(10):
-            action = {
-                "force": np.random.uniform(-10, 10, 3),
-                "torque": np.random.uniform(-5, 5, 3),
-            }
-            obs, reward, terminated, truncated, info = gym_node.subEnv.step(action)
-            print(f"Step {i}: Reward = {reward}")
+            # Test with random actions
+            for i in range(1000000):
+                time.sleep(0.5)
+                action = {
+                    "force": np.random.uniform(0, 10, 3),
+                    "torque": np.random.uniform(0, 10, 3),
+                }
+                obs, reward, terminated, truncated, info = gym_node.subEnv.step(action)
+                print(f"Step {i}: Reward = {reward}")
+                if(obs["imu"] != None):
+                    print(f"Step {i}: Filtered odom = {obs["imu"].twist.twist.linear.x}")
 
-            if terminated:
-                obs, info = gym_node.subEnv.reset()
-                print("Episode terminated, reset environment")
+                if terminated:
+                    obs, info = gym_node.subEnv.reset()
+                    print("Episode terminated, reset environment")
+        finally:
+            gym_node.subEnv.close()
 
-    finally:
-        gym_node.subEnv.close()
+    p = Process(target=main)
+    p.start()
+
+    rclpy.spin(gym_node)

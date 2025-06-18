@@ -186,6 +186,7 @@ class SubEnv(gym.Env):
         time.sleep(2)
 
         return True
+    # def unpause_gazebo(self):
 
     def calculate_red_amount(self, image):
         if image is None:
@@ -290,8 +291,8 @@ if __name__ == "__main__":
         # Test with random actions
         for i in range(10):
             action = {
-                "force": np.random.uniform(-10, 10, 3),
-                "torque": np.random.uniform(-5, 5, 3),
+                "force": np.random.uniform(-1, 1, 3),
+                "torque": np.random.uniform(-1, 1, 3),
             }
             obs, reward, terminated, truncated, info = env.step(action)
             print(f"Step {i}: Reward = {reward}")

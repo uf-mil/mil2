@@ -1,21 +1,18 @@
---To do:
+--This week
+-go back to multithreading and have everything working
 
--to obs space we need add sub localization - DVL sensor
--integrate movement_publisher into sub env
-
--run localizaiton with the gymnode-enable ekf ndoe
+--Next week
+-we need to see if the subenv is adding the odometry/filtered to the observation space
+-defeat the ender dragon
 -call the unpause gazebo service before resetting
--increase gazbeo wait time to see if that changes anythign
--launch file, put the localization stuff in there
--Make subRL a rospkg / submodule
--see sub move in gazebo from random actions
+
+--Following week
+-Reward calculation 
 -may change the range of motion from inf to smaller range
 
-
--LATER
--Reward calculation 
-
-
+--LATER
+-launch file, put the localization stuff in there
+-Make subRL a rospkg / submodule
 
 ----AFTER FINISH SETTING UP
 -Speed up sim
