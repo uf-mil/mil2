@@ -32,7 +32,7 @@ class MissionPlanner(Node):
         self.movement_client = ActionClient(
             self,
             Movement,
-            "move",
+            "movement_server",
         )
         self.navigate_around_client = ActionClient(
             self,
