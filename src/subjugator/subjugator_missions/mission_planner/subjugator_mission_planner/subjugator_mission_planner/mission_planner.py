@@ -3,12 +3,12 @@ import os
 import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
+from geometry_msgs.msg import Pose
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from subjugator_msgs.action import (
+    Movement,
     NavigateAround,
-    NavigateThrough,
-    SearchObject,
 )
 
 
@@ -29,11 +29,10 @@ class MissionPlanner(Node):
         self.executing_task = False
 
         # Create action clients for each task type
-        self.search_client = ActionClient(self, SearchObject, "search_for_object")
-        self.navigate_through_client = ActionClient(
+        self.movement_client = ActionClient(
             self,
-            NavigateThrough,
-            "navigate_through_object",
+            Movement,
+            "move",
         )
         self.navigate_around_client = ActionClient(
             self,
@@ -74,38 +73,34 @@ class MissionPlanner(Node):
         )
 
         # Dispatch to the correct action client
-        if task_name == "search_for_object":
-            self.send_search_goal(params)
-        elif task_name == "navigate_through_object":
-            self.send_navigate_through_goal(params)
+        if task_name == "move":
+            self.send_move_to_goal(params)
         elif task_name == "navigate_around_object":
             self.send_navigate_around_goal(params)
         else:
             self.get_logger().error(f"Unknown task: {task_name}, skipping")
             self.current_task_index += 1
 
-    def send_search_goal(self, params):
-        if not self.search_client.wait_for_server(timeout_sec=2.0):
-            self.get_logger().error("SearchObject action server not available")
+    def send_move_to_goal(self, params):
+        if not self.movement_client.wait_for_server(timeout_sec=2.0):
+            self.get_logger().error("Movement action server not available")
             return
 
-        goal_msg = SearchObject.Goal()
-        goal_msg.object = params.get("object", "")
-        goal_msg.timeout = params.get("timeout", 10.0)
+        goal_pose = Pose()
+        goal_pose.position.x = params.get("x", 0.0)
+        goal_pose.position.y = params.get("y", 0.0)
+        goal_pose.position.z = params.get("z", 0.0)
+        goal_pose.orientation.x = params.get("i", 0.0)
+        goal_pose.orientation.y = params.get("j", 0.0)
+        goal_pose.orientation.z = params.get("k", 0.0)
+        goal_pose.orientation.w = params.get("w", 1.0)
+
+        goal_msg = Movement.Goal()
+        goal_msg.goal_pose = goal_pose
+        goal_msg.type = params.get("type", "Relative")
 
         self.executing_task = True
-        self._send_goal(self.search_client, goal_msg)
-
-    def send_navigate_through_goal(self, params):
-        if not self.navigate_through_client.wait_for_server(timeout_sec=2.0):
-            self.get_logger().error("NavigateThroughObject action server not available")
-            return
-
-        goal_msg = NavigateThrough.Goal()
-        goal_msg.object_id = params.get("object_id", "")
-
-        self.executing_task = True
-        self._send_goal(self.navigate_through_client, goal_msg)
+        self._send_goal(self.movement_client, goal_msg)
 
     def send_navigate_around_goal(self, params):
         if not self.navigate_around_client.wait_for_server(timeout_sec=2.0):
