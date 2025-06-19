@@ -36,6 +36,9 @@ class NavigateAroundObjectServer(Node):
         # Publisher for goal poses
         self.goal_pub = self.create_publisher(Pose, "/goal_pose", 10)
 
+        # initialize pose
+        self.current_pose = Pose()
+
     # Called when a goal is received. Determines if using vision or dead-reckoning to orbit target
     def goal_callback(self, goal_request):
         self.distance_to_orbit = goal_request.distance
@@ -100,12 +103,6 @@ class NavigateAroundObjectServer(Node):
         return distance_to_goal < acceptableDist
 
     def execute_callback(self, goal_handle):
-
-        # HARDCODED CURRENT POSE FOR TESTING, REMOVE
-        self.current_pose = Pose()
-        self.current_pose.position.x = 0.0
-        self.current_pose.position.y = 0.0
-        self.current_pose.position.z = 0.0
 
         orbit_distance = goal_handle.request.distance
         # If using vision to navigate around object, keep object at center of camera frame
