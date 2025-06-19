@@ -3,6 +3,8 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration  
 
 
 def generate_launch_description():
@@ -14,11 +16,19 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument(         
+                "use_sim_time",
+                default_value="false",
+                description="Use simulation time"
+            ),
             Node(
                 package="robot_localization",
                 executable="ekf_node",
                 name="subjugator_localization",
-                parameters=[config_file],
+                parameters=[
+                    config_file,
+                    {"use_sim_time": LaunchConfiguration("use_sim_time")},
+                ],
                 remappings=[
                     ("/reset", "/_reset"),  # given, but broken :/
                     ("/set_pose", "/subjugator_localization/set_pose"),

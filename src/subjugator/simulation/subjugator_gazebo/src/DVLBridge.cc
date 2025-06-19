@@ -1,131 +1,126 @@
 /*
  * Copyright (C) 2024 Rakesh Vivekanandan
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Licensed under the Apache License, Version 2.0
  */
 
-#include "DVLBridge.hh"
+ #include "DVLBridge.hh"
 
-#include <iostream>
+ #include <mutex>
+ #include <rclcpp/rclcpp.hpp>
+ 
+ #include <gz/common/Console.hh>
+ #include <gz/plugin/Register.hh>
+ #include <gz/transport/Node.hh>
+ #include <gz/sim/components/Pose.hh>
+ 
+ /// Register the system with Gazebo Sim
+ GZ_ADD_PLUGIN(
+     dave_ros_gz_plugins::DVLBridge,
+     gz::sim::System,
+     dave_ros_gz_plugins::DVLBridge::ISystemConfigure,
+     dave_ros_gz_plugins::DVLBridge::ISystemPostUpdate)
+ 
+ namespace dave_ros_gz_plugins
+ {
+ 
+ struct DVLBridge::PrivateData
+ {
+   std::mutex mutex;
+   gz::transport::Node gz_node;
+ 
+   std::string dvl_topic{"/dvl/velocity"};
+ 
+   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr dvl_pub;
+ 
+   gz::sim::Entity baseEntity{gz::sim::kNullEntity};
+ 
+   gz::math::Pose3d lastBasePose{0, 0, 0, 0, 0, 0};
+ };
+ 
 
-#include <rclcpp/rclcpp.hpp>
+ DVLBridge::DVLBridge()
+ : dataPtr(std::make_unique<PrivateData>())
+ {}
+ 
 
-#include "gz/plugin/Register.hh"
+ void DVLBridge::Configure(const gz::sim::Entity &_entity,
+                           const std::shared_ptr<const sdf::Element> &_sdf,
+                           gz::sim::EntityComponentManager &,
+                           gz::sim::EventManager &)
+ {
+   this->dataPtr->baseEntity = _entity;   // Remember the vehicle entity
+ 
+   // Initialise rclcpp once
+   if (!rclcpp::ok())
+     rclcpp::init(0, nullptr);
+ 
+   auto node = std::make_shared<rclcpp::Node>("dvl_bridge_node");
+   this->ros_node_ = node;
+ 
+   if (_sdf->HasElement("topic"))
+     this->dataPtr->dvl_topic = _sdf->Get<std::string>("topic");
+ 
+   gzmsg << "[DVLBridge] Gazebo DVL topic: " << this->dataPtr->dvl_topic << '\n';
+ 
+   std::function<void(const gz::msgs::DVLVelocityTracking &)> cb =
+       std::bind(&DVLBridge::receiveGazeboCallback, this, std::placeholders::_1);
+ 
+   this->dataPtr->gz_node.Subscribe(this->dataPtr->dvl_topic, std::move(cb));
+   this->dataPtr->dvl_pub =
+       node->create_publisher<nav_msgs::msg::Odometry>("/dvl/odom", 10);
+ }
+ 
+ // Gazebo->ROS callback 
+ 
+ void DVLBridge::receiveGazeboCallback(const gz::msgs::DVLVelocityTracking &msg)
+ {
+   std::scoped_lock lk(this->dataPtr->mutex);
+ 
+   // Convert world-frame velocity to body frame 
+   gz::math::Vector3d v_world(msg.velocity().mean().x(),
+                              msg.velocity().mean().y(),
+                              msg.velocity().mean().z());
+ 
+   // Rotation WORLD→BODY at this instant (cached each PostUpdate)
+   gz::math::Quaterniond q_w2b =
+       this->dataPtr->lastBasePose.Rot().Inverse();
+ 
+   gz::math::Vector3d v_body = q_w2b * v_world;
+ 
+   nav_msgs::msg::Odometry odom;
+   odom.header.stamp.sec = msg.header().stamp().sec();
+   odom.header.stamp.nanosec = msg.header().stamp().nsec();
+   odom.header.frame_id = "odom";
+   odom.child_frame_id = "base_link";
+ 
+   odom.twist.twist.linear.x = v_body.X();
+   odom.twist.twist.linear.y = v_body.Y();
+   odom.twist.twist.linear.z = v_body.Z();
+ 
+   odom.pose.pose.orientation.w = 1.0;
+ 
+   constexpr double var = 0.00002;           // DVL does not provide pose
+   for (int k = 0; k < 3; ++k)
+     odom.twist.covariance[k * 6 + k] = var;
+ 
+   this->dataPtr->dvl_pub->publish(odom);
+ }
+ 
 
-#include <gz/common/Console.hh>
-#include <gz/transport/Node.hh>
-
-GZ_ADD_PLUGIN(dave_ros_gz_plugins::DVLBridge, gz::sim::System, dave_ros_gz_plugins::DVLBridge::ISystemConfigure,
-              dave_ros_gz_plugins::DVLBridge::ISystemPostUpdate)
-
-namespace dave_ros_gz_plugins
-{
-
-struct DVLBridge::PrivateData
-{
-    // Add any private data members here.
-    std::mutex mutex_;
-    gz::transport::Node gz_node;
-    std::string dvl_topic;
-    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr dvl_pub;
-};
-
-DVLBridge::DVLBridge() : dataPtr(std::make_unique<PrivateData>())
-{
-}
-
-void DVLBridge::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf::Element const> const &_sdf,
-                          gz::sim::EntityComponentManager &_ecm, gz::sim::EventManager &_eventManager)
-{
-    std::cout << "testing" << std::endl;
-    gzdbg << "dave_ros_gz_plugins::DVLBridge::Configure on entity: " << _entity << std::endl;
-
-    if (!rclcpp::ok())
-    {
-        rclcpp::init(0, nullptr);
-    }
-
-    this->ros_node_ = std::make_shared<rclcpp::Node>("dvl_bridge_node");
-
-    // Grab dvl topic from SDF
-    if (!_sdf->HasElement("topic"))
-    {
-        this->dataPtr->dvl_topic = "/dvl/velocity";
-        gzmsg << "dvl topic set to default:  " << this->dataPtr->dvl_topic << std::endl;
-    }
-    else
-    {
-        this->dataPtr->dvl_topic = _sdf->Get<std::string>("topic");
-        gzmsg << "dvl topic: " << this->dataPtr->dvl_topic << std::endl;
-    }
-
-    // Gazebo subscriber
-    std::function<void(gz::msgs::DVLVelocityTracking const &)> callback =
-        std::bind(&DVLBridge::receiveGazeboCallback, this, std::placeholders::_1);
-
-    this->dataPtr->gz_node.Subscribe(this->dataPtr->dvl_topic, callback);
-
-    // ROS2 publisher
-    this->dataPtr->dvl_pub = this->ros_node_->create_publisher<nav_msgs::msg::Odometry>(this->dataPtr->dvl_topic, 1);
-}
-
-void DVLBridge::receiveGazeboCallback(gz::msgs::DVLVelocityTracking const &msg)
-{
-    std::lock_guard<std::mutex> lock(this->dataPtr->mutex_);
-
-    gzmsg << "dave_ros_gz_plugins::DVLBridge::receiveGazeboCallback" << std::endl;
-
-    auto dvl_msg = nav_msgs::msg::Odometry();
-    dvl_msg.header.stamp.sec = msg.header().stamp().sec();
-    dvl_msg.header.stamp.nanosec = msg.header().stamp().nsec();
-    dvl_msg.header.frame_id = "base_link";
-    dvl_msg.child_frame_id = "dvl_sensor_link";
-
-    dvl_msg.twist.twist.linear.x = msg.velocity().mean().x();
-    dvl_msg.twist.twist.linear.y = msg.velocity().mean().y();
-    dvl_msg.twist.twist.linear.z = msg.velocity().mean().z();
-
-    // Simulated DVL does not produce a pose (at least not one we can use)
-    dvl_msg.pose.pose.position.x = 0;
-    dvl_msg.pose.pose.position.y = 0;
-    dvl_msg.pose.pose.position.z = 0;
-
-    // Limit to 9 so the output is not bloated with empty covariance values
-    size_t covariance_size = msg.velocity().covariance().size();
-
-    // Only filling upper-left most 9 spaces in 6x6 matrix
-    for (size_t i = 0; i < 3; i++)
-    {
-        for (size_t j = 0; j < 3; j++)
-        {
-            dvl_msg.twist.covariance[i * 6 + j] = msg.velocity().covariance()[i * 3 + j];
-        }
-    }
-
-    this->dataPtr->dvl_pub->publish(dvl_msg);
-}
-
-void DVLBridge::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::EntityComponentManager const &_ecm)
-{
-    if (!_info.paused)
-    {
-        rclcpp::spin_some(this->ros_node_);
-
-        if (_info.iterations % 1000 == 0)
-        {
-            gzmsg << "dave_ros_gz_plugins::DVLBridge::PostUpdate" << std::endl;
-        }
-    }
-}
-
-}  // namespace dave_ros_gz_plugins
+ void DVLBridge::PostUpdate(const gz::sim::UpdateInfo &_info,
+                            const gz::sim::EntityComponentManager &_ecm)
+ {
+   if (_info.paused)
+     return;
+ 
+   if (auto poseComp =
+           _ecm.Component<gz::sim::components::Pose>(this->dataPtr->baseEntity))
+   {
+     this->dataPtr->lastBasePose = poseComp->Data();
+   }
+ 
+   rclcpp::spin_some(this->ros_node_);
+ }
+ 
+ }  // namespace dave_ros_gz_plugins
+ 
