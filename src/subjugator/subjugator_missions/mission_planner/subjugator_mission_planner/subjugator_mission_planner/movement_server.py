@@ -16,7 +16,7 @@ class MovementServer(Node):
         # Action server
         self._action_server = ActionServer(
             self,
-            MovementServer,
+            Movement,
             "movement_server",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,

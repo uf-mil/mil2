@@ -1,4 +1,18 @@
 mission:
+
+  - task: move
+    parameters:
+      type: "Relative"
+      position:
+        x: 1.0
+        y: 2.0
+        z: 0.0
+      orientation:
+        i: 0.0
+        j: 0.0
+        k: 0.0
+        w: 1.0
+      timeout: 120
   - task: navigate_around_object
     parameters:
       object: "None"
@@ -14,16 +28,3 @@ mission:
       object: "None"
       radius: 3.0
       timeout: 5
-  - task: move
-    parameters:
-      type: "Relative"
-      position:
-        x: 1.0
-        y: 2.0
-        z: 0.0
-      orientation:
-        i: 0.0
-        j: 0.0
-        k: 0.0
-        w: 1.0
-      timeout: 120
