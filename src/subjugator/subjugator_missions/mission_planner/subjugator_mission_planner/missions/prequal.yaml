@@ -2,5 +2,15 @@ mission:
   - task: navigate_around_object
     parameters:
       object: "None"
-      distance: 0.75
+      radius: 1.5
       timeout: 60
+  - task: navigate_around_object
+    parameters:
+      object: "None"
+      radius: 3.0
+      timeout: 60
+  - task: navigate_around_object
+    parameters:
+      object: "None"
+      radius: 3.0
+      timeout: 5

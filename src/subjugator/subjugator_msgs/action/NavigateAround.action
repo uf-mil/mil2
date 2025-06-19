@@ -1,6 +1,6 @@
 # Goal
 string object
-float32 distance
+float32 radius
 ---
 # Result
 bool success
