@@ -114,7 +114,7 @@ class MissionPlanner(Node):
 
         goal_msg = NavigateAround.Goal()
         goal_msg.object = params.get("object", "")
-        goal_msg.distance = params.get("distance", 0)
+        goal_msg.radius = params.get("radius", 0.0)
 
         self.executing_task = True
         self._send_goal(self.navigate_around_client, goal_msg)

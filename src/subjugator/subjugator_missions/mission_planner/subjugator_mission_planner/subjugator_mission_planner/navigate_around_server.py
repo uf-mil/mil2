@@ -1,10 +1,10 @@
 import math
 
 import rclpy
-import rclpy.task
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from std_msgs.msg import String
 from subjugator_msgs.action import NavigateAround
@@ -31,7 +31,7 @@ class NavigateAroundObjectServer(Node):
             self.perception_callback,
             10,
         )
-        self.create_subscription(Odometry, "/odometry_filtered", self.odom_callback, 10)
+        self.create_subscription(Odometry, "/odometry/filtered", self.odom_callback, 10)
 
         # Publisher for goal poses
         self.goal_pub = self.create_publisher(Pose, "/goal_pose", 10)
@@ -41,15 +41,15 @@ class NavigateAroundObjectServer(Node):
 
     # Called when a goal is received. Determines if using vision or dead-reckoning to orbit target
     def goal_callback(self, goal_request):
-        self.distance_to_orbit = goal_request.distance
+        self.distance_to_orbit = goal_request.radius
         if goal_request.object == "None":
             self.get_logger().info(
-                f"Received no object to orbit. Goal set to orbit about point ahead of current pose by {goal_request.distance}",
+                f"Received no object to orbit. Goal set to orbit about point ahead of current pose by {goal_request.radius}",
             )
             self.use_vision = False
         else:
             self.get_logger().info(
-                f"Received goal to navigate around {goal_request.object} at a distance of {goal_request.distance}",
+                f"Received goal to navigate around {goal_request.object} at a distance of {goal_request.radius}",
             )
             self.use_vision = True
         return GoalResponse.ACCEPT
@@ -77,24 +77,22 @@ class NavigateAroundObjectServer(Node):
         #               0/4
         poses = []
 
-        # Get object position relative to current pose
-        target_x = currentPose.position.x
-        target_y = currentPose.position.y + self.distance_to_orbit
-        target_z = currentPose.position.z
-
         # Find poses for completing orbit
-        for angle_deg in [90, 180, 270, 0]:
-            angle_rad = math.radians(angle_deg)
+
+        x_movements = [1.0, 2.0, 1.0, 0.0]
+        y_movements = [-1.0, 0.0, 1.0, 0.0]
+
+        for leg in range(len(x_movements)):
             pose = Pose()
-            pose.position.x = target_x + self.distance_to_orbit * math.sin(angle_rad)
-            pose.position.y = target_y + self.distance_to_orbit * math.cos(angle_rad)
-            pose.position.z = target_z
+            pose.position.x = x_movements[leg] * self.distance_to_orbit
+            pose.position.y = y_movements[leg] * self.distance_to_orbit
+            pose.position.z = currentPose.position.z
             pose.orientation.w = 1.0
             poses.append(pose)
 
         return poses
 
-    def check_at_goal_pose(self, currentPose, goalPose, acceptableDist=0.1):
+    def check_at_goal_pose(self, currentPose, goalPose, acceptableDist=0.05):
         x_dist = currentPose.position.x - goalPose.position.x
         y_dist = currentPose.position.y - goalPose.position.y
         z_dist = currentPose.position.z - goalPose.position.z
@@ -104,7 +102,7 @@ class NavigateAroundObjectServer(Node):
 
     def execute_callback(self, goal_handle):
 
-        orbit_distance = goal_handle.request.distance
+        orbit_distance = goal_handle.request.radius
         # If using vision to navigate around object, keep object at center of camera frame
         if self.use_vision:
             target_object = goal_handle.request.object
@@ -135,6 +133,9 @@ class NavigateAroundObjectServer(Node):
                     # slow down the loop
                     self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
                 self.get_logger().info("Arrived at goal pose!")
+
+            # pause at each goal pose for 3 seconds
+            self.get_clock().sleep_for(rclpy.duration.Duration(seconds=3.0))
             self.get_logger().info("Completed orbit!")
 
         goal_handle.succeed()
@@ -147,7 +148,9 @@ class NavigateAroundObjectServer(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = NavigateAroundObjectServer()
-    rclpy.spin(node)
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
+    executor.spin()
     rclpy.shutdown()
 
 
