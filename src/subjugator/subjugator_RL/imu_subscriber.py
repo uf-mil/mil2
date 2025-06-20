@@ -1,10 +1,8 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
-import threading
 import time
-import os
-from rclpy.executors import SingleThreadedExecutor
+from locks import imu_lock
 
 class ImuSubscriber(Node):
     def __init__(self):
@@ -21,7 +19,8 @@ class ImuSubscriber(Node):
     def imu_callback(self, msg):
         time.sleep(0.1) # Unblock thread so other things can run
         self.get_logger().info("Imu received")
-        self.imu_data = msg
+        with imu_lock:
+            self.imu_data = msg
 
 def safe_rclpy_init():
     try:

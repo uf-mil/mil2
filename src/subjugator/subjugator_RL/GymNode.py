@@ -15,13 +15,14 @@ import asyncio
 import time
 import os
 from geometry_msgs.msg import Wrench, Vector3
+from locks import imu_lock, cam_lock
 
 
 class GymNode(Node):
     def __init__(self):
         super().__init__('GymNode')
         self.cvBridge = CvBridge()
-        self.subEnv = SubEnv(movement_publisher=self.publish_action_as_wrench)
+        #self.subEnv = SubEnv(movement_publisher=self.publish_action_as_wrench)
 
         # imu attributes initalized here
         self.imu_subscription = self.create_subscription(
@@ -30,7 +31,7 @@ class GymNode(Node):
             self.imu_callback,
             10
         )
-        # self.imu_data = None
+        self.imu_data = None
 
         # cam attributes initialized here
         self.cam_subscription = self.create_subscription(
@@ -39,7 +40,7 @@ class GymNode(Node):
             self.image_callback,
             10
         )
-        # self.cam_data = None
+        self.cam_data = None
         
         #publisher for sub motion
         self.wrench_publisher = self.create_publisher(Wrench, 'cmd_wrench', 10)
@@ -75,13 +76,17 @@ class GymNode(Node):
         # # Code for debugging
         # cv2.imshow("Pooled image", pooled_image)
         # cv2.waitKey(20)
-
-        self.subEnv.cam_data = pooled_image
+        with cam_lock:
+            self.cam_data = pooled_image
     
     def imu_callback(self, msg):
         time.sleep(0.1) # Unblock thread so other things can run
         self.get_logger().info("Imu received")
-        self.subEnv.imu_data = msg
+
+        #lock thread
+        with imu_lock:
+            self.imu_data = msg
+        #release lock
 
     def publish_action_as_wrench(self, action):
         force_action = action['force']
@@ -109,49 +114,33 @@ def safe_rclpy_init():
         pass
 
 safe_rclpy_init()
-
-# def run(args=None):
-#     def spin():
-#         # Declare node and spin it
-#         rclpy.spin(imu_node)
-#         imu_node.destroy_node()
-#         rclpy.shutdown()
-        
-#     thread = threading.Thread(target=spin, daemon=True)
-#     thread.start()
-
-# def __init__(self):
-#         super().__init__('cam_subscriber')
-
-#         self.cam_subscription
-#         self.cam_data = None
     
-if __name__ == "__main__":
-    gym_node = GymNode()
+# if __name__ == "__main__":
+#     gym_node = GymNode()
 
-    def main():
-        try:
-            print("Environment reset successfully!")
+#     def main():
+#         try:
+#             print("Environment reset successfully!")
 
-            # Test with random actions
-            for i in range(1000000):
-                time.sleep(0.5)
-                action = {
-                    "force": np.random.uniform(0, 10, 3),
-                    "torque": np.random.uniform(0, 10, 3),
-                }
-                obs, reward, terminated, truncated, info = gym_node.subEnv.step(action)
-                print(f"Step {i}: Reward = {reward}")
-                if(obs["imu"] != None):
-                    print(f"Step {i}: Filtered odom = {obs["imu"].twist.twist.linear.x}")
+#             # Test with random actions
+#             for i in range(1000000):
+#                 time.sleep(0.5)
+#                 action = {
+#                     "force": np.random.uniform(0, 10, 3),
+#                     "torque": np.random.uniform(0, 10, 3),
+#                 }
+#                 obs, reward, terminated, truncated, info = gym_node.subEnv.step(action)
+#                 print(f"Step {i}: Reward = {reward}")
+#                 if(obs["imu"] != None):
+#                     print(f"Step {i}: Filtered odom = {obs["imu"].twist.twist.linear.x}")
 
-                if terminated:
-                    obs, info = gym_node.subEnv.reset()
-                    print("Episode terminated, reset environment")
-        finally:
-            gym_node.subEnv.close()
+#                 if terminated:
+#                     obs, info = gym_node.subEnv.reset()
+#                     print("Episode terminated, reset environment")
+#         finally:
+#             gym_node.subEnv.close()
 
-    p = Process(target=main)
-    p.start()
+#     p = Process(target=main)
+#     p.start()
 
-    rclpy.spin(gym_node)
+#     rclpy.spin(gym_node)

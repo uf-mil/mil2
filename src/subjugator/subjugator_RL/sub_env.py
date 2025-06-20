@@ -10,7 +10,8 @@ import rclpy
 from geometry_msgs.msg import Pose, Vector3, Wrench
 from gym import spaces
 from rclpy.executors import MultiThreadedExecutor
-
+import GymNode 
+from locks import cam_lock, imu_lock  
 # Shape of the image. L, W, # of channels
 SHAPE = [50, 80, 3] 
 
@@ -46,6 +47,11 @@ class SubEnv(gym.Env):
 
         # Store callback functions from the GymNode
         self.movement_publisher = movement_publisher
+        self.gymNode = GymNode.GymNode()
+        exec_ = MultiThreadedExecutor(num_threads=2)  # Reduced to 2 threads
+        exec_.add_node(self.gymNode)  # for the gym env
+        spin_thread = threading.Thread(target=exec_.spin, daemon=True)
+        spin_thread.start()
 
         # Variables to store ros subscriber data
         self.imu_data = None
@@ -212,16 +218,24 @@ class SubEnv(gym.Env):
         return reward
 
     def _get_obs(self):
-        # Get image from RL_subscriber through thread
-        image = self.cam_data
+        # Get image from RL_subscriber through thread - MUST CHECK FOR LOCK HERE
+        if cam_lock.acquire(False):
+            self.cam_data = self.gymNode.cam_data # get data from gymnode
+            cam_lock.release()
 
-        # imu version of above based on imu_node --
-        imu = self.imu_data
+        # imu version of above based on imu_node -- MUST CHECK FOR LOCK HERE
+        if imu_lock.acquire(False):
+            self.imu_data = self.gymNode.imu_data # get data from gymnode
+            imu_lock.release()
 
         # Get object distance via the buoy_finder (either through subscriber thread, or pipe) --
         object_distance = 10.0  # Placeholder - implement your distance calculation
 
-        return {"image": image, "imu": imu, "object_distance": object_distance}
+        return {"image": self.cam_data, 
+                "position": self.imu_data.pose.position, 
+                "Linear velcoity": self.imu_data.twist.twist.linear,   
+                "angular_velocity": self.imu_data.twist.twist.angular,
+                "object_distance": None}
 
     def _get_info(self):
         print("Getting info")
@@ -229,7 +243,7 @@ class SubEnv(gym.Env):
 
     def step(self, action):
         # Send action to the environment
-        self._publish_action_as_wrench(action)
+        self.gymNode.publish_action_as_wrench(action)
 
         # Get observation from the environment (especially object_distance)
         observation = self._get_obs()
@@ -266,8 +280,6 @@ class SubEnv(gym.Env):
 
         return observation, info
 
-    def _publish_action_as_wrench(self, action):
-        self.movement_publisher(action)
 
     def close(self):
         """Clean up resources"""
@@ -289,13 +301,16 @@ if __name__ == "__main__":
         print("Environment reset successfully!")
 
         # Test with random actions
-        for i in range(10):
+        for i in range(1000000000):
             action = {
-                "force": np.random.uniform(-1, 1, 3),
-                "torque": np.random.uniform(-1, 1, 3),
+                "force": np.random.uniform(0, 10, 3),
+                "torque": np.random.uniform(0, 10, 3),
             }
             obs, reward, terminated, truncated, info = env.step(action)
             print(f"Step {i}: Reward = {reward}")
+            
+            if(obs["imu"] != None):
+                print(f"Step {i}: Filtered odom = {obs["position"].x}")
 
             if terminated:
                 obs, info = env.reset()
@@ -303,3 +318,6 @@ if __name__ == "__main__":
 
     finally:
         env.close()
+
+
+    
