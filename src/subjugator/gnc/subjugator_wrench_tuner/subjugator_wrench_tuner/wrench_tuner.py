@@ -5,6 +5,7 @@ from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.node import Node
 
+
 class WrenchTuner(Node):
 
     def __init__(self):
@@ -79,7 +80,7 @@ class WrenchTuner(Node):
             and msg.torque.y == 0.0
             and msg.torque.z == 0.0
         ):
-            self.get_logger().info("ignoring wrench")
+            # self.get_logger().info("ignoring wrench")
             control_wrench = Wrench()
             control_wrench.force.x = 0
             control_wrench.force.y = 0

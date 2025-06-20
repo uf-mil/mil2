@@ -1,0 +1,11 @@
+# Goal
+string object
+float32 radius
+---
+# Result
+bool success
+string message
+
+---
+# Feedback
+string status_message
