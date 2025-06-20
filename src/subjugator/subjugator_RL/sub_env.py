@@ -38,15 +38,13 @@ def clean_ros_env() -> dict:
 
 class SubEnv(gym.Env):
     proc = None
-    movement_publisher=None
-    def __init__(self, movement_publisher=None, render_mode="rgb_array"):
+    def __init__(self, render_mode="rgb_array"):
 
         # Initialize ROS2 if not already done
         if not rclpy.ok():
             rclpy.init()
 
         # Store callback functions from the GymNode
-        self.movement_publisher = movement_publisher
         self.gymNode = GymNode.GymNode()
         exec_ = MultiThreadedExecutor(num_threads=2)  # Reduced to 2 threads
         exec_.add_node(self.gymNode)  # for the gym env
@@ -54,17 +52,8 @@ class SubEnv(gym.Env):
         spin_thread.start()
 
         # Variables to store ros subscriber data
-        self.imu_data = None
+        self.imu_data = 0.0
         self.cam_data = None
-
-        # Store initial pose for reference (not used for reset anymore)
-        self.initial_pose = Pose()
-        self.initial_pose.position.x = 0.0
-        self.initial_pose.position.y = 0.0
-        self.initial_pose.position.z = (
-            -1.0
-        )  # Adjust based on your submarine's starting depth
-        self.initial_pose.orientation.w = 1.0
 
         # Run the launch file to start gazebo-- Runs only once
         self.proc = subprocess.Popen(
@@ -232,7 +221,7 @@ class SubEnv(gym.Env):
         object_distance = 10.0  # Placeholder - implement your distance calculation
 
         return {"image": self.cam_data, 
-                "position": self.imu_data.pose.position, 
+                "position": self.imu_data.pose.pose.position, 
                 "Linear velcoity": self.imu_data.twist.twist.linear,   
                 "angular_velocity": self.imu_data.twist.twist.angular,
                 "object_distance": None}
@@ -256,8 +245,8 @@ class SubEnv(gym.Env):
         # Define termination
         terminated = False
         object_distance = observation.get("object_distance", float("inf"))
-        if object_distance < 2:
-            terminated = True
+        # if object_distance < 2: 
+        #     terminated = True
 
         return observation, reward, terminated, False, info
 
@@ -309,7 +298,7 @@ if __name__ == "__main__":
             obs, reward, terminated, truncated, info = env.step(action)
             print(f"Step {i}: Reward = {reward}")
             
-            if(obs["imu"] != None):
+            if(obs["position"] != None):
                 print(f"Step {i}: Filtered odom = {obs["position"].x}")
 
             if terminated:
