@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+
+<sdf version="1.7">
+
+    <model name="marble">
+
+        <static>false</static>
+
+        <link name="marble_link">
+
+            <inertial>
+                <mass>0.005</mass>
+                <inertia>
+                    <!-- 2/5 * 0.005 * (0.009)^2 -->
+                    <ixx>0.000000162</ixx>
+                    <iyy>0.000000162</iyy>
+                    <izz>0.000000162</izz>
+
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyz>0</iyz>
+                </inertia>
+            </inertial>
+
+            <collision name="collision_box">
+                <geometry>
+                    <sphere>
+                        <radius>0.009</radius>
+                    </sphere>
+                </geometry>
+            </collision>
+
+            <visual name="visual">
+                <geometry>
+                    <sphere>
+                        <radius>0.009</radius>
+                    </sphere>
+                </geometry>
+            </visual>
+
+        </link>
+
+    </model>
+</sdf>
