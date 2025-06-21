@@ -2,6 +2,11 @@
 
 PIDController::PIDController() : Node("pid_controller")
 {
+    // these lines are added by Joe Handsome, they are setup to perform a transform between odom -> base_link
+    rclcpp::Clock::SharedPtr clock = this->get_clock();
+    tf_buffer_ = std::make_shared<tf2_ros::Buffer>(clock);
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
     this->is_shutdown = false;
     this->heard_odom = false;
     this->is_enabled = false;
@@ -173,14 +178,29 @@ void PIDController::control_loop()
 
 void PIDController::publish_commands(std::array<double, 6> const &commands)
 {
-    auto msg = geometry_msgs::msg::Wrench();
-    msg.force.x = commands[0];
-    msg.force.y = commands[1];
-    msg.force.z = commands[2];
-    msg.torque.x = commands[3];
-    msg.torque.y = commands[4];
-    msg.torque.z = commands[5];
-    pub_cmd_wrench_->publish(msg);
+    geometry_msgs::msg::WrenchStamped wrench_odom;
+    wrench_odom.header.frame_id = "odom";
+    wrench_odom.header.stamp = this->get_clock()->now();
+    wrench_odom.wrench.force.x = commands[0];
+    wrench_odom.wrench.force.y = commands[1];
+    wrench_odom.wrench.force.z = commands[2];
+    wrench_odom.wrench.torque.x = commands[3];
+    wrench_odom.wrench.torque.y = commands[4];
+    wrench_odom.wrench.torque.z = commands[5];
+
+    try
+    {
+        // Transform Wrench to base_link frame
+        geometry_msgs::msg::WrenchStamped wrench_base;
+        wrench_base = tf_buffer_->transform(wrench_odom, "base_link");
+
+        // Now publish transformed wrench
+        pub_cmd_wrench_->publish(wrench_base.wrench);
+    }
+    catch (const tf2::TransformException &ex)
+    {
+        RCLCPP_WARN(this->get_logger(), "Failed to transform wrench: %s", ex.what());
+    }
 }
 
 void PIDController::odom_cb(nav_msgs::msg::Odometry::UniquePtr const msg)
