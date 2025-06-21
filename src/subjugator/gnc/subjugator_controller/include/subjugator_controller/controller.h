@@ -17,6 +17,12 @@
 #include <std_srvs/srv/empty.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 
+// includes added by Joe Handsome
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <geometry_msgs/msg/wrench_stamped.hpp>
+
 class PIDController : public rclcpp::Node
 {
   public:
@@ -32,6 +38,10 @@ class PIDController : public rclcpp::Node
                    std::shared_ptr<std_srvs::srv::SetBool::Response> response);
 
   private:
+    // more variables added by joe handsome
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+
     bool is_shutdown;
     bool heard_odom;
     bool is_enabled;

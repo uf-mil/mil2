@@ -19,9 +19,13 @@ find_package(std_srvs REQUIRED)
 find_package(control_toolbox REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+
 add_executable(subjugator_controller src/node.cpp src/controller.cpp)
 ament_target_dependencies(subjugator_controller rclcpp nav_msgs control_toolbox
-                          Eigen3 std_srvs)
+                          Eigen3 std_srvs tf2 tf2_ros tf2_geometry_msgs)
 target_include_directories(subjugator_controller PRIVATE ${EIGEN3_INCLUDE_DIR}
                                                          include)
 
