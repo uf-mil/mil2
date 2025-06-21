@@ -1,10 +1,10 @@
---This week
--go back to multithreading and have everything working
-
 --Next week
--we need to see if the subenv is adding the odometry/filtered to the observation space
--defeat the ender dragon
+-Figure out why sub is sinking after resetting on subenv.py
+-also sub not moving again through subenv
 -call the unpause gazebo service before resetting
+
+-defeat the ender dragon
+
 
 --Following week
 -Reward calculation 

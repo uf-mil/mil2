@@ -66,12 +66,13 @@ class SubEnv(gym.Env):
                 "source ~/mil2/install/setup.bash && "
                 "ros2 launch subjugator_bringup gazebo.launch.py; exec bash",
             ],
-            env=clean_ros_env(),
+            env=clean_ros_env()
         )
 
         # Wait for 25 seconds for gazebo to open
         time.sleep(25)
 
+      
         # camera rgb space, Orientation+position, Linear/angular velocity comes from odometery/filtered
         self.observation_space = spaces.Dict(
             {
@@ -96,29 +97,28 @@ class SubEnv(gym.Env):
             },
         )
 
-    def _remove_submarine(self):
-        """Remove submarine from Gazebo using gz service"""
+    def _reset_sub_pose(self):
         try:
             cmd = [
                 "gz",
                 "service",
                 "-s",
-                "/world/robosub_2024/remove",
+                "/world/robosub_2024/set_pose",
                 "--reqtype",
-                "gz.msgs.Entity",
+                "gz.msgs.Pose",
                 "--reptype",
                 "gz.msgs.Boolean",
                 "--req",
-                'name: "sub9", type: MODEL',
+                'name: "sub9", position: {x: 0, y: 0, z: -0.5}, orientation: {x: 0, y: 0, z: 0, w: 1}'
             ]
-
+            
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
 
             if result.returncode == 0:
-                print("Successfully removed submarine from Gazebo")
+                print("Successfully reset pose")
                 return True
             else:
-                print(f"Failed to remove submarine: {result.stderr}")
+                print(f"Failed to reset submarine: {result.stderr}")
                 return False
 
         except subprocess.TimeoutExpired:
@@ -128,60 +128,22 @@ class SubEnv(gym.Env):
             print(f"Error removing submarine: {e}")
             return False
 
-    def _spawn_submarine(self):
-        """Spawn submarine back into Gazebo using gz service"""
+   
+    def unpause_gazebo(self):
         try:
             cmd = [
-                "gz",
-                "service",
-                "-s",
-                "/world/robosub_2024/create",
-                "--reqtype",
-                "gz.msgs.EntityFactory",
-                "--reptype",
-                "gz.msgs.Boolean",
-                "--req",
-                'sdf_filename: "../simulation/subjugator_description/urdf/sub9.urdf.xacro"',
+                "gz", "service", 
+                "-s", "/world/robosub_2024/control",
+                "--reqtype", "gz.msgs.WorldControl",
+                "--reptype", "gz.msgs.Boolean",
+                "--timeout", "3000",
+                "--req", "pause: false"
             ]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-
-            if result.returncode == 0:
-                print("Successfully spawned submarine in Gazebo")
-                return True
-            else:
-                print(f"Failed to spawn submarine: {result.stderr}")
-                return False
-
-        except subprocess.TimeoutExpired:
-            print("Timeout while spawning submarine")
-            return False
+            subprocess.run(cmd, timeout=5)
+            
         except Exception as e:
-            print(f"Error spawning submarine: {e}")
-            return False
-
-    def _reset_submarine_gazebo(self):
-        """Reset submarine by removing and respawning it"""
-        print("Resetting submarine using Gazebo services...")
-
-        # Step 1: Remove the submarine
-        if not self._remove_submarine():
-            print("Failed to remove submarine, attempting fallback reset...")
-            return False
-
-        # Small delay to ensure removal is complete
-        time.sleep(1)
-
-        # Step 2: Spawn the submarine back
-        if not self._spawn_submarine():
-            print("Failed to spawn submarine, attempting fallback reset...")
-            return False
-
-        # Small delay to let physics settle
-        time.sleep(2)
-
-        return True
-    # def unpause_gazebo(self):
+            print(f"Could not unpause Gazebo: {e}")
 
     def calculate_red_amount(self, image):
         if image is None:
@@ -252,9 +214,9 @@ class SubEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-
+        self.unpause_gazebo()
         # Reset submarine by removing and respawning it
-        success = self._reset_submarine_gazebo()
+        success = self._reset_sub_pose()
 
         if not success:
             print("Gazebo service reset failed!")
@@ -286,14 +248,14 @@ class SubEnv(gym.Env):
 if __name__ == "__main__":
     env = SubEnv()
     try:
-        obs, info = env.reset()
+        obs, info = env.reset() #
         print("Environment reset successfully!")
 
         # Test with random actions
         for i in range(1000000000):
             action = {
-                "force": np.random.uniform(0, 10, 3),
-                "torque": np.random.uniform(0, 10, 3),
+                "force": np.random.uniform(0, 300, 3),
+                "torque": np.random.uniform(0, 300, 3),
             }
             obs, reward, terminated, truncated, info = env.step(action)
             print(f"Step {i}: Reward = {reward}")
