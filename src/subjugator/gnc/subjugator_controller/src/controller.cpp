@@ -6,6 +6,7 @@ PIDController::PIDController() : Node("pid_controller")
     rclcpp::Clock::SharedPtr clock = this->get_clock();
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(clock);
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+    joe_time = clock->now();
 
     this->is_shutdown = false;
     this->heard_odom = false;
@@ -180,7 +181,7 @@ void PIDController::publish_commands(std::array<double, 6> const &commands)
 {
     geometry_msgs::msg::WrenchStamped wrench_odom;
     wrench_odom.header.frame_id = "odom";
-    wrench_odom.header.stamp = this->get_clock()->now();
+    wrench_odom.header.stamp = joe_time;
     wrench_odom.wrench.force.x = commands[0];
     wrench_odom.wrench.force.y = commands[1];
     wrench_odom.wrench.force.z = commands[2];
@@ -197,7 +198,7 @@ void PIDController::publish_commands(std::array<double, 6> const &commands)
         // Now publish transformed wrench
         pub_cmd_wrench_->publish(wrench_base.wrench);
     }
-    catch (const tf2::TransformException &ex)
+    catch (tf2::TransformException const &ex)
     {
         RCLCPP_WARN(this->get_logger(), "Failed to transform wrench: %s", ex.what());
     }
@@ -205,6 +206,7 @@ void PIDController::publish_commands(std::array<double, 6> const &commands)
 
 void PIDController::odom_cb(nav_msgs::msg::Odometry::UniquePtr const msg)
 {
+    joe_time = msg->header.stamp;
     last_odom_ << msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z,
         msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z,
         msg->pose.pose.orientation.w;
