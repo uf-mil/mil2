@@ -1,52 +1,38 @@
-import rclpy
-from rclpy.node import Node
-from sensor_msgs.msg import Imu
-from nav_msgs.msg import Odometry
-from sensor_msgs.msg import Image
+import time
 
 import cv2
+import rclpy
 from cv_bridge import CvBridge
-import numpy as np
-from sub_env import SubEnv
-
-from multiprocessing import Process
-import threading
-import asyncio
-import time
-import os
-from geometry_msgs.msg import Wrench, Vector3
-from locks import imu_lock, cam_lock
+from geometry_msgs.msg import Vector3, Wrench
+from locks import cam_lock, imu_lock
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
+from sensor_msgs.msg import Image
 
 
 class GymNode(Node):
     def __init__(self):
-        super().__init__('GymNode')
+        super().__init__("GymNode")
         self.cvBridge = CvBridge()
-        #self.subEnv = SubEnv(movement_publisher=self.publish_action_as_wrench)
+        # self.subEnv = SubEnv(movement_publisher=self.publish_action_as_wrench)
 
         # imu attributes initalized here
         self.imu_subscription = self.create_subscription(
-            Odometry,
-            '/odometry/filtered', #topic for sub9 cam
-            self.imu_callback,
-            10
+            Odometry, "/odometry/filtered", self.imu_callback, 10,  # topic for sub9 cam
         )
         self.imu_data = None
 
         # cam attributes initialized here
         self.cam_subscription = self.create_subscription(
-            Image,
-            '/front_cam/image_raw', #topic for sub9 cam
-            self.image_callback,
-            10
+            Image, "/front_cam/image_raw", self.image_callback, 10,  # topic for sub9 cam
         )
         self.cam_data = None
-        
-        #publisher for sub motion
-        self.wrench_publisher = self.create_publisher(Wrench, 'cmd_wrench', 10)
+
+        # publisher for sub motion
+        self.wrench_publisher = self.create_publisher(Wrench, "cmd_wrench", 10)
 
     def image_callback(self, msg):
-        time.sleep(0.5) # Delay for image callback
+        time.sleep(0.5)  # Delay for image callback
         self.get_logger().info("Image received")
 
         # # Code for debugging
@@ -56,7 +42,7 @@ class GymNode(Node):
         # cv2.waitKey(40)
 
         # Simple max pooling algorithm for image
-        pool_size = 12 
+        pool_size = 12
         # Divide original image dimensions by pool size to get pooled image dimensions
         net = cv2.dnn.Net()
         params = {
@@ -78,35 +64,34 @@ class GymNode(Node):
         # cv2.waitKey(20)
         with cam_lock:
             self.cam_data = pooled_image
-    
+
     def imu_callback(self, msg):
-        time.sleep(0.1) # Unblock thread so other things can run
+        time.sleep(0.1)  # Unblock thread so other things can run
         self.get_logger().info("Imu received")
 
-        #lock thread
+        # lock thread
         with imu_lock:
             self.imu_data = msg
-        #release lock
+        # release lock
 
     def publish_action_as_wrench(self, action):
-        force_action = action['force']
-        torque_action = action['torque']
+        force_action = action["force"]
+        torque_action = action["torque"]
 
         wrench_msg = Wrench()
 
         wrench_msg.force = Vector3(
-            x=float(force_action[0]),
-            y=float(force_action[1]),
-            z=float(force_action[2])
+            x=float(force_action[0]), y=float(force_action[1]), z=float(force_action[2]),
         )
 
         wrench_msg.torque = Vector3(
             x=float(torque_action[0]),
             y=float(torque_action[1]),
-            z=float(torque_action[2])
+            z=float(torque_action[2]),
         )
         print("publishing action as wrench")
         self.wrench_publisher.publish(wrench_msg)
+
 
 def safe_rclpy_init():
     try:
@@ -114,8 +99,9 @@ def safe_rclpy_init():
     except RuntimeError:
         pass
 
+
 safe_rclpy_init()
-    
+
 # if __name__ == "__main__":
 #     gym_node = GymNode()
 

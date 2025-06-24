@@ -7,7 +7,7 @@
 
 
 --Following week
--Reward calculation 
+-Reward calculation
 -may change the range of motion from inf to smaller range
 
 --LATER

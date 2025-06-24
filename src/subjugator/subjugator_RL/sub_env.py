@@ -5,15 +5,15 @@ import threading
 import time
 
 import gym
+import GymNode
 import numpy as np
 import rclpy
-from geometry_msgs.msg import Pose, Vector3, Wrench
 from gym import spaces
+from locks import cam_lock, imu_lock
 from rclpy.executors import MultiThreadedExecutor
-import GymNode 
-from locks import cam_lock, imu_lock  
+
 # Shape of the image. L, W, # of channels
-SHAPE = [50, 80, 3] 
+SHAPE = [50, 80, 3]
 
 
 # ROS environment crashes in spawned terminal without using this - caused by OpenCv depednencies
@@ -38,6 +38,7 @@ def clean_ros_env() -> dict:
 
 class SubEnv(gym.Env):
     proc = None
+
     def __init__(self, render_mode="rgb_array"):
 
         # Initialize ROS2 if not already done
@@ -66,25 +67,30 @@ class SubEnv(gym.Env):
                 "source ~/mil2/install/setup.bash && "
                 "ros2 launch subjugator_bringup gazebo.launch.py; exec bash",
             ],
-            env=clean_ros_env()
+            env=clean_ros_env(),
         )
 
         # Wait for 25 seconds for gazebo to open
         time.sleep(25)
 
-      
         # camera rgb space, Orientation+position, Linear/angular velocity comes from odometery/filtered
         self.observation_space = spaces.Dict(
             {
                 "image": spaces.Box(
-                    0, 255, shape=(SHAPE[0], SHAPE[1], SHAPE[2]), dtype=np.uint8,
+                    0,
+                    255,
+                    shape=(SHAPE[0], SHAPE[1], SHAPE[2]),
+                    dtype=np.uint8,
                 ),
                 "position": spaces.Box(low=-np.inf, high=np.inf, shape=(3,)),
                 "orientation": spaces.Box(low=-1.0, high=1.0, shape=(4,)),
                 "Linear_velocity": spaces.Box(low=-np.inf, high=np.inf, shape=(3,)),
                 "angular_velocity": spaces.Box(low=-np.inf, high=np.inf, shape=(3,)),
                 "object_distance": spaces.Box(
-                    low=0, high=100, shape=(1,), dtype=np.float32,
+                    low=0,
+                    high=100,
+                    shape=(1,),
+                    dtype=np.float32,
                 ),
             },
         )
@@ -109,9 +115,9 @@ class SubEnv(gym.Env):
                 "--reptype",
                 "gz.msgs.Boolean",
                 "--req",
-                'name: "sub9", position: {x: 0, y: 0, z: -0.5}, orientation: {x: 0, y: 0, z: 0, w: 1}'
+                'name: "sub9", position: {x: 0, y: 0, z: -0.5}, orientation: {x: 0, y: 0, z: 0, w: 1}',
             ]
-            
+
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
 
             if result.returncode == 0:
@@ -128,20 +134,25 @@ class SubEnv(gym.Env):
             print(f"Error removing submarine: {e}")
             return False
 
-   
     def unpause_gazebo(self):
         try:
             cmd = [
-                "gz", "service", 
-                "-s", "/world/robosub_2024/control",
-                "--reqtype", "gz.msgs.WorldControl",
-                "--reptype", "gz.msgs.Boolean",
-                "--timeout", "3000",
-                "--req", "pause: false"
+                "gz",
+                "service",
+                "-s",
+                "/world/robosub_2024/control",
+                "--reqtype",
+                "gz.msgs.WorldControl",
+                "--reptype",
+                "gz.msgs.Boolean",
+                "--timeout",
+                "3000",
+                "--req",
+                "pause: false",
             ]
 
             subprocess.run(cmd, timeout=5)
-            
+
         except Exception as e:
             print(f"Could not unpause Gazebo: {e}")
 
@@ -171,22 +182,24 @@ class SubEnv(gym.Env):
     def _get_obs(self):
         # Get image from RL_subscriber through thread - MUST CHECK FOR LOCK HERE
         if cam_lock.acquire(False):
-            self.cam_data = self.gymNode.cam_data # get data from gymnode
+            self.cam_data = self.gymNode.cam_data  # get data from gymnode
             cam_lock.release()
 
         # imu version of above based on imu_node -- MUST CHECK FOR LOCK HERE
         if imu_lock.acquire(False):
-            self.imu_data = self.gymNode.imu_data # get data from gymnode
+            self.imu_data = self.gymNode.imu_data  # get data from gymnode
             imu_lock.release()
 
         # Get object distance via the buoy_finder (either through subscriber thread, or pipe) --
         object_distance = 10.0  # Placeholder - implement your distance calculation
 
-        return {"image": self.cam_data, 
-                "position": self.imu_data.pose.pose.position, 
-                "Linear velcoity": self.imu_data.twist.twist.linear,   
-                "angular_velocity": self.imu_data.twist.twist.angular,
-                "object_distance": None}
+        return {
+            "image": self.cam_data,
+            "position": self.imu_data.pose.pose.position,
+            "Linear velcoity": self.imu_data.twist.twist.linear,
+            "angular_velocity": self.imu_data.twist.twist.angular,
+            "object_distance": None,
+        }
 
     def _get_info(self):
         print("Getting info")
@@ -207,7 +220,7 @@ class SubEnv(gym.Env):
         # Define termination
         terminated = False
         object_distance = observation.get("object_distance", float("inf"))
-        # if object_distance < 2: 
+        # if object_distance < 2:
         #     terminated = True
 
         return observation, reward, terminated, False, info
@@ -231,7 +244,6 @@ class SubEnv(gym.Env):
 
         return observation, info
 
-
     def close(self):
         """Clean up resources"""
         if self.proc:
@@ -248,7 +260,7 @@ class SubEnv(gym.Env):
 if __name__ == "__main__":
     env = SubEnv()
     try:
-        obs, info = env.reset() #
+        obs, info = env.reset()  #
         print("Environment reset successfully!")
 
         # Test with random actions
@@ -259,8 +271,8 @@ if __name__ == "__main__":
             }
             obs, reward, terminated, truncated, info = env.step(action)
             print(f"Step {i}: Reward = {reward}")
-            
-            if(obs["position"] != None):
+
+            if obs["position"] != None:
                 print(f"Step {i}: Filtered odom = {obs["position"].x}")
 
             if terminated:
@@ -269,6 +281,3 @@ if __name__ == "__main__":
 
     finally:
         env.close()
-
-
-    
