@@ -18,13 +18,19 @@ class GymNode(Node):
 
         # imu attributes initalized here
         self.imu_subscription = self.create_subscription(
-            Odometry, "/odometry/filtered", self.imu_callback, 10,  # topic for sub9 cam
+            Odometry,
+            "/odometry/filtered",
+            self.imu_callback,
+            10,  # topic for sub9 cam
         )
         self.imu_data = None
 
         # cam attributes initialized here
         self.cam_subscription = self.create_subscription(
-            Image, "/front_cam/image_raw", self.image_callback, 10,  # topic for sub9 cam
+            Image,
+            "/front_cam/image_raw",
+            self.image_callback,
+            10,  # topic for sub9 cam
         )
         self.cam_data = None
 
@@ -81,7 +87,9 @@ class GymNode(Node):
         wrench_msg = Wrench()
 
         wrench_msg.force = Vector3(
-            x=float(force_action[0]), y=float(force_action[1]), z=float(force_action[2]),
+            x=float(force_action[0]),
+            y=float(force_action[1]),
+            z=float(force_action[2]),
         )
 
         wrench_msg.torque = Vector3(
