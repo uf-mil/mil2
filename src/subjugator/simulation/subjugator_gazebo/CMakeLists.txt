@@ -9,6 +9,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(mil_msgs REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
 find_package(OpenCV REQUIRED)
 
@@ -90,6 +91,7 @@ target_link_libraries(DepthSensor gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
 
 # Link libraries for Torpedoes plugin
 target_link_libraries(Torpedoes gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
+target_link_libraries(Torpedoes ament_index_cpp::ament_index_cpp)
 
 # Specify dependencies using ament_target_dependencies
 ament_target_dependencies(

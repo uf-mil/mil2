@@ -96,9 +96,7 @@
       <nR>-750</nR>
     </plugin>
 
-    <plugin filename="Torpedoes" name="torpedoes::Torpedoes">
-      <topic>${name}</topic>
-    </plugin>
+    <plugin filename="Torpedoes" name="torpedoes::Torpedoes"/>
   </gazebo>
 
   <!-- Cameras -->
