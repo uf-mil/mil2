@@ -1,6 +1,6 @@
 --Next week
 -defeat the ender dragon
--Reward calculation 
+-Reward calculation
 
 --Following week
 -may change the range of motion from inf to smaller range

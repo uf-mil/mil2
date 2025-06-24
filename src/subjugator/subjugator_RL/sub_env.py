@@ -57,7 +57,7 @@ class SubEnv(gym.Env):
         self.cam_data = None
 
         # Run the launch file to start gazebo-- Runs only once
-        self.proc = subprocess.Popen(
+        self.gazeboProc = subprocess.Popen(
             [
                 "gnome-terminal",
                 "--",
@@ -70,6 +70,22 @@ class SubEnv(gym.Env):
             env=clean_ros_env(),
         )
 
+        self.localizationProc = subprocess.Popen(
+            [
+                "gnome-terminal",
+                "--",
+                "bash",
+                "-c",
+                "source /opt/ros/jazzy/setup.bash && "
+                "source ~/mil2/install/setup.bash && "
+                "ros2 launch subjugator_localization subjugator_localization.launch.py; exec bash",
+            ],
+            env=clean_ros_env(),
+        )
+
+        self.start_ekf_node()
+
+        #self.proc.kill()
         # Wait for 25 seconds for gazebo to open
         time.sleep(25)
 
@@ -119,7 +135,6 @@ class SubEnv(gym.Env):
             ]
 
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-
             if result.returncode == 0:
                 print("Successfully reset pose")
                 return True
@@ -156,6 +171,39 @@ class SubEnv(gym.Env):
         except Exception as e:
             print(f"Could not unpause Gazebo: {e}")
 
+    def reset_localization(self):
+        try:
+            cmd = [
+                "ros2",
+                "service",
+                "call",
+                "/subjugator_localization/reset",
+                "std_srvs/srv/Empty",
+                "{ }"
+            ]
+
+            subprocess.run(cmd, timeout=5)
+
+        except Exception as e:
+            print(f"Could not start filter: {e}")
+
+
+    def start_ekf_node(self):
+        try:
+            cmd = [
+                "ros2",
+                "service",
+                "call",
+                "/subjugator_localization/enable",
+                "std_srvs/srv/Empty",
+                "{ }"
+            ]
+
+            subprocess.run(cmd, timeout=5)
+
+        except Exception as e:
+            print(f"Could not start filter: {e}")
+    
     def calculate_red_amount(self, image):
         if image is None:
             return 0, 0, 0
@@ -200,7 +248,7 @@ class SubEnv(gym.Env):
             "angular_velocity": self.imu_data.twist.twist.angular,
             "object_distance": None,
         }
-
+    
     def _get_info(self):
         print("Getting info")
         return {}
@@ -230,6 +278,9 @@ class SubEnv(gym.Env):
         self.unpause_gazebo()
         # Reset submarine by removing and respawning it
         success = self._reset_sub_pose()
+        
+        self.reset_localization()
+        self.start_ekf_node()
 
         if not success:
             print("Gazebo service reset failed!")
@@ -246,9 +297,13 @@ class SubEnv(gym.Env):
 
     def close(self):
         """Clean up resources"""
-        if self.proc:
-            self.proc.terminate()
-            self.proc.wait()
+        if self.gazeboProc:
+            self.gazeboProc.terminate()
+            self.gazeboProc.wait()
+
+        if self.localizationProc:
+            self.localizationProc.kill()
+            self.localizationProc.wait()
 
         if hasattr(self, "node"):
             self.node.destroy_node()
@@ -275,7 +330,7 @@ if __name__ == "__main__":
             if obs["position"] != None:
                 print(f"Step {i}: Filtered odom = {obs["position"].x}")
 
-            if terminated:
+            if terminated or i % 1000 == 0:
                 obs, info = env.reset()
                 print("Episode terminated, reset environment")
 
