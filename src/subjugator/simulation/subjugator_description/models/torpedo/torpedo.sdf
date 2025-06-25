@@ -42,7 +42,7 @@
         </material>
       </visual>
 
-      <sensor name="contact" type="contact">
+      <!-- <sensor name="contact" type="contact">
         <contact>
           <collision>bodycol</collision>
         </contact>
@@ -51,17 +51,17 @@
           <alwaysOn>true</alwaysOn>
           <bumperTopicName>contact_bumper</bumperTopicName>
         </plugin>
-      </sensor>
+      </sensor> -->
     </link>
 
-    <plugin name="torpedo_boyancy" filename="libsubjugator_buoyancy.so">
+    <!-- <plugin name="torpedo_boyancy" filename="libsubjugator_buoyancy.so">
       <fluid_density>1000</fluid_density>
       <drag_coefficient>100</drag_coefficient>
       <link name="body">
         <center_of_volume>0 0 0</center_of_volume>
         <volume>0.0000156</volume>
       </link>
-    </plugin>
+    </plugin> -->
 
 
   </model>

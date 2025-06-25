@@ -24,7 +24,7 @@ void Torpedoes::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::El
     // Create copy of the Sub SDF element to perform modifications due to const
     this->sub9_SDF = sdf->Clone();
 
-    // Get the Torpedo SDF & Entity from ECM
+    // Subscribe to Keyboard events if needed
 
     // Initialize the ROS node and publisher
     if (!rclcpp::ok())
@@ -41,18 +41,53 @@ void Torpedoes::SpawnTorpedo(std::string const &worldName, std::string const &sd
     buffer << sdfFile.rdbuf();
     std::string sdfString = buffer.str();
 
+    // Remove XML declaration if present
+    size_t xmlDeclPos = sdfString.find("<?xml");
+    if (xmlDeclPos != std::string::npos)
+    {
+        size_t endDecl = sdfString.find("?>", xmlDeclPos);
+        if (endDecl != std::string::npos)
+        {
+            sdfString.erase(xmlDeclPos, endDecl - xmlDeclPos + 2);
+        }
+    }
+
+    // Make model name unique for each torpedo (assume double quotes in SDF)
+    std::string uniqueName = "torpedo_" + std::to_string(torpedoCount + 1);
+    size_t namePos = sdfString.find("<model name=\"");
+    if (namePos != std::string::npos)
+    {
+        size_t quotePos = sdfString.find("\"", namePos + 13);
+        if (quotePos != std::string::npos)
+        {
+            sdfString.replace(namePos + 13, quotePos - (namePos + 13), uniqueName);
+        }
+    }
+
+    // Print the final SDF string for debugging
+    // std::cout << "[Torpedoes] Final SDF string: " << sdfString << std::endl;
+
     // Prepare the factory message
     gz::msgs::EntityFactory factoryMsg;
+    // std::cout << "SDF FilePath: " << sdfPath << std::endl;
     factoryMsg.set_sdf(sdfString);
 
-    // Optionally, set the pose if you want to spawn at a specific location
-    // gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(x, y, z, roll, pitch, yaw));
+    // Set the pose to X, Y, Z, and roll, pitch, yaw
+    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(1.0 + torpedoCount, 1.0, 1.0, 0, 0, 0));
 
-    // Send the request
+    // Send the request using the four-argument version for feedback
+    unsigned int timeout = 2000;  // Timeout in milliseconds
+    gz::msgs::Boolean reply;
+    bool result = false;
     gz::transport::Node node;
     std::string service = "/world/" + worldName + "/create";
-    bool result = node.Request(service, factoryMsg, 1000);
-    if (!result)
+
+    bool executed = node.Request(service, factoryMsg, timeout, reply, result);
+    std::cout << "[Torpedoes] Request sent to service: " << service << std::endl;
+    // std::cout << "[Torpedoes] Executed State: " << executed << std::endl;
+    // std::cout << "[Torpedoes] Result: " << result << std::endl;
+    // std::cout << "[Torpedoes] Reply: " << reply.DebugString() << std::endl;
+    if (!executed || !result)
     {
         gzerr << "Failed to spawn torpedo model." << std::endl;
     }
@@ -82,8 +117,8 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
     // Spawn two torpedoes maximum
     if (torpedoCount < 2)
     {
-        std::cout << "[Torpedoes] Torpedo Count: " << torpedoCount << std::endl;
-        // this->SpawnTorpedo(this->worldName, sdfPath);
+        std::cout << "[Torpedoes] Torpedo Count: " << torpedoCount + 1 << std::endl;
+        this->SpawnTorpedo(this->worldName, this->Torpedo_sdfPath);
         torpedoCount++;
     }
 }
