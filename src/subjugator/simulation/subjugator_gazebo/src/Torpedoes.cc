@@ -120,6 +120,7 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
 GZ_ADD_PLUGIN(torpedoes::Torpedoes, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)
 
 // TODO:
+// - Adjust torpedo.sdf so they don't fall through the world (look into gz::sim::systems)
 // - Add keyboard event handling to spawn torpedoes on key press
 // - Spawn torpedoes in relative to Sub9 position and orientation
 // - Send out second torpedo slightly offset from the first one
