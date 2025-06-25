@@ -61,7 +61,11 @@ class Torpedoes : public gz::sim::System, public gz::sim::ISystemConfigure, publ
     bool worldNameFound = false;
     std::string worldName = "task1_2025.world";
 
-    // Torpedo SDF Filepath //
+    // Torpedo SDF Values //
+    unsigned int timeout = 2000;  // Timeout in milliseconds
+    gz::msgs::Boolean reply;
+    bool result = false;
+    gz::transport::Node node;
     std::string const Torpedo_sdfPath = ament_index_cpp::get_package_share_directory("subjugator_description") + "/mode"
                                                                                                                  "ls/"
                                                                                                                  "torpe"

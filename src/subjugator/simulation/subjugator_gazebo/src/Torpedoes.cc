@@ -64,24 +64,15 @@ void Torpedoes::SpawnTorpedo(std::string const &worldName, std::string const &sd
         }
     }
 
-    // Print the final SDF string for debugging
-    // std::cout << "[Torpedoes] Final SDF string: " << sdfString << std::endl;
-
     // Prepare the factory message
     gz::msgs::EntityFactory factoryMsg;
-    // std::cout << "SDF FilePath: " << sdfPath << std::endl;
     factoryMsg.set_sdf(sdfString);
 
     // Set the pose to X, Y, Z, and roll, pitch, yaw
     gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(1.0 + torpedoCount, 1.0, 1.0, 0, 0, 0));
 
     // Send the request using the four-argument version for feedback
-    unsigned int timeout = 2000;  // Timeout in milliseconds
-    gz::msgs::Boolean reply;
-    bool result = false;
-    gz::transport::Node node;
     std::string service = "/world/" + worldName + "/create";
-
     bool executed = node.Request(service, factoryMsg, timeout, reply, result);
     std::cout << "[Torpedoes] Request sent to service: " << service << std::endl;
     // std::cout << "[Torpedoes] Executed State: " << executed << std::endl;
@@ -127,3 +118,11 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
 
 // Register plugin for Gazebo
 GZ_ADD_PLUGIN(torpedoes::Torpedoes, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)
+
+// TODO:
+// - Add keyboard event handling to spawn torpedoes on key press
+// - Spawn torpedoes in relative to Sub9 position and orientation
+// - Send out second torpedo slightly offset from the first one
+// - Spawn torpedoes with initial velocity
+// - Add logic to handle torpedo lifecycle (e.g., timeout, removal)
+// - Move as much logic as possible to Configure()
