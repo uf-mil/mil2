@@ -67,9 +67,12 @@ void Torpedoes::SpawnTorpedo(std::string const &worldName, std::string const &sd
     // Prepare the factory message
     gz::msgs::EntityFactory factoryMsg;
     factoryMsg.set_sdf(sdfString);
-
+    // Set the Velocity to 10 m/s in the X direction - This below doesn't work lol
+    // factoryMsg.mutable_linear_velocity()->set_x(1.0);
+    // factoryMsg.mutable_linear_velocity()->set_y(0.0);
+    // factoryMsg.mutable_linear_velocity()->set_z(8.0);
     // Set the pose to X, Y, Z, and roll, pitch, yaw
-    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(1.0 + torpedoCount, 1.0, 1.0, 0, 0, 0));
+    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(1.0, 1.0, 1.0, 0, 0, 0));
 
     // Send the request using the four-argument version for feedback
     std::string service = "/world/" + worldName + "/create";
