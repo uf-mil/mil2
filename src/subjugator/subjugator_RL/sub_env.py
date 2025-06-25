@@ -4,11 +4,11 @@ import subprocess
 import threading
 import time
 
-import gym
+import gymnasium as gym
 import GymNode
 import numpy as np
 import rclpy
-from gym import spaces
+from gymnasium import spaces
 from locks import cam_lock, imu_lock
 from rclpy.executors import MultiThreadedExecutor
 
@@ -85,7 +85,7 @@ class SubEnv(gym.Env):
 
         self.start_ekf_node()
 
-        #self.proc.kill()
+        # self.proc.kill()
         # Wait for 25 seconds for gazebo to open
         time.sleep(25)
 
@@ -118,6 +118,12 @@ class SubEnv(gym.Env):
                 "torque": spaces.Box(low=-50, high=50, shape=(3,), dtype=np.float32),
             },
         )
+
+    def seed(self, seed=None):
+        
+        self.np_random, seed = gym.utils.seeding.np_random(seed)
+     
+        return [seed]
 
     def _reset_sub_pose(self):
         try:
@@ -179,14 +185,13 @@ class SubEnv(gym.Env):
                 "call",
                 "/subjugator_localization/reset",
                 "std_srvs/srv/Empty",
-                "{ }"
+                "{ }",
             ]
 
             subprocess.run(cmd, timeout=5)
 
         except Exception as e:
             print(f"Could not start filter: {e}")
-
 
     def start_ekf_node(self):
         try:
@@ -196,14 +201,14 @@ class SubEnv(gym.Env):
                 "call",
                 "/subjugator_localization/enable",
                 "std_srvs/srv/Empty",
-                "{ }"
+                "{ }",
             ]
 
             subprocess.run(cmd, timeout=5)
 
         except Exception as e:
             print(f"Could not start filter: {e}")
-    
+
     def calculate_red_amount(self, image):
         if image is None:
             return 0, 0, 0
@@ -248,7 +253,7 @@ class SubEnv(gym.Env):
             "angular_velocity": self.imu_data.twist.twist.angular,
             "object_distance": None,
         }
-    
+
     def _get_info(self):
         print("Getting info")
         return {}
@@ -278,7 +283,7 @@ class SubEnv(gym.Env):
         self.unpause_gazebo()
         # Reset submarine by removing and respawning it
         success = self._reset_sub_pose()
-        
+
         self.reset_localization()
         self.start_ekf_node()
 
@@ -312,27 +317,4 @@ class SubEnv(gym.Env):
             rclpy.shutdown()
 
 
-if __name__ == "__main__":
-    env = SubEnv()
-    try:
-        obs, info = env.reset()  #
-        print("Environment reset successfully!")
 
-        # Test with random actions
-        for i in range(1000000000):
-            action = {
-                "force": np.random.uniform(0, 300, 3),
-                "torque": np.random.uniform(0, 300, 3),
-            }
-            obs, reward, terminated, truncated, info = env.step(action)
-            print(f"Step {i}: Reward = {reward}")
-
-            if obs["position"] != None:
-                print(f"Step {i}: Filtered odom = {obs["position"].x}")
-
-            if terminated or i % 1000 == 0:
-                obs, info = env.reset()
-                print("Episode terminated, reset environment")
-
-    finally:
-        env.close()
