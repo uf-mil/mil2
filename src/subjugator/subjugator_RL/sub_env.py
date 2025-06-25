@@ -235,13 +235,21 @@ class SubEnv(gym.Env):
     def _get_obs(self):
         # Get image from RL_subscriber through thread - MUST CHECK FOR LOCK HERE
         if cam_lock.acquire(False):
-            self.cam_data = self.gymNode.cam_data  # get data from gymnode
+            self.cam_data = self.gymNode.cam_data # get data from gymnode
             cam_lock.release()
+        while self.cam_data is None:
+            if cam_lock.acquire(False):
+                self.cam_data = self.gymNode.cam_data # get data from gymnode
+                cam_lock.release()
 
         # imu version of above based on imu_node -- MUST CHECK FOR LOCK HERE
         if imu_lock.acquire(False):
-            self.imu_data = self.gymNode.imu_data  # get data from gymnode
+            self.imu_data = self.gymNode.imu_data # get data from gymnode
             imu_lock.release()
+        while self.imu_data is None:
+            if imu_lock.acquire(False):
+                self.imu_data = self.gymNode.imu_data # get data from gymnode
+                imu_lock.release()
 
         # Get object distance via the buoy_finder (either through subscriber thread, or pipe) --
         object_distance = 10.0  # Placeholder - implement your distance calculation
