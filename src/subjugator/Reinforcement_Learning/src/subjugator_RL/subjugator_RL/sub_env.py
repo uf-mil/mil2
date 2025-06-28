@@ -6,11 +6,11 @@ import time
 
 #import gymnasium as gym
 import gym
-import sub_env.GymNode
+import subjugator_RL.GymNode
 import numpy as np
 import rclpy
 from gym import spaces
-from sub_env.locks import cam_lock, imu_lock
+from subjugator_RL.locks import cam_lock, imu_lock
 from rclpy.executors import MultiThreadedExecutor
 
 # Shape of the image. L, W, # of channels

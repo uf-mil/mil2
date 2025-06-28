@@ -24,4 +24,6 @@ white needs to be on the left and red needs to be on right
 -- To install the bullet engine
 sudo apt install libgz-physics7-bullet
 
+ros2 launch subjugator_RL rl.launch.py
+
 ros2 service call /sub9_velocity_reset_plugin/reset_sub9_velocity std_srvs/srv/Empty

@@ -1,5 +1,5 @@
 # import gym
-# import sub_env
+# import subjugator_RL
 # from stable_baselines3 import PPO
 # from stable_baselines3.common.vec_env import SubprocVecEnv
 # from stable_baselines3.common.utils import set_random_seed
@@ -9,7 +9,7 @@
 # def make_env(env_id, rank, seed=0):
     
 #     def _init():
-#         env = sub_env.SubEnv()
+#         env = subjugator_RL.SubEnv()
 #         env.seed(seed + rank)
 #         return env
 
@@ -39,7 +39,7 @@ import time
 import numpy as np
 from multiprocessing import Process
 import rclpy
-from sub_env.GymNode import GymNode
+from subjugator_RL.GymNode import GymNode
 
 def main():
     # Initialize the ROS node via GymNode

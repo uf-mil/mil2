@@ -54,7 +54,7 @@ def generate_launch_description():
 
     # Launch the RL training node
     rl_train = Node(
-        package="sub_env",
+        package="subjugator_RL",
         executable="sub_RL_train",
         name="sub_rl_train",
         output="screen",

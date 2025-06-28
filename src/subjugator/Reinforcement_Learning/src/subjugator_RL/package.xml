@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>sub_env</name>
+  <name>subjugator_RL</name>
   <version>0.0.1</version>
   <description>RL environment nodes for Subjugator</description>
   <maintainer email="you@example.com">Your Name</maintainer>
