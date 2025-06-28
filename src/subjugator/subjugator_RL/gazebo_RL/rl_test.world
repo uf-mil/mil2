@@ -13,8 +13,8 @@
             <!-- Physics Settings -->
             <physics name='bullet_physics' default='1' type='bullet'>
                 <real_time_update_rate>0.01</real_time_update_rate>
-                <max_step_size>0.005</max_step_size>
-                <real_time_factor>0.01</real_time_factor>
+                <max_step_size>0.0001</max_step_size>
+                <real_time_factor>0.5</real_time_factor>
             </physics>
 
 
@@ -67,6 +67,12 @@
                 </graded_buoyancy>
             </plugin>
 
+            <!-- Velocity Reset Plugin for RL -->
+            <plugin filename="libsub9_velocity_reset_plugin.so" name="gz::sim::v8::systems::Sub9VelocityReset">
+                <model_name>sub9</model_name>
+                <linear_gain>1500.0</linear_gain>
+                <angular_gain>1500.0</angular_gain>
+            </plugin>
 
            <!-- Origin Placed in the middle of the woollet pool -->
             <!-- <spherical_coordinates>
@@ -101,7 +107,7 @@
            <!-- Sub 9 -->
            <include>
                 <uri>package:://subjugator_description/urdf/sub9.urdf</uri>
-                <pose>0 0 0 0 0 0</pose>
+                <pose>0 0 5 0 0 0</pose>
             </include>
            <!-- Virtual north, east, and down frame -->
            <include>
