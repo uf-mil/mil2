@@ -52,10 +52,20 @@ def generate_launch_description():
         output="screen",
     )
 
+    # Launch the RL training node
+    rl_train = Node(
+        package="sub_env",
+        executable="sub_RL_train",
+        name="sub_rl_train",
+        output="screen",
+    )
+
+
     return LaunchDescription(
         [
             gz_sim,
             subjugator_setup,
             bridge,
+            rl_train
         ],
     )

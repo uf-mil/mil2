@@ -4,12 +4,13 @@ import subprocess
 import threading
 import time
 
-import gymnasium as gym
-import GymNode
+#import gymnasium as gym
+import gym
+import sub_env.GymNode
 import numpy as np
 import rclpy
-from gymnasium import spaces
-from locks import cam_lock, imu_lock
+from gym import spaces
+from sub_env.locks import cam_lock, imu_lock
 from rclpy.executors import MultiThreadedExecutor
 
 # Shape of the image. L, W, # of channels

@@ -4,7 +4,7 @@ import cv2
 import rclpy
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Vector3, Wrench
-from locks import cam_lock, imu_lock
+from sub_env.locks import cam_lock, imu_lock
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Image
