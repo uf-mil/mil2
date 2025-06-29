@@ -28,6 +28,7 @@ class TestsPage : public ComponentBase, public Job
     std::vector<int> actionSelectors_;
     bool selectAll_ = false;
     size_t nSelected_ = 0;
+    int mainSize_ = 20;
 
     std::atomic<size_t> currentTest_ = 0;
     std::atomic<bool> running_ = false;

@@ -3,6 +3,7 @@
 #include <boost/dll/alias.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/dom/elements.hpp>
 
 #include "mil_preflight/uis/ftxui/reportsPage.h"
 #include "mil_preflight/uis/ftxui/testsPage.h"
@@ -12,6 +13,68 @@ auto screen = ScreenInteractive::Fullscreen();
 
 namespace mil_preflight
 {
+class Root : public ComponentBase
+{
+  public:
+    Root()
+    {
+        Component back_button = Button(
+                                    "<", [this] { current_page = 0; }, ButtonOption::Ascii()) |
+                                Maybe([this] { return current_page != 0; });
+        Component head =
+            Renderer(back_button,
+                     [this, back_button]
+                     {
+                         return hbox({ back_button->Render(), text(titles[current_page]) | bold | center |
+                                                                  flex });  // Back button & title in same line
+                     });
+
+        body = Container::Tab({}, &current_page);
+        menu = Container::Vertical({});
+        body->Add(menu | center);
+        Add(Container::Vertical({ head, Renderer([] { return separator(); }), body | flex }));
+    }
+    ~Root()
+    {
+    }
+
+    void add_page(std::string const menu_entry, Component page, std::string const& title)
+    {
+        ButtonOption menu_option = ButtonOption::Ascii();
+        menu_option.transform = [](EntryState const& s)
+        {
+            std::string const t = s.active ? "> " + s.label + " ⋯"  //
+                                             :
+                                             "  " + s.label + " ⋯";
+            return text(t) | (s.focused ? bold : nothing);
+        };
+
+        int index = body->ChildCount();
+        menu->Add(Button(menu_entry, [this, index] { current_page = index; }, menu_option));
+        body->Add(page);
+        titles.push_back(title);
+    }
+
+    void add_callback(std::string const menu_entry, std::function<void(void)> action)
+    {
+        ButtonOption menu_option = ButtonOption::Ascii();
+        menu_option.transform = [](EntryState const& s)
+        {
+            std::string const t = s.active ? "> " + s.label  //
+                                             :
+                                             "  " + s.label;
+            return text(t) | (s.focused ? bold : nothing);
+        };
+
+        menu->Add(Button(menu_entry, action, menu_option));
+    }
+
+  private:
+    int current_page = 0;
+    std::vector<std::string> titles = { "MIL Preflight" };
+    Component body;
+    Component menu;
+};
 
 class FTXUI : public UIBase
 {
@@ -22,74 +85,43 @@ class FTXUI : public UIBase
 
     void initialize(int argc, char* argv[]) final
     {
-        std::string fileName;
+        std::string filename;
         if (argc > 1)
         {
-            fileName = argv[1];
+            filename = argv[1];
         }
         else
         {
-            boost::filesystem::path filePath = boost::process::search_path("mil_preflight");
-            fileName = (filePath.parent_path() / "config.json").string();
+            boost::filesystem::path filepath = boost::process::search_path("mil_preflight");
+            filename = (filepath.parent_path() / "config.json").string();
         }
 
-        Component backButton = Button(
-                                   "<",
-                                   [=]
-                                   {
-                                       currentPage_ = 0;
-                                       showBackButton_ = false;
-                                   },
-                                   ButtonOption::Ascii()) |
-                               Maybe(&showBackButton_);
-        Component head = Renderer(backButton,
-                                  [=]
-                                  {
-                                      if (currentPage_ != 0)
-                                          showBackButton_ = true;
+        root = std::make_shared<Root>();
 
-                                      return vbox({
-                                          hbox({ backButton->Render(), text(titles_[currentPage_]) | bold | center |
-                                                                           flex }),  // Back button & title in same line
-                                          separator(),
-                                      });
-                                  });
+        Component tests_page = std::make_shared<mil_preflight::TestsPage>(filename) | flex;
+        Component reports_page = std::make_shared<mil_preflight::ReportsPage>() | flex;
 
-        Component menu = Container::Vertical({}, &selectedIndex_);
+        Component about_page = Renderer(
+            [this]
+            {
+                return vbox({ text("MIL Preflight") | bold, text("v0.1.3"), text("University of Florida"),
+                              hbox({ text("Machine Intelligence Laboratory") | hyperlink("https://mil.ufl.edu/") }),
+                              hbox({ text("Powered by "), text("FTXUI") | hyperlink("https://github.com/ArthurSonzogni/"
+                                                                                    "FTXUI/") }),
+                              separatorEmpty(),
+                              paragraph("MIL Preflight is a tool inspired by the preflight checklists used by "
+                                        "pilots before flying a plane."),
+                              paragraph("This program is designed to verify the functionality of all software and "
+                                        "hardware systems on your autonomous robot."),
+                              paragraph("It ensures that everything is in working order, allowing you to safely "
+                                        "deploy your robot with confidence.") }) |
+                       flex;
+            });
 
-        ButtonOption menuOption = ButtonOption::Ascii();
-        menuOption.transform = [](EntryState const& s)
-        {
-            std::string const t = s.active ? "> " + s.label  //
-                                             :
-                                             "  " + s.label;
-            return text(t) | (s.focused ? bold : nothing);
-        };
-
-        menu->Add(Button("Run Tests", [=] { currentPage_ = 1; }, menuOption));
-        menu->Add(Button("View Reports", [=] { currentPage_ = 2; }, menuOption));
-        menu->Add(Button("Read Documentation", [=] { currentPage_ = 3; }, menuOption));
-        menu->Add(Button("Quit", [&] { screen.Exit(); }, menuOption));
-
-        Component mainPage = Renderer(menu,
-                                      [=]
-                                      {
-                                          return vbox({
-                                                     paragraph(introduction_),
-                                                     separator(),
-                                                     menu->Render() | center | flex | frame,
-                                                 }) |
-                                                 flex;
-                                      });
-
-        Component testsPage = std::make_shared<mil_preflight::TestsPage>(fileName) | flex;
-        Component reportsPage = std::make_shared<mil_preflight::ReportsPage>() | flex;
-
-        Component docPage = Renderer([] { return vbox({ text("Coming soon") | center }) | flex; });
-
-        Component body = Container::Tab({ mainPage, testsPage, reportsPage, docPage }, &currentPage_);
-
-        root_ = Container::Vertical({ head, body });
+        root->add_page("Run Tests", tests_page, "Tests");
+        root->add_page("View Reports", reports_page, "Reports");
+        root->add_page("About", about_page, "About");
+        root->add_callback("Quit", [this] { screen.Exit(); });
     }
 
     ~FTXUI() final
@@ -98,7 +130,7 @@ class FTXUI : public UIBase
 
     int spin() final
     {
-        screen.Loop(root_);
+        screen.Loop(root);
         return 0;
     }
 
@@ -108,20 +140,7 @@ class FTXUI : public UIBase
     }
 
   private:
-    int selectedIndex_ = 0;
-    int currentPage_ = 0;
-    bool showBackButton_ = false;
-    Component root_;
-
-    std::string const introduction_ = "Welcome to the Preflight Program, "
-                                      "a tool inspired by the preflight checklists used by pilots before flying a "
-                                      "plane. "
-                                      "This program is designed to verify the functionality of all software and "
-                                      "hardware "
-                                      "systems on your autonomous robot. "
-                                      "It ensures that everything is in working order, "
-                                      "allowing you to safely deploy your robot with confidence.";
-    std::vector<std::string> titles_ = { "MIL Preflight", "Tests", "Reports", "Documentation" };
+    std::shared_ptr<Root> root;
 };
 
 }  // namespace mil_preflight
