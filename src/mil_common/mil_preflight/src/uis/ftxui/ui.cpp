@@ -39,7 +39,7 @@ class Root : public ComponentBase
     {
     }
 
-    void add_page(std::string const menu_entry, Component page, std::string const& title)
+    void addPage(std::string const menu_entry, Component page, std::string const& title)
     {
         ButtonOption menu_option = ButtonOption::Ascii();
         menu_option.transform = [](EntryState const& s)
@@ -56,7 +56,7 @@ class Root : public ComponentBase
         titles.push_back(title);
     }
 
-    void add_callback(std::string const menu_entry, std::function<void(void)> action)
+    void addCallback(std::string const menu_entry, std::function<void(void)> action)
     {
         ButtonOption menu_option = ButtonOption::Ascii();
         menu_option.transform = [](EntryState const& s)
@@ -86,15 +86,15 @@ class FTXUI : public UIBase
 
     bool initialize(int argc, char* argv[]) final
     {
-        std::optional<boost::property_tree::ptree> cfg = load_config(argc, argv);
+        std::optional<boost::property_tree::ptree> cfg = loadConfig(argc, argv);
         if (!cfg)
             return false;
 
         root = std::make_shared<Root>();
 
-        auto tests_page = std::make_shared<mil_preflight::TestsPage>([this](TestsPage& page) { run_job_async(page); });
+        auto tests_page = std::make_shared<mil_preflight::TestsPage>([this](TestsPage& page) { runJobAsync(page); });
 
-        create_job(cfg.value(), tests_page);
+        createJob(cfg.value(), tests_page);
 
         Component reports_page = std::make_shared<mil_preflight::ReportsPage>();
 
@@ -115,10 +115,10 @@ class FTXUI : public UIBase
                        flex;
             });
 
-        root->add_page("Run Tests", tests_page, "Tests");
-        root->add_page("View Reports", reports_page, "Reports");
-        root->add_page("About", about_page, "About");
-        root->add_callback("Quit", [this] { screen.Exit(); });
+        root->addPage("Run Tests", tests_page, "Tests");
+        root->addPage("View Reports", reports_page, "Reports");
+        root->addPage("About", about_page, "About");
+        root->addCallback("Quit", [this] { screen.Exit(); });
 
         return true;
     }
@@ -141,7 +141,7 @@ class FTXUI : public UIBase
   private:
     std::shared_ptr<Root> root;
 
-    std::optional<boost::property_tree::ptree> load_config(int argc, char* argv[])
+    std::optional<boost::property_tree::ptree> loadConfig(int argc, char* argv[])
     {
         boost::filesystem::path filename;
         if (argc > 1)
@@ -194,7 +194,7 @@ class FTXUI : public UIBase
         return cfg;
     }
 
-    void create_job(boost::property_tree::ptree& cfg, std::shared_ptr<TestsPage> tests_page)
+    void createJob(boost::property_tree::ptree& cfg, std::shared_ptr<TestsPage> tests_page)
     {
         for (auto& test_pair : cfg)
         {

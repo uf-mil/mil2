@@ -151,7 +151,7 @@ class UIBase
         return creator_();
     }
 
-    void run_job(Job& job)
+    void runJob(Job& job)
     {
         Job::Report jobReport;
         std::optional<std::reference_wrapper<Test>> testOptional = job.nextTest();
@@ -159,7 +159,7 @@ class UIBase
         while (testOptional.has_value())
         {
             Test& test = testOptional.value();
-            Test::Report testReport = run_test(test);
+            Test::Report testReport = runTest(test);
 
             jobReport.emplace(test.getName(), std::move(testReport));
             testOptional = job.nextTest();
@@ -168,9 +168,9 @@ class UIBase
         job.onFinish(std::move(jobReport));
     }
 
-    void run_job_async(Job& job)
+    void runJobAsync(Job& job)
     {
-        work_context.post([&] { run_job(job); });
+        work_context.post([&] { runJob(job); });
     }
 
   private:
@@ -183,7 +183,7 @@ class UIBase
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard;
     std::thread work_thread;
 
-    Test::Report run_test(Test& test)
+    Test::Report runTest(Test& test)
     {
         boost::process::ipstream childOut;
         boost::process::ipstream childErr;
@@ -200,7 +200,7 @@ class UIBase
         while (actionOptional.has_value())
         {
             Action& action = actionOptional.value();
-            Action::Report actionReport = run_action(action, childOut, childErr, childIn);
+            Action::Report actionReport = runAction(action, childOut, childErr, childIn);
 
             testReport.emplace(action.getName(), std::move(actionReport));
             actionOptional = test.nextAction();
@@ -215,8 +215,8 @@ class UIBase
         return testReport;
     }
 
-    Action::Report run_action(Action& action, boost::process::ipstream& out, boost::process::ipstream& err,
-                              boost::process::opstream& in)
+    Action::Report runAction(Action& action, boost::process::ipstream& out, boost::process::ipstream& err,
+                             boost::process::opstream& in)
     {
         action.onStart();
 
