@@ -1,5 +1,7 @@
 #include "mil_preflight/ui.h"
 
+#include <future>
+
 #include <boost/dll/alias.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -221,6 +223,21 @@ class FTXUI : public UIBase
                 test_tab->createAction(std::move(action_name), std::move(parameters));
             }
         }
+    }
+
+    std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) final
+    {
+        std::shared_ptr<std::promise<int>> feedback = std::make_shared<std::promise<int>>();
+
+        std::shared_ptr<MessageBox> dialog = std::make_shared<MessageBox>("Question");
+        screen.Post(
+            [=]
+            {
+                int index = dialog->show(question, options);
+                feedback->set_value(index);
+            });
+
+        return feedback->get_future().share();
     }
 };
 

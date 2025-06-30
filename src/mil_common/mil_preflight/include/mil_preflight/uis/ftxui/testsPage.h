@@ -75,7 +75,6 @@ class ActionBox : public ComponentBase, public Action
 
     void onStart() final;
     void onFinish(Action::Report const& report) final;
-    std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) final;
 };
 
 struct TestTabOption
@@ -169,7 +168,6 @@ class TestsPage : public ComponentBase, public Job
 
     std::optional<std::reference_wrapper<Test>> nextTest() final;
     void onFinish(Job::Report&& report) final;
-
     bool OnEvent(Event event) final;
 };
 

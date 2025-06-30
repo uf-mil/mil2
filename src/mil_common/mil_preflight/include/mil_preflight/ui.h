@@ -73,7 +73,6 @@ class Action
   protected:
     virtual void onStart() = 0;
     virtual void onFinish(Report const& report) = 0;
-    virtual std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) = 0;
 
   private:
 };
@@ -171,6 +170,15 @@ class UIBase
     void runJobAsync(Job& job)
     {
         work_context.post([&] { runJob(job); });
+    }
+
+  protected:
+    virtual std::shared_future<int> onQuestion([[maybe_unused]] std::string&& question,
+                                               [[maybe_unused]] std::vector<std::string>&& options)
+    {
+        std::promise<int> question_promise;
+        question_promise.set_value(-1);
+        return question_promise.get_future().share();
     }
 
   private:
@@ -302,7 +310,7 @@ class UIBase
 
                 if (line[0] == EOT)
                 {
-                    std::shared_future<int> feedback = action.onQuestion(std::move(question), std::move(options));
+                    std::shared_future<int> feedback = onQuestion(std::move(question), std::move(options));
                     try
                     {
                         in << feedback.get() << std::endl;
