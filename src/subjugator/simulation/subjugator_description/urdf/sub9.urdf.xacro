@@ -106,7 +106,7 @@
     namespace='/imu'
     parent="base_link"
     xyz="0.65164 -0.00588 0.052145"
-    rpy="0 3.14159 1.570797"
+    rpy="0 0 0"
     rate="210"
     ax="0.0"
     ay="0.0"

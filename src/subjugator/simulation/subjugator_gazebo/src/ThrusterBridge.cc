@@ -59,14 +59,14 @@ void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
 void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts const &msg)
 {
     // Process the received thruster efforts message
-    thrusterEfforts["FLH"] = msg.thrust_flh;
     thrusterEfforts["FRH"] = msg.thrust_frh;
-    thrusterEfforts["BLH"] = msg.thrust_blh;
+    thrusterEfforts["FLH"] = msg.thrust_flh;
     thrusterEfforts["BRH"] = msg.thrust_brh;
-    thrusterEfforts["FLV"] = msg.thrust_flv;
+    thrusterEfforts["BLH"] = msg.thrust_blh;
     thrusterEfforts["FRV"] = msg.thrust_frv;
-    thrusterEfforts["BLV"] = msg.thrust_blv;
+    thrusterEfforts["FLV"] = msg.thrust_flv;
     thrusterEfforts["BRV"] = msg.thrust_brv;
+    thrusterEfforts["BLV"] = msg.thrust_blv;
 
 
     // Iterate through thrusterEfforts Map
