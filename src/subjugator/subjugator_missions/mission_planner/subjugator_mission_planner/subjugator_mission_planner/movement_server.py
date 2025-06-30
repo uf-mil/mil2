@@ -64,27 +64,30 @@ class MovementServer(Node):
             f"Executing move to {self.movementGoal}, {self.movementType}",
         )
 
-        # Generate goal poses for orbit
-        goal_pose = self.movementGoal
+        if self.movementType == "Absolute":
+            goal_pose = self.movementGoal
+            self.goal_pub.publish(goal_pose)
 
-        self.goal_pub.publish(goal_pose)
+            near_goal_pose = False
+            while not near_goal_pose:
+                near_goal_pose = self.check_at_goal_pose(self.current_pose, goal_pose)
 
-        near_goal_pose = False
-        while not near_goal_pose:
-            near_goal_pose = self.check_at_goal_pose(self.current_pose, goal_pose)
+                # slow down the loop
+                self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
 
-            # slow down the loop
-            self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
+            self.get_logger().info("Arrived at goal pose!")
 
-        self.get_logger().info("Arrived at goal pose!")
+            self.get_logger().info("Completed movement!")
 
-        self.get_logger().info("Completed movement!")
+            goal_handle.succeed()
+            result = Movement.Result()
+            result.success = True
+            result.message = "Successfully moved to goal pose"
+            return result
+        else:
+            # TODO implement relative movement
 
-        goal_handle.succeed()
-        result = Movement.Result()
-        result.success = True
-        result.message = "Successfully moved to goal pose"
-        return result
+            pass
 
 
 def main(args=None):
