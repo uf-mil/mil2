@@ -4,13 +4,12 @@ import subprocess
 import threading
 import time
 
-#import gymnasium as gym
-import gym
-import subjugator_RL.GymNode
+import gymnasium as gym
+import GymNode
 import numpy as np
 import rclpy
-from gym import spaces
-from subjugator_RL.locks import cam_lock, imu_lock
+from gymnasium import spaces
+from locks import cam_lock, imu_lock
 from rclpy.executors import MultiThreadedExecutor
 
 # Shape of the image. L, W, # of channels
@@ -112,18 +111,13 @@ class SubEnv(gym.Env):
             },
         )
 
-        # Force_x
-        self.action_space = spaces.Dict(
-            {
-                "force": spaces.Box(low=-50, high=50, shape=(3,), dtype=np.float32),
-                "torque": spaces.Box(low=-50, high=50, shape=(3,), dtype=np.float32),
-            },
-        )
+        # FFirst 3 are force, second 3 are torque
+        self.action_space = spaces.Box(low=-50, high=50, shape=(6,), dtype=np.float32)
 
     def seed(self, seed=None):
-        
+
         self.np_random, seed = gym.utils.seeding.np_random(seed)
-     
+
         return [seed]
 
     def _reset_sub_pose(self):
@@ -236,31 +230,36 @@ class SubEnv(gym.Env):
     def _get_obs(self):
         # Get image from RL_subscriber through thread - MUST CHECK FOR LOCK HERE
         if cam_lock.acquire(False):
-            self.cam_data = self.gymNode.cam_data # get data from gymnode
+            self.cam_data = self.gymNode.cam_data  # get data from gymnode
             cam_lock.release()
-        while self.cam_data is None:
-            if cam_lock.acquire(False):
-                self.cam_data = self.gymNode.cam_data # get data from gymnode
-                cam_lock.release()
 
         # imu version of above based on imu_node -- MUST CHECK FOR LOCK HERE
         if imu_lock.acquire(False):
-            self.imu_data = self.gymNode.imu_data # get data from gymnode
+            self.imu_data = self.gymNode.imu_data  # get data from gymnode
             imu_lock.release()
-        while self.imu_data is None:
-            if imu_lock.acquire(False):
-                self.imu_data = self.gymNode.imu_data # get data from gymnode
-                imu_lock.release()
 
         # Get object distance via the buoy_finder (either through subscriber thread, or pipe) --
-        object_distance = 10.0  # Placeholder - implement your distance calculation
+        object_distance = np.array([10.0], dtype=np.float32)  # Placeholder
+
+        # capture data
+        pos = self.imu_data.pose.pose.position
+        ori = self.imu_data.pose.pose.orientation
+        linVel = self.imu_data.twist.twist.linear
+        angVel = self.imu_data.twist.twist.angular
+
+        # make it an array
+        position = np.array([pos.x, pos.y, pos.z], dtype=np.float32)
+        orientation = np.array([ori.x, ori.y, ori.z, ori.w], dtype=np.float32)
+        linear_vel = np.array([linVel.x, linVel.y, linVel.z], dtype=np.float32)
+        angular_vel = np.array([angVel.x, angVel.y, angVel.z], dtype=np.float32)
 
         return {
             "image": self.cam_data,
-            "position": self.imu_data.pose.pose.position,
-            "Linear velcoity": self.imu_data.twist.twist.linear,
-            "angular_velocity": self.imu_data.twist.twist.angular,
-            "object_distance": None,
+            "position": position,
+            "orientation": orientation,
+            "Linear_velocity": linear_vel,
+            "angular_velocity": angular_vel,
+            "object_distance": object_distance,
         }
 
     def _get_info(self):
@@ -324,6 +323,3 @@ class SubEnv(gym.Env):
 
         if rclpy.ok():
             rclpy.shutdown()
-
-
-

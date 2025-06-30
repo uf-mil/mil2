@@ -81,8 +81,8 @@ class GymNode(Node):
         # release lock
 
     def publish_action_as_wrench(self, action):
-        force_action = action["force"]
-        torque_action = action["torque"]
+        force_action = action[:3]
+        torque_action = action[3:6]
 
         wrench_msg = Wrench()
 
@@ -109,33 +109,3 @@ def safe_rclpy_init():
 
 
 safe_rclpy_init()
-
-# if __name__ == "__main__":
-#     gym_node = GymNode()
-
-#     def main():
-#         try:
-#             print("Environment reset successfully!")
-
-#             # Test with random actions
-#             for i in range(1000000):
-#                 time.sleep(0.5)
-#                 action = {
-#                     "force": np.random.uniform(0, 10, 3),
-#                     "torque": np.random.uniform(0, 10, 3),
-#                 }
-#                 obs, reward, terminated, truncated, info = gym_node.subEnv.step(action)
-#                 print(f"Step {i}: Reward = {reward}")
-#                 if(obs["imu"] != None):
-#                     print(f"Step {i}: Filtered odom = {obs["imu"].twist.twist.linear.x}")
-
-#                 if terminated:
-#                     obs, info = gym_node.subEnv.reset()
-#                     print("Episode terminated, reset environment")
-#         finally:
-#             gym_node.subEnv.close()
-
-#     p = Process(target=main)
-#     p.start()
-
-#     rclpy.spin(gym_node)
