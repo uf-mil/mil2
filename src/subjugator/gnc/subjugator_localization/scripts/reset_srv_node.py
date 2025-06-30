@@ -5,12 +5,17 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from rclpy.node import Node
 from robot_localization.srv import SetPose
 from std_srvs.srv import Empty
+from std_msgs.msg import Empty as TopicEmpty
 
 
 class ResetLocalizationService(Node):
 
     def __init__(self):
         super().__init__("reset_localization_service")
+
+        # this topic is Joe Handsome origonal :)
+        self.reset_pub_ = self.create_publisher(TopicEmpty, "localization/was_reset", 10)
+
         self.srv = self.create_service(
             Empty,
             "subjugator_localization/reset",
@@ -38,6 +43,11 @@ class ResetLocalizationService(Node):
         set_pose_request.pose.pose.covariance = [0.0] * 36
         self.set_pose_client.call_async(set_pose_request)
         response = Empty.Response()
+
+        # inform the world of the reset
+        msg = TopicEmpty()
+        self.reset_pub_.publish(msg)
+
         return response
 
 
