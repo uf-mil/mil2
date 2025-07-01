@@ -41,7 +41,7 @@
           </image>
           <clip>
             <near>0.1</near>
-            <far>10.0</far>
+            <far>50.0</far>
           </clip>
         </camera>
         <xacro:if value="${use_image_processing}">
