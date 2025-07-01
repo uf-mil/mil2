@@ -118,7 +118,7 @@ class TestTab : public ComponentBase, public Test
 
     std::shared_ptr<ActionBox> createAction(std::string&& name, std::vector<std::string>&& parameters);
 
-    std::optional<std::reference_wrapper<Action>> nextAction() final;
+    std::shared_ptr<Action> nextAction() final;
     void onFinish() final;
 
   private:
@@ -143,10 +143,10 @@ class TestTab : public ComponentBase, public Test
     }
 };
 
-class TestsPage : public ComponentBase, public Job
+class TestsPage : public ComponentBase, public Job, public std::enable_shared_from_this<TestsPage>
 {
   public:
-    TestsPage(std::function<void(TestsPage& page)> onRun);
+    TestsPage(std::function<void(std::shared_ptr<TestsPage>)> onRun);
     ~TestsPage();
     std::shared_ptr<TestTab> createTest(std::string&& name, std::string&& plugin);
 
@@ -167,7 +167,7 @@ class TestsPage : public ComponentBase, public Job
     std::string const buttonLabels_[4] = { " Run ", " ·   ", "  ·  ", "   · " };
     size_t ticker_ = 0;
 
-    std::optional<std::reference_wrapper<Test>> nextTest() final;
+    std::shared_ptr<Test> nextTest() final;
     void onFinish() final;
     bool OnEvent(Event event) final;
 };

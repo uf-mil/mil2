@@ -15,19 +15,14 @@
 namespace mil_preflight
 {
 
-class Frontend;
 class Action
 {
   public:
-    friend class Frontend;
-
     Action() {};
-    ~Action() {};
+    virtual ~Action() {};
 
     virtual std::string const& getName() const = 0;
     virtual std::vector<std::string> const& getParameters() const = 0;
-
-  protected:
     virtual void onStart() = 0;
     virtual void onFinish(bool success, std::string&& summery) = 0;
     virtual std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) = 0;
@@ -41,29 +36,22 @@ class Action
 class Test
 {
   public:
-    friend class Frontend;
-
     Test() {};
-    ~Test() {};
+    virtual ~Test() {};
 
     virtual std::string const& getName() const = 0;
     virtual std::string const& getPlugin() const = 0;
-
-  protected:
-    virtual std::optional<std::reference_wrapper<Action>> nextAction() = 0;
+    virtual std::shared_ptr<Action> nextAction() = 0;
     virtual void onFinish() = 0;
 };
 
 class Job
 {
   public:
-    friend class Frontend;
-
     Job() {};
     ~Job() {};
 
-  protected:
-    virtual std::optional<std::reference_wrapper<Test>> nextTest() = 0;
+    virtual std::shared_ptr<Test> nextTest() = 0;
     virtual void onFinish() = 0;
 };
 
@@ -73,8 +61,8 @@ class Frontend
     Frontend(int argc, char* argv[]);
     ~Frontend();
 
-    void runJob(Job& job);
-    void runJobAsync(Job& job);
+    void runJob(std::shared_ptr<Job> job);
+    void runJobAsync(std::shared_ptr<Job> job);
     std::vector<std::string> const& getArgs()
     {
         return args_;
@@ -95,8 +83,8 @@ class Frontend
 
     boost::process::child backend_;
 
-    void runTest(Test& test);
-    void runAction(Action& action);
+    void runTest(std::shared_ptr<Test> test);
+    void runAction(std::shared_ptr<Action> action);
 };
 
 class UIBase

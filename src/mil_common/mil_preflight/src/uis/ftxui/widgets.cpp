@@ -163,7 +163,7 @@ std::shared_future<int> ActionBox::onQuestion(std::string&& question, std::vecto
     return feedback->get_future().share();
 }
 
-std::optional<std::reference_wrapper<Action>> TestTab::nextAction()
+std::shared_ptr<Action> TestTab::nextAction()
 {
     Component child = option_.childContainer;
     while (currentAction_ < child->ChildCount())
@@ -171,12 +171,12 @@ std::optional<std::reference_wrapper<Action>> TestTab::nextAction()
         std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(currentAction_++));
         child->SetActiveChild(action);
         if (action->isChecked())
-            return *action;
+            return action;
 
         action->reset();
     }
 
-    return std::nullopt;
+    return nullptr;
 }
 
 std::shared_ptr<ActionBox> TestTab::createAction(std::string&& name, std::vector<std::string>&& parameters)
@@ -295,7 +295,7 @@ bool TestTab::OnMouseEvent(Event event)
     return false;
 }
 
-TestsPage::TestsPage(std::function<void(TestsPage& page)> onRun)
+TestsPage::TestsPage(std::function<void(std::shared_ptr<TestsPage>)> onRun)
 {
     Components pages;
     Components tabs;
@@ -325,7 +325,7 @@ TestsPage::TestsPage(std::function<void(TestsPage& page)> onRun)
         [=]
         {
             main_->TakeFocus();
-            onRun(*this);
+            onRun(shared_from_this());
         },
         buttonOption);
 
@@ -367,7 +367,7 @@ TestsPage::~TestsPage()
 {
 }
 
-std::optional<std::reference_wrapper<Test>> TestsPage::nextTest()
+std::shared_ptr<Test> TestsPage::nextTest()
 {
     running_ = true;
 
@@ -377,10 +377,10 @@ std::optional<std::reference_wrapper<Test>> TestsPage::nextTest()
         if (test->isChecked())
         {
             tabsContainer_->SetActiveChild(tabsContainer_->ChildAt(currentTest_ - 1));
-            return *test;
+            return test;
         }
     }
-    return std::nullopt;
+    return nullptr;
 }
 
 std::shared_ptr<TestTab> TestsPage::createTest(std::string&& name, std::string&& plugin)
