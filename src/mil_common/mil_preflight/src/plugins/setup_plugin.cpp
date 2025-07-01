@@ -2,7 +2,7 @@
 
 #include <boost/dll.hpp>
 
-#include "mil_preflight/backend.h"
+#include "mil_preflight/plugin.h"
 
 namespace mil_preflight
 {
