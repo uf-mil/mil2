@@ -1,7 +1,7 @@
 
-#include <boost/function.hpp>
+#include "mil_preflight/frontend.h"
 
-#include "mil_preflight/ui.h"
+#include <boost/function.hpp>
 
 namespace mil_preflight
 {

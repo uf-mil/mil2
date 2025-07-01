@@ -1,5 +1,3 @@
-#include "mil_preflight/ui.h"
-
 #include <future>
 
 #include <boost/dll/alias.hpp>
@@ -9,6 +7,7 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 
+#include "mil_preflight/frontend.h"
 #include "mil_preflight/uis/ftxui/dialog.h"
 #include "mil_preflight/uis/ftxui/reportsPage.h"
 #include "mil_preflight/uis/ftxui/testsPage.h"
