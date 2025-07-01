@@ -47,16 +47,16 @@
           <collision>bodycol</collision>
         </contact>
         <update_rate>50</update_rate>
-        <plugin name='gazebo_ros_bumper_controller' filename="libgazebo_ros_bumper.so">
+        <!-- <plugin name='gazebo_ros_bumper_controller' filename="libgazebo_ros_bumper.so">
           <alwaysOn>true</alwaysOn>
           <bumperTopicName>contact_bumper</bumperTopicName>
-        </plugin>
+        </plugin> -->
       </sensor>
     </link>
 
-    <plugin name="torpedo_buoyancy" filename="libsubjugator_buoyancy.so">
-      <fluid_density>1000</fluid_density>
-      <drag_coefficient>100</drag_coefficient>
+    <!-- Um, yeah this plugin is only for .world files :))))) -->
+    <plugin name="gz::sim::systems::Buoyancy" filename="gz-sim-buoyancy-system">
+      <uniform_fluid_density>1000</uniform_fluid_density>
       <link name="body">
         <center_of_volume>0 0 0</center_of_volume>
         <volume>0.0000156</volume>
