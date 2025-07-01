@@ -140,10 +140,11 @@ void ActionBox::onStart()
     state_ = State::RUNNING;
 }
 
-void ActionBox::onFinish(Action::Report&& report)
+void ActionBox::onFinish(bool success, std::string&& summery)
 {
-    state_ = report.success ? State::SUCCESS : State::FAILED;
-    test_report.emplace(getName(), std::move(report));
+    state_ = success ? State::SUCCESS : State::FAILED;
+    ActionReport action_report = { success, std::move(summery), std::move(stdouts), std::move(stderrs) };
+    test_report.emplace(getName(), std::move(action_report));
     screen.PostEvent(Event::Character("ActionFinish"));
 }
 
@@ -426,7 +427,7 @@ bool TestsPage::OnEvent(Event event)
 class ActionReportPanel : public ComponentBase
 {
   public:
-    ActionReportPanel(Action::Report&& report) : report_(std::move(report))
+    ActionReportPanel(ActionReport&& report) : report_(std::move(report))
     {
         for (std::string const& line : report_.stdouts)
         {
@@ -454,7 +455,7 @@ class ActionReportPanel : public ComponentBase
     }
 
   private:
-    Action::Report&& report_;
+    ActionReport&& report_;
     Elements summeries_;
     Elements stdouts_;
     Elements stderrs_;

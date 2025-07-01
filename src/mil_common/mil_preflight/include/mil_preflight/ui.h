@@ -20,48 +20,6 @@ class Action
 {
   public:
     friend class UIBase;
-    struct Report
-    {
-        bool success;
-        std::string summery;
-        std::vector<std::string> stdouts;
-        std::vector<std::string> stderrs;
-
-        Report() : success(false)
-        {
-        }
-        ~Report() = default;
-        Report(Report const& report) = default;
-        Report(Report&& report)
-        {
-            success = report.success;
-            report.success = false;
-            summery = std::move(report.summery);
-            stdouts = std::move(report.stdouts);
-            stderrs = std::move(report.stderrs);
-        }
-
-        Report& operator=(Report const& report)
-        {
-            success = report.success;
-            summery = report.summery;
-            stdouts = report.stdouts;
-            stderrs = report.stderrs;
-
-            return *this;
-        }
-
-        Report& operator=(Report&& report)
-        {
-            success = report.success;
-            report.success = false;
-            summery = std::move(report.summery);
-            stdouts = std::move(report.stdouts);
-            stderrs = std::move(report.stderrs);
-
-            return *this;
-        }
-    };
 
     Action() {};
     ~Action() {};
@@ -71,7 +29,9 @@ class Action
 
   protected:
     virtual void onStart() = 0;
-    virtual void onFinish(Report&& report) = 0;
+    virtual void onFinish(bool success, std::string&& summery) = 0;
+    std::vector<std::string> stdouts;
+    std::vector<std::string> stderrs;
 
   private:
 };
@@ -206,8 +166,6 @@ class UIBase
     {
         action.onStart();
 
-        Action::Report actionReport;
-
         enum class State
         {
             START,
@@ -218,6 +176,10 @@ class UIBase
         } state = State::START;
 
         std::string line;
+        std::string summery;
+        bool success = false;
+        action.stdouts.clear();
+        action.stderrs.clear();
 
         std::string question;
         std::vector<std::string> options;
@@ -237,7 +199,7 @@ class UIBase
                 }
                 catch (std::exception const& e)
                 {
-                    actionReport.summery = "Broken pipe: " + std::string(e.what());
+                    summery = "Broken pipe: " + std::string(e.what());
                     break;
                 }
                 state = State::STDOUT;
@@ -246,14 +208,14 @@ class UIBase
             {
                 if (!std::getline(child_out, line))
                 {
-                    actionReport.summery = "Broken pipe";
+                    summery = "Broken pipe";
                     break;
                 }
 
                 if (line[0] == ACK)
                 {
                     state = State::SUMMERY;
-                    actionReport.success = true;
+                    success = true;
                 }
                 else if (line[0] == NCK)
                 {
@@ -265,14 +227,14 @@ class UIBase
                 }
                 else
                 {
-                    actionReport.stdouts.push_back(std::move(line));
+                    action.stdouts.push_back(std::move(line));
                 }
             }
             else if (state == State::QUESTION)
             {
                 if (!std::getline(child_out, question, GS))
                 {
-                    actionReport.summery = "Broken pipe";
+                    summery = "Broken pipe";
                     break;
                 }
 
@@ -282,7 +244,7 @@ class UIBase
             {
                 if (!std::getline(child_out, line, GS))
                 {
-                    actionReport.summery = "Broken pipe";
+                    summery = "Broken pipe";
                     break;
                 }
 
@@ -296,7 +258,7 @@ class UIBase
                     }
                     catch (std::exception const& e)
                     {
-                        actionReport.summery = "Broken pipe: " + std::string(e.what());
+                        summery = "Broken pipe: " + std::string(e.what());
                         break;
                     }
                     state = State::STDOUT;
@@ -308,7 +270,7 @@ class UIBase
             }
             else if (state == State::SUMMERY)
             {
-                if (!std::getline(child_out, actionReport.summery))
+                if (!std::getline(child_out, summery))
                 {
                     break;
                 }
@@ -317,14 +279,14 @@ class UIBase
                 {
                     if (line[0] == EOT)
                         break;
-                    actionReport.stderrs.push_back(std::move(line));
+                    action.stderrs.push_back(std::move(line));
                 }
 
                 break;
             }
         }
 
-        action.onFinish(std::move(actionReport));
+        action.onFinish(success, std::move(summery));
     }
 };
 
