@@ -37,10 +37,10 @@ class PluginBase : public rclcpp::Node
             }
             else if (line[0] == GS)
             {
-                bool success = runAction(std::move(parameters));
+                auto [success, summery] = runAction(std::move(parameters));
                 std::ostringstream stdoutss;
                 stdoutss << (success ? ACK : NCK) << std::endl;
-                stdoutss << getSummery() << std::endl;
+                stdoutss << std::move(summery) << std::endl;
                 std::cout << std::move(stdoutss.str());
 
                 std::ostringstream stderrss;
@@ -57,15 +57,10 @@ class PluginBase : public rclcpp::Node
     }
 
   protected:
-    virtual bool runAction([[maybe_unused]] std::vector<std::string>&& parameters)
+    virtual std::pair<bool, std::string> runAction([[maybe_unused]] std::vector<std::string>&& parameters)
     {
         boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
-        return false;
-    }
-
-    virtual std::string const& getSummery()
-    {
-        return summery_;
+        return { false, "Failed to load plugin" };
     }
 
     int askQuestion(std::string const& question, std::vector<std::string> const& options)
@@ -96,9 +91,6 @@ class PluginBase : public rclcpp::Node
 
         return index;
     }
-
-  private:
-    std::string summery_ = "Failed to load the plugin";
 };
 
 }  // namespace mil_preflight

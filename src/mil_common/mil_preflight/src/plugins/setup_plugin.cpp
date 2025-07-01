@@ -24,23 +24,15 @@ class SetupPlugin : public PluginBase
 
   private:
     std::map<std::string, std::vector<std::string>> topics_;
-    std::string summery_;
 
-    bool runAction(std::vector<std::string>&& parameters) final
+    std::pair<bool, std::string> runAction(std::vector<std::string>&& parameters) final
     {
         if (askQuestion(parameters[1], { "Yes", "No" }) != 0)
         {
-            summery_ = "User said No";
-            return false;
+            return { false, "User said No" };
         }
 
-        summery_ = "success";
-        return true;
-    }
-
-    std::string const& getSummery() final
-    {
-        return summery_;
+        return { true, "Success" };
     }
 };
 }  // namespace mil_preflight
