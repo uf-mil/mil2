@@ -156,21 +156,6 @@ boost::function<Creator> load(std::string const& plugin_name)
     }
 }
 
-void runTest(std::shared_ptr<mil_preflight::Test> test, std::shared_ptr<mil_preflight::PluginBase> plugin)
-{
-    std::shared_ptr<mil_preflight::Action> action = test->nextAction();
-
-    while (action != nullptr)
-    {
-        action->onStart();
-        auto&& [success, summery] = plugin->runAction(action);
-        action->onFinish(success, std::move(summery));
-        action = test->nextAction();
-    }
-
-    test->onFinish();
-}
-
 int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
@@ -204,7 +189,7 @@ int main(int argc, char* argv[])
 
                     node = it->second();
                     exec.add_node(node);
-                    runTest(test, node);
+                    node->runTest(test);
                     exec.remove_node(node);
                     node.reset();
 

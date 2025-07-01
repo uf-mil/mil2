@@ -6,7 +6,7 @@
 
 namespace mil_preflight
 {
-class SetupPlugin : public PluginBase
+class SetupPlugin : public SimplePlugin
 {
   public:
     SetupPlugin()

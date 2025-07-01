@@ -6,7 +6,7 @@
 
 namespace mil_preflight
 {
-class TopicPlugin : public PluginBase
+class TopicPlugin : public SimplePlugin
 {
   public:
     TopicPlugin()
