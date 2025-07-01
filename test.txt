@@ -1,0 +1,303 @@
+[INFO] [launch]: All log files can be found below /home/mohana/.ros/log/2025-06-30-22-12-13-691243-mohana-XPS-15-9560-45405
+[INFO] [launch]: Default logging verbosity is set to INFO
+Successfully converted /home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf.xacro to /home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf
+Successfully converted /home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf.xacro to /home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf
+[INFO] [gazebo-1]: process started with pid [45409]
+[INFO] [robot_state_publisher-2]: process started with pid [45410]
+[INFO] [rviz2-3]: process started with pid [45411]
+[INFO] [thruster_manager-4]: process started with pid [45413]
+[INFO] [forward_to_sim-5]: process started with pid [45414]
+[INFO] [ekf_node-6]: process started with pid [45415]
+[INFO] [reset_srv_node.py-7]: process started with pid [45416]
+[INFO] [subjugator_controller-8]: process started with pid [45417]
+[INFO] [subjugator_path_planner-9]: process started with pid [45420]
+[INFO] [trajectory_planner-10]: process started with pid [45421]
+[INFO] [parameter_bridge-11]: process started with pid [45424]
+[INFO] [sub_RL_train-12]: process started with pid [45425]
+[robot_state_publisher-2] [WARN] [1751335934.856939559] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[robot_state_publisher-2] [WARN] [1751335934.856961530] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[thruster_manager-4] [WARN] [1751335934.860870025] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[thruster_manager-4] [WARN] [1751335934.860886716] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[forward_to_sim-5] [WARN] [1751335934.874397034] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[forward_to_sim-5] [WARN] [1751335934.874415556] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[subjugator_path_planner-9] [WARN] [1751335934.898651079] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[subjugator_path_planner-9] [WARN] [1751335934.898697621] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[trajectory_planner-10] [WARN] [1751335934.903438488] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[trajectory_planner-10] [WARN] [1751335934.903458009] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[thruster_manager-4] [INFO] [1751335934.936616100] [thruster_manager]: Publishing to: /thruster_efforts
+[subjugator_controller-8] [WARN] [1751335934.938639422] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[subjugator_controller-8] [WARN] [1751335934.938660442] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[robot_state_publisher-2] [WARN] [1751335934.956461102] [kdl_parser]: The root link base_link has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.
+[robot_state_publisher-2] [INFO] [1751335934.956750129] [robot_state_publisher]: Robot initialized
+[ekf_node-6] [WARN] [1751335934.958476483] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[ekf_node-6] [WARN] [1751335934.958498865] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[trajectory_planner-10] [INFO] [1751335935.014420614] [subjugator_trajectory_planner]: Started trajectory planner / breadcrumb manager. Waiting to hear path and odom to start.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] [INFO] [1751335935.014532156] [pid_controller]: PID controller is disabled. Call enable_controller service to start.
+[subjugator_controller-8] [INFO] [1751335935.016478973] [pid_controller]: Received an update to parameter "kp"
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] [INFO] [1751335935.020410290] [pid_controller]: Received an update to parameter "ki"
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] [INFO] [1751335935.023377964] [pid_controller]: Received an update to parameter "kd"
+[subjugator_controller-8] [INFO] [1751335935.023781815] [pid_controller]: Received an update to parameter "imax"
+[subjugator_controller-8] [INFO] [1751335935.030691772] [pid_controller]: Received an update to parameter "imin"
+[subjugator_controller-8] [INFO] [1751335935.031203259] [pid_controller]: Received an update to parameter "antiwindup"
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[ekf_node-6] [ERROR] [1751335935.048430133] [subjugator_localization]: RosFilter<T>::loadParams() - unable to create debug output file /home/sub9/debug.txt
+[parameter_bridge-11] [WARN] [1751335935.051886861] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-11] [WARN] [1751335935.051978735] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[rviz2-3] [WARN] [1751335935.053146042] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[rviz2-3] [WARN] [1751335935.053196977] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[ekf_node-6] [INFO] [1751335935.231942964] [subjugator_localization]: Filter is disabled. To enable it call the /subjugator_localization/enable service
+[rviz2-3] [INFO] [1751335935.527095652] [rviz2]: Stereo is NOT SUPPORTED
+[rviz2-3] [INFO] [1751335935.527315903] [rviz2]: OpenGl version: 4.6 (GLSL 4.6)
+[rviz2-3] [INFO] [1751335935.574055975] [rviz2]: Stereo is NOT SUPPORTED
+[gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="sub9"]/link[@name="imu_link"]/sensor[@name="imu_link"]/gz_frame_id:/home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[reset_srv_node.py-7] [WARN] [1751335935.939892960] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[reset_srv_node.py-7] [WARN] [1751335935.939931214] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[rviz2-3] [INFO] [1751335936.095214373] [rviz2]: Stereo is NOT SUPPORTED
+[parameter_bridge-11] [INFO] [1751335936.134678631] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.155241949] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/imu/data_raw (gz.msgs.IMU) -> /imu/data (sensor_msgs/msg/Imu)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.171520925] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/imu/mag (gz.msgs.Magnetometer) -> /imu/mag (sensor_msgs/msg/MagneticField)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.178146462] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FLH/joint/FLH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FLH (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.185209613] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FLH (std_msgs/msg/Float64) -> /model/FLH/joint/FLH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.186229559] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FRH/joint/FRH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FRH (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.187097257] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FRH (std_msgs/msg/Float64) -> /model/FRH/joint/FRH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[rviz2-3] [INFO] [1751335936.185905194] [rviz2]: Stereo is NOT SUPPORTED
+[parameter_bridge-11] [INFO] [1751335936.200381995] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BLH/joint/BLH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BLH (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.208291580] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BLH (std_msgs/msg/Float64) -> /model/BLH/joint/BLH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[sub_RL_train-12] [WARN] [1751335936.208303037] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751335936.208315132] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[parameter_bridge-11] [INFO] [1751335936.213681088] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BRH/joint/BRH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BRH (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.218862253] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BRH (std_msgs/msg/Float64) -> /model/BRH/joint/BRH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.219518641] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FLV/joint/FLV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FLV (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.220327827] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FLV (std_msgs/msg/Float64) -> /model/FLV/joint/FLV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.226071551] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FRV/joint/FRV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FRV (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.232954660] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FRV (std_msgs/msg/Float64) -> /model/FRV/joint/FRV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.233900003] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BLV/joint/BLV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BLV (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.244840590] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BLV (std_msgs/msg/Float64) -> /model/BLV/joint/BLV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.250312170] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BRV/joint/BRV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BRV (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.251583847] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BRV (std_msgs/msg/Float64) -> /model/BRV/joint/BRV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.252505248] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/front_cam/image (gz.msgs.Image) -> /front_cam/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.271496762] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/down_cam/image (gz.msgs.Image) -> /down_cam/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751335936.281823977] [ros_gz_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[gazebo-1] [WARN] [1751335937.278727366] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[gazebo-1] [WARN] [1751335937.280129100] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[gazebo-1] testing
+[sub_RL_train-12] 2025-06-30 22:12:19.845045: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+[sub_RL_train-12] WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+[sub_RL_train-12] E0000 00:00:1751335939.878286   45425 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+[sub_RL_train-12] E0000 00:00:1751335939.888440   45425 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+[sub_RL_train-12] 2025-06-30 22:12:19.924939: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+[sub_RL_train-12] To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+[gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="sub9"]/link[@name="imu_link"]/sensor[@name="imu_link"]/gz_frame_id:<data-string>:L1074]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="sub9"]/link[@name="imu_link"]/sensor[@name="imu_link"]/gz_frame_id:<data-string>:L1074]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[sub_RL_train-12] 2025-06-30 22:12:27.381187: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+[sub_RL_train-12] WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+[sub_RL_train-12] E0000 00:00:1751335947.409810   45681 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+[sub_RL_train-12] E0000 00:00:1751335947.419542   45681 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+[sub_RL_train-12] 2025-06-30 22:12:27.445699: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+[sub_RL_train-12] To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+[sub_RL_train-12] [WARN] [1751335952.764095864] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751335952.764113029] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751335953.916952793] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335954.022334374] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335954.130335084] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335954.236425933] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335954.342861004] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335954.445626030] [sub_rl_train]: Imu received
+[sub_RL_train-12] [WARN] [1751335954.632891436] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751335954.632938273] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751335954.659671027] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335954.802422432] [sub_rl_train]: Imu received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[ekf_node-6] [INFO] [1751335954.847442666] [subjugator_localization]: [subjugator_localization:] Enabling filter...
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751335955.083463983] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335955.227375818] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335955.372355558] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335955.655526749] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335955.798369047] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335956.084722236] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335956.371689127] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335956.656871925] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335956.802986339] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335957.085152210] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335957.369469025] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335957.512484843] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335957.657823720] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335957.940684065] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335958.227170874] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335958.369094744] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335958.654593333] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335958.798561287] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335958.940842769] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335959.085816407] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335959.369696489] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335959.655341886] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335959.797622592] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335960.084061374] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335960.227823370] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335960.512662554] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335960.656192205] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335960.950186560] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335961.089981246] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335961.370909996] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335961.654791206] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335961.798633505] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335961.947271240] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335962.090329837] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335962.371294002] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335962.513495445] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335962.656125876] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335962.941038726] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335963.094084840] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335963.369580786] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335963.656712070] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335963.940761362] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335964.225998929] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335964.370606270] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335964.656087953] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335964.798793461] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335964.941823945] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335965.228132070] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335965.511978237] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335965.797875818] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335965.941591064] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335966.083612796] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335966.371611697] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335966.654768897] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335966.798323986] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335967.085800253] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335967.369249199] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335967.513374043] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335967.660505603] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335967.940653669] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335968.226528793] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335968.369475866] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335968.657155453] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335968.941456689] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335969.227840508] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335969.512563371] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335969.656531547] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335969.797679813] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335970.083302164] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335970.226325993] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335970.369224015] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335970.655617545] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335970.798240897] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335971.083858486] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335971.370109934] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335971.655469862] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335971.800087987] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335972.083432553] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335972.370373685] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335972.655034232] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335972.798011928] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335973.083319460] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335973.370175060] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335973.513066875] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335973.656378232] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335973.942677157] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335974.087306057] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335974.371517695] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335974.655894836] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335974.799070621] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335975.084716430] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335975.371445119] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335975.513678491] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335975.797410560] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335975.941590196] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335976.086639160] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335976.369173529] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335976.514453256] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335976.797473750] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335976.942034009] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335977.227749987] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335977.369327085] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335977.512827736] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335977.656304945] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335977.940684560] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335978.226962169] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335978.511886483] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335978.656036480] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335978.942470044] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335979.227402562] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335979.369578691] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335979.514763879] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335979.797636084] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335980.084657412] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335980.371595501] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335980.656236140] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335980.941685551] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335981.084209441] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335981.369691360] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335981.512365902] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335981.798146502] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335981.940874945] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335982.090425192] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335982.228850486] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335982.516687257] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335982.802362199] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335983.085272901] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335983.226673634] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335983.373615559] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335983.657642279] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335983.802539062] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335983.942716764] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335984.227355471] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335984.512410062] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335984.658772231] [sub_rl_train]: Imu received
+[sub_RL_train-12] data: true
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751335984.943146925] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335985.084184472] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335985.370627608] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751335985.659686196] [sub_rl_train]: Imu received

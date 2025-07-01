@@ -5,11 +5,11 @@ import threading
 import time
 
 import gymnasium as gym
-import GymNode
+from subjugator_RL import GymNode
 import numpy as np
 import rclpy
 from gymnasium import spaces
-from locks import cam_lock, imu_lock
+from subjugator_RL.locks import cam_lock, imu_lock
 from rclpy.executors import MultiThreadedExecutor
 
 # Shape of the image. L, W, # of channels
@@ -57,18 +57,18 @@ class SubEnv(gym.Env):
         self.cam_data = None
 
         # Run the launch file to start gazebo-- Runs only once
-        self.gazeboProc = subprocess.Popen(
-            [
-                "gnome-terminal",
-                "--",
-                "bash",
-                "-c",
-                "source /opt/ros/jazzy/setup.bash && "
-                "source ~/mil2/install/setup.bash && "
-                "ros2 launch subjugator_bringup gazebo.launch.py; exec bash",
-            ],
-            env=clean_ros_env(),
-        )
+        # self.gazeboProc = subprocess.Popen(
+        #     [
+        #         "gnome-terminal",
+        #         "--",
+        #         "bash",
+        #         "-c",
+        #         "source /opt/ros/jazzy/setup.bash && "
+        #         "source ~/mil2/install/setup.bash && "
+        #         "ros2 launch subjugator_bringup gazebo.launch.py; exec bash",
+        #     ],
+        #     env=clean_ros_env(),
+        # )
 
         self.localizationProc = subprocess.Popen(
             [
@@ -112,7 +112,7 @@ class SubEnv(gym.Env):
         )
 
         # FFirst 3 are force, second 3 are torque
-        self.action_space = spaces.Box(low=-50, high=50, shape=(6,), dtype=np.float32)
+        self.action_space = spaces.Box(low=10, high=50, shape=(6,), dtype=np.float32)
 
     def seed(self, seed=None):
 
@@ -291,7 +291,7 @@ class SubEnv(gym.Env):
         self.unpause_gazebo()
         # Reset submarine by removing and respawning it
         success = self._reset_sub_pose()
-
+        #need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
         self.reset_localization()
         self.start_ekf_node()
 

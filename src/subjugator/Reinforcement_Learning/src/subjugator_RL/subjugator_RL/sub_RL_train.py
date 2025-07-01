@@ -1,4 +1,4 @@
-import sub_env
+from subjugator_RL import sub_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
@@ -13,7 +13,7 @@ def make_env(env_id, rank, seed=0):
     return _init
 
 
-if __name__ == "__main__":
+def main():
 
     num_cpu = 1
 
