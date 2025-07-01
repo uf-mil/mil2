@@ -9,7 +9,15 @@ namespace mil_preflight
 {
 using namespace ftxui;
 
-using TestReport = std::unordered_map<std::string, Action::Report>;
+struct ActionReport
+{
+    bool success;
+    std::string summery;
+    std::vector<std::string> stdouts;
+    std::vector<std::string> stderrs;
+};
+
+using TestReport = std::unordered_map<std::string, ActionReport>;
 using JobReport = std::unordered_map<std::string, TestReport>;
 
 class ReportsPage : public ComponentBase

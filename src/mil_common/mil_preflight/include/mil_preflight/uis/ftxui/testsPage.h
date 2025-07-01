@@ -74,7 +74,7 @@ class ActionBox : public ComponentBase, public Action
     bool Focusable() const final;
 
     void onStart() final;
-    void onFinish(Action::Report&& report) final;
+    void onFinish(bool success, std::string&& summery) final;
 };
 
 struct TestTabOption
