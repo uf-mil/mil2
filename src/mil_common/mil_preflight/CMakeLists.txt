@@ -13,10 +13,12 @@ find_package(subjugator_msgs REQUIRED)
 find_package(Boost REQUIRED COMPONENTS thread chrono filesystem system)
 find_package(ftxui REQUIRED)
 
-add_executable(${PROJECT_NAME} src/frontend.cpp)
+add_library(${PROJECT_NAME}_lib SHARED src/frontend.cpp)
+add_executable(${PROJECT_NAME} src/mil_preflight.cpp)
 include_directories(include ${ftxui_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
 
-target_link_libraries(${PROJECT_NAME} Boost::system Boost::filesystem)
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_lib Boost::system
+                      Boost::filesystem)
 
 add_executable(mil_preflight_backend src/backend.cpp)
 
@@ -58,6 +60,6 @@ add_library(actuator_plugin SHARED src/plugins/actuator_plugin.cpp)
 ament_target_dependencies(actuator_plugin rclcpp subjugator_msgs Boost)
 
 install(TARGETS topic_plugin setup_plugin node_plugin actuator_plugin ftx_ui
-        LIBRARY DESTINATION lib)
+                ${PROJECT_NAME}_lib LIBRARY DESTINATION lib)
 
 ament_package()
