@@ -7,7 +7,7 @@
 
 namespace mil_preflight
 {
-class NodePlugin : public PluginBase
+class NodePlugin : public SimplePlugin
 {
   public:
     NodePlugin()

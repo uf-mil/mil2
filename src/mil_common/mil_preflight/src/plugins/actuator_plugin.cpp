@@ -9,7 +9,7 @@
 
 namespace mil_preflight
 {
-class ActuatorPlugin : public PluginBase
+class ActuatorPlugin : public SimplePlugin
 {
   public:
     ActuatorPlugin()
