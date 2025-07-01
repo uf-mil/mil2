@@ -6,7 +6,6 @@
 
 #include <boost/asio.hpp>
 #include <boost/dll.hpp>
-#include <boost/function.hpp>
 #include <boost/process.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -137,27 +136,10 @@ class UIBase
         return -1;
     }
 
-    virtual bool initialize([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
+    virtual bool initialize([[maybe_unused]] int argc, char* argv[])
     {
-        std::cout << error_ << std::endl;
+        std::cout << "Unrecognized ui type " << argv[0] << std::endl;
         return false;
-    }
-
-    static std::shared_ptr<UIBase> create(std::string const& uiName)
-    {
-        try
-        {
-            creator_ = boost::dll::import_alias<Creator>(uiName, uiName,
-                                                         boost::dll::load_mode::append_decorations |
-                                                             boost::dll::load_mode::search_system_folders);
-        }
-        catch (boost::system::system_error const& e)
-        {
-            error_ = "Failed to load the ui: " + uiName + ": " + e.code().message();
-            return std::make_shared<UIBase>();
-        }
-
-        return creator_();
     }
 
     void runJob(Job& job)
@@ -192,9 +174,6 @@ class UIBase
     }
 
   private:
-    using Creator = std::shared_ptr<UIBase>();
-    static boost::function<Creator> creator_;
-    static std::string error_;
     boost::filesystem::path bin_path = boost::process::search_path("mil_preflight_backend");
 
     boost::asio::io_context work_context;
@@ -357,8 +336,5 @@ class UIBase
         return actionReport;
     }
 };
-
-inline std::string UIBase::error_ = "success";
-inline boost::function<UIBase::Creator> UIBase::creator_;
 
 }  // namespace mil_preflight
