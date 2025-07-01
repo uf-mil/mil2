@@ -14,6 +14,7 @@ def generate_launch_description():
     # Setup project paths
     pkg_project_bringup = get_package_share_directory("subjugator_bringup")
     pkg_project_gazebo = get_package_share_directory("subjugator_gazebo")
+    pkg_project_rl = get_package_share_directory("subjugator_RL")
     # pkg_project_description = get_package_share_directory("subjugator_description")
     pkg_ros_gz_sim = get_package_share_directory("ros_gz_sim")
 
@@ -23,13 +24,7 @@ def generate_launch_description():
             os.path.join(pkg_ros_gz_sim, "launch", "gz_sim.launch.py"),
         ),
         launch_arguments={
-            "gz_args": [
-                PathJoinSubstitution(
-                    [pkg_project_gazebo, "worlds", "robosub_2024.world"],  # CHANGE THIS
-                ),
-                " --render-engine",
-                " ogre",
-            ],
+            "gz_args": os.path.join(pkg_project_rl, "worlds", "rl_test.world") + " --physics-engine gz-physics-bullet-featherstone-plugin --render-engine ogre"
         }.items(),
     )
 
