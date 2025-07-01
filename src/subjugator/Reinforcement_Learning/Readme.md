@@ -18,18 +18,14 @@
 reward: distance from center of camera for both white and red, would change based on this distance,
 white needs to be on the left and red needs to be on right
 
-
-
-
--- To install the bullet engine
-sudo apt install libgz-physics7-bullet
+## Useful commands
 
 ros2 launch subjugator_RL rl.launch.py
 
 ros2 service call /sub9_velocity_reset_plugin/reset_sub9_velocity std_srvs/srv/Empty
 
 
--- How to install bullet
+## How to install bullet
 
 # Add the OSRF GPG key
 sudo curl https://packages.osrfoundation.org/gazebo.gpg -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg

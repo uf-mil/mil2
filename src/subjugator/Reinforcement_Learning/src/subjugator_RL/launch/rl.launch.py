@@ -31,7 +31,7 @@ def generate_launch_description():
     # Include the Subjugator_Setup Launch file
     subjugator_setup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_project_bringup, "launch", "subjugator_setup.launch.py"),
+            os.path.join(pkg_project_rl, "launch", "rl_subjugator_setup.launch.py"),
         ),
         launch_arguments={}.items(),
     )
