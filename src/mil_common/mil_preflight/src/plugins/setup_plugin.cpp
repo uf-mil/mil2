@@ -25,9 +25,10 @@ class SetupPlugin : public PluginBase
   private:
     std::map<std::string, std::vector<std::string>> topics_;
 
-    std::pair<bool, std::string> runAction(std::vector<std::string>&& parameters) final
+    std::pair<bool, std::string> runAction(std::shared_ptr<Action> action) final
     {
-        if (askQuestion(parameters[1], { "Yes", "No" }) != 0)
+        std::string question = action->getParameters()[0];
+        if (action->onQuestion(std::move(question), { "Yes", "No" }).get() != 0)
         {
             return { false, "User said No" };
         }

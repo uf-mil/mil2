@@ -56,21 +56,22 @@ class ActuatorPlugin : public PluginBase
         return cmd;
     }
 
-    std::pair<bool, std::string> runAction(std::vector<std::string>&& parameters) final
+    std::pair<bool, std::string> runAction(std::shared_ptr<Action> action) final
     {
         std::string question =
-            "Ensure that all fingers are clear of the area!\nIs it safe to operate the actuator: " + parameters[0] +
+            "Ensure that all fingers are clear of the area!\nIs it safe to operate the actuator: " + action->getName() +
             " ?";
 
-        if (askQuestion(question, { "Yes", "No" }) != 0)
+        if (action->onQuestion(std::move(question), { "Yes", "No" }).get() != 0)
         {
             return { false, "User did not clear the area" };
         }
 
-        std::vector<rclcpp::TopicEndpointInfo> infos = get_subscriptions_info_by_topic(parameters[1]);
+        std::string const topic_name = action->getParameters()[0];
+        std::vector<rclcpp::TopicEndpointInfo> infos = get_subscriptions_info_by_topic(topic_name);
         if (infos.size() == 0)
         {
-            return { false, "No subscriber subscribing to the topic: " + parameters[1] };
+            return { false, "No subscriber subscribing to the topic: " + topic_name };
         }
 
         std::string& topicType = infos[0].topic_type();
@@ -80,20 +81,20 @@ class ActuatorPlugin : public PluginBase
         }
 
         subjugator_msgs::msg::ThrusterEfforts cmd;
-        std::string thruster = parameters[2];
-        float thrust = std::stof(parameters[3]);
+        std::string thruster = action->getParameters()[1];
+        std::string thrust = action->getParameters()[2];
 
         try
         {
-            cmd = this->assignThrust(cmd, thruster, thrust);
+            cmd = this->assignThrust(cmd, thruster, std::stof(thrust));
         }
         catch (std::exception const& e)
         {
-            return { false, "Invalid thrust parameter: " + parameters[3] };
+            return { false, "Invalid thrust parameter: " + thrust };
         }
 
         rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr pub =
-            create_publisher<subjugator_msgs::msg::ThrusterEfforts>(parameters[1], 10);
+            create_publisher<subjugator_msgs::msg::ThrusterEfforts>(topic_name, 10);
 
         auto start_time = std::chrono::steady_clock::now();
         std::chrono::seconds timeout(2);  // TODO: Make into a variable
@@ -108,7 +109,7 @@ class ActuatorPlugin : public PluginBase
 
         pub->publish(cmd);
 
-        thruster_did_spin = askQuestion("Did the " + parameters[2] + " thruster spin?", { "Yes", "No" }) == 0;
+        thruster_did_spin = action->onQuestion("Did the " + thruster + " thruster spin?", { "Yes", "No" }).get() == 0;
 
         if (!thruster_did_spin)
         {

@@ -27,18 +27,19 @@ class NodePlugin : public PluginBase
   private:
     std::vector<std::string> nodes_;
 
-    std::pair<bool, std::string> runAction(std::vector<std::string>&& parameters) final
+    std::pair<bool, std::string> runAction(std::shared_ptr<Action> action) final
     {
-        if (std::find(nodes_.begin(), nodes_.end(), parameters[1]) == nodes_.end())
+        std::string const& node_name = action->getParameters()[0];
+        if (std::find(nodes_.begin(), nodes_.end(), node_name) == nodes_.end())
         {
             nodes_ = get_node_names();
-            if (std::find(nodes_.begin(), nodes_.end(), parameters[1]) == nodes_.end())
+            if (std::find(nodes_.begin(), nodes_.end(), node_name) == nodes_.end())
             {
-                return { false, "Node " + parameters[0] + " does not exist in 100 ms" };
+                return { false, "Node " + action->getName() + " does not exist in 100 ms" };
             }
         }
 
-        return { true, "Found node " + parameters[1] };
+        return { true, "Found node " + action->getName() };
     }
 };
 }  // namespace mil_preflight

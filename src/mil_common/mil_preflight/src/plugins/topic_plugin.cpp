@@ -26,22 +26,23 @@ class TopicPlugin : public PluginBase
   private:
     std::map<std::string, std::vector<std::string>> topics_;
 
-    std::pair<bool, std::string> runAction(std::vector<std::string>&& parameters) final
+    std::pair<bool, std::string> runAction(std::shared_ptr<Action> action) final
     {
-        auto it = topics_.find(parameters[1]);
+        std::string const& topic_name = action->getParameters()[0];
+        auto it = topics_.find(topic_name);
         if (it == topics_.end())
         {
             boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
             topics_ = get_topic_names_and_types();
 
-            it = topics_.find(parameters[1]);
+            it = topics_.find(topic_name);
             if (it == topics_.end())
             {
-                return { false, "Topic " + parameters[0] + " does not exist in 100 ms" };
+                return { false, "Topic " + action->getName() + " does not exist in 100 ms" };
             }
         }
 
-        return { true, "Found topic " + parameters[0] + " with type " + it->second[0] };
+        return { true, "Found topic " + action->getName() + " with type " + it->second[0] };
     }
 };
 }  // namespace mil_preflight
