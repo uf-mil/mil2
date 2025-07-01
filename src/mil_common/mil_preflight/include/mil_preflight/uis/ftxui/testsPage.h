@@ -75,6 +75,7 @@ class ActionBox : public ComponentBase, public Action
 
     void onStart() final;
     void onFinish(bool success, std::string&& summery) final;
+    std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) final;
 };
 
 struct TestTabOption

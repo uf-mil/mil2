@@ -86,15 +86,16 @@ class FTXUI : public UIBase
     {
     }
 
-    bool initialize(int argc, char* argv[]) final
+    int run(std::shared_ptr<Frontend> frontend) final
     {
-        std::optional<boost::property_tree::ptree> cfg = loadConfig(argc, argv);
+        std::optional<boost::property_tree::ptree> cfg = loadConfig(frontend->getArgs());
         if (!cfg)
             return false;
 
-        root = std::make_shared<Root>();
+        std::shared_ptr<Root> root = std::make_shared<Root>();
 
-        auto tests_page = std::make_shared<mil_preflight::TestsPage>([this](TestsPage& page) { runJobAsync(page); });
+        auto tests_page = std::make_shared<mil_preflight::TestsPage>([this, frontend](TestsPage& page)
+                                                                     { frontend->runJobAsync(page); });
 
         createJob(cfg.value(), tests_page);
 
@@ -122,17 +123,12 @@ class FTXUI : public UIBase
         root->addPage("About", about_page, "About");
         root->addCallback("Quit", [this] { screen.Exit(); });
 
-        return true;
+        screen.Loop(root);
+        return 0;
     }
 
     ~FTXUI() final
     {
-    }
-
-    int spin() final
-    {
-        screen.Loop(root);
-        return 0;
     }
 
     static std::shared_ptr<FTXUI> create()
@@ -141,14 +137,12 @@ class FTXUI : public UIBase
     }
 
   private:
-    std::shared_ptr<Root> root;
-
-    std::optional<boost::property_tree::ptree> loadConfig(int argc, char* argv[])
+    std::optional<boost::property_tree::ptree> loadConfig(std::vector<std::string> const& args)
     {
         boost::filesystem::path filename;
-        if (argc > 1)
+        if (args.size() > 1)
         {
-            filename = argv[1];
+            filename = args[1];
         }
         else
         {
@@ -223,21 +217,6 @@ class FTXUI : public UIBase
                 test_tab->createAction(std::move(action_name), std::move(parameters));
             }
         }
-    }
-
-    std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) final
-    {
-        std::shared_ptr<std::promise<int>> feedback = std::make_shared<std::promise<int>>();
-
-        std::shared_ptr<MessageBox> dialog = std::make_shared<MessageBox>("Question");
-        screen.Post(
-            [=]
-            {
-                int index = dialog->show(question, options);
-                feedback->set_value(index);
-            });
-
-        return feedback->get_future().share();
     }
 };
 

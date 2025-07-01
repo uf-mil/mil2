@@ -148,6 +148,21 @@ void ActionBox::onFinish(bool success, std::string&& summery)
     screen.PostEvent(Event::Character("ActionFinish"));
 }
 
+std::shared_future<int> ActionBox::onQuestion(std::string&& question, std::vector<std::string>&& options)
+{
+    std::shared_ptr<std::promise<int>> feedback = std::make_shared<std::promise<int>>();
+
+    std::shared_ptr<MessageBox> dialog = std::make_shared<MessageBox>("Question");
+    screen.Post(
+        [=]
+        {
+            int index = dialog->show(question, options);
+            feedback->set_value(index);
+        });
+
+    return feedback->get_future().share();
+}
+
 std::optional<std::reference_wrapper<Action>> TestTab::nextAction()
 {
     Component child = option_.childContainer;
