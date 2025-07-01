@@ -53,7 +53,7 @@ void Frontend::runTest(std::shared_ptr<Test> test)
 {
     std::shared_ptr<Action> action = test->nextAction();
 
-    child_in_ << test->getPlugin() << std::endl;
+    child_in_ << test->getName() << std::endl << test->getPlugin() << std::endl << GS << std::endl;
 
     while (action != nullptr)
     {

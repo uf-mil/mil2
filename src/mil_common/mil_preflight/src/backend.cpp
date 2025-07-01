@@ -83,6 +83,61 @@ class PseudoAction : public Action
     std::vector<std::string> parameters_;
 };
 
+class PseudoTest : public Test
+{
+  public:
+    PseudoTest(std::string&& name, std::string&& plugin) : name_(std::move(name)), plugin_(std::move(plugin))
+    {
+    }
+
+    ~PseudoTest()
+    {
+    }
+
+    std::string const& getName() const final
+    {
+        return name_;
+    }
+    std::string const& getPlugin() const final
+    {
+        return plugin_;
+    }
+
+    std::shared_ptr<Action> nextAction() final
+    {
+        std::string line;
+        std::vector<std::string> parameters;
+        while (std::getline(std::cin, line))
+        {
+            if (line[0] == mil_preflight::EOT)
+            {
+                return nullptr;
+            }
+            else if (line[0] == mil_preflight::GS)
+            {
+                std::shared_ptr<mil_preflight::PseudoAction> action = std::make_shared<mil_preflight::PseudoAction>(
+                    std::move(parameters[0]), std::vector(parameters.begin() + 1, parameters.end()));
+
+                return action;
+            }
+            else
+            {
+                parameters.push_back(std::move(line));
+            }
+        }
+
+        return nullptr;
+    }
+
+    void onFinish() final
+    {
+    }
+
+  private:
+    std::string name_;
+    std::string plugin_;
+};
+
 }  // namespace mil_preflight
 
 using Creator = std::shared_ptr<mil_preflight::PluginBase>();
@@ -101,31 +156,19 @@ boost::function<Creator> load(std::string const& plugin_name)
     }
 }
 
-void runTest(std::shared_ptr<mil_preflight::PluginBase> plugin)
+void runTest(std::shared_ptr<mil_preflight::Test> test, std::shared_ptr<mil_preflight::PluginBase> plugin)
 {
-    std::string line;
-    std::vector<std::string> parameters;
-    while (std::getline(std::cin, line))
-    {
-        if (line[0] == mil_preflight::EOT)
-        {
-            break;
-        }
-        else if (line[0] == mil_preflight::GS)
-        {
-            std::shared_ptr<mil_preflight::PseudoAction> action = std::make_shared<mil_preflight::PseudoAction>(
-                std::move(parameters[0]), std::vector(parameters.begin() + 1, parameters.end()));
+    std::shared_ptr<mil_preflight::Action> action = test->nextAction();
 
-            action->onStart();
-            auto&& [success, summery] = plugin->runAction(action);
-            action->onFinish(success, std::move(summery));
-            parameters.clear();
-        }
-        else
-        {
-            parameters.push_back(std::move(line));
-        }
+    while (action != nullptr)
+    {
+        action->onStart();
+        auto&& [success, summery] = plugin->runAction(action);
+        action->onFinish(success, std::move(summery));
+        action = test->nextAction();
     }
+
+    test->onFinish();
 }
 
 int main(int argc, char* argv[])
@@ -139,26 +182,38 @@ int main(int argc, char* argv[])
         {
             std::string line;
             std::shared_ptr<mil_preflight::PluginBase> node;
+            std::vector<std::string> parameters;
             while (std::getline(std::cin, line))
             {
                 if (line[0] == mil_preflight::EOT)
                 {
                     rclcpp::shutdown();
-                    return;
+                    break;
                 }
-
-                auto it = libraries.find(line);
-                if (it == libraries.end())
+                else if (line[0] == mil_preflight::GS)
                 {
-                    std::function<Creator> creator = load(line);
-                    it = libraries.emplace(std::move(line), std::move(creator)).first;
-                }
+                    auto it = libraries.find(parameters[1]);
+                    if (it == libraries.end())
+                    {
+                        std::function<Creator> creator = load(parameters[1]);
+                        it = libraries.emplace(parameters[1], std::move(creator)).first;
+                    }
 
-                node = it->second();
-                exec.add_node(node);
-                runTest(node);
-                exec.remove_node(node);
-                node.reset();
+                    std::shared_ptr<mil_preflight::PseudoTest> test =
+                        std::make_shared<mil_preflight::PseudoTest>(std::move(parameters[0]), std::move(parameters[1]));
+
+                    node = it->second();
+                    exec.add_node(node);
+                    runTest(test, node);
+                    exec.remove_node(node);
+                    node.reset();
+
+                    parameters.clear();
+                }
+                else
+                {
+                    parameters.emplace_back(std::move(line));
+                }
             }
         });
 
