@@ -7,53 +7,11 @@
 #include <boost/asio.hpp>
 #include <boost/dll.hpp>
 #include <boost/process.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 #include "mil_preflight/common.h"
 
 namespace mil_preflight
 {
-
-class Action
-{
-  public:
-    Action() {};
-    virtual ~Action() {};
-
-    virtual std::string const& getName() const = 0;
-    virtual std::vector<std::string> const& getParameters() const = 0;
-    virtual void onStart() = 0;
-    virtual void onFinish(bool success, std::string&& summery) = 0;
-    virtual std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) = 0;
-
-    std::vector<std::string> stdouts;
-    std::vector<std::string> stderrs;
-
-  private:
-};
-
-class Test
-{
-  public:
-    Test() {};
-    virtual ~Test() {};
-
-    virtual std::string const& getName() const = 0;
-    virtual std::string const& getPlugin() const = 0;
-    virtual std::shared_ptr<Action> nextAction() = 0;
-    virtual void onFinish() = 0;
-};
-
-class Job
-{
-  public:
-    Job() {};
-    ~Job() {};
-
-    virtual std::shared_ptr<Test> nextTest() = 0;
-    virtual void onFinish() = 0;
-};
 
 class Frontend
 {
