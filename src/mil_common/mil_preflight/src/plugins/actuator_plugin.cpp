@@ -4,7 +4,7 @@
 
 #include <boost/dll/alias.hpp>
 
-#include "mil_preflight/plugin.h"
+#include "mil_preflight/backend.h"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 
 namespace mil_preflight

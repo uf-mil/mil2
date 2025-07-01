@@ -59,7 +59,7 @@ class SimplePlugin : public PluginBase
         while (action != nullptr)
         {
             action->onStart();
-            auto&& [success, summery] = runAction(action);
+            auto &&[success, summery] = runAction(action);
             action->onFinish(success, std::move(summery));
             action = test->nextAction();
         }
@@ -68,6 +68,21 @@ class SimplePlugin : public PluginBase
     }
 
     virtual std::pair<bool, std::string> runAction(std::shared_ptr<Action> action) = 0;
+};
+
+class Backend
+{
+  public:
+    using Creator = std::shared_ptr<mil_preflight::PluginBase>;
+
+    Backend();
+    ~Backend();
+
+    void run(rclcpp::executors::SingleThreadedExecutor &exec);
+
+  private:
+    boost::function<Creator()> load(std::string const &plugin_name);
+    std::unordered_map<std::string, boost::function<Creator()>> libraries_;
 };
 
 }  // namespace mil_preflight
