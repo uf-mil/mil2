@@ -9,6 +9,9 @@ namespace mil_preflight
 {
 using namespace ftxui;
 
+using TestReport = std::unordered_map<std::string, Action::Report>;
+using JobReport = std::unordered_map<std::string, TestReport>;
+
 class ReportsPage : public ComponentBase
 {
   public:
@@ -16,7 +19,7 @@ class ReportsPage : public ComponentBase
     ~ReportsPage();
 
   private:
-    Job::Report report_;
+    JobReport report_;
 
     bool showSuccess_ = true;
     Component reportPanel_;
