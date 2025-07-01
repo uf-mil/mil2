@@ -74,7 +74,7 @@ class ActionBox : public ComponentBase, public Action
     bool Focusable() const final;
 
     void onStart() final;
-    void onFinish(Action::Report const& report) final;
+    void onFinish(Action::Report&& report) final;
 };
 
 struct TestTabOption
@@ -118,7 +118,7 @@ class TestTab : public ComponentBase, public Test
     std::shared_ptr<ActionBox> createAction(std::string&& name, std::vector<std::string>&& parameters);
 
     std::optional<std::reference_wrapper<Action>> nextAction() final;
-    void onFinish(Test::Report const& report) final;
+    void onFinish() final;
 
   private:
     bool hovered_ = false;
@@ -167,7 +167,7 @@ class TestsPage : public ComponentBase, public Job
     size_t ticker_ = 0;
 
     std::optional<std::reference_wrapper<Test>> nextTest() final;
-    void onFinish(Job::Report&& report) final;
+    void onFinish() final;
     bool OnEvent(Event event) final;
 };
 

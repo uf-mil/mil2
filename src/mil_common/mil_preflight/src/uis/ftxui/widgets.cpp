@@ -16,7 +16,9 @@ extern ScreenInteractive screen;
 namespace mil_preflight
 {
 
-static std::queue<Job::Report> reportQueue;
+static TestReport test_report;
+static JobReport job_report;
+static std::queue<JobReport> job_report_queue;
 
 static std::queue<std::shared_ptr<Dialog>> questionQueue;
 
@@ -138,9 +140,10 @@ void ActionBox::onStart()
     state_ = State::RUNNING;
 }
 
-void ActionBox::onFinish(Action::Report const& report)
+void ActionBox::onFinish(Action::Report&& report)
 {
     state_ = report.success ? State::SUCCESS : State::FAILED;
+    test_report.emplace(getName(), std::move(report));
     screen.PostEvent(Event::Character("ActionFinish"));
 }
 
@@ -180,9 +183,10 @@ std::shared_ptr<ActionBox> TestTab::createAction(std::string&& name, std::vector
     return action;
 }
 
-void TestTab::onFinish([[maybe_unused]] Test::Report const& report)
+void TestTab::onFinish()
 {
     currentAction_ = 0;
+    job_report.emplace(getName(), std::move(test_report));
     screen.PostEvent(Event::Character("TestFinish"));
 }
 
@@ -274,30 +278,6 @@ bool TestTab::OnMouseEvent(Event event)
 
     return false;
 }
-
-// class ActionList : public ComponentBase
-// {
-//   public:
-//     using History = std::pair<size_t, bool>;
-
-//     ActionList(std::shared_ptr<TestTab> tab);
-//     ~ActionList();
-
-//   private:
-//     int selector_ = 0;
-//     Box box_;
-// };
-
-// ActionList::ActionList(std::shared_ptr<TestTab> tab)
-// {
-//     Components comps;
-//     Add(Container::Vertical(comps, &selector_));
-// }
-
-// ActionList::~ActionList()
-// {
-
-// }
 
 TestsPage::TestsPage(std::function<void(TestsPage& page)> onRun)
 {
@@ -413,11 +393,11 @@ std::shared_ptr<TestTab> TestsPage::createTest(std::string&& name, std::string&&
     return tab;
 }
 
-void TestsPage::onFinish(Job::Report&& report)
+void TestsPage::onFinish()
 {
     running_ = false;
     currentTest_ = 0;
-    reportQueue.push(std::move(report));
+    job_report_queue.push(std::move(job_report));
     screen.PostEvent(Event::Character("JobFinish"));
 }
 
@@ -483,7 +463,7 @@ class ActionReportPanel : public ComponentBase
 class TestReportPanel : public ComponentBase
 {
   public:
-    TestReportPanel(std::string const& name, Test::Report&& report, bool* errorOnly) : errorOnly_(errorOnly)
+    TestReportPanel(std::string const& name, TestReport&& report, bool* errorOnly) : errorOnly_(errorOnly)
     {
         Component panelsContainer = Container::Tab({}, &selector_);
         Component tabsContainer = Container::Vertical({}, &selector_);
@@ -545,7 +525,7 @@ class TestReportPanel : public ComponentBase
 class JobReportPanel : public ComponentBase
 {
   public:
-    JobReportPanel(Job::Report&& report, bool* errorOnly) : report_(std::move(report)), errorOnly_(errorOnly)
+    JobReportPanel(JobReport&& report, bool* errorOnly) : report_(std::move(report)), errorOnly_(errorOnly)
     {
     }
 
@@ -585,7 +565,7 @@ class JobReportPanel : public ComponentBase
     }
 
   private:
-    Job::Report report_;
+    JobReport report_;
     Component left_;
     Component right_;
     int selector_ = 0;
@@ -645,9 +625,9 @@ bool ReportsPage::OnEvent(Event event)
 
 Element ReportsPage::Render()
 {
-    while (reportQueue.size() > 0)
+    while (job_report_queue.size() > 0)
     {
-        report_ = std::move(reportQueue.front());
+        report_ = std::move(job_report_queue.front());
 
         if (report_.size() != 0)
         {
@@ -656,7 +636,7 @@ Element ReportsPage::Render()
                 selector_ += 1;
         }
 
-        reportQueue.pop();
+        job_report_queue.pop();
     }
 
     if (reportPanel_->ChildCount() > 0)

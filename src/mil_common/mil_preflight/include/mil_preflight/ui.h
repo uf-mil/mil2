@@ -71,7 +71,7 @@ class Action
 
   protected:
     virtual void onStart() = 0;
-    virtual void onFinish(Report const& report) = 0;
+    virtual void onFinish(Report&& report) = 0;
 
   private:
 };
@@ -80,7 +80,6 @@ class Test
 {
   public:
     friend class UIBase;
-    using Report = std::unordered_map<std::string, Action::Report>;
 
     Test() {};
     ~Test() {};
@@ -90,21 +89,20 @@ class Test
 
   protected:
     virtual std::optional<std::reference_wrapper<Action>> nextAction() = 0;
-    virtual void onFinish(Report const& report) = 0;
+    virtual void onFinish() = 0;
 };
 
 class Job
 {
   public:
     friend class UIBase;
-    using Report = std::unordered_map<std::string, Test::Report>;
 
     Job() {};
     ~Job() {};
 
   protected:
     virtual std::optional<std::reference_wrapper<Test>> nextTest() = 0;
-    virtual void onFinish(Report&& report) = 0;
+    virtual void onFinish() = 0;
 };
 
 class UIBase
@@ -144,19 +142,17 @@ class UIBase
 
     void runJob(Job& job)
     {
-        Job::Report jobReport;
         std::optional<std::reference_wrapper<Test>> testOptional = job.nextTest();
 
         while (testOptional.has_value())
         {
             Test& test = testOptional.value();
-            Test::Report testReport = runTest(test);
+            runTest(test);
 
-            jobReport.emplace(test.getName(), std::move(testReport));
             testOptional = job.nextTest();
         }
 
-        job.onFinish(std::move(jobReport));
+        job.onFinish();
     }
 
     void runJobAsync(Job& job)
@@ -186,9 +182,8 @@ class UIBase
 
     boost::process::child backend;
 
-    Test::Report runTest(Test& test)
+    void runTest(Test& test)
     {
-        Test::Report testReport;
         std::optional<std::reference_wrapper<Action>> actionOptional = test.nextAction();
 
         child_in << test.getPlugin() << std::endl;
@@ -196,21 +191,18 @@ class UIBase
         while (actionOptional.has_value())
         {
             Action& action = actionOptional.value();
-            Action::Report actionReport = runAction(action);
+            runAction(action);
 
-            testReport.emplace(action.getName(), std::move(actionReport));
             actionOptional = test.nextAction();
         }
 
         if (!child_in.fail())
             child_in << EOT << std::endl;
 
-        test.onFinish(testReport);
-
-        return testReport;
+        test.onFinish();
     }
 
-    Action::Report runAction(Action& action)
+    void runAction(Action& action)
     {
         action.onStart();
 
@@ -332,8 +324,7 @@ class UIBase
             }
         }
 
-        action.onFinish(actionReport);
-        return actionReport;
+        action.onFinish(std::move(actionReport));
     }
 };
 
