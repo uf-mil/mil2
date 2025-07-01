@@ -7,7 +7,7 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 
-#include "mil_preflight/ui.h"
+#include "mil_preflight/frontend.h"
 
 namespace mil_preflight
 {

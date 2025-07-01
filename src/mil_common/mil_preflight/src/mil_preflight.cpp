@@ -1,4 +1,4 @@
-#include "mil_preflight/ui.h"
+#include "mil_preflight/frontend.h"
 
 using Creator = std::shared_ptr<mil_preflight::UIBase>();
 std::function<Creator> load(std::string const& uiName)
