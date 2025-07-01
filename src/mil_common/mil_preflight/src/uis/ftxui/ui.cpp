@@ -94,7 +94,7 @@ class FTXUI : public UIBase
 
         std::shared_ptr<Root> root = std::make_shared<Root>();
 
-        auto tests_page = std::make_shared<mil_preflight::TestsPage>([this, frontend](TestsPage& page)
+        auto tests_page = std::make_shared<mil_preflight::TestsPage>([this, frontend](std::shared_ptr<TestsPage> page)
                                                                      { frontend->runJobAsync(page); });
 
         createJob(cfg.value(), tests_page);

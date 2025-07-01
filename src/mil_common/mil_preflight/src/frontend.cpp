@@ -31,49 +31,45 @@ Frontend::~Frontend()
     backend_.join();
 }
 
-void Frontend::runJob(Job& job)
+void Frontend::runJob(std::shared_ptr<Job> job)
 {
-    std::optional<std::reference_wrapper<Test>> testOptional = job.nextTest();
+    std::shared_ptr<Test> test = job->nextTest();
 
-    while (testOptional.has_value())
+    while (test != nullptr)
     {
-        Test& test = testOptional.value();
         runTest(test);
-
-        testOptional = job.nextTest();
+        test = job->nextTest();
     }
 
-    job.onFinish();
+    job->onFinish();
 }
 
-void Frontend::runJobAsync(Job& job)
+void Frontend::runJobAsync(std::shared_ptr<Job> job)
 {
-    work_context_.post([&] { runJob(job); });
+    work_context_.post([=] { runJob(job); });
 }
 
-void Frontend::runTest(Test& test)
+void Frontend::runTest(std::shared_ptr<Test> test)
 {
-    std::optional<std::reference_wrapper<Action>> actionOptional = test.nextAction();
+    std::shared_ptr<Action> action = test->nextAction();
 
-    child_in_ << test.getPlugin() << std::endl;
+    child_in_ << test->getPlugin() << std::endl;
 
-    while (actionOptional.has_value())
+    while (action != nullptr)
     {
-        Action& action = actionOptional.value();
         runAction(action);
-
-        actionOptional = test.nextAction();
+        action = test->nextAction();
     }
 
     if (!child_in_.fail())
         child_in_ << EOT << std::endl;
 
-    test.onFinish();
+    test->onFinish();
 }
 
-void Frontend::runAction(Action& action)
+void Frontend::runAction(std::shared_ptr<Action> action)
 {
-    action.onStart();
+    action->onStart();
 
     enum class State
     {
@@ -87,8 +83,8 @@ void Frontend::runAction(Action& action)
     std::string line;
     std::string summery;
     bool success = false;
-    action.stdouts.clear();
-    action.stderrs.clear();
+    action->stdouts.clear();
+    action->stderrs.clear();
 
     std::string question;
     std::vector<std::string> options;
@@ -99,8 +95,8 @@ void Frontend::runAction(Action& action)
         {
             try
             {
-                child_in_ << action.getName() << std::endl;
-                for (std::string const& parameter : action.getParameters())
+                child_in_ << action->getName() << std::endl;
+                for (std::string const& parameter : action->getParameters())
                 {
                     child_in_ << parameter << std::endl;
                 }
@@ -136,7 +132,7 @@ void Frontend::runAction(Action& action)
             }
             else
             {
-                action.stdouts.push_back(std::move(line));
+                action->stdouts.push_back(std::move(line));
             }
         }
         else if (state == State::QUESTION)
@@ -159,7 +155,7 @@ void Frontend::runAction(Action& action)
 
             if (line[0] == EOT)
             {
-                std::shared_future<int> feedback = action.onQuestion(std::move(question), std::move(options));
+                std::shared_future<int> feedback = action->onQuestion(std::move(question), std::move(options));
                 try
                 {
                     child_in_ << feedback.get() << std::endl;
@@ -188,14 +184,14 @@ void Frontend::runAction(Action& action)
             {
                 if (line[0] == EOT)
                     break;
-                action.stderrs.push_back(std::move(line));
+                action->stderrs.push_back(std::move(line));
             }
 
             break;
         }
     }
 
-    action.onFinish(success, std::move(summery));
+    action->onFinish(success, std::move(summery));
 }
 
 }  // namespace mil_preflight
