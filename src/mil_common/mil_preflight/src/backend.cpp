@@ -138,72 +138,91 @@ class PseudoTest : public Test
     std::string plugin_;
 };
 
-}  // namespace mil_preflight
-
-using Creator = std::shared_ptr<mil_preflight::PluginBase>();
-boost::function<Creator> load(std::string const& plugin_name)
+class Backend
 {
-    try
+  public:
+    using Creator = std::shared_ptr<mil_preflight::PluginBase>();
+
+    Backend()
     {
-        return boost::dll::import_alias<Creator>(plugin_name, plugin_name,
-                                                 boost::dll::load_mode::append_decorations |
-                                                     boost::dll::load_mode::search_system_folders);
     }
-    catch (boost::system::system_error const& e)
+
+    ~Backend()
     {
-        return []() -> std::shared_ptr<mil_preflight::PluginBase>
-        { return std::make_shared<mil_preflight::PluginBase>(); };
     }
-}
+
+    void run(rclcpp::executors::SingleThreadedExecutor& exec)
+    {
+        std::string line;
+        std::shared_ptr<mil_preflight::PluginBase> node;
+        std::vector<std::string> parameters;
+        while (std::getline(std::cin, line))
+        {
+            if (line[0] == mil_preflight::EOT)
+            {
+                rclcpp::shutdown();
+                break;
+            }
+            else if (line[0] == mil_preflight::GS)
+            {
+                auto it = libraries_.find(parameters[1]);
+                if (it == libraries_.end())
+                {
+                    std::function<Creator> creator = load(parameters[1]);
+                    it = libraries_.emplace(parameters[1], std::move(creator)).first;
+                }
+
+                std::shared_ptr<mil_preflight::PseudoTest> test =
+                    std::make_shared<mil_preflight::PseudoTest>(std::move(parameters[0]), std::move(parameters[1]));
+
+                node = it->second();
+                exec.add_node(node);
+                node->runTest(test);
+                exec.remove_node(node);
+                node.reset();
+
+                parameters.clear();
+            }
+            else
+            {
+                parameters.emplace_back(std::move(line));
+            }
+        }
+    }
+
+  private:
+    boost::function<Creator> load(std::string const& plugin_name)
+    {
+        try
+        {
+            return boost::dll::import_alias<Creator>(plugin_name, plugin_name,
+                                                     boost::dll::load_mode::append_decorations |
+                                                         boost::dll::load_mode::search_system_folders);
+        }
+        catch (boost::system::system_error const& e)
+        {
+            return []() -> std::shared_ptr<mil_preflight::PluginBase>
+            { return std::make_shared<mil_preflight::PluginBase>(); };
+        }
+    }
+
+    std::unordered_map<std::string, boost::function<Creator>> libraries_;
+};
+
+}  // namespace mil_preflight
 
 int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
+
     rclcpp::executors::SingleThreadedExecutor exec;
-    std::unordered_map<std::string, boost::function<Creator>> libraries;
+    mil_preflight::Backend backend;
 
-    std::thread io_thread(
-        [&]
-        {
-            std::string line;
-            std::shared_ptr<mil_preflight::PluginBase> node;
-            std::vector<std::string> parameters;
-            while (std::getline(std::cin, line))
-            {
-                if (line[0] == mil_preflight::EOT)
-                {
-                    rclcpp::shutdown();
-                    break;
-                }
-                else if (line[0] == mil_preflight::GS)
-                {
-                    auto it = libraries.find(parameters[1]);
-                    if (it == libraries.end())
-                    {
-                        std::function<Creator> creator = load(parameters[1]);
-                        it = libraries.emplace(parameters[1], std::move(creator)).first;
-                    }
-
-                    std::shared_ptr<mil_preflight::PseudoTest> test =
-                        std::make_shared<mil_preflight::PseudoTest>(std::move(parameters[0]), std::move(parameters[1]));
-
-                    node = it->second();
-                    exec.add_node(node);
-                    node->runTest(test);
-                    exec.remove_node(node);
-                    node.reset();
-
-                    parameters.clear();
-                }
-                else
-                {
-                    parameters.emplace_back(std::move(line));
-                }
-            }
-        });
+    std::thread work_thread([&] { backend.run(exec); });
 
     exec.spin();
     rclcpp::shutdown();
-    io_thread.join();
+    work_thread.join();
+
     return 0;
 }
