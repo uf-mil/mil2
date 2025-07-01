@@ -26,28 +26,19 @@ class NodePlugin : public PluginBase
 
   private:
     std::vector<std::string> nodes_;
-    std::string summery_;
 
-    bool runAction(std::vector<std::string>&& parameters) final
+    std::pair<bool, std::string> runAction(std::vector<std::string>&& parameters) final
     {
         if (std::find(nodes_.begin(), nodes_.end(), parameters[1]) == nodes_.end())
         {
             nodes_ = get_node_names();
             if (std::find(nodes_.begin(), nodes_.end(), parameters[1]) == nodes_.end())
             {
-                summery_ = "Node " + parameters[0] + " does not exist in 100 ms";
-                return false;
+                return { false, "Node " + parameters[0] + " does not exist in 100 ms" };
             }
         }
 
-        summery_ = "Found node " + parameters[1];
-
-        return true;
-    }
-
-    std::string const& getSummery() final
-    {
-        return summery_;
+        return { true, "Found node " + parameters[1] };
     }
 };
 }  // namespace mil_preflight

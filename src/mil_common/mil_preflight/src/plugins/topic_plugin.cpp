@@ -25,8 +25,8 @@ class TopicPlugin : public PluginBase
 
   private:
     std::map<std::string, std::vector<std::string>> topics_;
-    std::string summery_;
-    bool runAction(std::vector<std::string>&& parameters) final
+
+    std::pair<bool, std::string> runAction(std::vector<std::string>&& parameters) final
     {
         auto it = topics_.find(parameters[1]);
         if (it == topics_.end())
@@ -37,18 +37,11 @@ class TopicPlugin : public PluginBase
             it = topics_.find(parameters[1]);
             if (it == topics_.end())
             {
-                summery_ = "Topic " + parameters[0] + " does not exist in 100 ms";
-                return false;
+                return { false, "Topic " + parameters[0] + " does not exist in 100 ms" };
             }
         }
 
-        summery_ = "Found topic " + parameters[0] + " with type " + it->second[0];
-        return true;
-    }
-
-    std::string const& getSummery() final
-    {
-        return summery_;
+        return { true, "Found topic " + parameters[0] + " with type " + it->second[0] };
     }
 };
 }  // namespace mil_preflight
