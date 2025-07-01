@@ -111,7 +111,12 @@ class Job
 class UIBase
 {
   public:
-    UIBase() : work_guard(boost::asio::make_work_guard(work_context)), work_thread([this] { work_context.run(); })
+    UIBase()
+      : work_guard(boost::asio::make_work_guard(work_context))
+      , work_thread([this] { work_context.run(); })
+      , backend(boost::process::child(bin_path.string(),
+                                      boost::process::std_in<child_in, boost::process::std_out> child_out,
+                                      boost::process::std_err > child_err))
     {
     }
 
@@ -120,6 +125,11 @@ class UIBase
         work_guard.reset();
         work_context.stop();
         work_thread.join();
+
+        if (backend.running())
+            child_in << EOT << std::endl;
+
+        backend.join();
     }
 
     virtual int spin()
@@ -185,46 +195,43 @@ class UIBase
     using Creator = std::shared_ptr<UIBase>();
     static boost::function<Creator> creator_;
     static std::string error_;
-    boost::filesystem::path binPath_ = boost::process::search_path("mil_preflight_backend");
+    boost::filesystem::path bin_path = boost::process::search_path("mil_preflight_backend");
 
     boost::asio::io_context work_context;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard;
     std::thread work_thread;
 
+    boost::process::ipstream child_out;
+    boost::process::ipstream child_err;
+    boost::process::opstream child_in;
+
+    boost::process::child backend;
+
     Test::Report runTest(Test& test)
     {
-        boost::process::ipstream childOut;
-        boost::process::ipstream childErr;
-        boost::process::opstream childIn;
-        std::vector<std::string> args;
-
-        boost::process::child backend = boost::process::child(
-            binPath_.string(), test.getPlugin(), boost::process::std_in<childIn, boost::process::std_out> childOut,
-            boost::process::std_err > childErr);
-
         Test::Report testReport;
         std::optional<std::reference_wrapper<Action>> actionOptional = test.nextAction();
+
+        child_in << test.getPlugin() << std::endl;
 
         while (actionOptional.has_value())
         {
             Action& action = actionOptional.value();
-            Action::Report actionReport = runAction(action, childOut, childErr, childIn);
+            Action::Report actionReport = runAction(action);
 
             testReport.emplace(action.getName(), std::move(actionReport));
             actionOptional = test.nextAction();
         }
 
-        if (!childIn.fail())
-            childIn << EOT << std::endl;
+        if (!child_in.fail())
+            child_in << EOT << std::endl;
 
-        backend.join();
         test.onFinish(testReport);
 
         return testReport;
     }
 
-    Action::Report runAction(Action& action, boost::process::ipstream& out, boost::process::ipstream& err,
-                             boost::process::opstream& in)
+    Action::Report runAction(Action& action)
     {
         action.onStart();
 
@@ -250,12 +257,12 @@ class UIBase
             {
                 try
                 {
-                    in << action.getName() << std::endl;
+                    child_in << action.getName() << std::endl;
                     for (std::string const& parameter : action.getParameters())
                     {
-                        in << parameter << std::endl;
+                        child_in << parameter << std::endl;
                     }
-                    in << GS << std::endl;
+                    child_in << GS << std::endl;
                 }
                 catch (std::exception const& e)
                 {
@@ -266,7 +273,7 @@ class UIBase
             }
             else if (state == State::STDOUT)
             {
-                if (!std::getline(out, line))
+                if (!std::getline(child_out, line))
                 {
                     actionReport.summery = "Broken pipe";
                     break;
@@ -292,7 +299,7 @@ class UIBase
             }
             else if (state == State::QUESTION)
             {
-                if (!std::getline(out, question, GS))
+                if (!std::getline(child_out, question, GS))
                 {
                     actionReport.summery = "Broken pipe";
                     break;
@@ -302,7 +309,7 @@ class UIBase
             }
             else if (state == State::OPTIONS)
             {
-                if (!std::getline(out, line, GS))
+                if (!std::getline(child_out, line, GS))
                 {
                     actionReport.summery = "Broken pipe";
                     break;
@@ -313,7 +320,7 @@ class UIBase
                     std::shared_future<int> feedback = onQuestion(std::move(question), std::move(options));
                     try
                     {
-                        in << feedback.get() << std::endl;
+                        child_in << feedback.get() << std::endl;
                         options.clear();
                     }
                     catch (std::exception const& e)
@@ -330,12 +337,12 @@ class UIBase
             }
             else if (state == State::SUMMERY)
             {
-                if (!std::getline(out, actionReport.summery))
+                if (!std::getline(child_out, actionReport.summery))
                 {
                     break;
                 }
 
-                while (std::getline(err, line))
+                while (std::getline(child_err, line))
                 {
                     if (line[0] == EOT)
                         break;
