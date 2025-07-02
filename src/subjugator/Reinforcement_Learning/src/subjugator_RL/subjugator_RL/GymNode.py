@@ -98,7 +98,7 @@ class GymNode(Node):
             y=float(torque_action[1]),
             z=float(torque_action[2]),
         )
-        print("publishing action as wrench")
+        
         self.wrench_publisher.publish(wrench_msg)
 
 

@@ -56,19 +56,7 @@ class SubEnv(gym.Env):
         self.imu_data = 0.0
         self.cam_data = None
 
-        # Run the launch file to start gazebo-- Runs only once
-        # self.gazeboProc = subprocess.Popen(
-        #     [
-        #         "gnome-terminal",
-        #         "--",
-        #         "bash",
-        #         "-c",
-        #         "source /opt/ros/jazzy/setup.bash && "
-        #         "source ~/mil2/install/setup.bash && "
-        #         "ros2 launch subjugator_bringup gazebo.launch.py; exec bash",
-        #     ],
-        #     env=clean_ros_env(),
-        # )
+        self.random_pt = None
 
         self.localizationProc = subprocess.Popen(
             [
@@ -204,6 +192,15 @@ class SubEnv(gym.Env):
         except Exception as e:
             print(f"Could not start filter: {e}")
 
+    def generate_random_pt(self):
+        x = np.random.uniform(-5, 5)
+        y = np.random.uniform(-5, 5)
+
+        #can't go out of the water
+        z = np.random.uniform(-5, 0)
+
+        return np.array([x, y, z], dtype=np.float32)
+
     def calculate_red_amount(self, image):
         if image is None:
             return 0, 0, 0
@@ -222,9 +219,14 @@ class SubEnv(gym.Env):
         return total_red, avg_red, red_percentage
 
     def calculate_reward(self, observation):
-        image = observation["image"]
-        total_red, avg_red, red_percentage = self.calculate_red_amount(image)
-        reward = red_percentage  # trying to maximize the red percentage so that it goes to the red buoy
+        
+        distance = np.linalg.norm(observation["object_distance"])
+
+        #sub has reached target
+        if distance == 0:
+            return 1000
+        
+        reward = 1 / distance
         return reward
 
     def _get_obs(self):
@@ -237,24 +239,26 @@ class SubEnv(gym.Env):
         if imu_lock.acquire(False):
             self.imu_data = self.gymNode.imu_data  # get data from gymnode
             imu_lock.release()
-
         
-        random_pt = np.random.random(-50, 50, 3)
 
-        
         # capture data
         pos = self.imu_data.pose.pose.position
         ori = self.imu_data.pose.pose.orientation
         linVel = self.imu_data.twist.twist.linear
         angVel = self.imu_data.twist.twist.angular
 
-        object_distance = (pos - random_pt)
-
         # make it an array
         position = np.array([pos.x, pos.y, pos.z], dtype=np.float32)
         orientation = np.array([ori.x, ori.y, ori.z, ori.w], dtype=np.float32)
         linear_vel = np.array([linVel.x, linVel.y, linVel.z], dtype=np.float32)
         angular_vel = np.array([angVel.x, angVel.y, angVel.z], dtype=np.float32)
+
+        if self.random_pt is not None:
+            object_distance = self.random_pt - position
+        else:
+            object_distance = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+
+
 
         return {
             "image": self.cam_data,
@@ -283,11 +287,18 @@ class SubEnv(gym.Env):
 
         # Define termination
         terminated = False
-        object_distance = observation.get("object_distance", float("inf"))
 
-        if object_distance[0] < 2 :
+        #gets eucladian distance
+        object_distance = np.linalg.norm(observation.get("object_distance", np.array([float("inf")] * 3)))
+
+        if object_distance < 2 :
             terminated = True
-
+    
+        print("Reward: ", reward)
+        print("Object distance: ", object_distance)
+        print(f"Sub's Position={observation['position']}")
+      
+      
         return observation, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
@@ -299,6 +310,8 @@ class SubEnv(gym.Env):
         #need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
         self.reset_localization()
         self.start_ekf_node()
+
+        self.random_pt = self.generate_random_pt()
 
         if not success:
             print("Gazebo service reset failed!")
