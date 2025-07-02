@@ -1,3 +1,5 @@
+from glob import glob
+
 from setuptools import find_packages, setup
 
 package_name = "subjugator_mission_planner"
@@ -14,7 +16,7 @@ setup(
             ["resource/subjugator_mission_planner"],
         ),
         (f"share/{package_name}", ["package.xml"]),
-        (f"share/{package_name}/missions", ["missions/prequal.yaml"]),
+        (f"share/{package_name}/missions", glob("missions/*.yaml")),
         (
             f"share/{package_name}/launch",
             ["launch/mission_planner_launch.py", "launch/task_server_launch.py"],
