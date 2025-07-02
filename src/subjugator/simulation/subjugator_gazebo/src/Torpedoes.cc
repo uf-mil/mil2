@@ -98,7 +98,6 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
                 gz::sim::components::Name const *name) -> bool
             {
                 this->worldName = name->Data();
-                std::cout << "[Torpedoes] World Name Found: " << worldName << std::endl;
                 worldNameFound = true;
                 return false;  // Stop after finding the first world
             });
@@ -107,14 +106,20 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
     // Spawn two torpedoes maximum
     if (torpedoCount < 2)
     {
-        std::cout << "[Torpedoes] Torpedo Count: " << torpedoCount + 1 << std::endl;
         this->SpawnTorpedo(this->worldName, this->Torpedo_sdfPath);
         torpedoCount++;
+        std::cout << "[Torpedoes] Torpedo Count: " << torpedoCount << std::endl;
     }
 }
 
 void Torpedoes::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &ecm)
 {
+    // Only process torpedoes if they have been spawned
+    if (torpedoCount == 0 || info.paused)
+    {
+        return;
+    }
+
     // Only process torpedo models that have not had their velocity set
     for (auto const &modelName : torpedoModelNames)
     {
