@@ -79,14 +79,18 @@ class NavigateAroundObjectServer(Node):
 
         # Find poses for completing orbit
 
-        x_movements = [1.0, 2.0, 1.0, 0.0]
-        y_movements = [-1.0, 0.0, 1.0, 0.0]
+        angle_increments = [45, 90, 135, 180, 225, 270, 315, 360]
 
-        for leg in range(len(x_movements)):
+        starting_z = currentPose.position.z
+
+        for angle in angle_increments:
+            angle_rad = angle * 2 * math.pi / 180
+            x_position = 2 * math.sin(angle_rad / 2)
+            y_position = -1 * math.sin(angle_rad)
             pose = Pose()
-            pose.position.x = x_movements[leg] * self.distance_to_orbit
-            pose.position.y = y_movements[leg] * self.distance_to_orbit
-            pose.position.z = currentPose.position.z
+            pose.position.x = x_position * self.distance_to_orbit
+            pose.position.y = y_position * self.distance_to_orbit
+            pose.position.z = starting_z
             pose.orientation.w = 1.0
             poses.append(pose)
 
