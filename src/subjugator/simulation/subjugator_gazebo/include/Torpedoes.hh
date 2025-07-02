@@ -6,6 +6,8 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -13,7 +15,8 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <gz/math/Pose3.hh>  // For gz::math::Pose3d
+#include <gz/math/Pose3.hh>    // For gz::math::Pose3d
+#include <gz/math/Vector3.hh>  // For gz::math::Vector3d
 #include <gz/sim/EntityComponentManager.hh>
 #include <gz/sim/EventManager.hh>
 #include <gz/sim/InstallationDirectories.hh>
@@ -21,8 +24,11 @@
 #include <gz/sim/System.hh>  // For gz::sim::System
 #include <gz/sim/World.hh>
 #include <gz/sim/components/AngularVelocity.hh>
+#include <gz/sim/components/CanonicalLink.hh>
 #include <gz/sim/components/LinearVelocity.hh>
+#include <gz/sim/components/Link.hh>
 #include <gz/sim/components/Name.hh>  // For gz::sim::components::Name
+#include <gz/sim/components/ParentEntity.hh>
 #include <gz/sim/components/Pose.hh>  // For gz::sim::components::Pose
 #include <gz/sim/components/World.hh>
 #include <gz/transport/Node.hh>
@@ -30,12 +36,14 @@
 #include <sdf/World.hh>
 #include <sdf/sdf.hh>
 
-// The .msg file is named ProcessedPing.msg (PascalCase) but #include must be the name in snake_case
 // Insert ROS Message Here if needed
 
 namespace torpedoes
 {
-class Torpedoes : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
+class Torpedoes : public gz::sim::System,
+                  public gz::sim::ISystemConfigure,
+                  public gz::sim::ISystemPreUpdate,
+                  public gz::sim::ISystemPostUpdate
 {
   public:
     Torpedoes();
@@ -47,6 +55,9 @@ class Torpedoes : public gz::sim::System, public gz::sim::ISystemConfigure, publ
 
     // SpawnTorpedo - Spawns a torpedo in the simulation //
     void SpawnTorpedo(std::string const &worldName, std::string const &sdfPath);
+
+    // System PreUpdate - Called every simulation step before physics //
+    void PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &ecm) override;
 
     // System PostUpdate - Called every simulation step to update pinger/torpedoes distances //
     void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
@@ -73,6 +84,14 @@ class Torpedoes : public gz::sim::System, public gz::sim::ISystemConfigure, publ
                                                                                                                  "torpe"
                                                                                                                  "do."
                                                                                                                  "sdf";
+
+    // Track torpedo model names
+    std::set<std::string> torpedoModelNames;
+
+    // Track torpedoes that have already had their velocity set
+    std::set<std::string> torpedoesWithVelocitySet;
+    // Track attempts to set velocity for each torpedo
+    std::map<std::string, int> torpedoVelocitySetAttempts;
 };
 
 }  // namespace torpedoes

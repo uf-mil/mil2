@@ -3,6 +3,7 @@
 #include "gz/plugin/Register.hh"  // For GZ_ADD_PLUGIN
 
 #include <gz/common/Console.hh>
+#include <gz/sim/Link.hh>
 
 namespace torpedoes
 {
@@ -63,24 +64,19 @@ void Torpedoes::SpawnTorpedo(std::string const &worldName, std::string const &sd
             sdfString.replace(namePos + 13, quotePos - (namePos + 13), uniqueName);
         }
     }
+    // Track the torpedo model name for efficient lookup
+    torpedoModelNames.insert(uniqueName);
 
     // Prepare the factory message
     gz::msgs::EntityFactory factoryMsg;
     factoryMsg.set_sdf(sdfString);
-    // Set the Velocity to 10 m/s in the X direction - This below doesn't work lol
-    // factoryMsg.mutable_linear_velocity()->set_x(1.0);
-    // factoryMsg.mutable_linear_velocity()->set_y(0.0);
-    // factoryMsg.mutable_linear_velocity()->set_z(8.0);
+
     // Set the pose to X, Y, Z, and roll, pitch, yaw
-    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(1.0, 1.0, 1.0, 0, 0, 0));
+    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(1.0, 1.0, 0.0, 0, 0, 0));
 
     // Send the request using the four-argument version for feedback
     std::string service = "/world/" + worldName + "/create";
     bool executed = node.Request(service, factoryMsg, timeout, reply, result);
-    std::cout << "[Torpedoes] Request sent to service: " << service << std::endl;
-    // std::cout << "[Torpedoes] Executed State: " << executed << std::endl;
-    // std::cout << "[Torpedoes] Result: " << result << std::endl;
-    // std::cout << "[Torpedoes] Reply: " << reply.DebugString() << std::endl;
     if (!executed || !result)
     {
         gzerr << "Failed to spawn torpedo model." << std::endl;
@@ -117,13 +113,52 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
     }
 }
 
+void Torpedoes::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &ecm)
+{
+    // Only process torpedo models that have not had their velocity set
+    for (auto const &modelName : torpedoModelNames)
+    {
+        if (torpedoesWithVelocitySet.count(modelName) > 0)
+            continue;
+        // Find the model entity by name
+        auto modelEntity = ecm.EntityByComponents(gz::sim::components::Name(modelName));
+        if (modelEntity == gz::sim::kNullEntity)
+        {
+            continue;
+        }
+        // Find the 'body' link child entity using ChildrenByComponents
+        gz::sim::Entity bodyLink = gz::sim::kNullEntity;
+        auto linkChildren = ecm.ChildrenByComponents(modelEntity, gz::sim::components::Link());
+        for (auto linkEntity : linkChildren)
+        {
+            auto nameComp = ecm.Component<gz::sim::components::Name>(linkEntity);
+            if (nameComp && nameComp->Data() == "body")
+            {
+                bodyLink = linkEntity;
+                break;
+            }
+        }
+        if (bodyLink != gz::sim::kNullEntity)
+        {
+            gz::sim::Link link(bodyLink);
+            link.SetLinearVelocity(ecm, gz::math::Vector3d(10.0, 0.0, 0.0));
+            // Check if velocity is nonzero, then mark as set
+            auto velComp = ecm.Component<gz::sim::components::LinearVelocity>(bodyLink);
+            if (velComp && velComp->Data().Length() > 0.1)
+            {
+                torpedoesWithVelocitySet.insert(modelName);
+            }
+        }
+    }
+}
+
 }  // namespace torpedoes
 
 // Register plugin for Gazebo
-GZ_ADD_PLUGIN(torpedoes::Torpedoes, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)
+GZ_ADD_PLUGIN(torpedoes::Torpedoes, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate,
+              gz::sim::ISystemPreUpdate)
 
 // TODO:
-// - Adjust torpedo.sdf so they don't fall through the world (look into gz::sim::systems)
 // - Add keyboard event handling to spawn torpedoes on key press
 // - Spawn torpedoes in relative to Sub9 position and orientation
 // - Send out second torpedo slightly offset from the first one
