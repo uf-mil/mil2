@@ -103,15 +103,15 @@ class SubEnv(gym.Env):
                 "Linear_velocity": spaces.Box(low=-np.inf, high=np.inf, shape=(3,)),
                 "angular_velocity": spaces.Box(low=-np.inf, high=np.inf, shape=(3,)),
                 "object_distance": spaces.Box(
-                    low=0,
+                    low=-100,
                     high=100,
-                    shape=(1,),
+                    shape=(3,),
                     dtype=np.float32,
                 ),
             },
         )
 
-        # FFirst 3 are force, second 3 are torque
+        # First 3 are force, second 3 are torque
         self.action_space = spaces.Box(low=10, high=50, shape=(6,), dtype=np.float32)
 
     def seed(self, seed=None):
@@ -238,14 +238,17 @@ class SubEnv(gym.Env):
             self.imu_data = self.gymNode.imu_data  # get data from gymnode
             imu_lock.release()
 
-        # Get object distance via the buoy_finder (either through subscriber thread, or pipe) --
-        object_distance = np.array([10.0], dtype=np.float32)  # Placeholder
+        
+        random_pt = np.random.random(-50, 50, 3)
 
+        
         # capture data
         pos = self.imu_data.pose.pose.position
         ori = self.imu_data.pose.pose.orientation
         linVel = self.imu_data.twist.twist.linear
         angVel = self.imu_data.twist.twist.angular
+
+        object_distance = (pos - random_pt)
 
         # make it an array
         position = np.array([pos.x, pos.y, pos.z], dtype=np.float32)
@@ -281,12 +284,14 @@ class SubEnv(gym.Env):
         # Define termination
         terminated = False
         object_distance = observation.get("object_distance", float("inf"))
-        # if object_distance < 2:
-        #     terminated = True
+
+        if object_distance[0] < 2 :
+            terminated = True
 
         return observation, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
+        print("RESET SUB ENV")
         super().reset(seed=seed)
         self.unpause_gazebo()
         # Reset submarine by removing and respawning it

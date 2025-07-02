@@ -1,68 +1,34 @@
-[INFO] [launch]: All log files can be found below /home/mohana/.ros/log/2025-06-30-22-12-13-691243-mohana-XPS-15-9560-45405
+[INFO] [launch]: All log files can be found below /home/mohana/.ros/log/2025-06-30-23-39-40-952010-mohana-XPS-15-9560-57207
 [INFO] [launch]: Default logging verbosity is set to INFO
 Successfully converted /home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf.xacro to /home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf
 Successfully converted /home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf.xacro to /home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf
-[INFO] [gazebo-1]: process started with pid [45409]
-[INFO] [robot_state_publisher-2]: process started with pid [45410]
-[INFO] [rviz2-3]: process started with pid [45411]
-[INFO] [thruster_manager-4]: process started with pid [45413]
-[INFO] [forward_to_sim-5]: process started with pid [45414]
-[INFO] [ekf_node-6]: process started with pid [45415]
-[INFO] [reset_srv_node.py-7]: process started with pid [45416]
-[INFO] [subjugator_controller-8]: process started with pid [45417]
-[INFO] [subjugator_path_planner-9]: process started with pid [45420]
-[INFO] [trajectory_planner-10]: process started with pid [45421]
-[INFO] [parameter_bridge-11]: process started with pid [45424]
-[INFO] [sub_RL_train-12]: process started with pid [45425]
-[robot_state_publisher-2] [WARN] [1751335934.856939559] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[robot_state_publisher-2] [WARN] [1751335934.856961530] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[thruster_manager-4] [WARN] [1751335934.860870025] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[thruster_manager-4] [WARN] [1751335934.860886716] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[forward_to_sim-5] [WARN] [1751335934.874397034] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[forward_to_sim-5] [WARN] [1751335934.874415556] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[subjugator_path_planner-9] [WARN] [1751335934.898651079] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[subjugator_path_planner-9] [WARN] [1751335934.898697621] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[trajectory_planner-10] [WARN] [1751335934.903438488] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[trajectory_planner-10] [WARN] [1751335934.903458009] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[thruster_manager-4] [INFO] [1751335934.936616100] [thruster_manager]: Publishing to: /thruster_efforts
-[subjugator_controller-8] [WARN] [1751335934.938639422] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[subjugator_controller-8] [WARN] [1751335934.938660442] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[robot_state_publisher-2] [WARN] [1751335934.956461102] [kdl_parser]: The root link base_link has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.
-[robot_state_publisher-2] [INFO] [1751335934.956750129] [robot_state_publisher]: Robot initialized
-[ekf_node-6] [WARN] [1751335934.958476483] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[ekf_node-6] [WARN] [1751335934.958498865] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[trajectory_planner-10] [INFO] [1751335935.014420614] [subjugator_trajectory_planner]: Started trajectory planner / breadcrumb manager. Waiting to hear path and odom to start.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] [INFO] [1751335935.014532156] [pid_controller]: PID controller is disabled. Call enable_controller service to start.
-[subjugator_controller-8] [INFO] [1751335935.016478973] [pid_controller]: Received an update to parameter "kp"
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] [INFO] [1751335935.020410290] [pid_controller]: Received an update to parameter "ki"
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[subjugator_controller-8] [INFO] [1751335935.023377964] [pid_controller]: Received an update to parameter "kd"
-[subjugator_controller-8] [INFO] [1751335935.023781815] [pid_controller]: Received an update to parameter "imax"
-[subjugator_controller-8] [INFO] [1751335935.030691772] [pid_controller]: Received an update to parameter "imin"
-[subjugator_controller-8] [INFO] [1751335935.031203259] [pid_controller]: Received an update to parameter "antiwindup"
+[INFO] [gazebo-1]: process started with pid [57211]
+[INFO] [robot_state_publisher-2]: process started with pid [57212]
+[INFO] [rviz2-3]: process started with pid [57213]
+[INFO] [thruster_manager-4]: process started with pid [57215]
+[INFO] [forward_to_sim-5]: process started with pid [57216]
+[INFO] [ekf_node-6]: process started with pid [57217]
+[INFO] [reset_srv_node.py-7]: process started with pid [57218]
+[INFO] [subjugator_controller-8]: process started with pid [57219]
+[INFO] [subjugator_path_planner-9]: process started with pid [57220]
+[INFO] [trajectory_planner-10]: process started with pid [57221]
+[INFO] [parameter_bridge-11]: process started with pid [57222]
+[INFO] [sub_RL_train-12]: process started with pid [57223]
+[thruster_manager-4] [WARN] [1751341182.577215559] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[thruster_manager-4] [WARN] [1751341182.577255454] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[trajectory_planner-10] [WARN] [1751341182.579510209] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[trajectory_planner-10] [WARN] [1751341182.579528634] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[robot_state_publisher-2] [WARN] [1751341182.591376487] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[robot_state_publisher-2] [WARN] [1751341182.591410112] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[forward_to_sim-5] [WARN] [1751341182.597265680] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[forward_to_sim-5] [WARN] [1751341182.597297769] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[subjugator_controller-8] [WARN] [1751341182.600090078] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[subjugator_controller-8] [WARN] [1751341182.600111368] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[ekf_node-6] [WARN] [1751341182.625874796] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[ekf_node-6] [WARN] [1751341182.625930924] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[thruster_manager-4] [INFO] [1751341182.645848519] [thruster_manager]: Publishing to: /thruster_efforts
+[subjugator_path_planner-9] [WARN] [1751341182.647461821] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[subjugator_path_planner-9] [WARN] [1751341182.647498202] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
 [subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
 [subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
 [subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
@@ -87,217 +53,1770 @@ Successfully converted /home/mohana/mil2/install/subjugator_description/share/su
 [subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
 [subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
 [subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
-[ekf_node-6] [ERROR] [1751335935.048430133] [subjugator_localization]: RosFilter<T>::loadParams() - unable to create debug output file /home/sub9/debug.txt
-[parameter_bridge-11] [WARN] [1751335935.051886861] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[parameter_bridge-11] [WARN] [1751335935.051978735] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[rviz2-3] [WARN] [1751335935.053146042] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[rviz2-3] [WARN] [1751335935.053196977] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[ekf_node-6] [INFO] [1751335935.231942964] [subjugator_localization]: Filter is disabled. To enable it call the /subjugator_localization/enable service
-[rviz2-3] [INFO] [1751335935.527095652] [rviz2]: Stereo is NOT SUPPORTED
-[rviz2-3] [INFO] [1751335935.527315903] [rviz2]: OpenGl version: 4.6 (GLSL 4.6)
-[rviz2-3] [INFO] [1751335935.574055975] [rviz2]: Stereo is NOT SUPPORTED
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] Warning: The i_min and i_max are only valid for the deprecated LEGACY antiwindup strategy. Please use the AntiWindupStrategy::set_type() method to set the type of antiwindup strategy you want to use.
+[subjugator_controller-8] [INFO] [1751341182.691554682] [pid_controller]: PID controller is disabled. Call enable_controller service to start.
+[subjugator_controller-8] [INFO] [1751341182.692133644] [pid_controller]: Received an update to parameter "kp"
+[subjugator_controller-8] [INFO] [1751341182.692414357] [pid_controller]: Received an update to parameter "ki"
+[subjugator_controller-8] [INFO] [1751341182.692612572] [pid_controller]: Received an update to parameter "kd"
+[subjugator_controller-8] [INFO] [1751341182.692788868] [pid_controller]: Received an update to parameter "imax"
+[subjugator_controller-8] [INFO] [1751341182.692997182] [pid_controller]: Received an update to parameter "imin"
+[subjugator_controller-8] [INFO] [1751341182.693164483] [pid_controller]: Received an update to parameter "antiwindup"
+[trajectory_planner-10] [INFO] [1751341182.706816794] [subjugator_trajectory_planner]: Started trajectory planner / breadcrumb manager. Waiting to hear path and odom to start.
+[ekf_node-6] [ERROR] [1751341182.714373127] [subjugator_localization]: RosFilter<T>::loadParams() - unable to create debug output file /home/sub9/debug.txt
+[robot_state_publisher-2] [WARN] [1751341182.730245322] [kdl_parser]: The root link base_link has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.
+[robot_state_publisher-2] [INFO] [1751341182.730499241] [robot_state_publisher]: Robot initialized
+[parameter_bridge-11] [WARN] [1751341182.757265598] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-11] [WARN] [1751341182.757292133] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[rviz2-3] [WARN] [1751341182.852866484] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[rviz2-3] [WARN] [1751341182.853551427] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[ekf_node-6] [INFO] [1751341182.901376605] [subjugator_localization]: Filter is disabled. To enable it call the /subjugator_localization/enable service
+[rviz2-3] [INFO] [1751341183.483234693] [rviz2]: Stereo is NOT SUPPORTED
+[rviz2-3] [INFO] [1751341183.483322054] [rviz2]: OpenGl version: 4.6 (GLSL 4.6)
+[rviz2-3] [INFO] [1751341183.534066953] [rviz2]: Stereo is NOT SUPPORTED
+[reset_srv_node.py-7] [WARN] [1751341183.596554912] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[reset_srv_node.py-7] [WARN] [1751341183.596577684] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[parameter_bridge-11] [INFO] [1751341183.835178706] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.853873996] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/imu/data_raw (gz.msgs.IMU) -> /imu/data (sensor_msgs/msg/Imu)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.884528810] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/imu/mag (gz.msgs.Magnetometer) -> /imu/mag (sensor_msgs/msg/MagneticField)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.906061172] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FLH/joint/FLH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FLH (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.913878087] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FLH (std_msgs/msg/Float64) -> /model/FLH/joint/FLH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.919261771] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FRH/joint/FRH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FRH (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.933808910] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FRH (std_msgs/msg/Float64) -> /model/FRH/joint/FRH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.935280425] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BLH/joint/BLH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BLH (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.945774781] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BLH (std_msgs/msg/Float64) -> /model/BLH/joint/BLH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.958402268] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BRH/joint/BRH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BRH (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.971043678] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BRH (std_msgs/msg/Float64) -> /model/BRH/joint/BRH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.974740764] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FLV/joint/FLV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FLV (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.983602606] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FLV (std_msgs/msg/Float64) -> /model/FLV/joint/FLV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341183.997229569] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FRV/joint/FRV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FRV (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341184.003353371] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FRV (std_msgs/msg/Float64) -> /model/FRV/joint/FRV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341184.008428882] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BLV/joint/BLV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BLV (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341184.020738056] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BLV (std_msgs/msg/Float64) -> /model/BLV/joint/BLV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341184.028766644] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BRV/joint/BRV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BRV (std_msgs/msg/Float64)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341184.036553276] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BRV (std_msgs/msg/Float64) -> /model/BRV/joint/BRV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341184.037430686] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/front_cam/image (gz.msgs.Image) -> /front_cam/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-11] [INFO] [1751341184.043794737] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/down_cam/image (gz.msgs.Image) -> /down_cam/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
 [gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="sub9"]/link[@name="imu_link"]/sensor[@name="imu_link"]/gz_frame_id:/home/mohana/mil2/install/subjugator_description/share/subjugator_description/urdf/sub9.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
-[reset_srv_node.py-7] [WARN] [1751335935.939892960] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[reset_srv_node.py-7] [WARN] [1751335935.939931214] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[rviz2-3] [INFO] [1751335936.095214373] [rviz2]: Stereo is NOT SUPPORTED
-[parameter_bridge-11] [INFO] [1751335936.134678631] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.155241949] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/imu/data_raw (gz.msgs.IMU) -> /imu/data (sensor_msgs/msg/Imu)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.171520925] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/imu/mag (gz.msgs.Magnetometer) -> /imu/mag (sensor_msgs/msg/MagneticField)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.178146462] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FLH/joint/FLH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FLH (std_msgs/msg/Float64)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.185209613] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FLH (std_msgs/msg/Float64) -> /model/FLH/joint/FLH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.186229559] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FRH/joint/FRH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FRH (std_msgs/msg/Float64)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.187097257] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FRH (std_msgs/msg/Float64) -> /model/FRH/joint/FRH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
-[rviz2-3] [INFO] [1751335936.185905194] [rviz2]: Stereo is NOT SUPPORTED
-[parameter_bridge-11] [INFO] [1751335936.200381995] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BLH/joint/BLH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BLH (std_msgs/msg/Float64)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.208291580] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BLH (std_msgs/msg/Float64) -> /model/BLH/joint/BLH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
-[sub_RL_train-12] [WARN] [1751335936.208303037] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[sub_RL_train-12] [WARN] [1751335936.208315132] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[parameter_bridge-11] [INFO] [1751335936.213681088] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BRH/joint/BRH_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BRH (std_msgs/msg/Float64)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.218862253] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BRH (std_msgs/msg/Float64) -> /model/BRH/joint/BRH_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.219518641] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FLV/joint/FLV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FLV (std_msgs/msg/Float64)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.220327827] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FLV (std_msgs/msg/Float64) -> /model/FLV/joint/FLV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.226071551] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/FRV/joint/FRV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/FRV (std_msgs/msg/Float64)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.232954660] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/FRV (std_msgs/msg/Float64) -> /model/FRV/joint/FRV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.233900003] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BLV/joint/BLV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BLV (std_msgs/msg/Float64)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.244840590] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BLV (std_msgs/msg/Float64) -> /model/BLV/joint/BLV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.250312170] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/BRV/joint/BRV_dir_joint/cmd_thrust (gz.msgs.Double) -> /thruster/BRV (std_msgs/msg/Float64)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.251583847] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/thruster/BRV (std_msgs/msg/Float64) -> /model/BRV/joint/BRV_dir_joint/cmd_thrust (gz.msgs.Double)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.252505248] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/front_cam/image (gz.msgs.Image) -> /front_cam/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.271496762] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/down_cam/image (gz.msgs.Image) -> /down_cam/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
-[parameter_bridge-11] [INFO] [1751335936.281823977] [ros_gz_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
-[gazebo-1] [WARN] [1751335937.278727366] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[gazebo-1] [WARN] [1751335937.280129100] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[parameter_bridge-11] [INFO] [1751341184.151176055] [ros_gz_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[rviz2-3] [INFO] [1751341184.308888897] [rviz2]: Stereo is NOT SUPPORTED
+[rviz2-3] [INFO] [1751341184.381488691] [rviz2]: Stereo is NOT SUPPORTED
+[sub_RL_train-12] [WARN] [1751341184.621591765] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341184.621626169] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[gazebo-1] [WARN] [1751341186.489462156] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[gazebo-1] [WARN] [1751341186.490642099] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
 [gazebo-1] testing
-[sub_RL_train-12] 2025-06-30 22:12:19.845045: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+[gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="sub9"]/link[@name="imu_link"]/sensor[@name="imu_link"]/gz_frame_id:<data-string>:L1074]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[sub_RL_train-12] 2025-06-30 23:39:51.264162: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
 [sub_RL_train-12] WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-[sub_RL_train-12] E0000 00:00:1751335939.878286   45425 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
-[sub_RL_train-12] E0000 00:00:1751335939.888440   45425 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
-[sub_RL_train-12] 2025-06-30 22:12:19.924939: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+[sub_RL_train-12] E0000 00:00:1751341191.304707   57223 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+[sub_RL_train-12] E0000 00:00:1751341191.316815   57223 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+[sub_RL_train-12] 2025-06-30 23:39:51.356336: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
 [sub_RL_train-12] To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
 [gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="sub9"]/link[@name="imu_link"]/sensor[@name="imu_link"]/gz_frame_id:<data-string>:L1074]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
-[gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="sub9"]/link[@name="imu_link"]/sensor[@name="imu_link"]/gz_frame_id:<data-string>:L1074]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
-[sub_RL_train-12] 2025-06-30 22:12:27.381187: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+[sub_RL_train-12] 2025-06-30 23:40:02.024759: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
 [sub_RL_train-12] WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-[sub_RL_train-12] E0000 00:00:1751335947.409810   45681 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
-[sub_RL_train-12] E0000 00:00:1751335947.419542   45681 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
-[sub_RL_train-12] 2025-06-30 22:12:27.445699: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+[sub_RL_train-12] E0000 00:00:1751341202.061926   57477 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+[sub_RL_train-12] E0000 00:00:1751341202.073005   57477 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+[sub_RL_train-12] 2025-06-30 23:40:02.108757: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
 [sub_RL_train-12] To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
-[sub_RL_train-12] [WARN] [1751335952.764095864] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[sub_RL_train-12] [WARN] [1751335952.764113029] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[sub_RL_train-12] [INFO] [1751335953.916952793] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335954.022334374] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335954.130335084] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335954.236425933] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335954.342861004] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335954.445626030] [sub_rl_train]: Imu received
-[sub_RL_train-12] [WARN] [1751335954.632891436] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[sub_RL_train-12] [WARN] [1751335954.632938273] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
-[sub_RL_train-12] [INFO] [1751335954.659671027] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335954.802422432] [sub_rl_train]: Imu received
+[sub_RL_train-12] [WARN] [1751341209.584537943] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341209.584560413] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341211.547193739] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341211.730063156] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341211.730087553] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
 [sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
 [sub_RL_train-12] 
-[ekf_node-6] [INFO] [1751335954.847442666] [subjugator_localization]: [subjugator_localization:] Enabling filter...
 [sub_RL_train-12] response:
 [sub_RL_train-12] std_srvs.srv.Empty_Response()
 [sub_RL_train-12] 
-[sub_RL_train-12] [INFO] [1751335955.083463983] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335955.227375818] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335955.372355558] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335955.655526749] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335955.798369047] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335956.084722236] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335956.371689127] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335956.656871925] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335956.802986339] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335957.085152210] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335957.369469025] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335957.512484843] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335957.657823720] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335957.940684065] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335958.227170874] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335958.369094744] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335958.654593333] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335958.798561287] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335958.940842769] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335959.085816407] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335959.369696489] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335959.655341886] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335959.797622592] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335960.084061374] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335960.227823370] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335960.512662554] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335960.656192205] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335960.950186560] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335961.089981246] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335961.370909996] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335961.654791206] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335961.798633505] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335961.947271240] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335962.090329837] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335962.371294002] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335962.513495445] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335962.656125876] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335962.941038726] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335963.094084840] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335963.369580786] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335963.656712070] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335963.940761362] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335964.225998929] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335964.370606270] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335964.656087953] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335964.798793461] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335964.941823945] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335965.228132070] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335965.511978237] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335965.797875818] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335965.941591064] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335966.083612796] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335966.371611697] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335966.654768897] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335966.798323986] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335967.085800253] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335967.369249199] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335967.513374043] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335967.660505603] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335967.940653669] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335968.226528793] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335968.369475866] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335968.657155453] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335968.941456689] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335969.227840508] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335969.512563371] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335969.656531547] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335969.797679813] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335970.083302164] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335970.226325993] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335970.369224015] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335970.655617545] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335970.798240897] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335971.083858486] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335971.370109934] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335971.655469862] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335971.800087987] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335972.083432553] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335972.370373685] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335972.655034232] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335972.798011928] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335973.083319460] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335973.370175060] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335973.513066875] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335973.656378232] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335973.942677157] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335974.087306057] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335974.371517695] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335974.655894836] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335974.799070621] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335975.084716430] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335975.371445119] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335975.513678491] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335975.797410560] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335975.941590196] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335976.086639160] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335976.369173529] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335976.514453256] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335976.797473750] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335976.942034009] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335977.227749987] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335977.369327085] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335977.512827736] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335977.656304945] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335977.940684560] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335978.226962169] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335978.511886483] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335978.656036480] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335978.942470044] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335979.227402562] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335979.369578691] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335979.514763879] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335979.797636084] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335980.084657412] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335980.371595501] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335980.656236140] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335980.941685551] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335981.084209441] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335981.369691360] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335981.512365902] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335981.798146502] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335981.940874945] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335982.090425192] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335982.228850486] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335982.516687257] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335982.802362199] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335983.085272901] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335983.226673634] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335983.373615559] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335983.657642279] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335983.802539062] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335983.942716764] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335984.227355471] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335984.512410062] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335984.658772231] [sub_rl_train]: Imu received
+[ekf_node-6] [INFO] [1751341212.074445400] [subjugator_localization]: [subjugator_localization:] Enabling filter...
+[sub_RL_train-12] [INFO] [1751341212.107052395] [sub_rl_train]: Image received
+[rviz2-3] [WARN] [1751341212.271070634] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.076000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341212.271491016] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.076000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341212.330496069] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.088000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341212.332223622] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.088000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341212.473196363] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.118000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341212.474579433] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.118000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341212.615547262] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.130000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341212.615866961] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.130000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341212.667490061] [sub_rl_train]: Image received
+[rviz2-3] [WARN] [1751341212.758228801] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.148000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341212.758955252] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.148000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341212.849451703] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341212.903989582] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.160000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341212.904193959] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.160000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341212.954009161] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341213.044534523] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.184000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341213.047188457] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.184000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341213.064656022] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341213.173463520] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341213.192636896] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.196000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341213.195529565] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.196000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341213.279887767] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341213.329204852] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.217000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341213.333363338] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.217000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341213.390847293] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341213.473974037] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.232000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341213.475280867] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.232000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341213.497196792] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341213.604909659] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341213.614718028] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.253000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341213.617738013] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.253000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341213.709386262] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341213.760463291] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.280000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341213.760640925] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.280000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341213.813147365] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341213.902289618] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.304000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341213.902815315] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.304000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341213.919986997] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341214.029318573] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341214.043547300] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.325000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341214.044133037] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.325000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341214.147442461] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341214.188491303] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.340000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341214.188669293] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.340000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341214.251171399] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341214.330689705] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.349000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341214.330798490] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.349000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341214.357489133] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341214.463675492] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341214.472171773] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.376000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341214.472486202] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.376000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341214.614637576] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.385000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341214.614876069] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.385000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341214.759146100] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.412000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341214.762694150] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.412000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341214.901287294] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.436000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341214.901669743] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.436000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341214.977713098] [sub_rl_train]: Image received
+[ekf_node-6] [WARN] [1751341215.046842382] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.448000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341215.047072804] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.448000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341215.157399423] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341215.187059716] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.481000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341215.189537419] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.481000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341215.262087020] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341215.329627250] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.502000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341215.332056132] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.502000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341215.382479683] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341215.471961806] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.514000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341215.472075803] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 170.514000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341215.487601408] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341215.599586323] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341215.707872792] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341215.818264532] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341215.923029318] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341216.029145473] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341216.537658796] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341217.079809329] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341217.615729323] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341218.142254685] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341218.667708267] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341219.202592304] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341219.724145759] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341220.262956458] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341220.805498540] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341221.347619321] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341221.924503162] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341222.469793522] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341222.999250611] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341223.531025130] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341224.055509457] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341224.587333146] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341225.122732545] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341225.654858437] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341226.183645266] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341226.718381207] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341227.238724024] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341227.768884989] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341228.303237810] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341228.858222491] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341229.438045921] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341229.981082601] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341230.524161364] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341231.065724337] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341231.597374713] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341232.131428225] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341232.686684899] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341233.219255691] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341233.754293619] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341234.296891314] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341234.829907342] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341235.374376652] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341235.898083258] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341236.425045365] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341236.985486958] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341237.517110820] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341238.063249957] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341238.593902799] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341239.148294194] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341239.690217275] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341240.225368103] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341240.756035991] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341241.287519736] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341241.841534493] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341242.381793401] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341242.952036538] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341243.483660342] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341244.011734653] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341244.535526557] [sub_rl_train]: Image received
 [sub_RL_train-12] data: true
 [sub_RL_train-12] 
-[sub_RL_train-12] [INFO] [1751335984.943146925] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335985.084184472] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335985.370627608] [sub_rl_train]: Imu received
-[sub_RL_train-12] [INFO] [1751335985.659686196] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341245.098842544] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341245.662864852] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341245.795511852] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341246.305638948] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341246.434328988] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341246.938291195] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341247.474129757] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341247.474161253] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341247.518483524] [sub_rl_train]: Image received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[reset_srv_node.py-7] [INFO] [1751341247.907484130] [reset_localization_service]: Incoming request to reset localization
+[ekf_node-6] [INFO] [1751341247.911163611] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[ekf_node-6] [INFO] [1751341247.931629079] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] [INFO] [1751341248.104038519] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341248.242008605] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341248.749147632] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341249.278392949] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341249.829524055] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341250.033849848] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341250.033894696] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[ekf_node-6] [WARN] [1751341250.283626757] [subjugator_localization]: [subjugator_localization:] Asking for enabling filter service, but the filter was already enabled! Use param disabled_at_startup.
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[rviz2-3] [WARN] [1751341250.290727086] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.244000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341250.290748289] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.244000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341250.392242645] [sub_rl_train]: Image received
+[rviz2-3] [WARN] [1751341250.428705041] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.268000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341250.429090508] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.268000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341250.517769946] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341250.571365605] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.292000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341250.571378722] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.292000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341250.621301400] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341250.717760361] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.322000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341250.721527876] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.322000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341250.726467251] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341250.833080759] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341250.856780361] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.346000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341250.856861090] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.346000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341251.000221639] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.364000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341251.000811447] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.364000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341251.148065893] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.388000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341251.148377891] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.388000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341251.290031367] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.418000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341251.291988978] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.418000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341251.343088052] [sub_rl_train]: Image received
+[ekf_node-6] [WARN] [1751341251.431610724] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.424000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341251.432055956] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.424000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341251.478624859] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341251.572758660] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.448000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341251.572785901] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.448000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341251.594599796] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341251.699996794] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341251.714666385] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.472000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341251.718983859] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.472000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341251.803996911] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341251.859110567] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.490000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341251.859993966] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.490000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341251.909165896] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341252.002364907] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.520000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341252.002715610] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.520000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341252.022508307] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341252.125557038] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341252.142764356] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.553000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341252.142875353] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.553000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341252.230464580] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341252.285540449] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.580000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341252.285540492] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.580000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341252.334702854] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341252.433753351] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.604000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341252.435263316] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.604000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341252.440134357] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341252.554533117] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341252.574023880] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.616000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341252.574775685] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.616000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341252.665935875] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341252.715972631] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.634000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341252.716086468] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.634000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341252.772025228] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341252.857475806] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.652000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341252.857672611] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.652000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341252.877904774] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341252.984003770] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341253.002758227] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.682000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341253.002933315] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.682000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341253.142865453] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.688000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341253.142883334] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.688000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341253.288045841] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.718000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341253.288267537] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.718000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341253.429781230] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.742000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341253.430577800] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.742000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] data: true
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341253.487161778] [sub_rl_train]: Image received
+[rviz2-3] [WARN] [1751341253.571552868] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.748000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341253.575033841] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.748000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341253.617340228] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341253.714257154] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.769000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341253.716266778] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.769000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341253.728476512] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341253.838600825] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341253.860964239] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.784000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341253.861784750] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.784000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341253.951660569] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341254.000706141] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.796000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341254.001397351] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.796000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341254.063487233] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341254.147976607] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.805000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341254.148068058] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.805000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341254.174340320] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341254.280162484] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341254.287017863] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.817000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341254.287055592] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.817000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341254.384792865] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341254.437241222] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.832000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341254.437421690] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.832000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341254.501539923] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341254.572506634] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.850000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341254.577632614] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.850000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341254.611790715] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341254.715990387] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.862000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341254.716082333] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.862000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341254.725479941] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341254.840984997] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341254.860906335] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.880000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341254.868414878] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.880000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341254.951031946] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341255.059912170] [sub_rl_train]: Imu received
+[rviz2-3] [WARN] [1751341255.143173130] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.892000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341255.143311402] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.892000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341255.167355357] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341255.277180124] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341255.285435146] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.916000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341255.286114730] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.916000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341255.428732418] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.928000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341255.429196449] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.928000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341255.574040895] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.952000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341255.574170730] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.952000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341255.717446833] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.976000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[ekf_node-6] [WARN] [1751341255.717857981] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.976000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341255.787843938] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341255.807850053] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341255.807884765] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[ekf_node-6] [WARN] [1751341255.856778630] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.988000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341255.857655446] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 176.988000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341255.925520260] [sub_rl_train]: Imu received
+[ekf_node-6] [WARN] [1751341256.000163703] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 177.012000 according to authority Authority undetectable
+[ekf_node-6] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[rviz2-3] [WARN] [1751341256.004759640] []: TF_OLD_DATA ignoring data from the past for frame base_link at time 177.012000 according to authority Authority undetectable
+[rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[sub_RL_train-12] [INFO] [1751341256.037570009] [sub_rl_train]: Imu received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[reset_srv_node.py-7] [INFO] [1751341256.116066602] [reset_localization_service]: Incoming request to reset localization
+[ekf_node-6] [INFO] [1751341256.117408434] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[ekf_node-6] [INFO] [1751341256.118538369] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341256.143755859] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341256.249486921] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341256.355009947] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341256.461449920] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341256.572875063] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341256.687261894] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341257.194092291] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341257.751903209] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341258.265989484] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341258.266027158] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341258.276827669] [sub_rl_train]: Image received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[ekf_node-6] [WARN] [1751341258.534642539] [subjugator_localization]: [subjugator_localization:] Asking for enabling filter service, but the filter was already enabled! Use param disabled_at_startup.
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341258.825639842] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341259.348262552] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341259.869370448] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341260.391253888] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341260.931263157] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341261.456321311] [sub_rl_train]: Image received
+[sub_RL_train-12] data: true
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341261.988826085] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341262.509161776] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341263.043242161] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341263.594673873] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341263.959843415] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341263.959870762] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341264.136031218] [sub_rl_train]: Image received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[ekf_node-6] [INFO] [1751341264.272776731] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[reset_srv_node.py-7] [INFO] [1751341264.291639198] [reset_localization_service]: Incoming request to reset localization
+[ekf_node-6] [INFO] [1751341264.292373704] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] [INFO] [1751341264.691363009] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341264.827678492] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341264.935670771] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341265.043286910] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341265.162163602] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341265.669432888] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341265.824140629] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341265.932557503] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341266.441858914] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341266.552148282] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341266.552166686] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[ekf_node-6] [WARN] [1751341266.859670219] [subjugator_localization]: [subjugator_localization:] Asking for enabling filter service, but the filter was already enabled! Use param disabled_at_startup.
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341266.971304171] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341267.492499885] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341268.021583058] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341268.557266055] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341269.092300169] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341269.639097535] [sub_rl_train]: Image received
+[sub_RL_train-12] data: true
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341270.161813659] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341270.684277283] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341271.216016450] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341271.755417276] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341272.123546106] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341272.123568643] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341272.301177739] [sub_rl_train]: Image received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[reset_srv_node.py-7] [INFO] [1751341272.416379265] [reset_localization_service]: Incoming request to reset localization
+[ekf_node-6] [INFO] [1751341272.417594480] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[ekf_node-6] [INFO] [1751341272.427595689] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] [INFO] [1751341272.854908256] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341273.008179593] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341273.115621665] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341273.631591279] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341274.152708992] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341274.687209683] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341274.768505279] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341274.768524974] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[ekf_node-6] [WARN] [1751341275.075615880] [subjugator_localization]: [subjugator_localization:] Asking for enabling filter service, but the filter was already enabled! Use param disabled_at_startup.
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341275.217205273] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341275.756286273] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341276.290245854] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341276.839783913] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341277.396122968] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341277.942890384] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341278.498174830] [sub_rl_train]: Image received
+[sub_RL_train-12] data: true
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341279.052721665] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341279.601969564] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341280.144802387] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341280.692368225] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341280.823932796] [sub_rl_train]: Imu received
+[sub_RL_train-12] [WARN] [1751341281.216382831] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341281.216403149] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341281.330278502] [sub_rl_train]: Image received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[ekf_node-6] [INFO] [1751341281.519290241] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[reset_srv_node.py-7] [INFO] [1751341281.530643943] [reset_localization_service]: Incoming request to reset localization
+[ekf_node-6] [INFO] [1751341281.534517330] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] [INFO] [1751341281.884798373] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341282.018794208] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341282.125957994] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341282.631672355] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341283.174357564] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341283.720901338] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341283.846460988] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341283.846487384] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[ekf_node-6] [WARN] [1751341284.110869704] [subjugator_localization]: [subjugator_localization:] Asking for enabling filter service, but the filter was already enabled! Use param disabled_at_startup.
+[sub_RL_train-12] [INFO] [1751341284.261911741] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341284.806618158] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341285.334327674] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341285.913806197] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341286.464881536] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341287.010079145] [sub_rl_train]: Image received
+[sub_RL_train-12] data: true
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341287.546530362] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341288.077725493] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341288.609433329] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341289.156992124] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341289.431810729] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341289.431840353] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341289.701939766] [sub_rl_train]: Image received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[reset_srv_node.py-7] [INFO] [1751341289.743372101] [reset_localization_service]: Incoming request to reset localization
+[ekf_node-6] [INFO] [1751341289.744640385] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[ekf_node-6] [INFO] [1751341289.745123294] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341290.259292505] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341290.385777049] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341290.497152306] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341291.001753649] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341291.596842163] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341292.101496479] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341292.101522106] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341292.155707149] [sub_rl_train]: Image received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[ekf_node-6] [WARN] [1751341292.358997463] [subjugator_localization]: [subjugator_localization:] Asking for enabling filter service, but the filter was already enabled! Use param disabled_at_startup.
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341292.721376290] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341293.270626193] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341293.796239877] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341294.317449388] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341294.838693452] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341295.372475806] [sub_rl_train]: Image received
+[sub_RL_train-12] data: true
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341295.904935346] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341296.436479784] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341296.565763411] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341297.079686760] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341297.255333316] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341297.766468445] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341298.122874695] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341298.122912122] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341298.371670687] [sub_rl_train]: Image received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[reset_srv_node.py-7] [INFO] [1751341298.465723929] [reset_localization_service]: Incoming request to reset localization
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[ekf_node-6] [INFO] [1751341298.484168485] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[ekf_node-6] [INFO] [1751341298.484416741] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] [INFO] [1751341298.967904878] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341299.128065546] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341299.233330147] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341299.738726450] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341300.266256081] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341300.547707563] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341300.548690305] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] [INFO] [1751341300.810697783] [sub_rl_train]: Image received
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[ekf_node-6] [WARN] [1751341300.847734853] [subjugator_localization]: [subjugator_localization:] Asking for enabling filter service, but the filter was already enabled! Use param disabled_at_startup.
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341301.341867784] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341301.910644651] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341302.462364872] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341302.996586207] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341303.528564170] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341304.070457663] [sub_rl_train]: Image received
+[sub_RL_train-12] data: true
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341304.615880658] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341305.192730485] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341305.766531662] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341306.315108499] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341306.848788903] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341306.982130275] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341306.982170296] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[reset_srv_node.py-7] [INFO] [1751341307.254910992] [reset_localization_service]: Incoming request to reset localization
+[ekf_node-6] [INFO] [1751341307.255730336] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[ekf_node-6] [INFO] [1751341307.279634715] [subjugator_localization]: Received set_pose request with value
+[ekf_node-6] header:
+[ekf_node-6]   stamp:
+[ekf_node-6]     sec: 0
+[ekf_node-6]     nanosec: 0
+[ekf_node-6]   frame_id: "odom"
+[ekf_node-6] pose:
+[ekf_node-6]   pose:
+[ekf_node-6]     position:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]     orientation:
+[ekf_node-6]       x: 0.00000
+[ekf_node-6]       y: 0.00000
+[ekf_node-6]       z: 0.00000
+[ekf_node-6]       w: 1.00000
+[ekf_node-6]   covariance:
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6]   - 0.00000
+[ekf_node-6] 
+[sub_RL_train-12] [INFO] [1751341307.391988738] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341307.521513749] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341307.630334734] [sub_rl_train]: Imu received
+[sub_RL_train-12] [INFO] [1751341308.137253578] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341308.674728698] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341309.208202209] [sub_rl_train]: Image received
+[sub_RL_train-12] [WARN] [1751341309.431817527] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[sub_RL_train-12] [WARN] [1751341309.432672013] [rcl]: 'localhost_only' is disabled, 'automatic_discovery_range' and 'static_peers' will be used.
+[sub_RL_train-12] requester: making request: std_srvs.srv.Empty_Request()
+[sub_RL_train-12] 
+[ekf_node-6] [WARN] [1751341309.726113780] [subjugator_localization]: [subjugator_localization:] Asking for enabling filter service, but the filter was already enabled! Use param disabled_at_startup.
+[sub_RL_train-12] response:
+[sub_RL_train-12] std_srvs.srv.Empty_Response()
+[sub_RL_train-12] 
+[sub_RL_train-12] [INFO] [1751341309.751816164] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341310.279451417] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341310.813136576] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341311.348409096] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341311.876941119] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341312.400391052] [sub_rl_train]: Image received
+[sub_RL_train-12] [INFO] [1751341312.964649186] [sub_rl_train]: Image received
+[sub_RL_train-12] data: true
+[sub_RL_train-12] 
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[trajectory_planner-10] [INFO] [1751341313.264632123] [rclcpp]: signal_handler(signum=2)
+[INFO] [parameter_bridge-11]: process has finished cleanly [pid 57222]
+[subjugator_controller-8] [INFO] [1751341313.264641469] [rclcpp]: signal_handler(signum=2)
+[sub_RL_train-12] Using cpu device
+[sub_RL_train-12] Wrapping the env in a VecTransposeImage.
+[sub_RL_train-12] model is training...
+[sub_RL_train-12] Traceback (most recent call last):
+[sub_RL_train-12]   File "/home/mohana/mil2/install/subjugator_RL/lib/subjugator_RL/sub_RL_train", line 33, in <module>
+[sub_RL_train-12]     sys.exit(load_entry_point('subjugator-RL==0.0.1', 'console_scripts', 'sub_RL_train')())
+[rviz2-3] [INFO] [1751341313.264902989] [rclcpp]: signal_handler(signum=2)
+[trajectory_planner-10] terminate called after throwing an instance of 'rclcpp::exceptions::RCLError'
+[trajectory_planner-10]   what():  failed to create guard condition: the given context is not valid, either rcl_init() was not called or rcl_shutdown() was called., at ./src/rcl/guard_condition.c:67
+[subjugator_controller-8] [INFO] [1751341313.265279056] [pid_controller]: Sending 0 cmd_wrench.
+[subjugator_controller-8] terminate called after throwing an instance of 'rclcpp::exceptions::RCLError'
+[subjugator_controller-8]   what():  failed to create guard condition: the given context is not valid, either rcl_init() was not called or rcl_shutdown() was called., at ./src/rcl/guard_condition.c:67
+[sub_RL_train-12]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[sub_RL_train-12]   File "/home/mohana/mil2/install/subjugator_RL/lib/python3.12/site-packages/subjugator_RL/sub_RL_train.py", line 26, in main
+[sub_RL_train-12]     model.learn(total_timesteps=50000)
+[sub_RL_train-12]   File "/home/mohana/.local/lib/python3.12/site-packages/stable_baselines3/ppo/ppo.py", line 311, in learn
+[sub_RL_train-12]     return super().learn(
+[sub_RL_train-12]            ^^^^^^^^^^^^^^
+[sub_RL_train-12]   File "/home/mohana/.local/lib/python3.12/site-packages/stable_baselines3/common/on_policy_algorithm.py", line 324, in learn
+[sub_RL_train-12]     continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
+[sub_RL_train-12]                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[sub_RL_train-12]   File "/home/mohana/.local/lib/python3.12/site-packages/stable_baselines3/common/on_policy_algorithm.py", line 218, in collect_rollouts
+[sub_RL_train-12]     new_obs, rewards, dones, infos = env.step(clipped_actions)
+[sub_RL_train-12]                                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+[sub_RL_train-12]   File "/home/mohana/.local/lib/python3.12/site-packages/stable_baselines3/common/vec_env/base_vec_env.py", line 222, in step
+[sub_RL_train-12]     return self.step_wait()
+[sub_RL_train-12]            ^^^^^^^^^^^^^^^^
+[sub_RL_train-12]   File "/home/mohana/.local/lib/python3.12/site-packages/stable_baselines3/common/vec_env/vec_transpose.py", line 97, in step_wait
+[sub_RL_train-12]     observations, rewards, dones, infos = self.venv.step_wait()
+[sub_RL_train-12]                                           ^^^^^^^^^^^^^^^^^^^^^
+[sub_RL_train-12]   File "/home/mohana/.local/lib/python3.12/site-packages/stable_baselines3/common/vec_env/subproc_vec_env.py", line 137, in step_wait
+[sub_RL_train-12]     results = [remote.recv() for remote in self.remotes]
+[sub_RL_train-12]                ^^^^^^^^^^^^^
+[sub_RL_train-12]   File "/usr/lib/python3.12/multiprocessing/connection.py", line 250, in recv
+[sub_RL_train-12]     buf = self._recv_bytes()
+[sub_RL_train-12]           ^^^^^^^^^^^^^^^^^^
+[sub_RL_train-12]   File "/usr/lib/python3.12/multiprocessing/connection.py", line 430, in _recv_bytes
+[sub_RL_train-12]     buf = self._recv(4)
+[sub_RL_train-12]           ^^^^^^^^^^^^^
+[sub_RL_train-12]   File "/usr/lib/python3.12/multiprocessing/connection.py", line 395, in _recv
+[sub_RL_train-12]     chunk = read(handle, remaining)
+[sub_RL_train-12]             ^^^^^^^^^^^^^^^^^^^^^^^
+[sub_RL_train-12] KeyboardInterrupt
+[forward_to_sim-5] [INFO] [1751341313.265058437] [rclcpp]: signal_handler(signum=2)
+[parameter_bridge-11] [INFO] [1751341313.266001204] [rclcpp]: signal_handler(signum=2)
+[ekf_node-6] [INFO] [1751341313.266263830] [rclcpp]: signal_handler(signum=2)
+[reset_srv_node.py-7] Traceback (most recent call last):
+[reset_srv_node.py-7]   File "/home/mohana/mil2/install/subjugator_localization/lib/subjugator_localization/reset_srv_node.py", line 52, in <module>
+[reset_srv_node.py-7]     main()
+[reset_srv_node.py-7]   File "/home/mohana/mil2/install/subjugator_localization/lib/subjugator_localization/reset_srv_node.py", line 47, in main
+[reset_srv_node.py-7]     rclpy.spin(reset_service)
+[reset_srv_node.py-7]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/__init__.py", line 244, in spin
+[reset_srv_node.py-7]     executor.spin_once()
+[reset_srv_node.py-7]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 839, in spin_once
+[reset_srv_node.py-7]     self._spin_once_impl(timeout_sec)
+[reset_srv_node.py-7]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 823, in _spin_once_impl
+[reset_srv_node.py-7]     handler, entity, node = self.wait_for_ready_callbacks(
+[reset_srv_node.py-7]                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[reset_srv_node.py-7]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 793, in wait_for_ready_callbacks
+[reset_srv_node.py-7]     return next(self._cb_iter)
+[reset_srv_node.py-7]            ^^^^^^^^^^^^^^^^^^^
+[reset_srv_node.py-7]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 697, in _wait_for_ready_callbacks
+[reset_srv_node.py-7]     wait_set.wait(timeout_nsec)
+[reset_srv_node.py-7] KeyboardInterrupt
+[subjugator_path_planner-9] [INFO] [1751341313.269565159] [rclcpp]: signal_handler(signum=2)
+[thruster_manager-4] [INFO] [1751341313.270509647] [rclcpp]: signal_handler(signum=2)
+[robot_state_publisher-2] [INFO] [1751341313.271753281] [rclcpp]: signal_handler(signum=2)
+[sub_RL_train-12] [INFO] [1751341313.552520070] [sub_rl_train]: Image received
+[sub_RL_train-12] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:423
+[INFO] [rviz2-3]: process has finished cleanly [pid 57213]
+[sub_RL_train-12] RESET SUB ENVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+[sub_RL_train-12] Successfully reset pose
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] publishing action as wrench
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] RESET SUB ENVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+[sub_RL_train-12] Successfully reset pose
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] publishing action as wrench
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] RESET SUB ENVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+[sub_RL_train-12] Successfully reset pose
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] publishing action as wrench
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] RESET SUB ENVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+[sub_RL_train-12] Successfully reset pose
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] publishing action as wrench
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] RESET SUB ENVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+[sub_RL_train-12] Successfully reset pose
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] publishing action as wrench
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] RESET SUB ENVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+[sub_RL_train-12] Successfully reset pose
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] publishing action as wrench
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] RESET SUB ENVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+[sub_RL_train-12] Successfully reset pose
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] publishing action as wrench
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] RESET SUB ENVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+[sub_RL_train-12] Successfully reset pose
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] publishing action as wrench
+[sub_RL_train-12] Getting info
+[sub_RL_train-12] RESET SUB ENVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+[gazebo-1] [INFO] [1751341314.301226059] [rclcpp]: signal_handler(signum=2)
+[INFO] [robot_state_publisher-2]: process has finished cleanly [pid 57212]
+[INFO] [subjugator_path_planner-9]: process has finished cleanly [pid 57220]
+[INFO] [thruster_manager-4]: process has finished cleanly [pid 57215]
+[INFO] [forward_to_sim-5]: process has finished cleanly [pid 57216]
+[INFO] [ekf_node-6]: process has finished cleanly [pid 57217]
+[ERROR] [reset_srv_node.py-7]: process has died [pid 57218, exit code -2, cmd '/home/mohana/mil2/install/subjugator_localization/lib/subjugator_localization/reset_srv_node.py --ros-args -r __node:=reset_localization_service'].
+[ERROR] [subjugator_controller-8]: process has died [pid 57219, exit code -6, cmd '/home/mohana/mil2/install/subjugator_controller/lib/subjugator_controller/subjugator_controller --ros-args -r __node:=pid_controller --params-file /home/mohana/mil2/install/subjugator_controller/share/subjugator_controller/config/pid_controller.yaml'].
+[ERROR] [sub_RL_train-12]: process has died [pid 57223, exit code -2, cmd '/home/mohana/mil2/install/subjugator_RL/lib/subjugator_RL/sub_RL_train --ros-args -r __node:=sub_rl_train'].
+[ERROR] [trajectory_planner-10]: process has died [pid 57221, exit code -6, cmd '/home/mohana/mil2/install/subjugator_trajectory_planner/lib/subjugator_trajectory_planner/trajectory_planner --ros-args -r __node:=subjugator_trajectory_planner'].
+[ERROR] [gazebo-1]: process has died [pid 57211, exit code -2, cmd 'ruby /opt/ros/jazzy/opt/gz_tools_vendor/bin/gz sim /home/mohana/mil2/install/subjugator_gazebo/share/subjugator_gazebo/worlds/robosub_2024.world --render-engine ogre --force-version 8'].
