@@ -64,7 +64,7 @@ void Torpedoes::SpawnTorpedo(std::string const &worldName, std::string const &sd
             sdfString.replace(namePos + 13, quotePos - (namePos + 13), uniqueName);
         }
     }
-    // Track the torpedo model name for efficient lookup
+    // Track the torpedo model name for lookup in PreUpdate
     torpedoModelNames.insert(uniqueName);
 
     // Prepare the factory message
@@ -167,6 +167,5 @@ GZ_ADD_PLUGIN(torpedoes::Torpedoes, gz::sim::System, gz::sim::ISystemConfigure, 
 // - Add keyboard event handling to spawn torpedoes on key press
 // - Spawn torpedoes in relative to Sub9 position and orientation
 // - Send out second torpedo slightly offset from the first one
-// - Spawn torpedoes with initial velocity
 // - Add logic to handle torpedo lifecycle (e.g., timeout, removal)
 // - Move as much logic as possible to Configure()
