@@ -4,7 +4,6 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/fixed_link.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/dvl.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/hydrophone.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
@@ -33,7 +32,7 @@
     <!-- Collision Data -->
     <collision name="buoyancy_collision">
       <!-- This collision is for calculating the buoyant forces-->
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0.354 0 0"/>
       <geometry>
         <sphere radius="0.1725"/>
       </geometry>
@@ -101,8 +100,14 @@
   <xacro:mil_camera name="front_cam" parent="base_link" xyz="0.78 -0.014274 -0.050" rpy="0 0 0"/>
   <xacro:mil_camera name="down_cam" parent="base_link" xyz="0.45222 0.027913 -0.22" rpy="0 1.57 0"/>
 
-  <!-- DVL Sensor -->
-  <xacro:mil_dvl_sensor name="dvl_sensor" parent="base_link" xyz="0.3937 0 -0.2413" rpy="0 0 0"/>
+  <!-- Temp DVL Sensor to prevent crashing-->
+  <gazebo>
+    <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
+      <odom_topic>/dvl/odom</odom_topic>
+      <odom_frame_id>base_link</odom_frame_id>
+      <robot_base_frame_id>dvl_sensor_link</robot_base_frame_id>
+    </plugin>
+  </gazebo>
 
   <!-- IMU, Magnetometer -->
   <xacro:mil_imu_magnetometer
@@ -137,12 +142,4 @@
   <xacro:mil_thruster name="FRH" parent="base_link" xyz="0.58737 -0.24765 0.053975" rpy="0 0 0.523598776"/>
   <xacro:mil_thruster name="BRH" parent="base_link" xyz="0.127 -0.24765 0.053975" rpy="0 0 -0.523598776"/>
   <xacro:mil_thruster name="BLH" parent="base_link" xyz="0.127 0.24765 0.053975" rpy="0 0 0.523598776"/>
-
-  <!-- Damping -->
-  <gazebo reference="base_link">
-    <damping>
-      <linear>0.6</linear>
-      <angular>0.3</angular>
-    </damping>
-  </gazebo>
 </robot>

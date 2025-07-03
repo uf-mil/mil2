@@ -39,8 +39,9 @@ class GymNode(Node):
         self.wrench_publisher = self.create_publisher(Wrench, "cmd_wrench", 10)
 
     def image_callback(self, msg):
-        time.sleep(0.5)  # Delay for image callback
-        self.get_logger().info("Image received")
+        time.sleep(0.1) # may be harmful
+
+        # self.get_logger().info("Image received")
 
         # # Code for debugging
         # cv2.destroyAllWindows()
@@ -73,8 +74,7 @@ class GymNode(Node):
             self.cam_data = pooled_image
 
     def imu_callback(self, msg):
-        time.sleep(0.1)  # Unblock thread so other things can run
-        self.get_logger().info("Imu received")
+        #self.get_logger().info("Imu received")
 
         # lock thread
         with imu_lock:
