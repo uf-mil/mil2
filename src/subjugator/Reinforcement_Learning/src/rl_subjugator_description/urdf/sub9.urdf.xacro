@@ -1,14 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="sub9">
   <!-- XACRO INCLUDES -->
-  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/fixed_link.xacro"/>
-  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/camera.xacro"/>
-  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
-  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/dvl.xacro"/>
-  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/hydrophone.xacro"/>
-  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/collision.xacro"/>
-  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/thruster.xacro"/>
-  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/depth.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/fixed_link.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/hydrophone.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/depth.xacro"/>
 
   <!-- Base Link of the Sub -->
   <link name="base_link">
@@ -27,7 +26,7 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://rl_subjugator_description/urdf/meshes/Sub9.dae"/>
+        <mesh filename="package://subjugator_description/urdf/meshes/Sub9.dae"/>
       </geometry>
     </visual>
     <!-- Collision Data -->
@@ -101,8 +100,6 @@
   <xacro:mil_camera name="front_cam" parent="base_link" xyz="0.78 -0.014274 -0.050" rpy="0 0 0"/>
   <xacro:mil_camera name="down_cam" parent="base_link" xyz="0.45222 0.027913 -0.22" rpy="0 1.57 0"/>
 
-  <!-- DVL Sensor -->
-  <xacro:mil_dvl_sensor name="dvl_sensor" parent="base_link" xyz="0.3937 0 -0.2413" rpy="0 0 0"/>
   <!-- Temp DVL Sensor to prevent crashing-->
   <gazebo>
     <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
