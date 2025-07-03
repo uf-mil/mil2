@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="sub9">
   <!-- XACRO INCLUDES -->
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/fixed_link.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/dvl.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/hydrophone.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
-  <xacro:include filename="$(find subjugator_description)/urdf/xacro/depth.xacro"/>
+  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/fixed_link.xacro"/>
+  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/camera.xacro"/>
+  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
+  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/dvl.xacro"/>
+  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/hydrophone.xacro"/>
+  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/collision.xacro"/>
+  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/thruster.xacro"/>
+  <xacro:include filename="$(find rl_subjugator_description)/urdf/xacro/depth.xacro"/>
 
   <!-- Base Link of the Sub -->
   <link name="base_link">
@@ -27,13 +27,13 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://subjugator_description/urdf/meshes/Sub9.dae"/>
+        <mesh filename="package://rl_subjugator_description/urdf/meshes/Sub9.dae"/>
       </geometry>
     </visual>
     <!-- Collision Data -->
     <collision name="buoyancy_collision">
       <!-- This collision is for calculating the buoyant forces-->
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0.354 0 0"/>
       <geometry>
         <sphere radius="0.1725"/>
       </geometry>
@@ -103,6 +103,15 @@
 
   <!-- DVL Sensor -->
   <xacro:mil_dvl_sensor name="dvl_sensor" parent="base_link" xyz="0.3937 0 -0.2413" rpy="0 0 0"/>
+  <!-- Temp DVL Sensor to prevent crashing-->
+  <gazebo>
+    <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
+      <odom_topic>/dvl/gt_odom</odom_topic>
+
+      <odom_frame_id>base_link</odom_frame_id>
+      <robot_base_frame_id>dvl_sensor_link</robot_base_frame_id>
+    </plugin>
+  </gazebo>
 
   <!-- IMU, Magnetometer -->
   <xacro:mil_imu_magnetometer
@@ -137,12 +146,4 @@
   <xacro:mil_thruster name="FRH" parent="base_link" xyz="0.58737 -0.24765 0.053975" rpy="0 0 0.523598776"/>
   <xacro:mil_thruster name="BRH" parent="base_link" xyz="0.127 -0.24765 0.053975" rpy="0 0 -0.523598776"/>
   <xacro:mil_thruster name="BLH" parent="base_link" xyz="0.127 0.24765 0.053975" rpy="0 0 0.523598776"/>
-
-  <!-- Damping -->
-  <gazebo reference="base_link">
-    <damping>
-      <linear>0.6</linear>
-      <angular>0.3</angular>
-    </damping>
-  </gazebo>
 </robot>

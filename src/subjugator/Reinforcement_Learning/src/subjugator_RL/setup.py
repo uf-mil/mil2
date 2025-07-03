@@ -28,9 +28,6 @@ setup(
         # launch files
         ('share/' + package_name + '/launch',
             glob.glob('launch/*.py')),
-        # urdf files
-        ('share/' + package_name + '/urdf',
-            glob.glob('urdf/*.xacro')),
         # world files
         ('share/' + package_name + '/worlds',
             glob.glob('worlds/*.world')),

@@ -20,10 +20,12 @@ def generate_launch_description():
 
     # Setup project paths
     pkg_project_bringup = get_package_share_directory("subjugator_bringup")
-    pkg_project_description = get_package_share_directory("subjugator_description")
+    pkg_project_description = get_package_share_directory("rl_subjugator_description")
     pkg_thruster_manager = get_package_share_directory("subjugator_thruster_manager")
     pkg_localization = get_package_share_directory("subjugator_localization")
     pkg_controller = get_package_share_directory("subjugator_controller")
+    # RL Branch
+    pkg_project_rl = get_package_share_directory("subjugator_RL")
 
     # Load the URDF file from "description" package
     xacro_file = os.path.join(pkg_project_description, "urdf", "sub9.urdf.xacro")
