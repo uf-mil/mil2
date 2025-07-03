@@ -92,9 +92,9 @@ def generate_launch_description():
     localization = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
-                pkg_localization,
+                pkg_project_rl,
                 "launch",
-                "subjugator_localization.launch.py",
+                "rl_subjugator_localization.launch.py",
             ),
         ),
     )

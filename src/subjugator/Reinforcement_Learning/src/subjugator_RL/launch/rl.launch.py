@@ -36,14 +36,6 @@ def generate_launch_description():
         launch_arguments={}.items(),
     )
 
-    # Include the Subjugator_Localization Launch file
-    subjugator_setup = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_project_rl, "launch", "rl_subjugator_localization.launch.py"),
-        ),
-        launch_arguments={}.items(),
-    )
-
     # Bridge ROS topics and Gazebo messages for establishing communication
     bridge = Node(
         package="ros_gz_bridge",
