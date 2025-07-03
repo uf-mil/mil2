@@ -5,12 +5,13 @@ import threading
 import time
 
 import gymnasium as gym
-from subjugator_RL import GymNode
 import numpy as np
 import rclpy
 from gymnasium import spaces
-from subjugator_RL.locks import cam_lock, imu_lock
 from rclpy.executors import MultiThreadedExecutor
+
+from subjugator_RL import GymNode
+from subjugator_RL.locks import cam_lock, imu_lock
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50, 80, 3]
@@ -57,6 +58,7 @@ class SubEnv(gym.Env):
         self.cam_data = None
 
         self.random_pt = None
+        self.previousDistance = None
 
         self.localizationProc = subprocess.Popen(
             [
@@ -74,18 +76,12 @@ class SubEnv(gym.Env):
         self.start_ekf_node()
 
         # self.proc.kill()
-        # Wait for 25 seconds for gazebo to open
-        time.sleep(25)
+        # Wait for 10 seconds for gazebo to open
+        time.sleep(10)
 
         # camera rgb space, Orientation+position, Linear/angular velocity comes from odometery/filtered
         self.observation_space = spaces.Dict(
             {
-                "image": spaces.Box(
-                    0,
-                    255,
-                    shape=(SHAPE[0], SHAPE[1], SHAPE[2]),
-                    dtype=np.uint8,
-                ),
                 "position": spaces.Box(low=-np.inf, high=np.inf, shape=(3,)),
                 "orientation": spaces.Box(low=-1.0, high=1.0, shape=(4,)),
                 "Linear_velocity": spaces.Box(low=-np.inf, high=np.inf, shape=(3,)),
@@ -100,7 +96,7 @@ class SubEnv(gym.Env):
         )
 
         # First 3 are force, second 3 are torque
-        self.action_space = spaces.Box(low=10, high=50, shape=(6,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-50, high=50, shape=(6,), dtype=np.float32)
 
     def seed(self, seed=None):
 
@@ -160,6 +156,28 @@ class SubEnv(gym.Env):
         except Exception as e:
             print(f"Could not unpause Gazebo: {e}")
 
+    def pause_gazebo(self):
+        try:
+            cmd = [
+                "gz",
+                "service",
+                "-s",
+                "/world/robosub_2024/control",
+                "--reqtype",
+                "gz.msgs.WorldControl",
+                "--reptype",
+                "gz.msgs.Boolean",
+                "--timeout",
+                "3000",
+                "--req",
+                "pause: true",
+            ]
+
+            subprocess.run(cmd, timeout=5)
+
+        except Exception as e:
+            print(f"Could not pause Gazebo: {e}")
+
     def reset_localization(self):
         try:
             cmd = [
@@ -191,12 +209,25 @@ class SubEnv(gym.Env):
 
         except Exception as e:
             print(f"Could not start filter: {e}")
+    def reset_ros_time(self):
+        try:
+            cmd = [
+                "ros2", "topic", "pub", 
+                "/reset_time", 
+                "std_msgs/msg/Empty",
+                "{}", 
+                "--once"
+            ]
+            subprocess.run(cmd, timeout=5)
+            print("Reset ROS time")
+        except Exception as e:
+            print(f"Could not reset ROS time: {e}")
 
     def generate_random_pt(self):
         x = np.random.uniform(-5, 5)
         y = np.random.uniform(-5, 5)
 
-        #can't go out of the water
+        # can't go out of the water
         z = np.random.uniform(-5, 0)
 
         return np.array([x, y, z], dtype=np.float32)
@@ -219,27 +250,41 @@ class SubEnv(gym.Env):
         return total_red, avg_red, red_percentage
 
     def calculate_reward(self, observation):
-        
+
         distance = np.linalg.norm(observation["object_distance"])
 
-        #sub has reached target
-        if distance == 0:
+        # sub has reached target
+        if distance < 1.0 :
             return 1000
         
-        reward = 1 / distance
-        return reward
+        if self.previousDistance is not None:
+            progress = self.previousDistance - distance
+
+            #rewards based on if sub is moving in the direction of the target
+            progress_reward = progress * 10
+
+        else:
+            progress_reward = 0.0
+        
+        self.previousDistance = distance
+        
+        distance_reward = 1 / distance
+
+        total_reward = progress_reward + distance_reward
+
+        
+        return total_reward
 
     def _get_obs(self):
         # Get image from RL_subscriber through thread - MUST CHECK FOR LOCK HERE
-        if cam_lock.acquire(False):
-            self.cam_data = self.gymNode.cam_data  # get data from gymnode
-            cam_lock.release()
+        # if cam_lock.acquire(False):
+        #     self.cam_data = self.gymNode.cam_data  # get data from gymnode
+        #     cam_lock.release()
 
         # imu version of above based on imu_node -- MUST CHECK FOR LOCK HERE
         if imu_lock.acquire(False):
             self.imu_data = self.gymNode.imu_data  # get data from gymnode
             imu_lock.release()
-        
 
         # capture data
         pos = self.imu_data.pose.pose.position
@@ -258,10 +303,7 @@ class SubEnv(gym.Env):
         else:
             object_distance = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
-
-
         return {
-            "image": self.cam_data,
             "position": position,
             "orientation": orientation,
             "Linear_velocity": linear_vel,
@@ -288,30 +330,43 @@ class SubEnv(gym.Env):
         # Define termination
         terminated = False
 
-        #gets eucladian distance
-        object_distance = np.linalg.norm(observation.get("object_distance", np.array([float("inf")] * 3)))
+        # gets eucladian distance
+        object_distance = np.linalg.norm(
+            observation.get("object_distance", np.array([float("inf")] * 3)),
+        )
 
-        if object_distance < 2 :
+        if object_distance < 2:
             terminated = True
-    
+
         print("Reward: ", reward)
         print("Object distance: ", object_distance)
         print(f"Sub's Position={observation['position']}")
-      
-      
+        print(f"Action value={action}") 
         return observation, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
         print("RESET SUB ENV")
+
         super().reset(seed=seed)
-        self.unpause_gazebo()
-        # Reset submarine by removing and respawning it
-        success = self._reset_sub_pose()
-        #need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
+
+        self.pause_gazebo()
+        time.sleep(1)
+     
         self.reset_localization()
+        time.sleep(1)
+
+        success = self._reset_sub_pose()
+        time.sleep(1)
+        # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
+        
         self.start_ekf_node()
+        time.sleep(2)
+
+        self.unpause_gazebo()
+        time.sleep(2)
 
         self.random_pt = self.generate_random_pt()
+        print(f"Generated target: {self.random_pt}")
 
         if not success:
             print("Gazebo service reset failed!")

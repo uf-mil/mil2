@@ -27,13 +27,13 @@ class GymNode(Node):
         self.imu_data = None
 
         # cam attributes initialized here
-        self.cam_subscription = self.create_subscription(
-            Image,
-            "/front_cam/image_raw",
-            self.image_callback,
-            10,  # topic for sub9 cam
-        )
-        self.cam_data = None
+        # self.cam_subscription = self.create_subscription(
+        #     Image,
+        #     "/front_cam/image_raw",
+        #     self.image_callback,
+        #     10,  # topic for sub9 cam
+        # )
+        # self.cam_data = None
 
         # publisher for sub motion
         self.wrench_publisher = self.create_publisher(Wrench, "cmd_wrench", 10)
@@ -98,7 +98,7 @@ class GymNode(Node):
             y=float(torque_action[1]),
             z=float(torque_action[2]),
         )
-        
+
         self.wrench_publisher.publish(wrench_msg)
 
 
