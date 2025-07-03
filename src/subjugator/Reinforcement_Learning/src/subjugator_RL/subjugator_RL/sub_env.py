@@ -63,18 +63,18 @@ class SubEnv(gym.Env):
         self.random_pt = None
         self.previousDistance = None
 
-        self.localizationProc = subprocess.Popen(
-            [
-                "gnome-terminal",
-                "--",
-                "bash",
-                "-c",
-                "source /opt/ros/jazzy/setup.bash && "
-                "source ~/mil2/install/setup.bash && "
-                "ros2 launch subjugator_localization subjugator_localization.launch.py; exec bash",
-            ],
-            env=clean_ros_env(),
-        )
+        # self.localizationProc = subprocess.Popen(
+        #     [
+        #         "gnome-terminal",
+        #         "--",
+        #         "bash",
+        #         "-c",
+        #         "source /opt/ros/jazzy/setup.bash && "
+        #         "source ~/mil2/install/setup.bash && "
+        #         "ros2 launch subjugator_localization subjugator_localization.launch.py; exec bash",
+        #     ],
+        #     env=clean_ros_env(),
+        # )
 
         self.start_ekf_node()
 
