@@ -21,6 +21,13 @@
   gz_type_name: "gz.msgs.Magnetometer"
   direction: GZ_TO_ROS
 
+# DVL configuration
+- ros_topic_name: "/dvl/odom"
+  gz_topic_name: "/dvl/odom"
+  ros_type_name: "nav_msgs/Odometry"
+  gz_type_name: "gz.msgs.Odometry"
+  direction: GZ_TO_ROS
+
   # Thruster configuration.
 - ros_topic_name: "/thruster/FLH"
   gz_topic_name: "/model/FLH/joint/FLH_dir_joint/cmd_thrust"

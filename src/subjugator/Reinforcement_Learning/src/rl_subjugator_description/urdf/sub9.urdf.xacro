@@ -104,8 +104,9 @@
   <gazebo>
     <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
       <odom_topic>/dvl/odom</odom_topic>
-      <odom_frame_id>base_link</odom_frame_id>
-      <robot_base_frame_id>dvl_sensor_link</robot_base_frame_id>
+      <odom_frame_id>odom</odom_frame_id>
+      <robot_base_frame_id>base_link</robot_base_frame_id>
+      <dimensions>3</dimensions>
     </plugin>
   </gazebo>
 
