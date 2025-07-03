@@ -3,7 +3,7 @@ import os
 import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction, ExecuteProcess
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -99,6 +99,21 @@ def generate_launch_description():
         ),
     )
 
+    enable_ekf = TimerAction(
+        period=2.0,
+        actions=[
+            ExecuteProcess(
+                cmd=[
+                    'ros2', 'service', 'call',
+                    '/subjugator_localization/enable',
+                    'std_srvs/srv/Empty',
+                    '{}'   # empty request
+                ],
+                output='screen'
+            )
+        ]
+    )
+
     controller = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_controller, "launch", "pid_controller.launch.py"),
@@ -127,6 +142,7 @@ def generate_launch_description():
             # rviz,
             thruster_manager,
             localization,
+            enable_ekf,
             controller,
             path_planner,
             trajectory_planner,

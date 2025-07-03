@@ -76,7 +76,7 @@ class SubEnv(gym.Env):
         #     env=clean_ros_env(),
         # )
 
-        self.start_ekf_node()
+        # self.start_ekf_node()
 
         # self.proc.kill()
         # Wait for 10 seconds for gazebo to open
