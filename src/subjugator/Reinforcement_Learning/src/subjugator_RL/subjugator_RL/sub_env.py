@@ -11,10 +11,11 @@ from gymnasium import spaces
 from rclpy.executors import MultiThreadedExecutor
 
 from subjugator_RL import GymNode
-from subjugator_RL.locks import cam_lock, imu_lock
+from subjugator_RL.locks import imu_lock
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50, 80, 3]
+
 
 # ROS environment crashes in spawned terminal without using this - caused by OpenCv depednencies
 def clean_ros_env() -> dict:
@@ -50,7 +51,7 @@ class SubEnv(gym.Env):
 
         # Store callback functions from the GymNode
         self.gymNode = GymNode.GymNode()
-        exec_ = MultiThreadedExecutor(num_threads=4) 
+        exec_ = MultiThreadedExecutor(num_threads=4)
         exec_.add_node(self.gymNode)  # for the gym env
         spin_thread = threading.Thread(target=exec_.spin, daemon=True)
         spin_thread.start()
@@ -211,14 +212,17 @@ class SubEnv(gym.Env):
 
         except Exception as e:
             print(f"Could not start filter: {e}")
+
     def reset_ros_time(self):
         try:
             cmd = [
-                "ros2", "topic", "pub", 
-                "/reset_time", 
+                "ros2",
+                "topic",
+                "pub",
+                "/reset_time",
                 "std_msgs/msg/Empty",
-                "{}", 
-                "--once"
+                "{}",
+                "--once",
             ]
             subprocess.run(cmd, timeout=5)
             print("Reset ROS time")
@@ -256,25 +260,24 @@ class SubEnv(gym.Env):
         distance = np.linalg.norm(observation["object_distance"])
 
         # sub has reached target
-        if distance < 1.0 :
+        if distance < 1.0:
             return 1000
-        
+
         if self.previousDistance is not None:
             progress = self.previousDistance - distance
 
-            #rewards based on if sub is moving in the direction of the target
+            # rewards based on if sub is moving in the direction of the target
             progress_reward = progress * 10
 
         else:
             progress_reward = 0.0
-        
+
         self.previousDistance = distance
-        
+
         distance_reward = 1 / distance
 
         total_reward = progress_reward + distance_reward
 
-        
         return total_reward
 
     def _get_obs(self):
@@ -285,13 +288,11 @@ class SubEnv(gym.Env):
         #     self.cam_data = self.gymNode.cam_data  # get data from gymnode
         #     cam_lock.release()
 
-
         # imu version of above based on imu_node -- MUST CHECK FOR LOCK HERE
         if imu_lock.acquire(False):
             self.imu_gets += 1
             self.imu_data = self.gymNode.imu_data  # get data from gymnode
             imu_lock.release()
-
 
         # capture data
         pos = self.imu_data.pose.pose.position
@@ -348,7 +349,7 @@ class SubEnv(gym.Env):
         print("Reward: ", reward)
         print("Object distance: ", object_distance)
         print(f"Sub's Position={observation['position']}")
-        print(f"Action value={action}") 
+        print(f"Action value={action}")
         return observation, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
@@ -358,14 +359,14 @@ class SubEnv(gym.Env):
 
         self.pause_gazebo()
         time.sleep(1)
-     
+
         self.reset_localization()
         time.sleep(1)
 
         success = self._reset_sub_pose()
         time.sleep(1)
         # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
-        
+
         self.start_ekf_node()
         time.sleep(2)
 

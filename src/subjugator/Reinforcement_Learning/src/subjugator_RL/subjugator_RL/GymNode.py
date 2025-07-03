@@ -6,7 +6,6 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import Vector3, Wrench
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from sensor_msgs.msg import Image
 
 from subjugator_RL.locks import cam_lock, imu_lock
 
@@ -39,7 +38,7 @@ class GymNode(Node):
         self.wrench_publisher = self.create_publisher(Wrench, "cmd_wrench", 10)
 
     def image_callback(self, msg):
-        time.sleep(0.1) # may be harmful
+        time.sleep(0.1)  # may be harmful
 
         # self.get_logger().info("Image received")
 
@@ -74,7 +73,7 @@ class GymNode(Node):
             self.cam_data = pooled_image
 
     def imu_callback(self, msg):
-        #self.get_logger().info("Imu received")
+        # self.get_logger().info("Imu received")
 
         # lock thread
         with imu_lock:
