@@ -15,7 +15,6 @@ from rclpy.executors import MultiThreadedExecutor
 # Shape of the image. L, W, # of channels
 SHAPE = [50, 80, 3]
 
-
 # ROS environment crashes in spawned terminal without using this - caused by OpenCv depednencies
 def clean_ros_env() -> dict:
     env = os.environ.copy()
@@ -38,6 +37,9 @@ def clean_ros_env() -> dict:
 
 class SubEnv(gym.Env):
     proc = None
+    image_gets = 0
+    imu_gets = 0
+    get_attempts = 0
 
     def __init__(self, render_mode="rgb_array"):
 
@@ -47,7 +49,7 @@ class SubEnv(gym.Env):
 
         # Store callback functions from the GymNode
         self.gymNode = GymNode.GymNode()
-        exec_ = MultiThreadedExecutor(num_threads=2)  # Reduced to 2 threads
+        exec_ = MultiThreadedExecutor(num_threads=4) 
         exec_.add_node(self.gymNode)  # for the gym env
         spin_thread = threading.Thread(target=exec_.spin, daemon=True)
         spin_thread.start()
@@ -230,15 +232,23 @@ class SubEnv(gym.Env):
         return reward
 
     def _get_obs(self):
+        self.get_attempts += 1
         # Get image from RL_subscriber through thread - MUST CHECK FOR LOCK HERE
         if cam_lock.acquire(False):
+            self.image_gets += 1
             self.cam_data = self.gymNode.cam_data  # get data from gymnode
             cam_lock.release()
 
         # imu version of above based on imu_node -- MUST CHECK FOR LOCK HERE
         if imu_lock.acquire(False):
+            self.imu_gets += 1
             self.imu_data = self.gymNode.imu_data  # get data from gymnode
             imu_lock.release()
+
+        print("IMAGE GET RATE:")
+        print(self.image_gets/self.get_attempts)
+        print("Imu GET RATE:")
+        print(self.imu_gets/self.get_attempts)
         
 
         # capture data

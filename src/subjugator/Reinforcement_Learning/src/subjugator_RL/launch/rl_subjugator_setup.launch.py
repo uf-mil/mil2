@@ -124,7 +124,7 @@ def generate_launch_description():
             gui_cmd,
             robot_state_publisher_node,
             # joint_state_publisher_node,
-            #rviz,
+            # rviz,
             thruster_manager,
             localization,
             controller,

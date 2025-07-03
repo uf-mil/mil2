@@ -106,8 +106,7 @@
   <!-- Temp DVL Sensor to prevent crashing-->
   <gazebo>
     <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
-      <odom_topic>/dvl/gt_odom</odom_topic>
-
+      <odom_topic>/dvl/odom</odom_topic>
       <odom_frame_id>base_link</odom_frame_id>
       <robot_base_frame_id>dvl_sensor_link</robot_base_frame_id>
     </plugin>
