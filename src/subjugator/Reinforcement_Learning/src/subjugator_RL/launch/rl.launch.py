@@ -36,6 +36,14 @@ def generate_launch_description():
         launch_arguments={}.items(),
     )
 
+    # Include the Subjugator_Localization Launch file
+    subjugator_setup = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_project_rl, "launch", "rl_subjugator_localization.launch.py"),
+        ),
+        launch_arguments={}.items(),
+    )
+
     # Bridge ROS topics and Gazebo messages for establishing communication
     bridge = Node(
         package="ros_gz_bridge",
@@ -43,7 +51,7 @@ def generate_launch_description():
         parameters=[
             {
                 "config_file": os.path.join(
-                    pkg_project_bringup,
+                    pkg_project_rl,
                     "config",
                     "subjugator_bridge.yaml",
                 ),
@@ -54,12 +62,12 @@ def generate_launch_description():
     )
 
     # Launch the RL training node
-    rl_train = Node(
-        package="subjugator_RL",
-        executable="sub_RL_train",
-        name="sub_rl_train",
-        output="screen",
-    )
+    # rl_train = Node(
+    #     package="subjugator_RL",
+    #     executable="sub_RL_train",
+    #     name="sub_rl_train",
+    #     output="screen",
+    # )
 
 
     return LaunchDescription(
@@ -67,6 +75,6 @@ def generate_launch_description():
             gz_sim,
             subjugator_setup,
             bridge,
-            rl_train
+            # rl_train
         ],
     )

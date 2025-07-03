@@ -25,6 +25,9 @@ setup(
             ['resource/' + package_name]),
         # package.xml in share/<pkg>
         ('share/' + package_name, ['package.xml']),
+        # config files
+        ('share/' + package_name + '/config',
+            glob.glob('config/*.yaml')),
         # launch files
         ('share/' + package_name + '/launch',
             glob.glob('launch/*.py')),

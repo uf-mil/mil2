@@ -24,6 +24,7 @@ ros2 launch subjugator_RL rl.launch.py
 
 ros2 service call /sub9_velocity_reset_plugin/reset_sub9_velocity std_srvs/srv/Empty
 
+ros2 launch subjugator_localization subjugator_localization.launch.py
 ros2 service call /subjugator_localization/enable std_srvs/srv/Empty "{ }"
 
 gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: true, reset: {all: true}'
