@@ -11,7 +11,7 @@ from gymnasium import spaces
 from rclpy.executors import MultiThreadedExecutor
 
 from subjugator_RL import GymNode
-from subjugator_RL.locks import imu_lock
+from subjugator_RL.locks import cam_lock, imu_lock
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50, 80, 3]
@@ -361,17 +361,17 @@ class SubEnv(gym.Env):
         time.sleep(1)
 
         self.reset_localization()
-        time.sleep(1)
+        time.sleep(5)
 
         success = self._reset_sub_pose()
-        time.sleep(1)
+        time.sleep(5)
         # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
 
         self.start_ekf_node()
-        time.sleep(2)
+        time.sleep(5)
 
         self.unpause_gazebo()
-        time.sleep(2)
+        time.sleep(5)
 
         self.random_pt = self.generate_random_pt()
         print(f"Generated target: {self.random_pt}")
