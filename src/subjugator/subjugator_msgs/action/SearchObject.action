@@ -1,0 +1,13 @@
+# Goal
+string object
+float32 timeout
+
+---
+# Result
+bool success
+string detected_object
+
+---
+# Feedback
+
+bool progress
