@@ -4,7 +4,7 @@
     # vector indices correspond to x,y,z position,
     # then roll,pitch,yaw orientation gains
     kp: [40.0, 30.0, 20.0, 20.0, 25.0, 25.0]
-    ki: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    ki: [0.0, 0.0, 0.0, 0.0, 0.0, 9.0]
     kd: [10.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     imax: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     imin: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
