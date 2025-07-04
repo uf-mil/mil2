@@ -182,8 +182,10 @@ void PIDController::publish_commands(std::array<double, 6> const &commands)
     Eigen::Vector3d torque_odom(commands[3], commands[4], commands[5]);
 
     // Rotate forces and torques to base_link frame
-    Eigen::Vector3d force_base_link = rotation_matrix.transpose() * force_odom; // use transpose to inverse the rotation
-    Eigen::Vector3d torque_base_link = rotation_matrix.transpose() * torque_odom; // TODO the transpose might be bad... not sure yet
+    Eigen::Vector3d force_base_link =
+        rotation_matrix.transpose() * force_odom;  // use transpose to inverse the rotation
+    Eigen::Vector3d torque_base_link =
+        rotation_matrix.transpose() * torque_odom;  // TODO the transpose might be bad... not sure yet
 
     auto msg = geometry_msgs::msg::Wrench();
     msg.force.x = force_base_link.x();
