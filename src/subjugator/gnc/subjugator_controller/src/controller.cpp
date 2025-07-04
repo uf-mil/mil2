@@ -191,9 +191,9 @@ void PIDController::publish_commands(std::array<double, 6> const &commands)
     msg.force.x = force_base_link.x();
     msg.force.y = force_base_link.y();
     msg.force.z = force_base_link.z();
-    msg.torque.x = torque_base_link.x();
-    msg.torque.y = torque_base_link.y();
-    msg.torque.z = torque_base_link.z();
+    msg.torque.x = commands[3];
+    msg.torque.y = commands[4];
+    msg.torque.z = commands[5];
 
     pub_cmd_wrench_->publish(msg);
 }

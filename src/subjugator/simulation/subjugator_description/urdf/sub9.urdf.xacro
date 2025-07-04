@@ -98,7 +98,7 @@
   <xacro:mil_camera name="down_cam" parent="base_link" xyz="0.45222 0.027913 -0.22" rpy="0 1.57 0"/>
 
   <!-- DVL Sensor -->
-  <xacro:mil_dvl_sensor name="dvl_sensor" parent="base_link" xyz="0.3937 0 -0.2413" rpy="3.14159 0.0 0.0"/>
+  <xacro:mil_dvl_sensor name="dvl_sensor" parent="base_link" xyz="0.3937 0 -0.2413" rpy="0.0 0.0 0.0"/>
 
   <!-- IMU, Magnetometer -->
   <xacro:mil_imu_magnetometer
