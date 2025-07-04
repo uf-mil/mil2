@@ -56,7 +56,7 @@
                 Note: Graded Buoyancy does not work with collision objects other than box and sphere!
             -->
             <plugin
-                filename="gz-sim-buoyancy-system"
+                filename="libcustom_buoyancy_plugin.so"
                 name="gz::sim::systems::Buoyancy">
                 <graded_buoyancy>
                     <default_density>1000</default_density>
@@ -140,7 +140,50 @@
                 <pose>0 0 0.4 0 0 0</pose>
                 <static>true</static>
             </model>
+            <!-- A simple box model to test buoyancy -->
+            <model name="buoyant_box">
+                <link name="box_link">
+                    <inertial>
+                    <!-- Make it light so it will float -->
+                    <mass>0.5</mass>
+                    <inertia>
+                        <ixx>0.083</ixx>
+                        <iyy>0.083</iyy>
+                        <izz>0.083</izz>
+                    </inertia>
+                    </inertial>
+                    <visual name="visual">
+                    <geometry>
+                        <box><size>1 1 1</size></box>
+                    </geometry>
+                    </visual>
+                    <pose>0 3 0 0 0 0</pose>
+                    <collision name="collision">
+                    <geometry>
+                        <box><size>1 1 1</size></box>
+                    </geometry>
+                    </collision>
+                </link>
 
+                <!-- The Hydrodynamics plugin attached to the model.
+                    This plugin handles both drag and buoyancy. -->
+                <plugin filename="gz-sim-hydrodynamics-system" name="gz::sim::systems::Hydrodynamics">
+                    <link_name>box_link</link_name>
+                    <!-- Simple drag coefficients -->
+                    <xUabsU>-25</xUabsU>
+                    <xU>-50</xU>
+                    <yVabsV>-25</yVabsV>
+                    <yV>-50</yV>
+                    <zWabsW>-5</zWabsW>
+                    <zW>-50</zW>
+                    <kPabsP>-650</kPabsP>
+                    <kP>-650</kP>
+                    <mQabsQ>-750</mQabsQ>
+                    <mQ>-750</mQ>
+                    <nRabsR>-750</nRabsR>
+                    <nR>-750</nR>
+                </plugin>
+            </model>
             <!-- Pool -->
             <model name='WoollettPool'>
                 <link name='link'>

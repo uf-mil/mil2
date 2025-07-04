@@ -79,8 +79,8 @@ class SubEnv(gym.Env):
         # self.start_ekf_node()
 
         # self.proc.kill()
-        # Wait for 10 seconds for gazebo to open
-        time.sleep(10)
+        # Wait for 5 seconds for gazebo to open
+        time.sleep(5)
 
         # camera rgb space, Orientation+position, Linear/angular velocity comes from odometery/filtered
         self.observation_space = spaces.Dict(
@@ -196,6 +196,21 @@ class SubEnv(gym.Env):
 
         except Exception as e:
             print(f"Could not start filter: {e}")
+
+
+    def reset_simulation(self):
+        try:
+            cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: true, reset: {all: true}'"            
+            subprocess.run(cmd, shell=True, timeout=5, check=True)            
+
+            time.sleep(1)
+            self.unpause_gazebo()
+            
+            print("Reset sim successfully")
+            return True
+        except Exception as e:
+            print(f"Could not reset sim: {e}")
+            return False
 
     def start_ekf_node(self):
         try:
@@ -357,21 +372,27 @@ class SubEnv(gym.Env):
 
         super().reset(seed=seed)
 
-        self.pause_gazebo()
-        time.sleep(1)
+        print("Attempting to pause sim")
+        # Gazebo automatically pauses on reset
+        success = self.pause_gazebo()
+        time.sleep(5)
+        print("Attempting to reset sim")
+        success = self.reset_simulation()
 
+        # index = 0
+        # for i in range(999999999999):
+        #     index += i
+        # print("LMFAO")
+        # print(index)
+
+        print("Attempting to reset localization")
         self.reset_localization()
-        time.sleep(5)
-
-        success = self._reset_sub_pose()
-        time.sleep(5)
-        # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
-
+        time.sleep(2)
         self.start_ekf_node()
-        time.sleep(5)
-
-        self.unpause_gazebo()
-        time.sleep(5)
+        time.sleep(1)
+        #self.unpause_gazebo()
+        time.sleep(1)
+        # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
 
         self.random_pt = self.generate_random_pt()
         print(f"Generated target: {self.random_pt}")

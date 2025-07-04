@@ -54,12 +54,12 @@ def generate_launch_description():
     )
 
     # Launch the RL training node
-    # rl_train = Node(
-    #     package="subjugator_RL",
-    #     executable="sub_RL_train",
-    #     name="sub_rl_train",
-    #     output="screen",
-    # )
+    rl_train = Node(
+        package="subjugator_RL",
+        executable="sub_RL_train",
+        name="sub_rl_train",
+        output="screen",
+    )
 
 
     return LaunchDescription(
@@ -67,6 +67,6 @@ def generate_launch_description():
             gz_sim,
             subjugator_setup,
             bridge,
-            # rl_train
+            rl_train
         ],
     )
