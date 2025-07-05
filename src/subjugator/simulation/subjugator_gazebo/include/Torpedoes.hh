@@ -15,11 +15,13 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <gz/common/Console.hh>
 #include <gz/math/Pose3.hh>    // For gz::math::Pose3d
 #include <gz/math/Vector3.hh>  // For gz::math::Vector3d
 #include <gz/sim/EntityComponentManager.hh>
 #include <gz/sim/EventManager.hh>
 #include <gz/sim/InstallationDirectories.hh>
+#include <gz/sim/Link.hh>
 #include <gz/sim/Model.hh>
 #include <gz/sim/System.hh>  // For gz::sim::System
 #include <gz/sim/World.hh>
@@ -35,6 +37,7 @@
 #include <sdf/Element.hh>
 #include <sdf/World.hh>
 #include <sdf/sdf.hh>
+#include <std_msgs/msg/string.hpp>
 
 // Insert ROS Message Here if needed
 
@@ -66,9 +69,11 @@ class Torpedoes : public gz::sim::System,
     // Sub9 SDF & Entity //
     std::shared_ptr<sdf::Element const> sub9_SDF;
     gz::sim::Entity sub9_Entity{ gz::sim::kNullEntity };
+    gz::math::Pose3d sub9_pose;
 
     // Torpedo Variables //
     int torpedoCount = 0;
+    bool t_pressed = false;  // Track if 't' key was pressed
     bool worldNameFound = false;
     std::string worldName = "task1_2025.world";
 
@@ -92,6 +97,13 @@ class Torpedoes : public gz::sim::System,
     std::set<std::string> torpedoesWithVelocitySet;
     // Track attempts to set velocity for each torpedo
     std::map<std::string, int> torpedoVelocitySetAttempts;
+
+    // ROS2 Node and Subscription for keypress
+    rclcpp::Node::SharedPtr torpedo_node_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr keypress_sub_;
+
+    // Callback for keypress
+    void KeypressCallback(std_msgs::msg::String::SharedPtr const msg);
 };
 
 }  // namespace torpedoes
