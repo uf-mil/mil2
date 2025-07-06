@@ -54,20 +54,29 @@ class SimplePlugin : public PluginBase
   protected:
     virtual void runTest(std::shared_ptr<Test> test) override
     {
-        std::shared_ptr<mil_preflight::Action> action = test->nextAction();
+        action_ = test->nextAction();
 
-        while (action != nullptr)
+        while (action_ != nullptr)
         {
-            action->onStart();
-            auto&& [success, summery] = runAction(action);
-            action->onFinish(success, std::move(summery));
-            action = test->nextAction();
+            action_->onStart();
+            auto&& [success, summery] = runAction(action_->getName(), action_->getParameters());
+            action_->onFinish(success, std::move(summery));
+            action_ = test->nextAction();
         }
 
         test->onFinish();
     }
 
-    virtual std::pair<bool, std::string> runAction(std::shared_ptr<Action> action) = 0;
+    int askQuestion(std::string&& question, std::vector<std::string>&& options)
+    {
+        return action_->onQuestion(std::move(question), std::move(options)).get();
+    }
+
+    virtual std::pair<bool, std::string> runAction(std::string const& name,
+                                                   std::vector<std::string> const& parameters) = 0;
+
+  private:
+    std::shared_ptr<Action> action_;
 };
 
 }  // namespace mil_preflight
