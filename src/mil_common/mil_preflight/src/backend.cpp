@@ -4,6 +4,7 @@
 #include <boost/function.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include "mil_preflight/common.h"
 #include "mil_preflight/plugin.h"
 
 namespace mil_preflight

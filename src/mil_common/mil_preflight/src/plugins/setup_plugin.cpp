@@ -25,10 +25,10 @@ class SetupPlugin : public SimplePlugin
   private:
     std::map<std::string, std::vector<std::string>> topics_;
 
-    std::pair<bool, std::string> runAction(std::shared_ptr<Action> action) final
+    std::pair<bool, std::string> runAction([[maybe_unused]] std::string const& name,
+                                           std::vector<std::string> const& parameters) final
     {
-        std::string question = action->getParameters()[0];
-        if (action->onQuestion(std::move(question), { "Yes", "No" }).get() != 0)
+        if (askQuestion(std::string(parameters[0]), { "Yes", "No" }) != 0)
         {
             return { false, "User said No" };
         }
