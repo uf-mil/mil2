@@ -27,37 +27,11 @@ void Torpedoes::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::El
 
     // Gather necessary information for future GatherWorldInfo() call
     this->sub9_Entity = entity;
+    // std::cout << "[Torpedoes] Sub9 Entity Name: "
+    //           << ecm.Component<gz::sim::components::Name>(entity)->Data() << std::endl;
 
     // Create copy of the Sub SDF element to perform modifications due to const
     this->sub9_SDF = sdf->Clone();
-
-    // Iterate through all entities and pass in Pose and Name components
-    // to check for pinger names and store their poses
-    ecm.Each<gz::sim::components::Pose, gz::sim::components::Name>(
-        [&](gz::sim::Entity const &ent, gz::sim::components::Pose const *pose,
-            gz::sim::components::Name const *name) -> bool
-        {
-            // Check if pose and name components are valid
-            if (!pose || !name)
-            {
-                return true;
-            }
-
-            // Get current entity name
-            std::string entityName = name->Data();
-
-            // If entity is sub9, store its entity
-            if (entityName == "sub9")
-            {
-                std::cout << "Found Sub9 entity: " << entityName << std::endl;
-                this->sub9_Entity = ent;
-                return false;  // stop iterating once sub9 is found
-            }
-            // Continue to next entity
-            return true;
-        }
-
-    );  // End of Each() function
 }
 
 void Torpedoes::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
@@ -151,7 +125,7 @@ void Torpedoes::SpawnTorpedo(std::string const &worldName, std::string const &sd
     factoryMsg.set_sdf(sdfString);
 
     // Set the pose to X, Y, Z, and roll, pitch, yaw
-    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(sub9_pose.X(), sub9_pose.Y(), sub9_pose.Z(),
+    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(sub9_pose.X(), sub9_pose.Y(), sub9_pose.Z() - 0.5,
                                                               sub9_pose.Roll(), sub9_pose.Pitch(), sub9_pose.Yaw()));
 
     // Send the request using the four-argument version for feedback
@@ -171,14 +145,27 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
         return;
     }
 
+    if (!worldNameFound)
+    {
+        ecm.Each<gz::sim::components::World, gz::sim::components::Name>(
+            [&](gz::sim::Entity const &entity, gz::sim::components::World const *,
+                gz::sim::components::Name const *name) -> bool
+            {
+                this->worldName = name->Data();
+                worldNameFound = true;
+                return false;  // Stop after finding the first world
+            });
+    }
+
     // Spin the ROS2 node
     rclcpp::spin_some(torpedo_node_);
 
+    // Get the pose of the sub9 entity
     auto sub9_component = ecm.Component<gz::sim::components::Pose>(this->sub9_Entity);
     if (sub9_component)
     {
-        // Get the pose of the sub9 entity
         this->sub9_pose = sub9_component->Data();
+        // std::cout << "[Torpedoes] Sub9 Pose: " << this->sub9_pose << std::endl;
     }
 
     // Spawn two torpedoes maximum, only once per 't' keypress
@@ -198,7 +185,39 @@ GZ_ADD_PLUGIN(torpedoes::Torpedoes, gz::sim::System, gz::sim::ISystemConfigure, 
               gz::sim::ISystemPreUpdate)
 
 // TODO:
-// - Spawn torpedoes in relative to Sub9 position and orientation!!
 // - Send out second torpedo slightly offset from the first one
 // - Add logic to handle torpedo lifecycle (e.g., timeout, removal)
 // - Move as much logic as possible to Configure()
+
+// Code Cemetery
+// // Iterate through all entities and pass in Pose and Name components
+// // to check for pinger names and store their poses
+// if (!subEntityFound)
+// {
+//     ecm.Each<gz::sim::components::Pose, gz::sim::components::Name>(
+//         [&](gz::sim::Entity const &ent, gz::sim::components::Pose const *pose,
+//             gz::sim::components::Name const *name) -> bool
+//         {
+//             // Check if pose and name components are valid
+//             if (!pose || !name)
+//             {
+//                 return true;
+//             }
+
+//             // Get current entity name
+//             std::string entityName = name->Data();
+
+//             // If entity is sub9, store its entity
+//             if (entityName == "sub9")
+//             {
+//                 std::cout << "Found Sub9 entity: " << entityName << std::endl;
+//                 this->sub9_Entity = ent;
+//                 subEntityFound = true;
+//                 return false;  // stop iterating once sub9 is found
+//             }
+//             // Continue to next entity
+//             return true;
+//         }
+
+//     );  // End of Each() function
+// }

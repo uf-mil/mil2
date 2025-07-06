@@ -70,12 +70,13 @@ class Torpedoes : public gz::sim::System,
     std::shared_ptr<sdf::Element const> sub9_SDF;
     gz::sim::Entity sub9_Entity{ gz::sim::kNullEntity };
     gz::math::Pose3d sub9_pose;
+    bool subEntityFound = false;  // Track if the sub9 entity has been found
 
     // Torpedo Variables //
     int torpedoCount = 0;
     bool t_pressed = false;  // Track if 't' key was pressed
     bool worldNameFound = false;
-    std::string worldName = "task1_2025.world";
+    std::string worldName = "task2_2025.world";
 
     // Torpedo SDF Values //
     unsigned int timeout = 2000;  // Timeout in milliseconds
