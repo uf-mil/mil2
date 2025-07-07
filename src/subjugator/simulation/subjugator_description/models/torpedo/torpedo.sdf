@@ -3,6 +3,7 @@
   <model name="torpedo">
     <static>false</static>
     <link name="body">
+
       <!-- Change this to reflect real values -->
       <inertial>
         <mass>.0156</mass>
@@ -22,7 +23,7 @@
       </velocity_decay>
 
       <!-- The collision geometry -->
-      <collision name='bodycol'>
+      <collision name="bodycol">
         <pose>0 0 0 0 1.57 0</pose>
         <geometry>
           <cylinder>
@@ -51,10 +52,6 @@
           <collision>bodycol</collision>
         </contact>
         <update_rate>50</update_rate>
-        <!-- <plugin name='gazebo_ros_bumper_controller' filename="libgazebo_ros_bumper.so">
-          <alwaysOn>true</alwaysOn>
-          <bumperTopicName>contact_bumper</bumperTopicName>
-        </plugin> -->
       </sensor>
 
       <!-- Add center_of_volume and volume for buoyancy system plugin in world file -->
