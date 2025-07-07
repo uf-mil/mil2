@@ -139,20 +139,40 @@ class PseudoTest : public Test
     std::string plugin_;
 };
 
-class Backend
+class Backend : public rclcpp::executors::SingleThreadedExecutor
 {
   public:
     using Creator = std::shared_ptr<mil_preflight::PluginBase>();
 
-    Backend()
+    Backend() : work_thread_([this] { run(); })
     {
     }
 
     ~Backend()
     {
+        work_thread_.join();
     }
 
-    void run(rclcpp::executors::SingleThreadedExecutor& exec)
+  private:
+    boost::function<Creator> load(std::string const& plugin_name)
+    {
+        try
+        {
+            return boost::dll::import_alias<Creator>(plugin_name, plugin_name,
+                                                     boost::dll::load_mode::append_decorations |
+                                                         boost::dll::load_mode::search_system_folders);
+        }
+        catch (boost::system::system_error const& e)
+        {
+            return []() -> std::shared_ptr<mil_preflight::PluginBase>
+            { return std::make_shared<mil_preflight::PluginBase>(); };
+        }
+    }
+
+    std::unordered_map<std::string, boost::function<Creator>> libraries_;
+    std::thread work_thread_;
+
+    void run()
     {
         std::string line;
         std::shared_ptr<mil_preflight::PluginBase> plugin;
@@ -177,9 +197,9 @@ class Backend
                     std::make_shared<mil_preflight::PseudoTest>(std::move(parameters[0]), std::move(parameters[1]));
 
                 plugin = it->second();
-                exec.add_node(plugin);
+                add_node(plugin);
                 plugin->runTest(test);
-                exec.remove_node(plugin);
+                remove_node(plugin);
                 plugin.reset();
 
                 parameters.clear();
@@ -190,24 +210,6 @@ class Backend
             }
         }
     }
-
-  private:
-    boost::function<Creator> load(std::string const& plugin_name)
-    {
-        try
-        {
-            return boost::dll::import_alias<Creator>(plugin_name, plugin_name,
-                                                     boost::dll::load_mode::append_decorations |
-                                                         boost::dll::load_mode::search_system_folders);
-        }
-        catch (boost::system::system_error const& e)
-        {
-            return []() -> std::shared_ptr<mil_preflight::PluginBase>
-            { return std::make_shared<mil_preflight::PluginBase>(); };
-        }
-    }
-
-    std::unordered_map<std::string, boost::function<Creator>> libraries_;
 };
 
 }  // namespace mil_preflight
@@ -216,14 +218,10 @@ int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
 
-    rclcpp::executors::SingleThreadedExecutor exec;
-    mil_preflight::Backend backend;
+    std::shared_ptr<mil_preflight::Backend> backend = std::make_shared<mil_preflight::Backend>();
 
-    std::thread work_thread([&] { backend.run(exec); });
-
-    exec.spin();
+    backend->spin();
     rclcpp::shutdown();
-    work_thread.join();
 
     return 0;
 }
