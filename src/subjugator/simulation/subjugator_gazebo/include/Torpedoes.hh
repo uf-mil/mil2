@@ -39,6 +39,8 @@
 #include <sdf/sdf.hh>
 #include <std_msgs/msg/string.hpp>
 
+// Insert ROS Message Here if needed
+
 namespace torpedoes
 {
 class Torpedoes : public gz::sim::System,
@@ -50,28 +52,21 @@ class Torpedoes : public gz::sim::System,
     Torpedoes();
     ~Torpedoes();
 
-    // Configure() - Stores sub9 information & creates ros2 functionality before simulation starts //
+    // Configure() - Gathers Info at the start of the simulation //
     void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                    gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) override;
 
-    // System PreUpdate - Assigns velocity to any spawned torpedoes //
+    // SpawnTorpedo - Spawns a torpedo in the simulation //
+    void SpawnTorpedo(std::string const &worldName, std::string const &sdfPath);
+
+    // System PreUpdate - Called every simulation step before physics //
     void PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &ecm) override;
 
-    // System PostUpdate - Handles updating sub9 pose & torpedo spawning functionality //
+    // System PostUpdate - Called every simulation step to update pinger/torpedoes distances //
     void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
 
   private:
-    // Callback for ROS2 keypress subscription //
-    void KeypressCallback(std_msgs::msg::String::SharedPtr const msg);
-
-    // SpawnTorpedo - Spawns a torpedo with unique name & relative to sub9 position //
-    void SpawnTorpedo(std::string const &worldName, std::string const &sdfPath);
-
-    // ROS2 Node and Subscription for keypress //
-    rclcpp::Node::SharedPtr torpedo_node_;
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr keypress_sub_;
-
-    // Sub9 Information //
+    // Sub9 SDF & Entity //
     std::shared_ptr<sdf::Element const> sub9_SDF;
     gz::sim::Entity sub9_Entity{ gz::sim::kNullEntity };
     gz::math::Pose3d sub9_pose;
@@ -81,13 +76,9 @@ class Torpedoes : public gz::sim::System,
     int torpedoCount = 0;
     bool t_pressed = false;  // Track if 't' key was pressed
     bool worldNameFound = false;
-    std::string worldName = "task1_2025.world";
+    std::string worldName = "task2_2025.world";
 
-    // Torpedo Data Structures //
-    std::set<std::string> torpedoModelNames;         // Names of Spawned Torpedo Models
-    std::set<std::string> torpedoesWithVelocitySet;  // Which torpedoes have had their velocity set
-
-    // Spawning Torpedoes Information //
+    // Torpedo SDF Values //
     unsigned int timeout = 2000;  // Timeout in milliseconds
     gz::msgs::Boolean reply;
     bool result = false;
@@ -95,13 +86,25 @@ class Torpedoes : public gz::sim::System,
     std::string const Torpedo_sdfPath = ament_index_cpp::get_package_share_directory("subjugator_description") + "/mode"
                                                                                                                  "ls/"
                                                                                                                  "torpe"
-                                                                                                                 "does/"
+                                                                                                                 "do/"
                                                                                                                  "torpe"
                                                                                                                  "do."
                                                                                                                  "sdf";
-    // idk why this is so ugly, pre-commit keeps forcing it to look like this
+
+    // Track torpedo model names
+    std::set<std::string> torpedoModelNames;
+
+    // Track torpedoes that have already had their velocity set
+    std::set<std::string> torpedoesWithVelocitySet;
+    // Track attempts to set velocity for each torpedo
+
+    // ROS2 Node and Subscription for keypress
+    rclcpp::Node::SharedPtr torpedo_node_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr keypress_sub_;
+
+    // Callback for keypress
+    void KeypressCallback(std_msgs::msg::String::SharedPtr const msg);
 };
 
 }  // namespace torpedoes
-
 #endif  // TORPEDOES_HH
