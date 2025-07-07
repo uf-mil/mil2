@@ -9,7 +9,7 @@ PathPlanner::PathPlanner() : Node("path_planner_node"), segment_count_(10)
     goal_pose_sub_ = this->create_subscription<geometry_msgs::msg::Pose>(
         "goal_pose", 10, [this](geometry_msgs::msg::Pose::SharedPtr msg) { goal_pose_cb(msg); });
     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-        "odom", 10, [this](nav_msgs::msg::Odometry::SharedPtr msg) { odom_cb(msg); });
+        "odometry/filtered", 10, [this](nav_msgs::msg::Odometry::SharedPtr msg) { odom_cb(msg); });
     // Path publisher
     path_pub_ = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 }
@@ -20,12 +20,12 @@ void PathPlanner::goal_pose_cb(geometry_msgs::msg::Pose::SharedPtr const &msg)
     auto path = generate_path(*msg);
     // Publish path
     nav_msgs::msg::Path path_msg;
-    path_msg.header.frame_id = "map";
+    path_msg.header.frame_id = "odom";
     path_msg.header.stamp = this->now();
     for (auto const &pose : path)
     {
         geometry_msgs::msg::PoseStamped pose_stamped;
-        pose_stamped.header.frame_id = "map";
+        pose_stamped.header.frame_id = "odom";
         pose_stamped.header.stamp = this->now();
         pose_stamped.pose = pose;
         path_msg.poses.push_back(pose_stamped);
