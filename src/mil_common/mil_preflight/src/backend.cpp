@@ -110,13 +110,13 @@ class PseudoTest : public Test
         std::vector<std::string> parameters;
         while (std::getline(std::cin, line))
         {
-            if (line[0] == mil_preflight::EOT)
+            if (line[0] == EOT)
             {
                 return nullptr;
             }
-            else if (line[0] == mil_preflight::GS)
+            else if (line[0] == GS)
             {
-                std::shared_ptr<mil_preflight::PseudoAction> action = std::make_shared<mil_preflight::PseudoAction>(
+                std::shared_ptr<PseudoAction> action = std::make_shared<PseudoAction>(
                     std::move(parameters[0]), std::vector(parameters.begin() + 1, parameters.end()));
 
                 return action;
@@ -142,7 +142,7 @@ class PseudoTest : public Test
 class Backend : public rclcpp::executors::SingleThreadedExecutor
 {
   public:
-    using Creator = std::shared_ptr<mil_preflight::PluginBase>();
+    using Creator = std::shared_ptr<PluginBase>();
 
     Backend() : work_thread_([this] { run(); })
     {
@@ -164,8 +164,7 @@ class Backend : public rclcpp::executors::SingleThreadedExecutor
         }
         catch (boost::system::system_error const& e)
         {
-            return []() -> std::shared_ptr<mil_preflight::PluginBase>
-            { return std::make_shared<mil_preflight::PluginBase>(); };
+            return []() -> std::shared_ptr<PluginBase> { return std::make_shared<PluginBase>(); };
         }
     }
 
@@ -175,16 +174,16 @@ class Backend : public rclcpp::executors::SingleThreadedExecutor
     void run()
     {
         std::string line;
-        std::shared_ptr<mil_preflight::PluginBase> plugin;
+        std::shared_ptr<PluginBase> plugin;
         std::vector<std::string> parameters;
         while (std::getline(std::cin, line))
         {
-            if (line[0] == mil_preflight::EOT)
+            if (line[0] == EOT)
             {
                 rclcpp::shutdown();
                 break;
             }
-            else if (line[0] == mil_preflight::GS)
+            else if (line[0] == GS)
             {
                 auto it = libraries_.find(parameters[1]);
                 if (it == libraries_.end())
@@ -193,8 +192,8 @@ class Backend : public rclcpp::executors::SingleThreadedExecutor
                     it = libraries_.emplace(parameters[1], std::move(creator)).first;
                 }
 
-                std::shared_ptr<mil_preflight::PseudoTest> test =
-                    std::make_shared<mil_preflight::PseudoTest>(std::move(parameters[0]), std::move(parameters[1]));
+                std::shared_ptr<PseudoTest> test =
+                    std::make_shared<PseudoTest>(std::move(parameters[0]), std::move(parameters[1]));
 
                 plugin = it->second();
                 add_node(plugin);
