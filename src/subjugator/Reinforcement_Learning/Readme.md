@@ -1,17 +1,15 @@
 --This week
 -defeat the ender dragon
-- get random locations, use same location for obj distance and to calc reward
--reset rostime for the ekf to work
--Reward calculation
+-start real training 
+-lower n steps
 
 --Next week
--start real training 
-
-
 --after finishes training
 -Test the model 
 -retrain the model
--
+
+
+
 
 ----AFTER FINISH SETTING UP
 -opencv to detect two blobs drive between them,

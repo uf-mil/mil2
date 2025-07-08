@@ -12,6 +12,7 @@ from rclpy.executors import MultiThreadedExecutor
 
 from subjugator_RL import GymNode
 from subjugator_RL.locks import cam_lock, imu_lock
+from subjugator_RL.dict_helpers import dicts_equal, nan_to_zero_in_dict
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50, 80, 3]
@@ -62,6 +63,7 @@ class SubEnv(gym.Env):
 
         self.random_pt = None
         self.previousDistance = None
+        self.previousObservation = None
 
         # self.localizationProc = subprocess.Popen(
         #     [
@@ -99,7 +101,7 @@ class SubEnv(gym.Env):
         )
 
         # First 3 are force, second 3 are torque
-        self.action_space = spaces.Box(low=-50, high=50, shape=(6,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-100, high=100, shape=(6,), dtype=np.float32)
 
     def seed(self, seed=None):
 
@@ -201,10 +203,7 @@ class SubEnv(gym.Env):
     def reset_simulation(self):
         try:
             cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: true, reset: {all: true}'"            
-            subprocess.run(cmd, shell=True, timeout=5, check=True)            
-
-            time.sleep(1)
-            self.unpause_gazebo()
+            subprocess.run(cmd, shell=True, timeout=5, check=True)           
             
             print("Reset sim successfully")
             return True
@@ -280,12 +279,12 @@ class SubEnv(gym.Env):
 
         if self.previousDistance is not None:
             progress = self.previousDistance - distance
-
             # rewards based on if sub is moving in the direction of the target
-            progress_reward = progress * 10
-
+            print("PROGESS:")
+            print(progress)
+            progress_reward = progress * 10000
         else:
-            progress_reward = 0.0
+            progress_reward = 0
 
         self.previousDistance = distance
 
@@ -321,18 +320,24 @@ class SubEnv(gym.Env):
         linear_vel = np.array([linVel.x, linVel.y, linVel.z], dtype=np.float32)
         angular_vel = np.array([angVel.x, angVel.y, angVel.z], dtype=np.float32)
 
+        # print(position)
+        # print(orientation)
+        # print(linear_vel)
+        # print(angular_vel)
+        # print(object_distance)
+        
         if self.random_pt is not None:
             object_distance = self.random_pt - position
         else:
             object_distance = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
-        return {
+        return nan_to_zero_in_dict({
             "position": position,
             "orientation": orientation,
             "Linear_velocity": linear_vel,
             "angular_velocity": angular_vel,
             "object_distance": object_distance,
-        }
+        })
 
     def _get_info(self):
         print("Getting info")
@@ -344,6 +349,10 @@ class SubEnv(gym.Env):
 
         # Get observation from the environment (especially object_distance)
         observation = self._get_obs()
+        while(observation is not None and self.previousObservation is not None and dicts_equal(observation, self.previousObservation)): 
+            observation = self._get_obs()
+            time.sleep(0.01)
+        self.previousObservation = observation
 
         # Get extra info (mostly for debugging)
         info = self._get_info()
@@ -375,22 +384,16 @@ class SubEnv(gym.Env):
         print("Attempting to pause sim")
         # Gazebo automatically pauses on reset
         success = self.pause_gazebo()
-        time.sleep(5)
+        time.sleep(2)
         print("Attempting to reset sim")
         success = self.reset_simulation()
-
-        # index = 0
-        # for i in range(999999999999):
-        #     index += i
-        # print("LMFAO")
-        # print(index)
 
         print("Attempting to reset localization")
         self.reset_localization()
         time.sleep(2)
         self.start_ekf_node()
         time.sleep(1)
-        #self.unpause_gazebo()
+        self.unpause_gazebo()
         time.sleep(1)
         # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
 
