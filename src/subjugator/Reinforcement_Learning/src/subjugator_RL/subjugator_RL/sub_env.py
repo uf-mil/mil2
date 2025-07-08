@@ -200,12 +200,8 @@ class SubEnv(gym.Env):
 
     def reset_simulation(self):
         try:
-            cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: true, reset: {all: true}'"            
-            subprocess.run(cmd, shell=True, timeout=5, check=True)            
-
-            time.sleep(1)
-            self.unpause_gazebo()
-            
+            cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'reset: {all: true}'"            
+            subprocess.run(cmd, shell=True, timeout=5, check=True)                     
             print("Reset sim successfully")
             return True
         except Exception as e:
@@ -375,23 +371,14 @@ class SubEnv(gym.Env):
         print("Attempting to pause sim")
         # Gazebo automatically pauses on reset
         success = self.pause_gazebo()
-        time.sleep(5)
         print("Attempting to reset sim")
         success = self.reset_simulation()
-
-        # index = 0
-        # for i in range(999999999999):
-        #     index += i
-        # print("LMFAO")
-        # print(index)
-
+        time.sleep(0.5)
         print("Attempting to reset localization")
         self.reset_localization()
-        time.sleep(2)
         self.start_ekf_node()
-        time.sleep(1)
-        #self.unpause_gazebo()
-        time.sleep(1)
+        time.sleep(0.5)
+        self.unpause_gazebo()
         # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
 
         self.random_pt = self.generate_random_pt()
@@ -401,9 +388,6 @@ class SubEnv(gym.Env):
             print("Gazebo service reset failed!")
             # You could raise an exception here if you want the environment to fail
             # raise RuntimeError("Failed to reset submarine using Gazebo services")
-
-        # Small delay to let physics settle
-        time.sleep(2)
 
         observation = self._get_obs()
         info = self._get_info()
