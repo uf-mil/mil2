@@ -367,7 +367,12 @@ class SubEnv(gym.Env):
             observation.get("object_distance", np.array([float("inf")] * 3)),
         )
 
-        if object_distance < 2:
+        # Terminate on success
+        if object_distance < 0.5:
+            terminated = True
+
+        # Terminate if sub glitches out and explodes
+        if object_distance > 50:
             terminated = True
 
         print("Reward: ", reward)
@@ -396,9 +401,12 @@ class SubEnv(gym.Env):
         self.unpause_gazebo()
         time.sleep(1)
         # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
-
+        
+        # Reset class variables
         self.random_pt = self.generate_random_pt()
         print(f"Generated target: {self.random_pt}")
+        self.previousDistance = 0
+        self.previousObservation = None
 
         if not success:
             print("Gazebo service reset failed!")
