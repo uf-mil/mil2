@@ -2,10 +2,22 @@ mission:
 
   - task: move
     parameters:
-      type: "Absolute"
-      x: 2.0
+
+      type: "Relative"
+      x: 0.0
       y: 0.0
-      z: 0.0
+      z: -0.7
+      i: 0.0
+      j: 0.0
+      k: 0.0
+      w: 1.0
+      timeout: 120
+  - task: move
+    parameters:
+      type: "Relative"
+      x: 5.0
+      y: 0.0
+      z: -0.7
       i: 0.0
       j: 0.0
       k: 0.0
@@ -14,31 +26,38 @@ mission:
   - task: navigate_around_object
     parameters:
       object: "None"
-      radius: 2.0
+
+      radius: 0.75
       timeout: 60
   - task: move
     parameters:
-      type: "Absolute"
-      position:
-        x: 2.0
-        y: 0.0
-        z: 0.0
-      orientation:
-        i: 0.0
-        j: 1.0
-        k: 0.0
-        w: 0.0
+      type: "Relative"
+      x: 8.5
+      y: 0.0
+      z: -0.7
+      i: 0.0
+      j: 0.0
+      k: 1.0
+      w: 0.0
       timeout: 120
   - task: move
     parameters:
-      type: "Absolute"
-      position:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      orientation:
-        i: 0.0
-        j: 1.0
-        k: 0.0
-        w: 0.0
+      type: "Relative"
+      x: 5.0
+      y: 0.0
+      z: -0.7
+      i: 0.0
+      j: 0.0
+      k: 1.0
+      w: 0.0
       timeout: 120
+  - task: move
+    parameters:
+      task: "Relative"
+      x: 0.0
+      y: 0.0
+      z: -0.7
+      i: 0.0
+      j: 0.0
+      k: 1.0
+      w: 0.0

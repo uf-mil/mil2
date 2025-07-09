@@ -91,6 +91,7 @@ class NavigateAroundObjectServer(Node):
             pose.position.x = x_position * self.distance_to_orbit
             pose.position.y = y_position * self.distance_to_orbit
             pose.position.z = starting_z
+
             pose.orientation.w = 1.0
             poses.append(pose)
 
@@ -132,7 +133,11 @@ class NavigateAroundObjectServer(Node):
                 )
                 near_goal_pose = False
                 while not near_goal_pose:
-                    near_goal_pose = self.check_at_goal_pose(self.current_pose, pose)
+                    near_goal_pose = self.check_at_goal_pose(
+                        self.current_pose,
+                        pose,
+                        0.2,
+                    )
 
                     # slow down the loop
                     self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))

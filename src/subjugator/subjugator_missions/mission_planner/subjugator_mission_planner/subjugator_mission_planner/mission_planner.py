@@ -18,6 +18,7 @@ class MissionPlanner(Node):
 
         package_share = get_package_share_directory("subjugator_mission_planner")
         print(f"PATH: {package_share}")
+
         default_mission_file = os.path.join("prequal.yaml")
         self.declare_parameter("mission_file", default_mission_file)
         mission_file = os.path.join(
@@ -25,6 +26,7 @@ class MissionPlanner(Node):
             "missions",
             self.get_parameter("mission_file").get_parameter_value().string_value,
         )
+
         self.mission = self.load_mission_file(mission_file)
         self.current_task_index = 0
         self.executing_task = False
