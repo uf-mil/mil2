@@ -5,7 +5,7 @@ mission:
       type: "Relative"
       x: 0.0
       y: 0.0
-      z: -0.3
+      z: -0.7
       i: 0.0
       j: 0.0
       k: 0.0
@@ -16,7 +16,7 @@ mission:
       type: "Relative"
       x: 5.0
       y: 0.0
-      z: -0.3
+      z: -0.7
       i: 0.0
       j: 0.0
       k: 0.0
@@ -25,14 +25,25 @@ mission:
   - task: navigate_around_object
     parameters:
       object: "None"
-      radius: 1.5
+      radius: 0.75
       timeout: 60
+  - task: move
+    parameters:
+      type: "Relative"
+      x: 8.5
+      y: 0.0
+      z: -0.7
+      i: 0.0
+      j: 0.0
+      k: 1.0
+      w: 0.0
+      timeout: 120
   - task: move
     parameters:
       type: "Relative"
       x: 5.0
       y: 0.0
-      z: -0.3
+      z: -0.7
       i: 0.0
       j: 0.0
       k: 1.0
@@ -40,12 +51,11 @@ mission:
       timeout: 120
   - task: move
     parameters:
-      type: "Relative"
+      task: "Relative"
       x: 0.0
       y: 0.0
-      z: -0.3
+      z: -0.7
       i: 0.0
       j: 0.0
       k: 1.0
       w: 0.0
-      timeout: 120
