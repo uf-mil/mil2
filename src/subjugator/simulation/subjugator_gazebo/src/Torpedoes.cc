@@ -1,7 +1,5 @@
 #include "Torpedoes.hh"
 
-#include "gz/plugin/Register.hh"  // For GZ_ADD_PLUGIN
-
 namespace torpedoes
 {
 
