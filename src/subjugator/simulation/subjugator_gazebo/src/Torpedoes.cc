@@ -14,6 +14,8 @@ Torpedoes::~Torpedoes()
 void Torpedoes::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                           gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr)
 {
+    std::cout << "[Torpedoes] Configuring Torpedoes Plugin ..." << std::endl;
+
     // Initialize the ROS node and keypress subscriber
     if (!rclcpp::ok())
     {
@@ -23,16 +25,27 @@ void Torpedoes::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::El
     keypress_sub_ = torpedo_node_->create_subscription<std_msgs::msg::String>(
         "/keyboard/keypress", 10, std::bind(&torpedoes::Torpedoes::KeypressCallback, this, std::placeholders::_1));
 
-    // Store sub9 entity for spawning torpedoes later
+    // Gather necessary information for future GatherWorldInfo() call
     this->sub9_Entity = entity;
 
     // Create copy of the Sub SDF element to perform modifications due to const
     this->sub9_SDF = sdf->Clone();
+
+    if (!worldNameFound)
+    {
+        ecm.Each<gz::sim::components::World, gz::sim::components::Name>(
+            [&](gz::sim::Entity const &entity, gz::sim::components::World const *,
+                gz::sim::components::Name const *name) -> bool
+            {
+                this->worldName = name->Data();
+                worldNameFound = true;
+                return false;
+            });
+    }
 }
 
 void Torpedoes::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
 {
-    // Set Flag for 't' keypress to spawn torpedo
     if (msg->data == "t" && !t_pressed)
     {
         t_pressed = true;
@@ -42,7 +55,7 @@ void Torpedoes::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
 void Torpedoes::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &ecm)
 {
     // Only process torpedoes if they have been spawned
-    if (torpedoCount <= 0 || info.paused || torpedoCount > 2)
+    if (torpedoCount == 0 || info.paused)
     {
         return;
     }
@@ -52,20 +65,17 @@ void Torpedoes::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompon
     {
         if (torpedoesWithVelocitySet.count(modelName) > 0)
             continue;
-
         // Find the model entity by name
         auto modelEntity = ecm.EntityByComponents(gz::sim::components::Name(modelName));
         if (modelEntity == gz::sim::kNullEntity)
         {
             continue;
         }
-
-        // Get the child link(s) of the model entity
+        // Find the 'body' link child entity using ChildrenByComponents
         gz::sim::Entity bodyLink = gz::sim::kNullEntity;
         auto linkChildren = ecm.ChildrenByComponents(modelEntity, gz::sim::components::Link());
         for (auto linkEntity : linkChildren)
         {
-            // Get the name component of the link
             auto nameComp = ecm.Component<gz::sim::components::Name>(linkEntity);
             if (nameComp && nameComp->Data() == "body")
             {
@@ -106,7 +116,7 @@ void Torpedoes::SpawnTorpedo(std::string const &worldName, std::string const &sd
         }
     }
 
-    // Make model name unique for each torpedo
+    // Make model name unique for each torpedo (assume double quotes in SDF)
     std::string uniqueName = "torpedo_" + std::to_string(torpedoCount + 1);
     size_t namePos = sdfString.find("<model name=\"");
     if (namePos != std::string::npos)
@@ -117,9 +127,11 @@ void Torpedoes::SpawnTorpedo(std::string const &worldName, std::string const &sd
             sdfString.replace(namePos + 13, quotePos - (namePos + 13), uniqueName);
         }
     }
-
     // Track the torpedo model name for lookup in PreUpdate
     torpedoModelNames.insert(uniqueName);
+
+    // Record spawn time
+    torpedoSpawnTimes[uniqueName] = -1.0;  // Will be set to sim time in PostUpdate
 
     // Prepare the factory message
     gz::msgs::EntityFactory factoryMsg;
@@ -147,27 +159,48 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
         return;
     }
 
-    // Gather World Name once for spawning torpedoes
-    if (!worldNameFound)
-    {
-        ecm.Each<gz::sim::components::World, gz::sim::components::Name>(
-            [&](gz::sim::Entity const &entity, gz::sim::components::World const *,
-                gz::sim::components::Name const *name) -> bool
-            {
-                this->worldName = name->Data();
-                worldNameFound = true;
-                return false;
-            });
-    }
-
     // Spin the ROS2 node
     rclcpp::spin_some(torpedo_node_);
 
-    // Get the pose of the sub9 entity
+    // Get the updated pose of the sub9 entity
     auto sub9_component = ecm.Component<gz::sim::components::Pose>(this->sub9_Entity);
     if (sub9_component)
     {
         this->sub9_pose = sub9_component->Data();
+    }
+
+    // Set spawn time for new torpedoes (if not set)
+    for (auto &pair : torpedoSpawnTimes)
+    {
+        if (pair.second < 0.0)
+        {
+            pair.second = std::chrono::duration_cast<std::chrono::duration<double>>(info.simTime).count();
+        }
+    }
+
+    // Remove torpedoes after 8 seconds
+    for (auto spawnedTorpsIter = torpedoSpawnTimes.begin(); spawnedTorpsIter != torpedoSpawnTimes.end();)
+    {
+        double timeElapsed =
+            std::chrono::duration_cast<std::chrono::duration<double>>(info.simTime).count() - spawnedTorpsIter->second;
+        if (timeElapsed > 8.0)
+        {
+            // Remove entity by name
+            gz::msgs::Entity removeMsg;
+            removeMsg.set_name(spawnedTorpsIter->first);
+            removeMsg.set_type(gz::msgs::Entity::MODEL);
+            std::string removeService = "/world/" + worldName + "/remove";
+            node.Request(removeService, removeMsg, timeout, reply, result);
+
+            // Clean up tracking
+            torpedoModelNames.erase(spawnedTorpsIter->first);
+            torpedoesWithVelocitySet.erase(spawnedTorpsIter->first);
+            spawnedTorpsIter = torpedoSpawnTimes.erase(spawnedTorpsIter);
+        }
+        else
+        {
+            ++spawnedTorpsIter;
+        }
     }
 
     // Spawn two torpedoes maximum, only once per 't' keypress
@@ -184,9 +217,3 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
 // Register plugin for Gazebo
 GZ_ADD_PLUGIN(torpedoes::Torpedoes, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate,
               gz::sim::ISystemPreUpdate)
-
-// TODO:
-// - Add Torpedo Launcher Model to Sub9 SDF
-// - Send out second torpedo slightly offset from the first one
-// - Add logic to handle torpedo lifecycle (e.g., timeout, removal)
-// - Move as much logic as possible to Configure()

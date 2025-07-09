@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <set>
 #include <sstream>
 #include <string>
@@ -12,6 +13,7 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <gz/plugin/Register.hh>  // For GZ_ADD_PLUGIN
 // 'gz' and 'sdf' includes turn into namespace::namespace::ClassName
+#include <gz/msgs/entity.pb.h>
 #include <gz/msgs/entity_factory.pb.h>
 
 #include <gz/math/Pose3.hh>
@@ -68,12 +70,13 @@ class Torpedoes : public gz::sim::System,
     bool subEntityFound = false;  // Track if the sub9 entity has been found
 
     // Torpedo Data Structures & Variables //
-    std::set<std::string> torpedoModelNames;         // Unique names of torpedo models spawned
-    std::set<std::string> torpedoesWithVelocitySet;  // Names of torpedoes that have had their velocity set
+    std::set<std::string> torpedoModelNames;          // Unique names of torpedo models spawned
+    std::set<std::string> torpedoesWithVelocitySet;   // Names of torpedoes that have had their velocity set
+    std::map<std::string, double> torpedoSpawnTimes;  // Track spawn times of torpedoes
     int torpedoCount = 0;
     bool t_pressed = false;  // Track if 't' key was pressed
     bool worldNameFound = false;
-    std::string worldName = "task2_2025.world";
+    std::string worldName = "bingbong";
 
     // Torpedo SDF Values //
     unsigned int timeout = 2000;  // Timeout in milliseconds
