@@ -30,6 +30,7 @@ class MovementServer(Node):
 
         # Publisher for goal poses
         self.goal_pub = self.create_publisher(Pose, "/goal_pose", 10)
+
         # initialize pose
         self.current_pose = Pose()
 
