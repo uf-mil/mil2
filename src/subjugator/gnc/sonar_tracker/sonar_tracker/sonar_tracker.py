@@ -13,12 +13,23 @@ class SonarTracker:
         pitch: y
         yaw: z
         """
-
         position = np.array([x, y, z])
         direction = np.array([roll, pitch, yaw])
-
-        # ts (this) should already be normalized!! TODO remove this to save time
+        # Normalize the direction vector
         direction = direction / np.linalg.norm(direction)
+        
+        # Minimum distance threshold (in meters)
+        min_distance = 0.3
+        
+        # Check distance to existing ping positions
+        for i, (existing_pos, _) in enumerate(self.pings):
+            distance = np.linalg.norm(position - existing_pos)
+            if distance < min_distance:
+                # If too close, replace the existing ping
+                self.pings[i] = (position, direction)
+                return
+    
+        # If not too close to any existing pings, add as new ping
         self.pings.append((position, direction))
 
     def triangulate(self) -> np.ndarray | None:
