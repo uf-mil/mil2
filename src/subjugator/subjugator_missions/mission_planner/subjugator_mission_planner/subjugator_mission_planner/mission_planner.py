@@ -9,6 +9,7 @@ from rclpy.node import Node
 from subjugator_msgs.action import (
     Movement,
     NavigateAround,
+    Wait,
 )
 
 
@@ -41,6 +42,11 @@ class MissionPlanner(Node):
             self,
             NavigateAround,
             "navigate_around_object",
+        )
+        self.wait_client = ActionClient(
+            self,
+            Wait,
+            "wait",
         )
 
         # Timer to periodically check mission progress and start tasks
@@ -80,6 +86,8 @@ class MissionPlanner(Node):
             self.send_move_to_goal(params)
         elif task_name == "navigate_around_object":
             self.send_navigate_around_goal(params)
+        elif task_name == "wait":
+            self.send_wait_goal(params)
         else:
             self.get_logger().error(f"Unknown task: {task_name}, skipping")
             self.current_task_index += 1
@@ -107,7 +115,7 @@ class MissionPlanner(Node):
 
     def send_navigate_around_goal(self, params):
         if not self.navigate_around_client.wait_for_server(timeout_sec=2.0):
-            self.get_logger().error("NavigateAroundObject action server not available")
+            self.get_logger().error("Navigate around action server not available")
             return
 
         goal_msg = NavigateAround.Goal()
@@ -116,6 +124,17 @@ class MissionPlanner(Node):
 
         self.executing_task = True
         self._send_goal(self.navigate_around_client, goal_msg)
+
+    def send_wait_goal(self, params):
+        if not self.wait_client.wait_for_server(timeout_sec=2.0):
+            self.get_logger().error("Wait action server not available")
+            return
+
+        goal_msg = Wait.Goal()
+        goal_msg.time = params.get("time", 0.0)
+
+        self.executing_task = True
+        self._send_goal(self.wait_client, goal_msg)
 
     def _send_goal(self, client: ActionClient, goal_msg):
         send_goal_future = client.send_goal_async(
