@@ -9,7 +9,7 @@ PathPlanner::PathPlanner() : Node("path_planner_node"), segment_count_(10)
     goal_pose_sub_ = this->create_subscription<geometry_msgs::msg::Pose>(
         "goal_pose", 10, [this](geometry_msgs::msg::Pose::SharedPtr msg) { goal_pose_cb(msg); });
     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-        "odom", 10, [this](nav_msgs::msg::Odometry::SharedPtr msg) { odom_cb(msg); });
+        "odometry/filtered", 10, [this](nav_msgs::msg::Odometry::SharedPtr msg) { odom_cb(msg); });
     // Path publisher
     path_pub_ = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 }

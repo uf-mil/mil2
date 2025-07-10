@@ -28,6 +28,7 @@ class Slerp
             return;
         left.conjugate();
         right = left * right;
+        left.conjugate();
         double abs_imag = right.abs_imag();
         imag = right.imaginary() / abs_imag;
 
@@ -42,7 +43,7 @@ class Slerp
         double exp_ln = std::exp(ln * t);
         double sin_atan = std::sin(atan2 * t);
         double cos_atan = std::cos(atan2 * t);
-        Rotation res = left * ((imag * (exp_ln * sin_atan)) + exp_ln * cos_atan) * -1;
+        Rotation res = left * ((imag * (exp_ln * sin_atan)) + exp_ln * cos_atan);
         res.imaginary();
         return res;
     }
