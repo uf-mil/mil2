@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro
+    name="PositionPublisher"
+    params="
+      name
+      namespace='position_publisher'
+      parent='base_link'
+      xyz='0 0 0'
+      rpy='0 0 0'
+      update_rate='10'
+      frame_id='position_publisher_frame'
+      noise_mean='0.0'
+      noise_stddev='0.0'
+    "
+  >
+    <link name="${name}_link">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/>
+        <inertia ixx="0.0" iyy="0.0" izz="0.0" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+    <!-- PositionPublisher Joint -->
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+
+    <!-- This ensures that the fixed link is not simplified away -->
+    <gazebo reference="${name}_joint">
+      <disableFixedJointLumping>true</disableFixedJointLumping>
+      <preserveFixedJoint>true</preserveFixedJoint>
+    </gazebo>
+
+    <gazebo>
+      <plugin name="position_publisher::PositionPublisher" filename="PositionPublisher">
+        <!-- SDF parameters -->
+        <frame_id>${frame_id}</frame_id>
+        <offset>0 0 0 0 0 0</offset>
+        <topic>/depth</topic>
+        <update_rate>${update_rate}</update_rate>
+        <noise_mean>${noise_mean}</noise_mean>
+        <noise_stddev>${noise_stddev}</noise_stddev>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</robot>

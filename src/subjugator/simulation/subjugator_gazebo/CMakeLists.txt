@@ -55,6 +55,9 @@ add_library(Hydrophone SHARED src/Hydrophone.cc)
 # Plugin 5: Thruster Bridge
 add_library(ThrusterBridge SHARED src/ThrusterBridge.cc)
 
+# Plugin 6: PositionPublisher
+add_library(PositionPublisher SHARED src/PositionPublisher.cc)
+
 # Ensures plugin can see include directory to access its header files
 target_include_directories(ExamplePlugin PRIVATE include)
 
@@ -67,6 +70,8 @@ target_include_directories(DepthSensor PRIVATE include)
 target_include_directories(Hydrophone PRIVATE include)
 
 target_include_directories(ThrusterBridge PRIVATE include)
+
+target_include_directories(PositionPublisher PRIVATE include)
 
 # Add additional needed libraries
 target_link_libraries(
@@ -91,6 +96,9 @@ target_link_libraries(DepthSensor gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
 # Link libraries for ThrusterBridge plugin
 target_link_libraries(ThrusterBridge gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
 
+target_link_libraries(PositionPublisher
+                      gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER} rclcpp::rclcpp)
+
 # Specify dependencies using ament_target_dependencies
 ament_target_dependencies(
   ExamplePlugin
@@ -109,9 +117,18 @@ ament_target_dependencies(Hydrophone rclcpp geometry_msgs mil_msgs)
 
 ament_target_dependencies(ThrusterBridge rclcpp subjugator_msgs geometry_msgs)
 
+ament_target_dependencies(PositionPublisher rclcpp geometry_msgs std_msgs)
+
 # Install the plugins
-install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge Hydrophone DepthSensor
-                ThrusterBridge LIBRARY DESTINATION lib/${PROJECT_NAME})
+install(
+  TARGETS UnderwaterCamera
+          ExamplePlugin
+          DVLBridge
+          Hydrophone
+          DepthSensor
+          ThrusterBridge
+          PositionPublisher
+  LIBRARY DESTINATION lib/${PROJECT_NAME})
 
 # Install headers
 install(DIRECTORY include/ DESTINATION include)

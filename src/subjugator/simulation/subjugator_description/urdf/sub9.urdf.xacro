@@ -97,6 +97,7 @@
     </plugin>
 
     <plugin filename="ThrusterBridge" name="thrusterBridge::ThrusterBridge"/>
+    <plugin name="position_publisher::PositionPublisher" parent="base_link" filename="libPositionPublisher.so"/>
   </gazebo>
 
   <!-- Cameras -->
