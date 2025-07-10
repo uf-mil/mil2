@@ -37,6 +37,7 @@ rosidl_generate_interfaces(
   "action/NavigateAround.action"
   "action/NavigateThrough.action"
   "action/Movement.action"
+  "action/Wait.action"
   DEPENDENCIES
   geometry_msgs
   std_msgs
