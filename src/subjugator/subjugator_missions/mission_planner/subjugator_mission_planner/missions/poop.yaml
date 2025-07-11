@@ -1,0 +1,8 @@
+mission:
+  - task: "track_object"
+    parameters:
+      object_type: "green_square"
+      type_of_movement: "rotate"
+      max_duration: 120.0
+      desired_distance: 2.0
+      keep_centered: true

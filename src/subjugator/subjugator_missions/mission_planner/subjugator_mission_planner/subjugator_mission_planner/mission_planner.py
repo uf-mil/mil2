@@ -4,12 +4,13 @@ import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Pose
-from rclpy.action import ActionClient
+from rclpy.action.client import ActionClient
 from rclpy.node import Node
 from subjugator_msgs.action import (
     Movement,
     NavigateAround,
     Wait,
+    TrackObject,
 )
 
 
@@ -19,8 +20,7 @@ class MissionPlanner(Node):
 
         package_share = get_package_share_directory("subjugator_mission_planner")
         print(f"PATH: {package_share}")
-
-        default_mission_file = os.path.join("prequal.yaml")
+        default_mission_file = os.path.join(package_share, "missions", "poop.yaml")
         self.declare_parameter("mission_file", default_mission_file)
         mission_file = os.path.join(
             package_share,
@@ -47,6 +47,11 @@ class MissionPlanner(Node):
             self,
             Wait,
             "wait",
+        )
+        self.track_object_client = ActionClient(
+            self,
+            TrackObject,
+            "track_object",
         )
 
         # Timer to periodically check mission progress and start tasks
@@ -88,6 +93,8 @@ class MissionPlanner(Node):
             self.send_navigate_around_goal(params)
         elif task_name == "wait":
             self.send_wait_goal(params)
+        elif task_name == "track_object":
+            self.send_track_object_goal(params)
         else:
             self.get_logger().error(f"Unknown task: {task_name}, skipping")
             self.current_task_index += 1
@@ -113,14 +120,25 @@ class MissionPlanner(Node):
         self.executing_task = True
         self._send_goal(self.movement_client, goal_msg)
 
-    def send_navigate_around_goal(self, params):
-        if not self.navigate_around_client.wait_for_server(timeout_sec=2.0):
-            self.get_logger().error("Navigate around action server not available")
+    def send_track_object_goal(self, params):
+        if not self.track_object_client.wait_for_server(timeout_sec=2.0):
+            self.get_logger().error("Track object goal no working")
             return
 
-        goal_msg = NavigateAround.Goal()
-        goal_msg.object = params.get("object", "")
-        goal_msg.radius = params.get("radius", 0.0)
+        goal_msg = TrackObject.Goal()
+        goal_msg.object_type = "green"
+        goal_msg.type_of_movement = params.get("type_of_movement", "rotate") # either translate or rotate
+
+        self.executing_task = True
+        self._send_goal(self.track_object_client, goal_msg)
+
+    def send_navigate_around_goal(self, params):
+        if not self.track_object_client.wait_for_server(timeout_sec=2.0):
+            self.get_logger().error("track_object action server not available")
+            return
+
+        goal_msg = TrackObject.Goal()
+        goal_msg.object_type = "idk"
 
         self.executing_task = True
         self._send_goal(self.navigate_around_client, goal_msg)
