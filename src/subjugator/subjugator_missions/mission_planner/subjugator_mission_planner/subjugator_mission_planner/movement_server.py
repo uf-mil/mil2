@@ -7,18 +7,18 @@ from nav_msgs.msg import Odometry
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from subjugator_msgs.action import Movement
+from subjugator_msgs.action import Move
 
 
 class MovementServer(Node):
     def __init__(self):
-        super().__init__("movement_server")
+        super().__init__("move")
 
         # Action server
         self._action_server = ActionServer(
             self,
-            Movement,
-            "movement_server",
+            Move,
+            "move",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
@@ -88,7 +88,7 @@ class MovementServer(Node):
         self.get_logger().info("Completed movement!")
 
         goal_handle.succeed()
-        result = Movement.Result()
+        result = MovementServer.Result()
         result.success = True
         result.message = "Successfully moved to goal pose"
         time.sleep(1.0)
