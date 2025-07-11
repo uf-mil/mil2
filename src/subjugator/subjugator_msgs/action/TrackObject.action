@@ -1,0 +1,11 @@
+# Goal
+string object_type
+string type_of_movement
+# KeyValue[] parameters
+---
+# Result
+bool success
+string message
+---
+# Feedback
+string status_message

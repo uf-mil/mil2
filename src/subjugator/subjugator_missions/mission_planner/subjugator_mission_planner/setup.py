@@ -17,7 +17,6 @@ setup(
         ),
         (f"share/{package_name}", ["package.xml"]),
         (f"share/{package_name}/missions", glob("missions/*.yaml")),
-        (f"share/{package_name}/missions", ["missions/prequal.yaml"]),
         (
             f"share/{package_name}/launch",
             ["launch/mission_planner_launch.py", "launch/task_server_launch.py"],
@@ -39,6 +38,7 @@ setup(
             "search_server = subjugator_mission_planner.search_server:main",
             "movement_server = subjugator_mission_planner.movement_server:main",
             "wait_server = subjugator_mission_planner.wait_server:main",
+            "track_object = subjugator_mission_planner.track_object_server:main",
         ],
     },
 )
