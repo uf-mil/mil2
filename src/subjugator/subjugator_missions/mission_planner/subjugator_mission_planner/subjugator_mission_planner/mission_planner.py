@@ -9,8 +9,8 @@ from rclpy.node import Node
 from subjugator_msgs.action import (
     Movement,
     NavigateAround,
-    Wait,
     TrackObject,
+    Wait,
 )
 
 
@@ -127,18 +127,22 @@ class MissionPlanner(Node):
 
         goal_msg = TrackObject.Goal()
         goal_msg.object_type = "green"
-        goal_msg.type_of_movement = params.get("type_of_movement", "rotate") # either translate or rotate
+        goal_msg.type_of_movement = params.get(
+            "type_of_movement",
+            "rotate",
+        )  # either translate or rotate
 
         self.executing_task = True
         self._send_goal(self.track_object_client, goal_msg)
 
     def send_navigate_around_goal(self, params):
-        if not self.track_object_client.wait_for_server(timeout_sec=2.0):
-            self.get_logger().error("track_object action server not available")
+        if not self.navigate_around_client.wait_for_server(timeout_sec=2.0):
+            self.get_logger().error("Navigate around action server not available")
             return
 
-        goal_msg = TrackObject.Goal()
-        goal_msg.object_type = "idk"
+        goal_msg = NavigateAround.Goal()
+        goal_msg.object = params.get("object", "")
+        goal_msg.radius = params.get("radius", 0.0)
 
         self.executing_task = True
         self._send_goal(self.navigate_around_client, goal_msg)
