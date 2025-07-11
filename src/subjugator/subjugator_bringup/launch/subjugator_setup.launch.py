@@ -117,14 +117,6 @@ def generate_launch_description():
         output="both",
     )
 
-    joe_goal_to_rviz = Node(
-        package="goal_to_viz",
-        executable="goal_to_viz",
-        name="goal_to_viz",
-        output="both",
-    )
-
-
     return LaunchDescription(
         [
             gui_cmd,
@@ -136,6 +128,5 @@ def generate_launch_description():
             controller,
             path_planner,
             trajectory_planner,
-            joe_goal_to_rviz,
         ],
     )
