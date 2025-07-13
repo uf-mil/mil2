@@ -14,11 +14,17 @@ find_package(Boost REQUIRED COMPONENTS thread chrono filesystem system)
 find_package(ftxui REQUIRED)
 
 add_library(${PROJECT_NAME}_lib SHARED src/frontend.cpp)
-add_executable(${PROJECT_NAME} src/mil_preflight.cpp)
+add_executable(${PROJECT_NAME} src/mil_preflight.cpp src/tui.cpp)
 include_directories(include ${ftxui_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
 
-target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_lib Boost::system
-                      Boost::filesystem)
+target_link_libraries(
+  ${PROJECT_NAME}
+  ${PROJECT_NAME}_lib
+  Boost::system
+  Boost::filesystem
+  ftxui::screen
+  ftxui::dom
+  ftxui::component)
 
 add_executable(mil_preflight_backend src/backend.cpp)
 
@@ -33,15 +39,6 @@ install(
   DESTINATION bin
   FILES_MATCHING
   PATTERN "*")
-
-add_library(ftx_ui SHARED src/uis/ftxui/ui.cpp src/uis/ftxui/widgets.cpp)
-
-target_link_libraries(
-  ftx_ui
-  PRIVATE ftxui::screen
-  PRIVATE ftxui::dom
-  PRIVATE ftxui::component Boost::thread Boost::chrono Boost::filesystem
-          Boost::system)
 
 add_library(topic_plugin SHARED src/plugins/topic_plugin.cpp)
 
@@ -59,7 +56,7 @@ add_library(actuator_plugin SHARED src/plugins/actuator_plugin.cpp)
 
 ament_target_dependencies(actuator_plugin rclcpp subjugator_msgs Boost)
 
-install(TARGETS topic_plugin setup_plugin node_plugin actuator_plugin ftx_ui
+install(TARGETS topic_plugin setup_plugin node_plugin actuator_plugin
                 ${PROJECT_NAME}_lib LIBRARY DESTINATION lib)
 
 ament_package()

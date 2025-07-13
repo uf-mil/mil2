@@ -45,21 +45,4 @@ class Frontend
     void runAction(std::shared_ptr<Action> action);
 };
 
-class UIBase
-{
-  public:
-    UIBase()
-    {
-    }
-    virtual ~UIBase()
-    {
-    }
-
-    virtual int run([[maybe_unused]] std::shared_ptr<Frontend> frontend)
-    {
-        std::cout << "Unrecognized ui type " << frontend->getArgs()[0] << std::endl;
-        return 1;
-    }
-};
-
 }  // namespace mil_preflight
