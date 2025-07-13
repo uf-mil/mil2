@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>mil_preflight</name>
-  <version>0.1.3</version>
+  <version>1.0.0</version>
   <description>Preflight is an automated testing tool that should be run after turning on and connecting to the robot to run a prelaunch hardware checklist and automated software checklist.</description>
   <maintainer email="zhangrenzhongzheng@outlook.com">zhongzheng</maintainer>
   <license>MIL</license>
@@ -13,9 +13,6 @@
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
   <depend>subjugator_msgs</depend>
-
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
