@@ -139,6 +139,43 @@ class SubEnv(gym.Env):
             print(f"Error removing submarine: {e}")
             return False
 
+    def _spawn_buoy(self, x: float, y: float, z: float) -> bool:
+        """
+        Calls /world/robosub_2024/create to spawn buoy_2024 at (x, y, z)
+        with a default unit-quaternion orientation.
+        """
+        # Build the EntityFactory request string
+        req = (
+            f'name: "TARGET_BUOY"; '
+            f'sdf_filename: "/home/will/mil2/src/subjugator/'
+            f'simulation/subjugator_description/models/buoy_2024/buoy.sdf"; '
+            f'pose: {{ position: {{ x: {x}, y: {y}, z: {z} }}, '
+            f'orientation: {{ x: 0.0, y: 0.0, z: 0.0, w: 1.0 }} }}'
+        )
+
+        cmd = [
+            "gz", "service",
+            "--service", "/world/robosub_2024/create",
+            "--reqtype", "gz.msgs.EntityFactory",
+            "--reptype", "gz.msgs.Boolean",
+            "--timeout", "2000",
+            "--req", req
+        ]
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                print(f"Successfully spawned buoy at x={x}, y={y}, z={z}")
+                return True
+            else:
+                print(f"Failed to spawn buoy: {result.stderr.strip()}")
+                return False
+
+        except subprocess.TimeoutExpired:
+            print("Create service call timed out")
+            return False
+
+
     def unpause_gazebo(self):
         try:
             cmd = [
@@ -247,8 +284,11 @@ class SubEnv(gym.Env):
         x = np.random.uniform(-5, 5)
         y = np.random.uniform(-5, 5)
 
-        # can't go out of the water
-        z = np.random.uniform(-5, 0)
+        # sub is bad at changing its depth, -0.2 is default
+        z = -0.12 #np.random.uniform(-1.5, 0)
+
+        # also put the point as a buoy into gazebo
+        self._spawn_buoy(x, y, z)
 
         return np.array([x, y, z], dtype=np.float32)
 
@@ -274,21 +314,23 @@ class SubEnv(gym.Env):
         distance = np.linalg.norm(observation["object_distance"])
 
         # sub has reached target
-        if distance < 1.0:
-            return 1000
+        if distance < 0.5:
+            return 10000
 
         if self.previousDistance is not None:
             progress = self.previousDistance - distance
             # rewards based on if sub is moving in the direction of the target
-            print("PROGESS:")
-            print(progress)
+            print(f"PROGESS: {progress}")
+            # higher negative penalty for negative progress
+            if progress < 0: 
+                progress = progress * 5
             progress_reward = progress * 10000
         else:
             progress_reward = 0
 
         self.previousDistance = distance
 
-        distance_reward = 1 / distance
+        distance_reward = ((5/distance) ** 2) - 1
 
         total_reward = progress_reward + distance_reward
 
@@ -371,12 +413,12 @@ class SubEnv(gym.Env):
         if object_distance < 0.5:
             terminated = True
 
-        # Terminate if sub glitches out and explodes
-        if object_distance > 50:
+        # Terminate if sub veers out too far or glitches off map
+        if object_distance > 10:
             terminated = True
 
         print("Reward: ", reward)
-        print("Object distance: ", object_distance)
+        print(object_distance, " - Object distance")
         print(f"Sub's Position={observation['position']}")
         print(f"Action value={action}")
         return observation, reward, terminated, False, info
