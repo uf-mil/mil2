@@ -3,8 +3,8 @@ import RPi.GPIO as GPIO
 from rclpy.node import Node
 from subjugator_msgs.srv import Servo
 
-Dropper_Pin = 33
-Gripper_Pin = 15
+Dropper_Pin = 15
+Gripper_Pin = 33
 Torpedo_Pin = 32
 
 GPIO.setmode(GPIO.BOARD)
@@ -12,7 +12,7 @@ GPIO.setmode(GPIO.BOARD)
 # setup dropper pwm
 GPIO.setup(Dropper_Pin, GPIO.OUT, initial=GPIO.HIGH)
 Dropper_PWM = GPIO.PWM(Dropper_Pin, 50)
-Dropper_PWM.start(0)
+Dropper_PWM.start(12)
 
 # setup gripper pwm
 GPIO.setup(Gripper_Pin, GPIO.OUT, initial=GPIO.HIGH)
@@ -24,6 +24,9 @@ GPIO.setup(Torpedo_Pin, GPIO.OUT, initial=GPIO.HIGH)
 Torpedo_PWM = GPIO.PWM(Torpedo_Pin, 50)
 Torpedo_PWM.start(0)
 
+# duty needs to = 12 to allow for load
+# duty needs to = 7 for first drop and 4 for second drop
+
 
 class Servo_Controller(Node):
     def __init__(self):
@@ -33,8 +36,7 @@ class Servo_Controller(Node):
         self.srv3 = self.create_service(Servo, "torpedo", self.torpedo_callback)
 
     def change_angle(self, x, angle):
-        if angle <= 180 or angle >= 0:
-            duty = 6 * (angle / 180) + 4.5
+        duty = angle / 10
         if x == 1:
             Dropper_PWM.ChangeDutyCycle(duty)
         elif x == 2:
