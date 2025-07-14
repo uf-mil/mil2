@@ -61,8 +61,7 @@ void Frontend::runTest(std::shared_ptr<Test> test)
         action = test->nextAction();
     }
 
-    if (!child_in_.fail())
-        child_in_ << EOT << std::endl;
+    child_in_ << EOT << std::endl;
 
     test->onFinish();
 }
@@ -71,124 +70,57 @@ void Frontend::runAction(std::shared_ptr<Action> action)
 {
     action->onStart();
 
-    enum class State
-    {
-        START,
-        STDOUT,
-        SUMMERY,
-        QUESTION,
-        OPTIONS,
-    } state = State::START;
-
     std::string line;
-    std::string summery;
     bool success = false;
     action->stdouts.clear();
     action->stderrs.clear();
 
-    std::string question;
-    std::vector<std::string> options;
-
-    while (true)
+    child_in_ << action->getName() << std::endl;
+    for (std::string const& parameter : action->getParameters())
     {
-        if (state == State::START)
-        {
-            try
-            {
-                child_in_ << action->getName() << std::endl;
-                for (std::string const& parameter : action->getParameters())
-                {
-                    child_in_ << parameter << std::endl;
-                }
-                child_in_ << GS << std::endl;
-            }
-            catch (std::exception const& e)
-            {
-                summery = "Broken pipe: " + std::string(e.what());
-                break;
-            }
-            state = State::STDOUT;
-        }
-        else if (state == State::STDOUT)
-        {
-            if (!std::getline(child_out_, line))
-            {
-                summery = "Broken pipe";
-                break;
-            }
+        child_in_ << parameter << std::endl;
+    }
+    child_in_ << GS << std::endl;
 
-            if (line[0] == ACK)
-            {
-                state = State::SUMMERY;
-                success = true;
-            }
-            else if (line[0] == NCK)
-            {
-                state = State::SUMMERY;
-            }
-            else if (line[0] == BEL)
-            {
-                state = State::QUESTION;
-            }
-            else
-            {
-                action->stdouts.push_back(std::move(line));
-            }
-        }
-        else if (state == State::QUESTION)
+    while (std::getline(child_out_, line))
+    {
+        if (line[0] == ACK)
         {
-            if (!std::getline(child_out_, question, GS))
-            {
-                summery = "Broken pipe";
-                break;
-            }
-
-            state = State::OPTIONS;
+            success = true;
+            break;
         }
-        else if (state == State::OPTIONS)
+        else if (line[0] == NCK)
         {
-            if (!std::getline(child_out_, line, GS))
-            {
-                summery = "Broken pipe";
-                break;
-            }
-
-            if (line[0] == EOT)
-            {
-                std::shared_future<int> feedback = action->onQuestion(std::move(question), std::move(options));
-                try
-                {
-                    child_in_ << feedback.get() << std::endl;
-                    options.clear();
-                }
-                catch (std::exception const& e)
-                {
-                    summery = "Broken pipe: " + std::string(e.what());
-                    break;
-                }
-                state = State::STDOUT;
-            }
-            else
-            {
-                options.push_back(std::move(line));
-            }
+            break;
         }
-        else if (state == State::SUMMERY)
+        else if (line[0] == BEL)
         {
-            if (!std::getline(child_out_, summery))
-            {
-                break;
-            }
-
-            while (std::getline(child_err_, line))
+            std::string question;
+            std::vector<std::string> options;
+            std::getline(child_out_, question, GS);
+            while (std::getline(child_out_, line, GS))
             {
                 if (line[0] == EOT)
                     break;
-                action->stderrs.push_back(std::move(line));
+                options.push_back(std::move(line));
             }
-
-            break;
+            std::shared_future<int> feedback = action->onQuestion(std::move(question), std::move(options));
+            child_in_ << feedback.get() << std::endl;
         }
+        else
+        {
+            action->stdouts.push_back(std::move(line));
+        }
+    }
+
+    std::string summery;
+    std::getline(child_out_, summery);
+
+    while (std::getline(child_err_, line))
+    {
+        if (line[0] == EOT)
+            break;
+        action->stderrs.push_back(std::move(line));
     }
 
     action->onFinish(success, std::move(summery));
