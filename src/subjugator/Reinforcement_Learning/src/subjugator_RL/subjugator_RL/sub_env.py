@@ -281,8 +281,11 @@ class SubEnv(gym.Env):
             print(f"Could not reset ROS time: {e}")
 
     def generate_random_pt(self):
-        x = np.random.uniform(-5, 5)
-        y = np.random.uniform(-5, 5)
+        # Generate random point greater than min_x or y, but less than max_x or y
+        min_x, max_x = 3, 6
+        min_y, max_y = 3, 6
+        x = np.where(np.random.rand() < 0.5, np.random.uniform(-min_x, -max_x), np.random.uniform(min_x, max_x))
+        y = np.where(np.random.rand() < 0.5, np.random.uniform(-min_y, -max_y), np.random.uniform(min_y, max_y))
 
         # sub is bad at changing its depth, -0.2 is default
         z = -0.12 #np.random.uniform(-1.5, 0)
@@ -322,9 +325,10 @@ class SubEnv(gym.Env):
             # rewards based on if sub is moving in the direction of the target
             print(f"PROGESS: {progress}")
             # higher negative penalty for negative progress
-            if progress < 0: 
-                progress = progress * 5
-            progress_reward = progress * 10000
+            progress *= 2 if progress < 0 else 1
+            # clip progress in case of sudden jerk, increase progress reward to meaningful amount
+            progress_reward = 100 * np.clip(progress, -0.05, 0.05)
+
         else:
             progress_reward = 0
 
@@ -399,22 +403,24 @@ class SubEnv(gym.Env):
         # Get extra info (mostly for debugging)
         info = self._get_info()
 
-        reward = self.calculate_reward(observation)
-
-        # Define termination
-        terminated = False
+        reward = self.calculate_reward(observation)        
 
         # gets eucladian distance
         object_distance = np.linalg.norm(
             observation.get("object_distance", np.array([float("inf")] * 3)),
         )
-
+        
+        # -- Termination conditions --        
+        terminated = False # Define termination
+        position = observation["position"]
+        x, y = position[0], position[1]   
         # Terminate on success
         if object_distance < 0.5:
-            terminated = True
-
+            print(f"SUB ENV SUCCESS at x={x:.2f}, y={y:.2f}")
+            terminated = True     
         # Terminate if sub veers out too far or glitches off map
-        if object_distance > 10:
+        if not (-10.5 < x < 10.5 and -24 < y < 24):
+            print(f"Terminated: Out of bounds at x={x:.2f}, y={y:.2f}")
             terminated = True
 
         print("Reward: ", reward)

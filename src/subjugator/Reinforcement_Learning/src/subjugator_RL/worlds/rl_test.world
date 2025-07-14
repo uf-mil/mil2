@@ -13,7 +13,7 @@
             <!-- Physics Settings -->
             <physics name='bullet_physics' default='1' type='bullet'>
                 <real_time_update_rate>2</real_time_update_rate>
-                <max_step_size>0.002</max_step_size>
+                <max_step_size>0.005</max_step_size>
                 <real_time_factor>20.0</real_time_factor>
             </physics>
 
