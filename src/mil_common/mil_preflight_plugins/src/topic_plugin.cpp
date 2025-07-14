@@ -1,7 +1,5 @@
 #include <map>
 
-#include <boost/dll/alias.hpp>
-
 #include "mil_preflight/plugin.h"
 
 namespace mil_preflight
@@ -31,7 +29,7 @@ class TopicPlugin : public SimplePlugin
         auto it = topics_.find(parameters[0]);
         if (it == topics_.end())
         {
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             topics_ = get_topic_names_and_types();
 
             it = topics_.find(parameters[0]);
@@ -46,4 +44,5 @@ class TopicPlugin : public SimplePlugin
 };
 }  // namespace mil_preflight
 
-BOOST_DLL_ALIAS(mil_preflight::TopicPlugin::create, topic_plugin);
+#include <pluginlib/class_list_macros.hpp>
+PLUGINLIB_EXPORT_CLASS(mil_preflight::TopicPlugin, mil_preflight::PluginBase)

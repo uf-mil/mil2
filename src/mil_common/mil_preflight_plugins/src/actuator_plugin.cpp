@@ -2,8 +2,6 @@
 #include <stdexcept>
 #include <vector>
 
-#include <boost/dll/alias.hpp>
-
 #include "mil_preflight/plugin.h"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 
@@ -119,4 +117,5 @@ class ActuatorPlugin : public SimplePlugin
 };
 }  // namespace mil_preflight
 
-BOOST_DLL_ALIAS(mil_preflight::ActuatorPlugin::create, actuator_plugin);
+#include <pluginlib/class_list_macros.hpp>
+PLUGINLIB_EXPORT_CLASS(mil_preflight::ActuatorPlugin, mil_preflight::PluginBase)

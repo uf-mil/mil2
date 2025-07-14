@@ -8,10 +8,9 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(subjugator_msgs REQUIRED)
 find_package(Boost REQUIRED COMPONENTS thread chrono filesystem system)
 find_package(ftxui REQUIRED)
+find_package(pluginlib REQUIRED)
 
 add_library(${PROJECT_NAME}_lib SHARED src/frontend.cpp)
 add_executable(${PROJECT_NAME} src/mil_preflight.cpp src/tui.cpp)
@@ -28,7 +27,7 @@ target_link_libraries(
 
 add_executable(mil_preflight_backend src/backend.cpp)
 
-ament_target_dependencies(mil_preflight_backend rclcpp std_msgs Boost)
+ament_target_dependencies(mil_preflight_backend rclcpp Boost pluginlib)
 
 install(TARGETS ${PROJECT_NAME} mil_preflight_backend
         DESTINATION bin # Install to install/bin/
@@ -40,23 +39,10 @@ install(
   FILES_MATCHING
   PATTERN "*")
 
-add_library(topic_plugin SHARED src/plugins/topic_plugin.cpp)
+install(DIRECTORY include/ DESTINATION include)
 
-ament_target_dependencies(topic_plugin rclcpp Boost)
+ament_export_include_directories(include)
 
-add_library(setup_plugin SHARED src/plugins/setup_plugin.cpp)
-
-ament_target_dependencies(setup_plugin rclcpp Boost)
-
-add_library(node_plugin SHARED src/plugins/node_plugin.cpp)
-
-ament_target_dependencies(node_plugin rclcpp Boost)
-
-add_library(actuator_plugin SHARED src/plugins/actuator_plugin.cpp)
-
-ament_target_dependencies(actuator_plugin rclcpp subjugator_msgs Boost)
-
-install(TARGETS topic_plugin setup_plugin node_plugin actuator_plugin
-                ${PROJECT_NAME}_lib LIBRARY DESTINATION lib)
+install(TARGETS ${PROJECT_NAME}_lib LIBRARY DESTINATION lib)
 
 ament_package()

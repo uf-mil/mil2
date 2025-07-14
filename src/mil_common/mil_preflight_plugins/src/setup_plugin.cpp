@@ -1,7 +1,5 @@
 #include <vector>
 
-#include <boost/dll.hpp>
-
 #include "mil_preflight/plugin.h"
 
 namespace mil_preflight
@@ -38,4 +36,5 @@ class SetupPlugin : public SimplePlugin
 };
 }  // namespace mil_preflight
 
-BOOST_DLL_ALIAS(mil_preflight::SetupPlugin::create, setup_plugin);
+#include <pluginlib/class_list_macros.hpp>
+PLUGINLIB_EXPORT_CLASS(mil_preflight::SetupPlugin, mil_preflight::PluginBase)

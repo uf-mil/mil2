@@ -1,11 +1,11 @@
 #include <filesystem>
 
-#include <boost/dll.hpp>
-#include <boost/function.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include "mil_preflight/common.h"
 #include "mil_preflight/plugin.h"
+
+#include <pluginlib/class_loader.hpp>
 
 namespace mil_preflight
 {
@@ -144,7 +144,7 @@ class Backend : public rclcpp::executors::SingleThreadedExecutor
   public:
     using Creator = std::shared_ptr<PluginBase>();
 
-    Backend() : work_thread_([this] { run(); })
+    Backend() : plugin_loader_("mil_preflight", "mil_preflight::PluginBase"), work_thread_([this] { run(); })
     {
     }
 
@@ -154,21 +154,7 @@ class Backend : public rclcpp::executors::SingleThreadedExecutor
     }
 
   private:
-    boost::function<Creator> load(std::string const& plugin_name)
-    {
-        try
-        {
-            return boost::dll::import_alias<Creator>(plugin_name, plugin_name,
-                                                     boost::dll::load_mode::append_decorations |
-                                                         boost::dll::load_mode::search_system_folders);
-        }
-        catch (boost::system::system_error const& e)
-        {
-            return []() -> std::shared_ptr<PluginBase> { return std::make_shared<PluginBase>(); };
-        }
-    }
-
-    std::unordered_map<std::string, boost::function<Creator>> libraries_;
+    pluginlib::ClassLoader<mil_preflight::PluginBase> plugin_loader_;
     std::thread work_thread_;
 
     void run()
@@ -185,17 +171,18 @@ class Backend : public rclcpp::executors::SingleThreadedExecutor
             }
             else if (line[0] == GS)
             {
-                auto it = libraries_.find(parameters[1]);
-                if (it == libraries_.end())
+                try
                 {
-                    std::function<Creator> creator = load(parameters[1]);
-                    it = libraries_.emplace(parameters[1], std::move(creator)).first;
+                    plugin = plugin_loader_.createSharedInstance("mil_preflight::" + parameters[1]);
+                }
+                catch (pluginlib::PluginlibException& ex)
+                {
+                    plugin = std::make_shared<mil_preflight::PluginBase>();
                 }
 
                 std::shared_ptr<PseudoTest> test =
                     std::make_shared<PseudoTest>(std::move(parameters[0]), std::move(parameters[1]));
 
-                plugin = it->second();
                 add_node(plugin);
                 plugin->runTest(test);
                 remove_node(plugin);
