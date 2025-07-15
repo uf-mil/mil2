@@ -244,3 +244,22 @@ alias reset-localization="ros2 service call /subjugator_localization/reset std_s
 alias start-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: true}"'
 alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: false}"'
 alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"
+
+# aliases for waypoints
+wp-set(){
+    if [ $# -lt 1 ]; then
+        echo "missing waypoint name! should be: wp-set <waypoint_name>"
+        return 1
+    fi
+
+    ros2 service call /wp/set subjugator_msgs/srv/StringTrigger "{wp_name: '$1'}"
+}
+
+wp-goto(){
+    if [ $# -lt 1 ]; then
+        echo "missing waypoint name! should be: wp-goto <waypoint_name>"
+        return 1
+    fi
+
+    ros2 service call /wp/goto subjugator_msgs/srv/StringTrigger "{wp_name: '$1'}"
+}
