@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'wp = subjugator_waypoints.wp_node:main'
+            'subjugator_waypoints = subjugator_waypoints.wp_node:main'
         ],
     },
 )

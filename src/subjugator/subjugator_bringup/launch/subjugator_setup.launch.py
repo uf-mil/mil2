@@ -117,6 +117,13 @@ def generate_launch_description():
         output="both",
     )
 
+    waypoints = Node(
+        package="subjugator_waypoints",
+        executable="subjugator_waypoints",
+        name="subjugator_waypoints",
+        output="both",
+    )
+
     return LaunchDescription(
         [
             gui_cmd,
@@ -128,5 +135,6 @@ def generate_launch_description():
             controller,
             path_planner,
             trajectory_planner,
+            waypoints,
         ],
     )
