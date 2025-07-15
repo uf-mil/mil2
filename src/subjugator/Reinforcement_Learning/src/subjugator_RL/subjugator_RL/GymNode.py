@@ -19,9 +19,9 @@ class GymNode(Node):
         # imu attributes initalized here
         self.imu_subscription = self.create_subscription(
             Odometry,
-            "/odometry/filtered",
+            "/dvl/odom",
             self.imu_callback,
-            10,  # topic for sub9 cam
+            5,  
         )
         self.imu_data = None
 

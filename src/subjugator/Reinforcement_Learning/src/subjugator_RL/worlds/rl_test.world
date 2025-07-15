@@ -12,9 +12,9 @@
 
             <!-- Physics Settings -->
             <physics name='bullet_physics' default='1' type='bullet'>
-                <real_time_update_rate>0.01</real_time_update_rate>
-                <max_step_size>0.001</max_step_size>
-                <real_time_factor>5.0</real_time_factor>
+                <real_time_update_rate>2</real_time_update_rate>
+                <max_step_size>0.005</max_step_size>
+                <real_time_factor>20.0</real_time_factor>
             </physics>
 
 
@@ -140,50 +140,6 @@
                 <pose>0 0 0.4 0 0 0</pose>
                 <static>true</static>
             </model>
-            <!-- A simple box model to test buoyancy -->
-            <model name="buoyant_box">
-                <link name="box_link">
-                    <inertial>
-                    <!-- Make it light so it will float -->
-                    <mass>0.5</mass>
-                    <inertia>
-                        <ixx>0.083</ixx>
-                        <iyy>0.083</iyy>
-                        <izz>0.083</izz>
-                    </inertia>
-                    </inertial>
-                    <visual name="visual">
-                    <geometry>
-                        <box><size>1 1 1</size></box>
-                    </geometry>
-                    </visual>
-                    <pose>0 3 0 0 0 0</pose>
-                    <collision name="collision">
-                    <geometry>
-                        <box><size>1 1 1</size></box>
-                    </geometry>
-                    </collision>
-                </link>
-
-                <!-- The Hydrodynamics plugin attached to the model.
-                    This plugin handles both drag and buoyancy. -->
-                <plugin filename="gz-sim-hydrodynamics-system" name="gz::sim::systems::Hydrodynamics">
-                    <link_name>box_link</link_name>
-                    <!-- Simple drag coefficients -->
-                    <xUabsU>-25</xUabsU>
-                    <xU>-50</xU>
-                    <yVabsV>-25</yVabsV>
-                    <yV>-50</yV>
-                    <zWabsW>-5</zWabsW>
-                    <zW>-50</zW>
-                    <kPabsP>-650</kPabsP>
-                    <kP>-650</kP>
-                    <mQabsQ>-750</mQabsQ>
-                    <mQ>-750</mQ>
-                    <nRabsR>-750</nRabsR>
-                    <nR>-750</nR>
-                </plugin>
-            </model>
             <!-- Pool -->
             <model name='WoollettPool'>
                 <link name='link'>
@@ -219,6 +175,6 @@
                 <pose>0 0 0 0 0 0</pose>
                 <static>true</static>
                 <self_collide>false</self_collide>
-            </model>            
+            </model>
         </world>
 </sdf>

@@ -12,6 +12,7 @@ from rclpy.executors import MultiThreadedExecutor
 
 from subjugator_RL import GymNode
 from subjugator_RL.locks import cam_lock, imu_lock
+from subjugator_RL.dict_helpers import dicts_equal, nan_to_zero_in_dict
 
 # Shape of the image. L, W, # of channels
 SHAPE = [50, 80, 3]
@@ -62,6 +63,7 @@ class SubEnv(gym.Env):
 
         self.random_pt = None
         self.previousDistance = None
+        self.previousObservation = None
 
         # self.localizationProc = subprocess.Popen(
         #     [
@@ -99,7 +101,7 @@ class SubEnv(gym.Env):
         )
 
         # First 3 are force, second 3 are torque
-        self.action_space = spaces.Box(low=-50, high=50, shape=(6,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-100, high=100, shape=(6,), dtype=np.float32)
 
     def seed(self, seed=None):
 
@@ -136,6 +138,43 @@ class SubEnv(gym.Env):
         except Exception as e:
             print(f"Error removing submarine: {e}")
             return False
+
+    def _spawn_buoy(self, x: float, y: float, z: float) -> bool:
+        """
+        Calls /world/robosub_2024/create to spawn buoy_2024 at (x, y, z)
+        with a default unit-quaternion orientation.
+        """
+        # Build the EntityFactory request string
+        req = (
+            f'name: "TARGET_BUOY"; '
+            f'sdf_filename: "/home/will/mil2/src/subjugator/'
+            f'simulation/subjugator_description/models/buoy_2024/buoy.sdf"; '
+            f'pose: {{ position: {{ x: {x}, y: {y}, z: {z} }}, '
+            f'orientation: {{ x: 0.0, y: 0.0, z: 0.0, w: 1.0 }} }}'
+        )
+
+        cmd = [
+            "gz", "service",
+            "--service", "/world/robosub_2024/create",
+            "--reqtype", "gz.msgs.EntityFactory",
+            "--reptype", "gz.msgs.Boolean",
+            "--timeout", "2000",
+            "--req", req
+        ]
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                print(f"Successfully spawned buoy at x={x}, y={y}, z={z}")
+                return True
+            else:
+                print(f"Failed to spawn buoy: {result.stderr.strip()}")
+                return False
+
+        except subprocess.TimeoutExpired:
+            print("Create service call timed out")
+            return False
+
 
     def unpause_gazebo(self):
         try:
@@ -200,8 +239,14 @@ class SubEnv(gym.Env):
 
     def reset_simulation(self):
         try:
-            cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'reset: {all: true}'"            
-            subprocess.run(cmd, shell=True, timeout=5, check=True)                     
+<<<<<<< HEAD
+            cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'reset: {all: true}'"
+            subprocess.run(cmd, shell=True, timeout=5, check=True)
+=======
+            cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: true, reset: {all: true}'"
+            subprocess.run(cmd, shell=True, timeout=5, check=True)
+
+>>>>>>> c509f147487bf45ebe095fe259a6f686e1405373
             print("Reset sim successfully")
             return True
         except Exception as e:
@@ -241,11 +286,17 @@ class SubEnv(gym.Env):
             print(f"Could not reset ROS time: {e}")
 
     def generate_random_pt(self):
-        x = np.random.uniform(-5, 5)
-        y = np.random.uniform(-5, 5)
+        # Generate random point greater than min_x or y, but less than max_x or y
+        min_x, max_x = 3, 6
+        min_y, max_y = 3, 6
+        x = np.where(np.random.rand() < 0.5, np.random.uniform(-min_x, -max_x), np.random.uniform(min_x, max_x))
+        y = np.where(np.random.rand() < 0.5, np.random.uniform(-min_y, -max_y), np.random.uniform(min_y, max_y))
 
-        # can't go out of the water
-        z = np.random.uniform(-5, 0)
+        # sub is bad at changing its depth, -0.2 is default
+        z = -0.12 #np.random.uniform(-1.5, 0)
+
+        # also put the point as a buoy into gazebo
+        self._spawn_buoy(x, y, z)
 
         return np.array([x, y, z], dtype=np.float32)
 
@@ -271,21 +322,24 @@ class SubEnv(gym.Env):
         distance = np.linalg.norm(observation["object_distance"])
 
         # sub has reached target
-        if distance < 1.0:
-            return 1000
+        if distance < 0.5:
+            return 10000
 
         if self.previousDistance is not None:
             progress = self.previousDistance - distance
-
             # rewards based on if sub is moving in the direction of the target
-            progress_reward = progress * 10
+            print(f"PROGESS: {progress}")
+            # higher negative penalty for negative progress
+            progress *= 2 if progress < 0 else 1
+            # clip progress in case of sudden jerk, increase progress reward to meaningful amount
+            progress_reward = 100 * np.clip(progress, -0.05, 0.05)
 
         else:
-            progress_reward = 0.0
+            progress_reward = 0
 
         self.previousDistance = distance
 
-        distance_reward = 1 / distance
+        distance_reward = ((5/distance) ** 2) - 1
 
         total_reward = progress_reward + distance_reward
 
@@ -317,18 +371,24 @@ class SubEnv(gym.Env):
         linear_vel = np.array([linVel.x, linVel.y, linVel.z], dtype=np.float32)
         angular_vel = np.array([angVel.x, angVel.y, angVel.z], dtype=np.float32)
 
+        # print(position)
+        # print(orientation)
+        # print(linear_vel)
+        # print(angular_vel)
+        # print(object_distance)
+
         if self.random_pt is not None:
             object_distance = self.random_pt - position
         else:
             object_distance = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
-        return {
+        return nan_to_zero_in_dict({
             "position": position,
             "orientation": orientation,
             "Linear_velocity": linear_vel,
             "angular_velocity": angular_vel,
             "object_distance": object_distance,
-        }
+        })
 
     def _get_info(self):
         print("Getting info")
@@ -340,25 +400,36 @@ class SubEnv(gym.Env):
 
         # Get observation from the environment (especially object_distance)
         observation = self._get_obs()
+        while(observation is not None and self.previousObservation is not None and dicts_equal(observation, self.previousObservation)):
+            observation = self._get_obs()
+            time.sleep(0.01)
+        self.previousObservation = observation
 
         # Get extra info (mostly for debugging)
         info = self._get_info()
 
         reward = self.calculate_reward(observation)
 
-        # Define termination
-        terminated = False
-
         # gets eucladian distance
         object_distance = np.linalg.norm(
             observation.get("object_distance", np.array([float("inf")] * 3)),
         )
 
-        if object_distance < 2:
+        # -- Termination conditions --
+        terminated = False # Define termination
+        position = observation["position"]
+        x, y = position[0], position[1]
+        # Terminate on success
+        if object_distance < 0.5:
+            print(f"SUB ENV SUCCESS at x={x:.2f}, y={y:.2f}")
+            terminated = True
+        # Terminate if sub veers out too far or glitches off map
+        if not (-10.5 < x < 10.5 and -24 < y < 24):
+            print(f"Terminated: Out of bounds at x={x:.2f}, y={y:.2f}")
             terminated = True
 
         print("Reward: ", reward)
-        print("Object distance: ", object_distance)
+        print(object_distance, " - Object distance")
         print(f"Sub's Position={observation['position']}")
         print(f"Action value={action}")
         return observation, reward, terminated, False, info
@@ -371,18 +442,34 @@ class SubEnv(gym.Env):
         print("Attempting to pause sim")
         # Gazebo automatically pauses on reset
         success = self.pause_gazebo()
+<<<<<<< HEAD
         print("Attempting to reset sim")
         success = self.reset_simulation()
         time.sleep(0.5)
+=======
+        time.sleep(2)
+        print("Attempting to reset sim")
+        success = self.reset_simulation()
+
+>>>>>>> c509f147487bf45ebe095fe259a6f686e1405373
         print("Attempting to reset localization")
         self.reset_localization()
         self.start_ekf_node()
+<<<<<<< HEAD
         time.sleep(0.5)
         self.unpause_gazebo()
+=======
+        time.sleep(1)
+        self.unpause_gazebo()
+        time.sleep(1)
+>>>>>>> c509f147487bf45ebe095fe259a6f686e1405373
         # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
 
+        # Reset class variables
         self.random_pt = self.generate_random_pt()
         print(f"Generated target: {self.random_pt}")
+        self.previousDistance = 0
+        self.previousObservation = None
 
         if not success:
             print("Gazebo service reset failed!")
