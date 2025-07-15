@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import rclpy
-import time
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from rclpy.node import Node
 from robot_localization.srv import SetPose
