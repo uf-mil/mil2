@@ -147,8 +147,7 @@ class SubEnv(gym.Env):
         # Build the EntityFactory request string
         req = (
             f'name: "TARGET_BUOY"; '
-            f'sdf_filename: "/home/will/mil2/src/subjugator/'
-            f'simulation/subjugator_description/models/buoy_2024/buoy.sdf"; '
+            f'sdf_filename: "package://subjugator_description/models/buoy_2024/buoy.sdf"; '
             f'pose: {{ position: {{ x: {x}, y: {y}, z: {z} }}, '
             f'orientation: {{ x: 0.0, y: 0.0, z: 0.0, w: 1.0 }} }}'
         )
@@ -398,12 +397,18 @@ class SubEnv(gym.Env):
         # Send action to the environment
         self.gymNode.publish_action_as_wrench(action)
 
-        # Get observation from the environment (especially object_distance)
-        observation = self._get_obs()
-        while(observation is not None and self.previousObservation is not None and dicts_equal(observation, self.previousObservation)):
+        # Get observation logic
+        observation = None
+        # How many steps env does env calculate per second?
+        # hertz_div determines that: env_hertz = gazebo simulation updates per second / hertz_div 
+        hertz_div = 10
+        for i in range(hertz_div):
+            # Get observation, retry until actually new observation is returned
             observation = self._get_obs()
-            time.sleep(0.01)
-        self.previousObservation = observation
+            while(observation is not None and self.previousObservation is not None and dicts_equal(observation, self.previousObservation)): 
+                observation = self._get_obs()
+                time.sleep(0.005)
+            self.previousObservation = observation
 
         # Get extra info (mostly for debugging)
         info = self._get_info()
