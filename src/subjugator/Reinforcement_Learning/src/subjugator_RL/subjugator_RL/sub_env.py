@@ -238,14 +238,8 @@ class SubEnv(gym.Env):
 
     def reset_simulation(self):
         try:
-<<<<<<< HEAD
             cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'reset: {all: true}'"
             subprocess.run(cmd, shell=True, timeout=5, check=True)
-=======
-            cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: true, reset: {all: true}'"
-            subprocess.run(cmd, shell=True, timeout=5, check=True)
-
->>>>>>> c509f147487bf45ebe095fe259a6f686e1405373
             print("Reset sim successfully")
             return True
         except Exception as e:
