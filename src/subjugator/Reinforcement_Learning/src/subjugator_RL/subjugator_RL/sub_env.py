@@ -441,27 +441,14 @@ class SubEnv(gym.Env):
         print("Attempting to pause sim")
         # Gazebo automatically pauses on reset
         success = self.pause_gazebo()
-<<<<<<< HEAD
         print("Attempting to reset sim")
         success = self.reset_simulation()
         time.sleep(0.5)
-=======
-        time.sleep(2)
-        print("Attempting to reset sim")
-        success = self.reset_simulation()
-
->>>>>>> c509f147487bf45ebe095fe259a6f686e1405373
         print("Attempting to reset localization")
         self.reset_localization()
         self.start_ekf_node()
-<<<<<<< HEAD
         time.sleep(0.5)
         self.unpause_gazebo()
-=======
-        time.sleep(1)
-        self.unpause_gazebo()
-        time.sleep(1)
->>>>>>> c509f147487bf45ebe095fe259a6f686e1405373
         # need to reset Rostime here by publishing to the  /reset_time topic and sending an empty msg to get rid of EKF error
 
         # Reset class variables
