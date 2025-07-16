@@ -1,18 +1,27 @@
 # TODO: add the camera rotator to this and make it work w sub
 
+# node which has a bunch of classes that implement the CentriodFinder abstract class, it feeds them images and publishes results
+
 import rclpy
 from rclpy.node import Node
+from rclpy.publisher import Publisher
+
 from subjugator_msgs.msg import Centriod
-from subjugator_centroids.green_tracker import get_lime_green_centroid
+from subjugator_centroids.centriod_finder import CentriodFinder
+from subjugator_centroids.green_tracker import GreenTracker
 
 import cv2
+from typing import Dict, List
 
 class SubjugatorCentroidsNode(Node):
-    def __init__(self):
+    def __init__(self, trackers: List[CentriodFinder]):
         super().__init__("subjugator_centroids_node")
+        self.pubs: Dict[str, Publisher] = {}
+        self.trackers: List[CentriodFinder] = trackers
 
-        # create publisher
-        self.centriod_pub = self.create_publisher(Centriod, "/centriods/green", 10)
+        # create publishers for each tracker
+        for tracker in trackers:
+            self.pubs[tracker.topic_name] = self.create_publisher(Centriod, tracker.topic_name, 10)
 
         # start camera
         self.cap = cv2.VideoCapture(0)  # Use your webcam
@@ -32,12 +41,14 @@ class SubjugatorCentroidsNode(Node):
                 self.get_logger().warn("no frame from camera")
                 break
 
-            centroid, _ = get_lime_green_centroid(frame)
-            if centroid is None: # nothing to publish
-                continue
+            for tracker in self.trackers:
+                centroid = tracker.find_centriod(frame)
+                if centroid is None: # nothing to publish
+                    continue
 
-            height, width, _ = frame.shape
-            self.publish_centriod(width, height, centroid[0], centroid[1])
+                height, width, _ = frame.shape
+                topic_name = tracker.topic_name
+                self.publish_centriod(topic_name, width, height, centroid[0], centroid[1])
 
         
 
@@ -45,7 +56,8 @@ class SubjugatorCentroidsNode(Node):
     # image_height: images height in pixels
     # cx: x position of the image centriod
     # cy: y position of the image centriod
-    def publish_centriod(self, image_width: int,
+    def publish_centriod(self, topic_name: str,
+                               image_width: int,
                                image_height: int,
                                cx: int,
                                cy: int):
@@ -54,13 +66,16 @@ class SubjugatorCentroidsNode(Node):
         c.image_width = image_width
         c.centroid_x = cx
         c.centroid_y = cy
-        self.centriod_pub.publish(c)
+        self.pubs[topic_name].publish(c)
 
 def main():
+    # here is where you create all of the things you want to track
+    gt = GreenTracker("centroids/green")
+
     rclpy.init()
-    n = SubjugatorCentroidsNode()
+    n = SubjugatorCentroidsNode([gt])
     # rclpy.spin(n) node spins itself sry
-    n.cap.release()
+    n.cap.release() # free camera so cool
     rclpy.shutdown()
 
 if __name__ == "__main__":
