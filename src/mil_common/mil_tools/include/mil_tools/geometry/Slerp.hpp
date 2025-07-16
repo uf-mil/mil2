@@ -26,6 +26,7 @@ class Slerp
         equal = r1 == r2;
         if (equal)
             return;
+
         left.conjugate();
         right = left * right;
         left.conjugate();
@@ -44,7 +45,6 @@ class Slerp
         double sin_atan = std::sin(atan2 * t);
         double cos_atan = std::cos(atan2 * t);
         Rotation res = left * ((imag * (exp_ln * sin_atan)) + exp_ln * cos_atan);
-        res.imaginary();
         return res;
     }
 };

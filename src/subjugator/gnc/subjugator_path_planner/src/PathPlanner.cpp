@@ -20,12 +20,12 @@ void PathPlanner::goal_pose_cb(geometry_msgs::msg::Pose::SharedPtr const &msg)
     auto path = generate_path(*msg);
     // Publish path
     nav_msgs::msg::Path path_msg;
-    path_msg.header.frame_id = "map";
+    path_msg.header.frame_id = "odom";
     path_msg.header.stamp = this->now();
     for (auto const &pose : path)
     {
         geometry_msgs::msg::PoseStamped pose_stamped;
-        pose_stamped.header.frame_id = "map";
+        pose_stamped.header.frame_id = "odom";
         pose_stamped.header.stamp = this->now();
         pose_stamped.pose = pose;
         path_msg.poses.push_back(pose_stamped);
