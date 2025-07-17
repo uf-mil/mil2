@@ -269,3 +269,5 @@ torpedo() {
 
 	ros2 service call /torpedo subjugator_msgs/srv/Servo "{angle: '$1'}"
 }
+
+export ROS_DOMAIN_ID=37
