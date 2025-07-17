@@ -1,10 +1,12 @@
-from subjugator_centroids.centriod_finder import CentriodFinder
 import cv2
-from cv2.typing import MatLike
 import numpy as np
+from cv2.typing import MatLike
 
-# example implementation of centriod abstract class, this one tracks green objects
-class GreenTracker(CentriodFinder):
+from subjugator_centroids.centroid_finder import CentroidFinder
+
+
+# example implementation of centroid abstract class, this one tracks green objects
+class GreenTracker(CentroidFinder):
     def __init__(self, topic_name: str):
         self.topic_name_: str = topic_name
 
@@ -12,7 +14,7 @@ class GreenTracker(CentriodFinder):
     def topic_name(self) -> str:
         return self.topic_name_
 
-    def find_centriod(self, frame: MatLike) -> tuple[int, int] | None:
+    def find_centroid(self, frame: MatLike) -> tuple[int, int] | None:
         """
         Detect lime green areas in the image and return the centroid (x, y).
         Returns None if no lime green region is detected.
@@ -44,4 +46,3 @@ class GreenTracker(CentriodFinder):
         cx = int(M["m10"] / M["m00"])
         cy = int(M["m01"] / M["m00"])
         return (cx, cy)
-        
