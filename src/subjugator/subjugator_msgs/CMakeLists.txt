@@ -21,7 +21,7 @@ rosidl_generate_interfaces(
   "msg/ThrusterEfforts.msg"
   "msg/Trajectory.msg"
   "msg/Waypoint.msg"
-  "msg/Centriod.msg"
+  "msg/Centroid.msg"
   "srv/BMatrix.srv"
   "srv/OcrRequest.srv"
   "srv/TBDetectionSwitch.srv"
