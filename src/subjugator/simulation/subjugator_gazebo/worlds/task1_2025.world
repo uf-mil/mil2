@@ -190,7 +190,7 @@
                         </mesh>
                     </geometry>
                     </collision>
-                    <pose>20 -10 0 0 0 90</pose>
+                    <pose>0 0 0 0 0 0</pose>
                     <inertial>
                     <pose>0 0 0 0 0 0</pose>
                     <mass>1</mass>
@@ -205,7 +205,7 @@
                     </inertial>
                     <enable_wind>false</enable_wind>
                 </link>
-                <pose>7.57 22.28 -0.4 0 0 -1.57</pose>
+                <pose>-1.57 5.28 -0.4 0 0 0.5</pose>
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
@@ -246,12 +246,42 @@
                 <self_collide>false</self_collide>
             </model>
 
-
-
-
-
-
-
+            <!--Path Marker-->
+            <model name='PathMarker_A1'>
+                <link name='link'>
+                    <visual name='visual'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </visual>
+                    <collision name='collision'>
+                    <geometry>
+                        <mesh>
+                        <uri>package:://subjugator_description/models/pathmarker_2024/pathmarker.dae</uri>
+                        </mesh>
+                    </geometry>
+                    </collision>
+                    <pose>0 0 0 0 0 0</pose>
+                    <inertial>
+                    <pose>0 0 0 0 0 0</pose>
+                    <mass>1</mass>
+                    <inertia>
+                        <ixx>1</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>1</iyy>
+                        <iyz>0</iyz>
+                        <izz>1</izz>
+                    </inertia>
+                    </inertial>
+                    <enable_wind>false</enable_wind>
+                </link>
+                <pose>-2.47 7.28 -1.4 0 0 0.7</pose>
+                <static>true</static>
+                <self_collide>false</self_collide>
+            </model>
 
         </world>
 </sdf>
