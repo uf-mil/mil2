@@ -48,7 +48,7 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
 
     thrust_publisher_ = this->create_publisher<subjugator_msgs::msg::ThrusterEfforts>("thruster_efforts", 1);
     RCLCPP_INFO(this->get_logger(), "Publishing to: %s", thrust_publisher_->get_topic_name());
-    timer_ = this->create_wall_timer(std::chrono::milliseconds(500), [this]() -> void { this->timer_callback(); });
+    timer_ = this->create_wall_timer(std::chrono::milliseconds(250), [this]() -> void { this->timer_callback(); });
 }
 
 // Update wrench when new msg heard

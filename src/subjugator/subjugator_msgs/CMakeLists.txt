@@ -14,6 +14,7 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(
   ${PROJECT_NAME}
+  "srv/Servo.srv"
   "msg/Alarm.msg"
   "msg/Path.msg"
   "msg/PathPoint.msg"
@@ -33,6 +34,11 @@ rosidl_generate_interfaces(
   "srv/SetValve.srv"
   "srv/MotionPlan.srv"
   "srv/Sonar.srv"
+  "action/SearchObject.action"
+  "action/NavigateAround.action"
+  "action/NavigateThrough.action"
+  "action/Movement.action"
+  "action/Wait.action"
   DEPENDENCIES
   geometry_msgs
   std_msgs

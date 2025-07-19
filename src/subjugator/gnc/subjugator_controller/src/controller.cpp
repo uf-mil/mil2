@@ -19,13 +19,13 @@ PIDController::PIDController() : Node("pid_controller")
 
     // create reset service
     this->reset_service_ = this->create_service<std_srvs::srv::Empty>(
-        "reset_controller",
+        "~/reset",
         [this](std::shared_ptr<std_srvs::srv::Empty::Request> const request,
                std::shared_ptr<std_srvs::srv::Empty::Response> response) { this->reset(request, response); });
 
     // create enable / disable service
     this->enable_service_ = this->create_service<std_srvs::srv::SetBool>(
-        "enable_controller",
+        "~/enable",
         [this](std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
                std::shared_ptr<std_srvs::srv::SetBool::Response> response) { this->enable_cb(request, response); });
 
@@ -87,7 +87,7 @@ PIDController::PIDController() : Node("pid_controller")
     {
         rclcpp::spin_some(this->get_node_base_interface());
     }
-    RCLCPP_INFO(this->get_logger(), "Heard odometry msg. Starting control loop.");
+    // RCLCPP_INFO(this->get_logger(), "Heard odometry msg. Starting control loop.");
 
     // set starting command to first odom msg (stationkeep)
     last_goal_trajectory_ = last_odom_;
@@ -108,7 +108,7 @@ void PIDController::control_loop()
             continue;
         }
 
-        RCLCPP_INFO(this->get_logger(), "control loop");
+        // RCLCPP_INFO(this->get_logger(), "control loop");
 
         rclcpp::Time tnow = this->get_clock()->now();
         double dt_s = (tnow - last_cmd_time_).seconds();
@@ -146,6 +146,7 @@ void PIDController::control_loop()
         // publish as cmd_wrench
         publish_commands(commands);
         // log goal and odom
+        /*
         RCLCPP_INFO(this->get_logger(), "goal: '%s' '%s' '%s' '%s' '%s' '%s'",
                     std::to_string(last_goal_trajectory_(0)).c_str(), std::to_string(last_goal_trajectory_(1)).c_str(),
                     std::to_string(last_goal_trajectory_(2)).c_str(), std::to_string(goal_euler(0)).c_str(),
@@ -162,6 +163,7 @@ void PIDController::control_loop()
                     std::to_string(commands[1]).c_str(), std::to_string(commands[2]).c_str(),
                     std::to_string(commands[3]).c_str(), std::to_string(commands[4]).c_str(),
                     std::to_string(commands[5]).c_str());
+        */
 
         last_cmd_time_ = tnow;
         rclcpp::spin_some(this->get_node_base_interface());
@@ -171,13 +173,28 @@ void PIDController::control_loop()
 
 void PIDController::publish_commands(std::array<double, 6> const &commands)
 {
+    // Get the current orientation from odometry (should be w, x, y, z)
+    Eigen::Quaterniond odom_quat(last_odom_[6], last_odom_[3], last_odom_[4], last_odom_[5]);
+    Eigen::Matrix3d rotation_matrix = odom_quat.toRotationMatrix();
+
+    // Force and torque in odom frame
+    Eigen::Vector3d force_odom(commands[0], commands[1], commands[2]);
+    Eigen::Vector3d torque_odom(commands[3], commands[4], commands[5]);
+
+    // Rotate forces and torques to base_link frame
+    Eigen::Vector3d force_base_link =
+        rotation_matrix.transpose() * force_odom;  // use transpose to inverse the rotation
+    Eigen::Vector3d torque_base_link =
+        rotation_matrix.transpose() * torque_odom;  // TODO the transpose might be bad... not sure yet
+
     auto msg = geometry_msgs::msg::Wrench();
-    msg.force.x = commands[0];
-    msg.force.y = commands[1];
-    msg.force.z = commands[2];
-    msg.torque.x = commands[3];
-    msg.torque.y = commands[4];
-    msg.torque.z = commands[5];
+    msg.force.x = force_base_link.x();
+    msg.force.y = force_base_link.y();
+    msg.force.z = force_base_link.z();
+    msg.torque.x = commands[3];  // torque_base_link.x();
+    msg.torque.y = commands[4];  // torque_base_link.y();
+    msg.torque.z = commands[5];  // torque_base_link.z();
+
     pub_cmd_wrench_->publish(msg);
 }
 

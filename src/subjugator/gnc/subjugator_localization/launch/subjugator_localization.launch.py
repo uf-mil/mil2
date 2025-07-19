@@ -19,6 +19,18 @@ def generate_launch_description():
                 executable="ekf_node",
                 name="subjugator_localization",
                 parameters=[config_file],
+                remappings=[
+                    ("/reset", "/_reset"),  # given, but broken :/
+                    ("/set_pose", "/subjugator_localization/set_pose"),
+                    ("/enable", "/subjugator_localization/enable"),
+                    ("/toggle", "/subjugator_localization/toggle"),
+                ],
+            ),
+            Node(
+                package="subjugator_localization",
+                executable="reset_srv_node.py",
+                name="reset_localization_service",
+                output="screen",
             ),
         ],
     )

@@ -202,7 +202,8 @@ mil_system_install \
 	ros-jazzy-tf2-sensor-msgs \
 	ros-jazzy-tf-transformations \
 	ros-jazzy-velodyne \
-	ros-jazzy-vision-msgs
+	ros-jazzy-vision-msgs \
+	ros-jazzy-nav2-util
 
 cat <<EOF
 $(color "$Pur")
@@ -321,10 +322,41 @@ add_hosts_entry "192.168.37.60 sub9-mil"
 add_hosts_entry "192.168.37.61 navtube"
 add_hosts_entry "192.168.37.82 navigator-two"
 
+# Install pre-commit hooks for git
+pre-commit install
+
 # Builds the MIL repo
 mil_user_setup_init_colcon() {
 	cd $SCRIPT_DIR/..
-	colcon build
+	set +u
+	cb --generate-compile-commands
+	set -u
+}
+
+# llvm stuff
+llvm() {
+	wget https://apt.llvm.org/llvm.sh
+	chmod +x llvm.sh
+	sudo ./llvm.sh 20
+	sudo apt install -y \
+		clang-format-20 \
+		clang-tidy-20
+	rm llvm.sh
+}
+
+hadolint() {
+	ARCH=$(uname -m)
+	if [ "$ARCH" = "x86_64" ]; then
+		ARCH_URL="hadolint-Linux-x86_64"
+	elif [ "$ARCH" = "aarch64" ]; then
+		ARCH_URL="hadolint-Linux-arm64"
+	else
+		echo "Unsupported architecture: $ARCH"
+		return 1
+	fi
+
+	sudo wget -O /bin/hadolint "https://github.com/hadolint/hadolint/releases/download/v2.12.0/$ARCH_URL"
+	sudo chmod +x /bin/hadolint
 }
 
 cat <<EOF
@@ -337,6 +369,8 @@ EOF
 
 mil_user_install_dependencies
 mil_user_setup_rc
+llvm
+hadolint
 set +u
 . /opt/ros/jazzy/setup.bash
 . "$SCRIPT_DIR/setup.bash"

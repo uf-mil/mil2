@@ -20,15 +20,23 @@ static std::queue<Job::Report> reportQueue;
 
 static std::queue<std::shared_ptr<Dialog>> questionQueue;
 
+struct ActionBoxOption
+{
+    std::string name;
+    std::vector<std::string> parameters;
+    std::function<void(bool)> onChange;
+    std::function<bool(bool)> transform;
+};
+
 class ActionBox : public ComponentBase, public Action
 {
   public:
-    ActionBox(std::string&& name, std::vector<std::string>&& parameters);
+    ActionBox(ActionBoxOption&& option);
     ~ActionBox();
 
     bool isChecked() const
     {
-        return checked_;
+        return option_.transform(checked_);
     }
     void check()
     {
@@ -45,11 +53,11 @@ class ActionBox : public ComponentBase, public Action
 
     std::string const& getName() const final
     {
-        return name_;
+        return option_.name;
     }
     std::vector<std::string> const& getParameters() const final
     {
-        return parameters_;
+        return option_.parameters;
     }
 
   private:
@@ -62,12 +70,10 @@ class ActionBox : public ComponentBase, public Action
     };
 
     bool checked_ = false;
-    bool forceCheck_ = false;
     bool hovered_ = false;
     Box box_;
     std::atomic<State> state_ = State::NONE;
-    std::string name_;
-    std::vector<std::string> parameters_;
+    ActionBoxOption option_;
 
     Element Render() final;
     bool OnEvent(Event event) final;
@@ -79,8 +85,7 @@ class ActionBox : public ComponentBase, public Action
     std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options) final;
 };
 
-ActionBox::ActionBox(std::string&& name, std::vector<std::string>&& parameters)
-  : name_(std::move(name)), parameters_(std::move(parameters))
+ActionBox::ActionBox(ActionBoxOption&& option) : option_(std::move(option))
 {
 }
 
@@ -115,7 +120,7 @@ Element ActionBox::Render()
             break;
     }
 
-    auto labelEle = text(name_);
+    auto labelEle = text(option_.name);
 
     if (focused || hovered_)
     {
@@ -127,8 +132,10 @@ Element ActionBox::Render()
         labelEle |= bold;
     }
 
+    bool checked = option_.transform(checked_);
+
     auto element = hbox(
-        { text(checked_ ? "☑ " : "☐ "), labelEle, filler() | flex, text(indicator) | color(textColor) | align_right });
+        { text(checked ? "☑ " : "☐ "), labelEle, filler() | flex, text(indicator) | color(textColor) | align_right });
 
     return element | (focused ? focus : nothing) | reflect(box_);
 }
@@ -149,6 +156,7 @@ bool ActionBox::OnEvent(Event event)
     if (event == Event::Character(' ') || event == Event::Return)
     {
         checked_ = !checked_;
+        option_.onChange(checked_);
         TakeFocus();
         return true;
     }
@@ -173,7 +181,10 @@ bool ActionBox::OnMouseEvent(Event event)
     if (event.mouse().button == Mouse::Left && event.mouse().motion == Mouse::Pressed)
     {
         if (Focused())
+        {
             checked_ = !checked_;
+            option_.onChange(checked_);
+        }
         else
             TakeFocus();
         return true;
@@ -203,7 +214,7 @@ std::shared_future<int> ActionBox::onQuestion(std::string&& question, std::vecto
     std::shared_ptr<std::promise<int>> feedback = std::make_shared<std::promise<int>>();
 
     Dialog::Option option;
-    option.title = "Question for action " + name_;
+    option.title = "Question for action " + option_.name;
     option.question = std::move(question);
     option.buttonLabels = std::move(options);
 
@@ -218,139 +229,74 @@ std::shared_future<int> ActionBox::onQuestion(std::string&& question, std::vecto
     return feedback->get_future().share();
 }
 
-class ActionList : public ComponentBase, public Test
+struct TestTabOption
+{
+    std::string name;
+    std::string plugin;
+    std::function<void(bool)> onChange;
+    std::function<bool(bool)> transform;
+    Component childContainer;
+};
+
+class TestTab : public ComponentBase, public Test
 {
   public:
-    using History = std::pair<size_t, bool>;
-
-    ActionList(std::string&& name, std::string&& plugin);
-    ~ActionList();
-
-    size_t actionCount()
+    TestTab(TestTabOption&& option) : option_(std::move(option))
     {
-        return ChildAt(0)->ChildCount();
+    }
+    ~TestTab()
+    {
     }
 
-    size_t isChecked();
-    inline void saveAndCheck(std::stack<History>& historys);
-    inline void saveAndUncheck(std::stack<History>& historys);
-    inline void restore(std::stack<History>& historys);
-    inline void check();
-    inline void uncheck();
-
-    std::string const& getName() const final
+    bool isChecked()
     {
-        return name_;
-    };
-    std::string const& getPlugin() const final
-    {
-        return plugin_;
-    };
+        return option_.transform(checked_) || nChecked_ > 0;
+    }
 
-  private:
-    int selector_ = 0;
-    bool checked_ = 0;
-    std::string name_;
-    std::string plugin_;
-    std::atomic<size_t> currentAction_ = 0;
-    Box box_;
+    bool transform(bool checked)
+    {
+        return checked || option_.transform(checked_);
+    }
+
+    virtual std::string const& getPlugin() const
+    {
+        return option_.plugin;
+    }
+    virtual std::string const& getName() const
+    {
+        return option_.name;
+    }
 
     std::optional<std::reference_wrapper<Action>> nextAction() final;
     std::optional<std::reference_wrapper<Action>> createAction(std::string&& name,
                                                                std::vector<std::string>&& parameters) final;
     void onFinish(Test::Report const& report) final;
+
+  private:
+    bool hovered_ = false;
+    bool toggle_ = false;
+
+    size_t nChecked_ = 0;
+    size_t currentAction_ = 0;
+    bool checked_ = false;
+
+    TestTabOption option_;
+
+    Box box_;
+
+    Element Render() final;
+    bool OnEvent(Event event) final;
+    bool OnMouseEvent(Event event);
+
+    bool Focusable() const final
+    {
+        return true;
+    }
 };
 
-ActionList::ActionList(std::string&& name, std::string&& plugin) : name_(std::move(name)), plugin_(std::move(plugin))
+std::optional<std::reference_wrapper<Action>> TestTab::nextAction()
 {
-    Components comps;
-    Add(Container::Vertical(comps, &selector_));
-}
-
-ActionList::~ActionList()
-{
-}
-
-size_t ActionList::isChecked()
-{
-    size_t count = 0;
-    Component child = ChildAt(0);
-    for (size_t i = 0; i < child->ChildCount(); i++)
-    {
-        std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(i));
-        if (action->isChecked())
-            count++;
-    }
-    return count;
-}
-
-void ActionList::saveAndCheck(std::stack<History>& historys)
-{
-    Component child = ChildAt(0);
-    for (size_t i = 0; i < child->ChildCount(); i++)
-    {
-        std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(i));
-        if (!action->isChecked())
-        {
-            historys.emplace(i, false);
-            action->check();
-        }
-    }
-}
-
-void ActionList::check()
-{
-    Component child = ChildAt(0);
-    for (size_t i = 0; i < child->ChildCount(); i++)
-    {
-        std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(i));
-        action->check();
-    }
-}
-
-void ActionList::restore(std::stack<History>& historys)
-{
-    Component child = ChildAt(0);
-    while (historys.size() > 0)
-    {
-        History history = std::move(historys.top());
-        std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(history.first));
-        if (history.second)
-            action->check();
-        else
-            action->uncheck();
-        historys.pop();
-    }
-}
-
-void ActionList::saveAndUncheck(std::stack<History>& historys)
-{
-    Component child = ChildAt(0);
-    for (size_t i = 0; i < child->ChildCount(); i++)
-    {
-        std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(i));
-        if (action->isChecked())
-        {
-            historys.emplace(i, true);
-            action->uncheck();
-        }
-    }
-}
-
-void ActionList::uncheck()
-{
-    Component child = ChildAt(0);
-    for (size_t i = 0; i < child->ChildCount(); i++)
-    {
-        std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(i));
-        action->uncheck();
-    }
-}
-
-std::optional<std::reference_wrapper<Action>> ActionList::nextAction()
-{
-    Component child = ChildAt(0);
-
+    Component child = option_.childContainer;
     while (currentAction_ < child->ChildCount())
     {
         std::shared_ptr<ActionBox> action = std::dynamic_pointer_cast<ActionBox>(child->ChildAt(currentAction_++));
@@ -364,69 +310,38 @@ std::optional<std::reference_wrapper<Action>> ActionList::nextAction()
     return std::nullopt;
 }
 
-std::optional<std::reference_wrapper<Action>> ActionList::createAction(std::string&& name,
-                                                                       std::vector<std::string>&& parameters)
+std::optional<std::reference_wrapper<Action>> TestTab::createAction(std::string&& name,
+                                                                    std::vector<std::string>&& parameters)
 {
-    std::shared_ptr<ActionBox> action = std::make_shared<ActionBox>(std::move(name), std::move(parameters));
-    ChildAt(0)->Add(action);
+    ActionBoxOption option;
+    option.name = std::move(name);
+    option.parameters = std::move(parameters);
+    option.onChange = [&](bool checked)
+    {
+        if (checked)
+            nChecked_++;
+        else
+            nChecked_--;
+    };
+
+    option.transform = [&](bool checked) { return checked || option_.transform(checked_); };
+
+    std::shared_ptr<ActionBox> action = std::make_shared<ActionBox>(std::move(option));
+    option_.childContainer->Add(action);
     return *action;
 }
 
-void ActionList::onFinish([[maybe_unused]] Test::Report const& report)
+void TestTab::onFinish([[maybe_unused]] Test::Report const& report)
 {
     currentAction_ = 0;
     screen.PostEvent(Event::Character("TestFinish"));
 }
 
-class TestTab : public ComponentBase
-{
-  public:
-    enum class State
-    {
-        Checked,
-        Indeterminate,
-        Unchecked
-    };
-
-    TestTab(std::shared_ptr<ActionList> test) : test_(test)
-    {
-    }
-    ~TestTab()
-    {
-    }
-
-    State getState() const
-    {
-        return state_;
-    }
-    void check();
-    void uncheck();
-
-  private:
-    bool hovered_ = false;
-    State state_ = State::Unchecked;
-    bool toggle_ = false;
-    std::shared_ptr<ActionList> test_;
-    std::stack<ActionList::History> historys_;
-    Box box_;
-
-    Element Render() final;
-    bool OnEvent(Event event) final;
-    bool OnMouseEvent(Event event);
-
-    inline void nextState();
-
-    bool Focusable() const final
-    {
-        return true;
-    }
-};
-
 Element TestTab::Render()
 {
     bool focused = Focused();
 
-    auto labelEle = text(test_->getName());
+    auto labelEle = text(option_.name);
 
     if (focused || hovered_)
     {
@@ -439,21 +354,17 @@ Element TestTab::Render()
     }
 
     char const* prefix;
-    size_t nChecked = test_->isChecked();
-    size_t nActions = test_->actionCount();
-    if (nChecked == 0)
+    bool checked = option_.transform(checked_);
+    if (checked || nChecked_ == option_.childContainer->ChildCount())
     {
-        state_ = State::Unchecked;
-        prefix = "☐ ";
-    }
-    else if (nChecked == nActions)
-    {
-        state_ = State::Checked;
         prefix = "☑ ";
+    }
+    else if (nChecked_ == 0)
+    {
+        prefix = "☐ ";
     }
     else
     {
-        state_ = State::Indeterminate;
         prefix = "▣ ";
     }
 
@@ -477,7 +388,8 @@ bool TestTab::OnEvent(Event event)
     hovered_ = false;
     if (event == Event::Character(' ') || event == Event::Return)
     {
-        nextState();
+        checked_ = !checked_;
+        option_.onChange(checked_);
         TakeFocus();
         return true;
     }
@@ -502,59 +414,16 @@ bool TestTab::OnMouseEvent(Event event)
     if (event.mouse().button == Mouse::Left && event.mouse().motion == Mouse::Pressed)
     {
         if (Focused())
-            nextState();
+        {
+            checked_ = !checked_;
+            option_.onChange(checked_);
+        }
         else
             TakeFocus();
         return true;
     }
 
     return false;
-}
-
-void TestTab::check()
-{
-    if (state_ != State::Checked)
-    {
-        test_->saveAndCheck(historys_);
-    }
-}
-
-void TestTab::uncheck()
-{
-    if (state_ == State::Checked)
-    {
-        if (historys_.size() > 0)
-            test_->restore(historys_);
-    }
-}
-
-void TestTab::nextState()
-{
-    if (state_ == State::Unchecked)
-    {
-        if (historys_.size() > 0)
-            test_->restore(historys_);
-        else
-            test_->check();
-    }
-    else if (state_ == State::Indeterminate)
-    {
-        while (historys_.size() > 0)
-            historys_.pop();
-
-        if (toggle_)
-            test_->saveAndCheck(historys_);
-        else
-            test_->saveAndUncheck(historys_);
-        toggle_ = !toggle_;
-    }
-    else if (state_ == State::Checked)
-    {
-        if (historys_.size() > 0)
-            test_->restore(historys_);
-        else
-            test_->uncheck();
-    }
 }
 
 TestsPage::TestsPage(std::string const& filePath)
@@ -564,8 +433,8 @@ TestsPage::TestsPage(std::string const& filePath)
 
     tabsContainer_ = Container::Vertical(tabs, &selector_);
     pagesContainer_ = Container::Tab(pages, &selector_);
-    main_ = Container::Horizontal({ tabsContainer_ | vscroll_indicator | frame, Renderer([] { return separator(); }),
-                                    pagesContainer_ | vscroll_indicator | frame | flex });
+    main_ = ResizableSplitLeft(tabsContainer_ | vscroll_indicator | frame, pagesContainer_ | vscroll_indicator | frame,
+                               &mainSize_);
 
     ButtonOption buttonOption = ButtonOption::Simple();
     buttonOption.transform = [&](EntryState const& s)
@@ -592,43 +461,53 @@ TestsPage::TestsPage(std::string const& filePath)
         buttonOption);
 
     CheckboxOption option = CheckboxOption::Simple();
-    option.on_change = [=]
+    option.transform = [&](EntryState const& s)
     {
-        for (size_t i = 0; i < pagesContainer_->ChildCount(); i++)
+        char const* prefix;
+
+        if (s.state || nSelected_ == pagesContainer_->ChildCount())
         {
-            std::shared_ptr<TestTab> tab = std::dynamic_pointer_cast<TestTab>(tabsContainer_->ChildAt(i));
-            if (selectAll_)
-                tab->check();
-            else
-                tab->uncheck();
+            prefix = "☑ ";
         }
+        else if (nSelected_ == 0)
+        {
+            prefix = "☐ ";
+        }
+        else
+        {
+            prefix = "▣ ";
+        }
+
+        auto t = text(s.label);
+        if (s.active)
+        {
+            t |= bold;
+        }
+        if (s.focused)
+        {
+            t |= inverted;
+        }
+        return hbox({ text(prefix), t });
     };
     Component checkBox = Checkbox("Select all", &selectAll_, option);
     Component bottom = Container::Horizontal({ checkBox | vcenter | flex, runButton });
     Add(Container::Vertical({ main_ | flex, Renderer([] { return separator(); }), bottom }));
 
-    initialize(filePath);
+    if (!initialize(filePath))
+    {
+        Dialog::Option option;
+        option.buttonLabels = { "Ok" };
+        option.title = "Error";
+        option.question = "Failed to read the config file: " + filePath;
+        std::shared_ptr<Dialog> dialog = std::make_shared<Dialog>(std::move(option));
+        dialog->show();
+    }
 }
 
 TestsPage::~TestsPage()
 {
     if (running_)
         cancel();
-}
-
-Element TestsPage::Render()
-{
-    size_t nChecked = 0;
-    for (size_t i = 0; i < tabsContainer_->ChildCount(); i++)
-    {
-        std::shared_ptr<TestTab> tab = std::dynamic_pointer_cast<TestTab>(tabsContainer_->ChildAt(i));
-        if (tab->getState() == TestTab::State::Checked)
-            nChecked++;
-    }
-
-    selectAll_ = (nChecked == tabsContainer_->ChildCount());
-
-    return ComponentBase::Render();
 }
 
 std::optional<std::reference_wrapper<Test>> TestsPage::nextTest()
@@ -638,10 +517,10 @@ std::optional<std::reference_wrapper<Test>> TestsPage::nextTest()
     while (currentTest_ < tabsContainer_->ChildCount())
     {
         std::shared_ptr<TestTab> test = std::dynamic_pointer_cast<TestTab>(tabsContainer_->ChildAt(currentTest_++));
-        if (test->getState() != TestTab::State::Unchecked)
+        if (test->isChecked())
         {
             tabsContainer_->SetActiveChild(tabsContainer_->ChildAt(currentTest_ - 1));
-            return *std::dynamic_pointer_cast<ActionList>(pagesContainer_->ChildAt(currentTest_ - 1));
+            return *test;
         }
     }
     return std::nullopt;
@@ -649,10 +528,28 @@ std::optional<std::reference_wrapper<Test>> TestsPage::nextTest()
 
 std::optional<std::reference_wrapper<Test>> TestsPage::createTest(std::string&& name, std::string&& plugin)
 {
-    std::shared_ptr<ActionList> testPage = std::make_shared<ActionList>(std::move(name), std::move(plugin));
-    pagesContainer_->Add(testPage);
-    tabsContainer_->Add(std::make_shared<TestTab>(testPage));
-    return *testPage;
+    actionSelectors_.push_back(0);
+    Component list = Container::Vertical({}, &actionSelectors_.back());
+
+    TestTabOption option;
+    option.name = std::move(name);
+    option.plugin = std::move(plugin);
+    option.transform = [&](bool checked) { return checked || selectAll_; };
+    option.onChange = [&](bool checked)
+    {
+        if (checked)
+            nSelected_++;
+        else
+            nSelected_--;
+    };
+    option.childContainer = list;
+
+    std::shared_ptr<TestTab> tab = std::make_shared<TestTab>(std::move(option));
+
+    tabsContainer_->Add(tab);
+    pagesContainer_->Add(list);
+
+    return *tab;
 }
 
 void TestsPage::onFinish(Job::Report&& report)
@@ -817,8 +714,9 @@ class JobReportPanel : public ComponentBase
                                         return panel->isShown();
                                     });
 
-            Add(Container::Horizontal({ left_ | vscroll_indicator | frame, Renderer([] { return separator(); }),
-                                        maybe | flex | vscroll_indicator | yframe }));
+            Add(ResizableSplitLeft(left_ | vscroll_indicator | frame, maybe | flex | vscroll_indicator | yframe,
+                                   &mainSize_));
+
             rendered_ = true;
         }
 
@@ -832,6 +730,7 @@ class JobReportPanel : public ComponentBase
     int selector_ = 0;
     bool rendered_ = false;
     bool* errorOnly_;
+    int mainSize_ = 20;
 };
 
 ReportsPage::ReportsPage()
