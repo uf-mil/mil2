@@ -102,7 +102,7 @@ class RedTriangle(Node):
 
         return new_pose
 
-    def rotate_left_until_10_centroids(self):
+    def rotate_left_until_15_centroids(self):
         self.centroid_cb_counter = 0 # reset counter, it will increase when red is in frame
         while True:
             rclpy.spin_once(self, timeout_sec=0.1)
@@ -128,7 +128,7 @@ class RedTriangle(Node):
         self.send_goal_and_wait(new_pose)
 
         # rotate left until we see the object again
-        self.rotate_left_until_10_centroids()
+        self.rotate_left_until_15_centroids()
 
         # second pose
         pose2: Odometry = deepcopy(self.recent_odom)
