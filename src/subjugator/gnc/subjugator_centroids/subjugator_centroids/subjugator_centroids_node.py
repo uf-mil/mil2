@@ -13,6 +13,7 @@ from subjugator_msgs.msg import Centroid
 
 from subjugator_centroids.centroid_finder import CentroidFinder
 from subjugator_centroids.green_tracker import GreenTracker
+from subjugator_centroids.red_tracker import RedTracker 
 
 
 def rotate_front_cam(frame: MatLike) -> MatLike:
@@ -114,9 +115,10 @@ class SubjugatorCentroidsNode(Node):
 def main():
     # here is where you create all of the things you want to track
     gt = GreenTracker("centroids/green")
+    rt = RedTracker("centroids/red")
 
     rclpy.init()
-    n = SubjugatorCentroidsNode([gt])
+    n = SubjugatorCentroidsNode([gt, rt])
     # rclpy.spin(n) node spins itself sry
     n.cap.release()  # free camera so cool
     rclpy.shutdown()
