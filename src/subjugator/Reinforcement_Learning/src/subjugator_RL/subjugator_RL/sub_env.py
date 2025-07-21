@@ -126,17 +126,17 @@ class SubEnv(gym.Env):
 
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
-                print("Successfully reset pose")
+                #TEMPprint("Successfully reset pose")
                 return True
             else:
-                print(f"Failed to reset submarine: {result.stderr}")
+                #TEMPprint(f"Failed to reset submarine: {result.stderr}")
                 return False
 
         except subprocess.TimeoutExpired:
-            print("Timeout while removing submarine")
+            #TEMPprint("Timeout while removing submarine")
             return False
         except Exception as e:
-            print(f"Error removing submarine: {e}")
+            #TEMPprint(f"Error removing submarine: {e}")
             return False
 
     def _spawn_buoy(self, x: float, y: float, z: float) -> bool:
@@ -164,14 +164,14 @@ class SubEnv(gym.Env):
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
-                print(f"Successfully spawned buoy at x={x}, y={y}, z={z}")
+                #TEMPprint(f"Successfully spawned buoy at x={x}, y={y}, z={z}")
                 return True
             else:
-                print(f"Failed to spawn buoy: {result.stderr.strip()}")
+                #TEMPprint(f"Failed to spawn buoy: {result.stderr.strip()}")
                 return False
 
         except subprocess.TimeoutExpired:
-            print("Create service call timed out")
+            #TEMPprint("Create service call timed out")
             return False
 
 
@@ -195,7 +195,7 @@ class SubEnv(gym.Env):
             subprocess.run(cmd, timeout=5)
 
         except Exception as e:
-            print(f"Could not unpause Gazebo: {e}")
+            #TEMPprint(f"Could not unpause Gazebo: {e}")
 
     def pause_gazebo(self):
         try:
@@ -217,7 +217,7 @@ class SubEnv(gym.Env):
             subprocess.run(cmd, timeout=5)
 
         except Exception as e:
-            print(f"Could not pause Gazebo: {e}")
+            #TEMPprint(f"Could not pause Gazebo: {e}")
 
     def reset_localization(self):
         try:
@@ -233,17 +233,17 @@ class SubEnv(gym.Env):
             subprocess.run(cmd, timeout=5)
 
         except Exception as e:
-            print(f"Could not start filter: {e}")
+            #TEMPprint(f"Could not start filter: {e}")
 
 
     def reset_simulation(self):
         try:
             cmd = "gz service -s /world/robosub_2024/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean --timeout 3000 --req 'reset: {all: true}'"
             subprocess.run(cmd, shell=True, timeout=5, check=True)
-            print("Reset sim successfully")
+            #TEMPprint("Reset sim successfully")
             return True
         except Exception as e:
-            print(f"Could not reset sim: {e}")
+            #TEMPprint(f"Could not reset sim: {e}")
             return False
 
     def start_ekf_node(self):
@@ -260,7 +260,7 @@ class SubEnv(gym.Env):
             subprocess.run(cmd, timeout=5)
 
         except Exception as e:
-            print(f"Could not start filter: {e}")
+            #TEMPprint(f"Could not start filter: {e}")
 
     def reset_ros_time(self):
         try:
@@ -274,9 +274,9 @@ class SubEnv(gym.Env):
                 "--once",
             ]
             subprocess.run(cmd, timeout=5)
-            print("Reset ROS time")
+            #TEMPprint("Reset ROS time")
         except Exception as e:
-            print(f"Could not reset ROS time: {e}")
+            #TEMPprint(f"Could not reset ROS time: {e}")
 
     def generate_random_pt(self):
         # Generate random point greater than min_x or y, but less than max_x or y
@@ -316,14 +316,14 @@ class SubEnv(gym.Env):
 
         # sub has reached target
         if distance < 0.5:
-            return 10000
+            return 100000
 
         if self.previousDistance is not None:
             progress = self.previousDistance - distance
             # rewards based on if sub is moving in the direction of the target
-            print(f"PROGESS: {progress}")
+            #TEMPprint(f"PROGESS: {progress}")
             # higher negative penalty for negative progress
-            progress *= 2 if progress < 0 else 1
+            progress *= 5 if progress < 0 else 1
             # clip progress in case of sudden jerk, increase progress reward to meaningful amount
             progress_reward = 100 * np.clip(progress, -0.05, 0.05)
 
@@ -364,11 +364,11 @@ class SubEnv(gym.Env):
         linear_vel = np.array([linVel.x, linVel.y, linVel.z], dtype=np.float32)
         angular_vel = np.array([angVel.x, angVel.y, angVel.z], dtype=np.float32)
 
-        # print(position)
-        # print(orientation)
-        # print(linear_vel)
-        # print(angular_vel)
-        # print(object_distance)
+        # #TEMPprint(position)
+        # #TEMPprint(orientation)
+        # #TEMPprint(linear_vel)
+        # #TEMPprint(angular_vel)
+        # #TEMPprint(object_distance)
 
         if self.random_pt is not None:
             object_distance = self.random_pt - position
@@ -384,7 +384,7 @@ class SubEnv(gym.Env):
         })
 
     def _get_info(self):
-        print("Getting info")
+        #TEMPprint("Getting info")
         return {}
 
     def step(self, action):
@@ -395,7 +395,7 @@ class SubEnv(gym.Env):
         observation = None
         # How many steps env does env calculate per second?
         # hertz_div determines that: env_hertz = gazebo simulation updates per second / hertz_div 
-        hertz_div = 10
+        hertz_div = 2
         for i in range(hertz_div):
             # Get observation, retry until actually new observation is returned
             observation = self._get_obs()
@@ -420,31 +420,32 @@ class SubEnv(gym.Env):
         x, y = position[0], position[1]
         # Terminate on success
         if object_distance < 0.5:
-            print(f"SUB ENV SUCCESS at x={x:.2f}, y={y:.2f}")
+            #TEMPprint(f"SUB ENV SUCCESS at x={x:.2f}, y={y:.2f}")
             terminated = True
         # Terminate if sub veers out too far or glitches off map
         if not (-10.5 < x < 10.5 and -24 < y < 24):
-            print(f"Terminated: Out of bounds at x={x:.2f}, y={y:.2f}")
+            #TEMPprint(f"Terminated: Out of bounds at x={x:.2f}, y={y:.2f}")
+            reward = -20000 # massive negative reward for failure
             terminated = True
 
-        print("Reward: ", reward)
-        print(object_distance, " - Object distance")
-        print(f"Sub's Position={observation['position']}")
-        print(f"Action value={action}")
+        #TEMPprint("Reward: ", reward)
+        #TEMPprint(object_distance, " - Object distance")
+        #TEMPprint(f"Sub's Position={observation['position']}")
+        #TEMPprint(f"Action value={action}")
         return observation, reward, terminated, False, info
 
     def reset(self, seed=None, options=None):
-        print("RESET SUB ENV")
+        #TEMPprint("RESET SUB ENV")
 
         super().reset(seed=seed)
 
-        print("Attempting to pause sim")
+        #TEMPprint("Attempting to pause sim")
         # Gazebo automatically pauses on reset
         success = self.pause_gazebo()
-        print("Attempting to reset sim")
+        #TEMPprint("Attempting to reset sim")
         success = self.reset_simulation()
         time.sleep(0.5)
-        print("Attempting to reset localization")
+        #TEMPprint("Attempting to reset localization")
         self.reset_localization()
         self.start_ekf_node()
         time.sleep(0.5)
@@ -453,12 +454,12 @@ class SubEnv(gym.Env):
 
         # Reset class variables
         self.random_pt = self.generate_random_pt()
-        print(f"Generated target: {self.random_pt}")
+        #TEMPprint(f"Generated target: {self.random_pt}")
         self.previousDistance = 0
         self.previousObservation = None
 
         if not success:
-            print("Gazebo service reset failed!")
+            #TEMPprint("Gazebo service reset failed!")
             # You could raise an exception here if you want the environment to fail
             # raise RuntimeError("Failed to reset submarine using Gazebo services")
 
