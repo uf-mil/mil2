@@ -34,8 +34,8 @@ class MissionPlanner(Node):
         self.action_clients = {}
 
         # Dictionary is populated by parsing through actions in the subjugator_msgs.action directory
-        # The name of the action (i.e what should be used in the mission .yaml file) is an all lowercase of the action name
-        # E.g to use the action NavigateAround.action, the mission yaml should use navigatearound. To use StartGate.action, the mission should use startgate
+        # The name of the task (i.e what should be used in the mission .yaml file) is an all lowercase of the action name
+        # E.g to use the action NavigateAround.action, the mission yaml should contain navigatearound. To use StartGate.action, the mission should use startgate
         self.available_actions = {
             name.lower(): action
             for name, action in inspect.getmembers(action_interfaces, inspect.isclass)
@@ -77,7 +77,6 @@ class MissionPlanner(Node):
         )
 
         action_class = self.available_actions.get(task_name.lower())
-        self.get_logger().info(f"Available actions: {self.available_actions}")
         if not action_class:
             self.get_logger().error(f"Unknown task: {task_name}")
             self.current_task_index += 1
