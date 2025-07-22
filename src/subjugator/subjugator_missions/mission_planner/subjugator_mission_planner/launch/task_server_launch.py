@@ -20,7 +20,7 @@ def generate_launch_description():
             Node(
                 package="subjugator_mission_planner",
                 executable="wait_server",
-                name="wati_server",
+                name="wait_server",
                 parameters=[],
             ),
             Node(

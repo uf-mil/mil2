@@ -88,6 +88,7 @@ class MissionPlanner(Node):
             self.get_logger().error(f"{task_name} server not available")
             self.current_task_index += 1
             return
+        self.get_logger().info(f"Goal parameters: {params}")
 
         goal_msg = self.build_goal_message(action_class, params)
 
@@ -103,24 +104,30 @@ class MissionPlanner(Node):
     # Create a generalizable goal message
     def build_goal_message(self, action_class, params):
         goal = action_class.Goal()
+        print("Goal fields:", goal.__slots__)
+        print("Params received:", params)
 
         # Populate fields automatically from YAML parameters
         for field_name in goal.__slots__:
-            if hasattr(goal, field_name):
-                val = params.get(field_name)
-                if val is not None:
-                    setattr(goal, field_name, val)
+            clean_name = field_name.lstrip("_")  # Remove leading underscore
+            val = params.get(clean_name)
+            if val is not None:
+                setattr(goal, clean_name, val)
+                print(f"Set {clean_name} to {val}")
                 # Handle nested Pose fields
-                elif isinstance(getattr(goal, field_name), Pose):
-                    pose = Pose()
-                    pose.position.x = params.get("x", 0.0)
-                    pose.position.y = params.get("y", 0.0)
-                    pose.position.z = params.get("z", 0.0)
-                    pose.orientation.x = params.get("i", 0.0)
-                    pose.orientation.y = params.get("j", 0.0)
-                    pose.orientation.z = params.get("k", 0.0)
-                    pose.orientation.w = params.get("w", 1.0)
-                    setattr(goal, field_name, pose)
+            elif isinstance(getattr(goal, field_name), Pose):
+                pose = Pose()
+                pose.position.x = params.get("x", 0.0)
+                pose.position.y = params.get("y", 0.0)
+                pose.position.z = params.get("z", 0.0)
+                pose.orientation.x = params.get("i", 0.0)
+                pose.orientation.y = params.get("j", 0.0)
+                pose.orientation.z = params.get("k", 0.0)
+                pose.orientation.w = params.get("w", 1.0)
+                setattr(goal, field_name, pose)
+
+            print(f"Built goal message: {goal}")
+
         return goal
 
     # Send the goal message to the relevant action client

@@ -12,13 +12,13 @@ from subjugator_msgs.action import NavigateAround
 
 class NavigateAroundObjectServer(Node):
     def __init__(self):
-        super().__init__("navigate_around")
+        super().__init__("navigatearound")
 
         # Action server
         self._action_server = ActionServer(
             self,
             NavigateAround,
-            "navigate_around",
+            "navigatearound",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,

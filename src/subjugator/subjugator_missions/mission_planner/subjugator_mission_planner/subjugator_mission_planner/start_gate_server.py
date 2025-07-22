@@ -12,13 +12,13 @@ from subjugator_msgs.action import StartGate
 
 class StartGateServer(Node):
     def __init__(self):
-        super().__init__("start_gate")
+        super().__init__("startgate")
 
         # Action server
         self._action_server = ActionServer(
             self,
             StartGate,
-            "start_gate",
+            "startgate",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
@@ -124,7 +124,7 @@ class StartGateServer(Node):
         self.get_logger().info("Completed start gate!")
 
         goal_handle.succeed()
-        result = StartGateServer.Result()
+        result = StartGate.Result()
         result.success = True
         result.message = "Successfully moved through start gate (with style!)"
         time.sleep(1.0)
