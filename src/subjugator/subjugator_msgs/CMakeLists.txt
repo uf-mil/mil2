@@ -34,11 +34,10 @@ rosidl_generate_interfaces(
   "srv/SetValve.srv"
   "srv/MotionPlan.srv"
   "srv/Sonar.srv"
-  "action/SearchObject.action"
   "action/NavigateAround.action"
-  "action/NavigateThrough.action"
-  "action/Movement.action"
+  "action/Move.action"
   "action/Wait.action"
+  "action/StartGate.action"
   DEPENDENCIES
   geometry_msgs
   std_msgs
