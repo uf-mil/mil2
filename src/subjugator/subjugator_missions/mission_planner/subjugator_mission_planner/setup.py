@@ -17,7 +17,6 @@ setup(
         ),
         (f"share/{package_name}", ["package.xml"]),
         (f"share/{package_name}/missions", glob("missions/*.yaml")),
-        (f"share/{package_name}/missions", ["missions/prequal.yaml"]),
         (
             f"share/{package_name}/launch",
             ["launch/mission_planner_launch.py", "launch/task_server_launch.py"],
