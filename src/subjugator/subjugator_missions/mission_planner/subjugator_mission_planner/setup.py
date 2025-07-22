@@ -39,6 +39,7 @@ setup(
             "search_server = subjugator_mission_planner.search_server:main",
             "movement_server = subjugator_mission_planner.movement_server:main",
             "wait_server = subjugator_mission_planner.wait_server:main",
+            "start_gate_server = subjugator_mission_planner.start_gate_server:main",
         ],
     },
 )
