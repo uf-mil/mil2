@@ -2,6 +2,7 @@ mission:
 
   - task: move
     parameters:
+
       type: "Relative"
       x: 0.0
       y: 0.0
@@ -25,6 +26,7 @@ mission:
   - task: navigatearound
     parameters:
       object: "None"
+
       radius: 0.75
       timeout: 60
   - task: move
