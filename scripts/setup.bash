@@ -38,6 +38,7 @@ alias search_root='sudo find / ... | grep -i'
 alias search='find . -print | grep -i'
 alias fd="fdfind"
 alias imu-socat="sudo socat PTY,link=/dev/ttyV0,mode=777 TCP:192.168.37.61:10001"
+alias sonar-socat="sdgps connect-sonar-raw-tcp 192.168.37.61 2006 ! filter-sonar-raw-samples --highpass 15e3 --lowpass 45e3 --notch 40e3 ! extract-robosub-pings ! robosub-ping-solver ! listen-robosub-ping-solution-tcp 2007"
 alias kill="ros2 service call /kill std_srvs/srv/Empty && stop-controller"
 alias unkill="ros2 service call /unkill std_srvs/srv/Empty"
 # potentially borrowed from forrest
@@ -286,6 +287,7 @@ alias reset-localization="ros2 service call /subjugator_localization/reset std_s
 alias start-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: true}"'
 alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: false}"'
 alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"
+
 #explain
 dropper() {
 	if [ $# -lt 1 ]; then

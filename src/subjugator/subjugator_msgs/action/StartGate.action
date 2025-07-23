@@ -1,6 +1,8 @@
 # Goal
-string object
-
+float32 distance
+int32 num_yaws
+int32 num_rolls
+int32 num_pitch
 ---
 # Result
 bool success

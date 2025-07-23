@@ -17,5 +17,17 @@ def generate_launch_description():
                 name="movement_server",
                 parameters=[],
             ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="wait_server",
+                name="wait_server",
+                parameters=[],
+            ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="start_gate_server",
+                name="start_gate_server",
+                parameters=[],
+            ),
         ],
     )
