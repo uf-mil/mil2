@@ -5,8 +5,8 @@ from rclpy.node import Node
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 from yolo_msgs.msg import Detection
 
-IMAGE_WIDTH = 123
-IMAGE_HEIGHT = 123
+IMAGE_WIDTH = 840
+IMAGE_HEIGHT = 680
 
 
 class CentroidYawTracker(Node):
@@ -24,7 +24,7 @@ class CentroidYawTracker(Node):
 
         self.centroid_sub_ = self.create_subscription(
             Detection,
-            "centroids/green",
+            "centroids/Green",
             self.centroid_cb,
             10,
         )
@@ -46,7 +46,7 @@ class CentroidYawTracker(Node):
             return
 
         x_error_pixels = IMAGE_WIDTH / 2 - self.last_detection.bbox.center.position.x
-        kp = 2.5 / (2 * IMAGE_WIDTH)
+        kp = -2.5 / (2 * IMAGE_WIDTH)
 
         print("---------")
         print("x error pixels: ", x_error_pixels)
