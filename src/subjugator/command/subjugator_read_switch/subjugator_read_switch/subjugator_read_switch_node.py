@@ -16,7 +16,10 @@ class SubjugatorReadSwitchNode(Node):
     def check_gpio(self):
         value = GPIO.input(INPUT_PIN)
         if value == GPIO.HIGH:
+            print("high")
             self.pub.publish(Empty())
+        else:
+            print("low")
 
     def __del__(self):
         GPIO.cleanup()
