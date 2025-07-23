@@ -104,6 +104,8 @@ class MissionPlanner(Node):
     # Create a generalizable goal message
     def build_goal_message(self, action_class, params):
         goal = action_class.Goal()
+        print("Goal fields:", goal.__slots__)
+        print("Params received:", params)
 
         # Populate fields automatically from YAML parameters
         for field_name in goal.__slots__:
@@ -123,6 +125,8 @@ class MissionPlanner(Node):
                 pose.orientation.z = params.get("k", 0.0)
                 pose.orientation.w = params.get("w", 1.0)
                 setattr(goal, field_name, pose)
+
+            print(f"Built goal message: {goal}")
 
         return goal
 
