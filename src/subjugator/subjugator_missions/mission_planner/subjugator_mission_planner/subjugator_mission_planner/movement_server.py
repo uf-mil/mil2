@@ -2,12 +2,14 @@ import math
 import time
 
 import rclpy
-from geometry_msgs.msg import Pose
+import rclpy.duration
+from geometry_msgs.msg import Pose, PoseStamped, TransformStamped
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from subjugator_msgs.action import Move
+from tf2_ros import Buffer, TransformListener
 
 
 class MovementServer(Node):
@@ -33,6 +35,9 @@ class MovementServer(Node):
 
         # initialize pose
         self.current_pose = Pose()
+
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
     # Called when a goal is received. Determines if using vision or dead-reckoning to orbit target
     def goal_callback(self, goal_request):
@@ -72,7 +77,29 @@ class MovementServer(Node):
         )
 
         # Generate goal poses for orbit
-        goal_pose = self.movementGoal
+        if self.movementType == "Relative":
+
+            goal_transform = TransformStamped()
+            goal_transform.transform.translation.x = self.movementGoal.position.x
+            goal_transform.transform.translation.y = self.movementGoal.position.y
+            goal_transform.transform.translation.z = self.movementGoal.position.z
+            goal_transform.transform.rotation = self.movementGoal.orientation
+
+            relative_pose = PoseStamped()
+            relative_pose.header.frame_id = "base_link"
+            relative_pose.pose.position.x = self.movementGoal.position.x
+            relative_pose.pose.position.y = self.movementGoal.position.x
+            relative_pose.pose.position.z = self.movementGoal.position.x
+            relative_pose.pose.orientation = self.movementGoal.orientation
+
+            absolute_pose = self.tf_buffer.transform(
+                relative_pose,
+                "odom",
+                timeout=rclpy.duration.Duration(seconds=1.0),
+            )
+            goal_pose = absolute_pose
+        else:
+            goal_pose = self.movementGoal
 
         self.goal_pub.publish(goal_pose)
 
