@@ -45,15 +45,13 @@ class CentroidYawTracker(Node):
         if not self.spotted:
             return
 
-        x_error_pixels = (
-            self.last_centroid.image_width / 2 - self.last_centroid.centroid_x
-        )
-        kp = 2.5 / (2 * self.last_centroid.image_width)
+        x_error_pixels = IMAGE_WIDTH / 2 - self.last_detection.bbox.center.position.x
+        kp = 2.5 / (2 * IMAGE_WIDTH)
 
         print("---------")
-        print(x_error_pixels)
+        print("x error pixels: ", x_error_pixels)
         yaw_command = -x_error_pixels * kp
-        print(yaw_command)
+        print("yaw command: ", yaw_command)
         print("---------")
 
         # Get current orientation from odometry
