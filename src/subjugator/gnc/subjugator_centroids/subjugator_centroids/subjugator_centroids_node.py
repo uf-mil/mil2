@@ -26,11 +26,17 @@ def rotate_front_cam(frame: MatLike) -> MatLike:
         left=PADDING,
         right=PADDING,
         borderType=cv2.BORDER_CONSTANT,
-        value=(0, 0, 0), # black
+        value=(0, 0, 0),  # black
     )
+
+    # Get new dimensions
     (h, w) = padded.shape[:2]
     center = (w // 2, h // 2)
+
+    # Get rotation matrix
     M = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
+
+    # Rotate the padded image
     rotated = cv2.warpAffine(padded, M, (w, h))
     return rotated
 
