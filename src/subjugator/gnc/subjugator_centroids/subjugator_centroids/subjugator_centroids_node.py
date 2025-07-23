@@ -2,19 +2,18 @@
 
 # node which has a bunch of classes that implement the CentroidFinder abstract class, it feeds them images and publishes results
 
-from typing import Dict, List
+from typing import List
 
 import cv2
 import rclpy
 from cv2.typing import MatLike
 from rclpy.node import Node
-from rclpy.publisher import Publisher
-from subjugator_msgs.msg import Centroid
 
 from subjugator_centroids.centroid_finder import CentroidFinder
 from subjugator_centroids.green_tracker import GreenTracker
 from subjugator_centroids.red_tracker import RedTracker 
 
+from mil_msgs.msg import PerceptionTarget
 
 def rotate_front_cam(frame: MatLike) -> MatLike:
     PADDING = 100
@@ -27,17 +26,11 @@ def rotate_front_cam(frame: MatLike) -> MatLike:
         left=PADDING,
         right=PADDING,
         borderType=cv2.BORDER_CONSTANT,
-        value=(0, 0, 0),  # black
+        value=(0, 0, 0), # black
     )
-
-    # Get new dimensions
     (h, w) = padded.shape[:2]
     center = (w // 2, h // 2)
-
-    # Get rotation matrix
     M = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
-
-    # Rotate the padded image
     rotated = cv2.warpAffine(padded, M, (w, h))
     return rotated
 
@@ -45,84 +38,50 @@ def rotate_front_cam(frame: MatLike) -> MatLike:
 class SubjugatorCentroidsNode(Node):
     def __init__(self, trackers: List[CentroidFinder]):
         super().__init__("subjugator_centroids_node")
-        self.pubs: Dict[str, Publisher] = {}
-        self.trackers: List[CentroidFinder] = trackers
-
-        # create publishers for each tracker
-        for tracker in trackers:
-            self.pubs[tracker.topic_name] = self.create_publisher(
-                Centroid,
-                tracker.topic_name,
-                10,
-            )
-
+        self.trackers = trackers
+        self.percep_pub = self.create_publisher(PerceptionTarget, "/perception/targets", 10)
         # start camera
         cam_path = "/dev/v4l/by-id/usb-Chicony_Tech._Inc._Dell_Webcam_WB7022_4962D17A78D6-video-index0"
         self.cap = cv2.VideoCapture(cam_path)
         if not self.cap.isOpened():
             self.get_logger().error("could not open camera")
             return
-
         self.search_for_centroids_forever()
 
     def search_for_centroids_forever(self):
-        # literally just run this function forever
-        while True:
-            rclpy.spin_once(self, timeout_sec=0.01)
-
+        while rclpy.ok():
+            rclpy.spin_once(self, timeout_sec=0.0)
             ret, frame = self.cap.read()
             if not ret:
                 self.get_logger().warn("no frame from camera")
-                break
-
+                continue
             frame = rotate_front_cam(frame)
-
+            h, w, _ = frame.shape
             for tracker in self.trackers:
                 centroid = tracker.find_centroid(frame)
-                if centroid is None:  # nothing to publish
+                if centroid is None:
                     continue
+                cx, cy = centroid
+                label = tracker.topic_name.split("/")[-1]
+                self.publish_centroid_common(label, w, h, cx, cy)
 
-                height, width, _ = frame.shape
-                topic_name = tracker.topic_name
-                self.publish_centroid(
-                    topic_name,
-                    width,
-                    height,
-                    centroid[0],
-                    centroid[1],
-                )
-
-    # image_width: images width in pixels
-    # image_height: images height in pixels
-    # cx: x position of the image centroid
-    # cy: y position of the image centroid
-    def publish_centroid(
-        self,
-        topic_name: str,
-        image_width: int,
-        image_height: int,
-        cx: int,
-        cy: int,
-    ):
-        c = Centroid()
-        c.image_height = image_height
-        c.image_width = image_width
-        c.centroid_x = cx
-        c.centroid_y = cy
-        self.pubs[topic_name].publish(c)
-
+    def publish_centroid_common(self, label, img_w, img_h, cx, cy):
+        msg = PerceptionTarget()
+        msg.label = label
+        msg.cx, msg.cy = float(cx), float(cy)
+        msg.width = 0.0
+        msg.height = 0.0
+        msg.confidence = 1.0
+        msg.stamp = self.get_clock().now().to_msg()
+        self.percep_pub.publish(msg)
 
 def main():
-    # here is where you create all of the things you want to track
     gt = GreenTracker("centroids/green")
     rt = RedTracker("centroids/red")
-
+    ot = OrangeTracker("centroids/orange")
     rclpy.init()
-    n = SubjugatorCentroidsNode([gt, rt])
-    # rclpy.spin(n) node spins itself sry
-    n.cap.release()  # free camera so cool
+    SubjugatorCentroidsNode([gt, rt, ot])
     rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()
