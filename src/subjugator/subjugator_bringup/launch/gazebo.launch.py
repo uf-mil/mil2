@@ -9,8 +9,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    # Configure ROS nodes for launch
-
+    # Configure ROS nodes for launch    
     # Setup project paths
     pkg_project_bringup = get_package_share_directory("subjugator_bringup")
     pkg_project_gazebo = get_package_share_directory("subjugator_gazebo")
@@ -39,7 +38,9 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(pkg_project_bringup, "launch", "subjugator_setup.launch.py"),
         ),
-        launch_arguments={}.items(),
+        launch_arguments={
+            "use_sim_time" : "true",
+        }.items(),
     )
 
     # Bridge ROS topics and Gazebo messages for establishing communication

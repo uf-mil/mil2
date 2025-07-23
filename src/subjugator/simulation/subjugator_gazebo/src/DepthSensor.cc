@@ -24,7 +24,7 @@ void DepthSensor::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf:
 {
     // std::cout << "[DepthSensor] Attached to entity ID:" << _entity << std::endl;
     this->modelEntity_ = _entity;
-
+    
     // Getting values from SDF
     if (_sdf->HasElement("frame_id"))
         this->frameName_ = _sdf->Get<std::string>("frame_id");
@@ -78,7 +78,6 @@ void DepthSensor::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::EntityCo
             return;
 
         this->lastPubTime_ = nowSec;
-
         // Get Pose component
         auto poseComp = _ecm.Component<gz::sim::components::Pose>(this->modelEntity_);
         if (!poseComp)
