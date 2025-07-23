@@ -10,11 +10,15 @@ from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithP
 from ultralytics import YOLO
 from geometry_msgs.msg import Point
 from vision_msgs.msg import Pose2D, Point2D
+from mil_msgs.msg import PerceptionTarget
+
 
 class YoloDetector(Node):
     def __init__(self):
         super().__init__("yolo_detector")
 
+        self.percep_pub = self.create_publisher(
+                    PerceptionTarget, "/perception/targets", 10)
         self.declare_parameter("image_topic", "/front_cam/image_raw")
         self.declare_parameter("model_name",  "project_38.pt")
         image_topic = self.get_parameter("image_topic").value
@@ -74,6 +78,18 @@ class YoloDetector(Node):
             hypo.hypothesis.score = conf
             det.results.append(hypo)
             det_arr.detections.append(det)
+
+            
+            pt = PerceptionTarget()
+            pt.label = label 
+            pt.cx = (x1 + x2) / 2.0
+            pt.cy = (y1 + y2) / 2.0
+            pt.width = float(x2 - x1)
+            pt.height = float(y2 - y1)
+            pt.confidence = conf
+            pt.stamp = msg.header.stamp
+            self.percep_pub.publish(pt)
+
 
         ros_img = self.bridge.cv2_to_imgmsg(annotated, "bgr8")
         ros_img.header = msg.header
