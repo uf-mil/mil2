@@ -39,6 +39,7 @@ setup(
             "movement_server = subjugator_mission_planner.movement_server:main",
             "wait_server = subjugator_mission_planner.wait_server:main",
             "start_gate_server = subjugator_mission_planner.start_gate_server:main",
+            "waypoint_server = subjugator_mission_planner.waypoint_server:main",
         ],
     },
 )

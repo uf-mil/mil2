@@ -1,6 +1,6 @@
 mission:
 
-  - task: wp_server
+  - task: waypoint
     parameters:
       wp_name: sample_wp
       goto_wp: false
@@ -16,7 +16,7 @@ mission:
       k: 0.0
       w: 1.0
       timeout: 120
-  - task: wp_server
+  - task: waypoint
     parameters:
       wp_name: sample_wp
       goto_wp: true
