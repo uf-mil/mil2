@@ -38,6 +38,7 @@ alias search_root='sudo find / ... | grep -i'
 alias search='find . -print | grep -i'
 alias fd="fdfind"
 alias imu-socat="sudo socat PTY,link=/dev/ttyV0,mode=777 TCP:192.168.37.61:10001"
+alias sonar-socat="sdgps connect-sonar-raw-tcp 192.168.37.61 2006 ! filter-sonar-raw-samples --highpass 15e3 --lowpass 45e3 --notch 40e3 ! extract-robosub-pings ! robosub-ping-solver ! listen-robosub-ping-solution-tcp 2007"
 alias kill="ros2 service call /kill std_srvs/srv/Empty && stop-controller"
 alias unkill="ros2 service call /unkill std_srvs/srv/Empty"
 # potentially borrowed from forrest
@@ -246,20 +247,46 @@ alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/Set
 alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"
 
 # aliases for waypoints
-wp-set(){
-    if [ $# -lt 1 ]; then
-        echo "missing waypoint name! should be: wp-set <waypoint_name>"
-        return 1
-    fi
+wp-set() {
+	if [ $# -lt 1 ]; then
+		echo "missing waypoint name! should be: wp-set <waypoint_name>"
+		return 1
+	fi
 
-    ros2 service call /wp/set subjugator_msgs/srv/StringTrigger "{wp_name: '$1'}"
+	ros2 service call /wp/set subjugator_msgs/srv/StringTrigger "{wp_name: '$1'}"
 }
 
-wp-goto(){
-    if [ $# -lt 1 ]; then
-        echo "missing waypoint name! should be: wp-goto <waypoint_name>"
-        return 1
-    fi
+wp-goto() {
+	if [ $# -lt 1 ]; then
+		echo "missing waypoint name! should be: wp-goto <waypoint_name>"
+		return 1
+	fi
 
-    ros2 service call /wp/goto subjugator_msgs/srv/StringTrigger "{wp_name: '$1'}"
+	ros2 service call /wp/goto subjugator_msgs/srv/StringTrigger "{wp_name: '$1'}"
+}
+
+#explain
+dropper() {
+	if [ $# -lt 1 ]; then
+		echo "missing angle! should be: angle <uint8>"
+		return 1
+	fi
+
+	ros2 service call /dropper subjugator_msgs/srv/Servo "{angle: '$1'}"
+}
+gripper() {
+	if [ $# -lt 1 ]; then
+		echo "missing angle! should be: angle <uint8>"
+		return 1
+	fi
+
+	ros2 service call /gripper subjugator_msgs/srv/Servo "{angle: '$1'}"
+}
+torpedo() {
+	if [ $# -lt 1 ]; then
+		echo "missing angle! should be: angle <uint8>"
+		return 1
+	fi
+
+	ros2 service call /torpedo subjugator_msgs/srv/Servo "{angle: '$1'}"
 }

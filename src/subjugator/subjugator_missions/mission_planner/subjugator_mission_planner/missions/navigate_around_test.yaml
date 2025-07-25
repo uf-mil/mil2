@@ -1,0 +1,6 @@
+mission:
+
+  - task: navigatearound
+    parameters:
+      object: "None"
+      radius: 0.75

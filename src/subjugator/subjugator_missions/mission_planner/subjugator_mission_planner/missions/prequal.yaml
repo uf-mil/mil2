@@ -23,7 +23,7 @@ mission:
       k: 0.0
       w: 1.0
       timeout: 120
-  - task: navigate_around_object
+  - task: navigatearound
     parameters:
       object: "None"
 
