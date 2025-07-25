@@ -15,7 +15,7 @@ IMAGE_HEIGHT = 680
 
 class YawTrackerServer(Node):
     def __init__(self):
-        super().__init__("yaw_tracker_server")
+        super().__init__("yawtracker")
 
         self.spotted: bool = False
 
@@ -36,7 +36,7 @@ class YawTrackerServer(Node):
         self._action_server = ActionServer(
             self,
             YawTracker,
-            "yaw_tracker_server",
+            "yawtracker",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
@@ -46,6 +46,7 @@ class YawTrackerServer(Node):
         self.last_odom = msg
 
     def centroid_cb(self, msg: Detection):
+        print("spotted")
         self.last_detection = msg
         self.spotted = True
 
@@ -68,6 +69,7 @@ class YawTrackerServer(Node):
         return CancelResponse.ACCEPT
 
     def execute_callback(self, goal_handle):
+        rclpy.spin_once(self, timeout_sec=0.1)
         current_x = self.last_odom.pose.pose.position.x
         current_y = self.last_odom.pose.pose.position.y
         while not self.control_loop(current_x, current_y):
@@ -89,7 +91,8 @@ class YawTrackerServer(Node):
         kp = -2.5 / (2 * IMAGE_WIDTH)
 
         if abs(x_error_pixels) < 50:
-            return True
+            pass
+            # return True
 
         print("---------")
         print("x error pixels: ", x_error_pixels)
