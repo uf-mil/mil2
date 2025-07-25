@@ -18,7 +18,7 @@ class MissionPlanner(Node):
         print(f"PATH: {package_share}")
 
         # Find a mission file, if none is specified use prequal
-        default_mission_file = os.path.join("prequal.yaml")
+        default_mission_file = os.path.join("wait_test.yaml")
         self.declare_parameter("mission_file", default_mission_file)
         mission_file = os.path.join(
             package_share,
