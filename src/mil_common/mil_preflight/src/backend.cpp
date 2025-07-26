@@ -48,8 +48,6 @@ class PseudoAction : public Action
 
     std::shared_future<int> onQuestion(std::string&& question, std::vector<std::string>&& options)
     {
-        std::promise<int> answer;
-
         std::ostringstream oss;
         oss << BEL << std::endl << question << GS;
         for (std::string const& option : options)
@@ -61,22 +59,15 @@ class PseudoAction : public Action
 
         std::cout << std::move(oss.str());
 
-        std::string line;
-        int index = -1;
+        std::future<int> answer_future = std::async(std::launch::async,
+                                                    []
+                                                    {
+                                                        std::string answer;
+                                                        std::getline(std::cin, answer);
+                                                        return std::stoi(answer);
+                                                    });
 
-        if (std::getline(std::cin, line))
-        {
-            try
-            {
-                index = std::stoi(line);
-            }
-            catch (std::exception const& e)
-            {
-            }
-        }
-
-        answer.set_value(index);
-        return answer.get_future().share();
+        return answer_future.share();
     }
 
   private:
@@ -160,7 +151,6 @@ class Backend : public rclcpp::executors::SingleThreadedExecutor
     void run()
     {
         std::string line;
-        std::shared_ptr<PluginBase> plugin;
         std::vector<std::string> parameters;
         while (std::getline(std::cin, line))
         {
@@ -171,6 +161,7 @@ class Backend : public rclcpp::executors::SingleThreadedExecutor
             }
             else if (line[0] == GS)
             {
+                std::shared_ptr<PluginBase> plugin;
                 try
                 {
                     plugin = plugin_loader_.createSharedInstance("mil_preflight::" + parameters[1]);
