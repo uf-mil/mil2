@@ -6,17 +6,13 @@
 namespace mil_preflight
 {
 
-Frontend::Frontend(int argc, char* argv[])
+Frontend::Frontend()
   : work_guard_(boost::asio::make_work_guard(work_context_))
   , work_thread_([this] { work_context_.run(); })
   , backend_(boost::process::child(bin_path_.string(),
                                    boost::process::std_in<child_in_, boost::process::std_out> child_out_,
                                    boost::process::std_err > child_err_))
 {
-    for (int i = 0; i < argc; i++)
-    {
-        args_.emplace_back(argv[i]);
-    }
 }
 
 Frontend::~Frontend()

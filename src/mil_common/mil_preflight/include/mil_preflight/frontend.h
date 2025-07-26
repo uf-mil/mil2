@@ -16,19 +16,13 @@ namespace mil_preflight
 class Frontend
 {
   public:
-    Frontend(int argc, char* argv[]);
+    Frontend();
     ~Frontend();
 
     void runJob(std::shared_ptr<Job> job);
     void runJobAsync(std::shared_ptr<Job> job);
-    std::vector<std::string> const& getArgs()
-    {
-        return args_;
-    }
 
   private:
-    std::vector<std::string> args_;
-
     boost::filesystem::path bin_path_ = boost::process::search_path("mil_preflight_backend");
 
     boost::asio::io_context work_context_;

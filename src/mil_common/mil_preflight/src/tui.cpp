@@ -1002,12 +1002,12 @@ class Root : public ComponentBase
     Component menu;
 };
 
-static std::optional<boost::property_tree::ptree> loadConfig(std::vector<std::string> const& args)
+static std::optional<boost::property_tree::ptree> loadConfig(int argc, char* argv[])
 {
     boost::filesystem::path filename;
-    if (args.size() > 1)
+    if (argc > 1)
     {
-        filename = args[1];
+        filename = argv[1];
     }
     else
     {
@@ -1050,6 +1050,7 @@ static std::optional<boost::property_tree::ptree> loadConfig(std::vector<std::st
     {
         std::shared_ptr<MessageBox> message_box = std::make_shared<MessageBox>("Load config");
         message_box->show("Failed to parse\n" + std::string(e.what()), { "Quit" });
+        return std::nullopt;
     }
 
     return cfg;
@@ -1084,19 +1085,27 @@ static void createJob(boost::property_tree::ptree& cfg, std::shared_ptr<TestsPag
     }
 }
 
-TUI::TUI(std::shared_ptr<Frontend> frontend)
+TUI::TUI(int argc, char* argv[])
 {
-    std::optional<boost::property_tree::ptree> cfg = loadConfig(frontend->getArgs());
+    std::shared_ptr<mil_preflight::Frontend> frontend = std::make_shared<mil_preflight::Frontend>();
+    std::optional<boost::property_tree::ptree> cfg = loadConfig(argc, argv);
 
     if (!cfg)
     {
-        exit(0);
+        Add(Renderer(
+            []
+            {
+                ScreenInteractive::Active()->Exit();
+                return text("");
+            }));
+        return;
     }
 
     std::shared_ptr<Root> root = std::make_shared<Root>();
 
     auto tests_page = std::make_shared<mil_preflight::TestsPage>([this, frontend](std::shared_ptr<TestsPage> page)
                                                                  { frontend->runJobAsync(page); });
+
     createJob(cfg.value(), tests_page);
 
     Component reports_page = std::make_shared<mil_preflight::ReportsPage>();
@@ -1104,7 +1113,7 @@ TUI::TUI(std::shared_ptr<Frontend> frontend)
     Component about_page = Renderer(
         [this]
         {
-            return vbox({ text("MIL Preflight") | bold, text("v0.1.3"), text("University of Florida"),
+            return vbox({ text("MIL Preflight") | bold, text("v1.0.0"), text("University of Florida"),
                           hbox({ text("Machine Intelligence Laboratory") | hyperlink("https://mil.ufl.edu/") }),
                           hbox({ text("Powered by "), text("FTXUI") | hyperlink("https://github.com/ArthurSonzogni/"
                                                                                 "FTXUI/") }),

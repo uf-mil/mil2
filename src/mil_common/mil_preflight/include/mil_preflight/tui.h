@@ -12,7 +12,7 @@ using namespace ftxui;
 class TUI : public ComponentBase
 {
   public:
-    TUI(std::shared_ptr<Frontend> frontend);
+    TUI(int argc, char* argv[]);
     ~TUI();
 };
 
