@@ -46,7 +46,6 @@ class YawTrackerServer(Node):
         self.last_odom = msg
 
     def centroid_cb(self, msg: Detection):
-        print("spotted")
         self.last_detection = msg
         self.spotted = True
 
@@ -75,12 +74,13 @@ class YawTrackerServer(Node):
         while not self.control_loop(current_x, current_y):
             rclpy.spin_once(self, timeout_sec=1)
 
-        self.detection_sub.destroy()
+        # self.detection_sub.destroy()
 
         goal_handle.succeed()
         result = YawTracker.Result()
         result.success = True
         result.message = "centered on object"
+        print("destroyed")
         return result
 
     def control_loop(self, current_x: float, current_y: float) -> bool:
@@ -91,8 +91,7 @@ class YawTrackerServer(Node):
         kp = -2.5 / (2 * IMAGE_WIDTH)
 
         if abs(x_error_pixels) < 50:
-            pass
-            # return True
+            return True
 
         print("---------")
         print("x error pixels: ", x_error_pixels)

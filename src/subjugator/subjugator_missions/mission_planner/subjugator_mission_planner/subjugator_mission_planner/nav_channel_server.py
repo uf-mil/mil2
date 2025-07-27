@@ -1,5 +1,3 @@
-from typing import Generic, TypeVar
-
 import numpy as np
 import rclpy
 from geometry_msgs.msg import Pose
@@ -12,32 +10,34 @@ from subjugator_msgs.action import Move, NavChannel, YawTracker
 from tf_transformations import euler_from_quaternion
 from yolo_msgs.msg import Detection
 
-T = TypeVar("T")
 
-
-class ActionUser(Generic[T]):
+class ActionUser:
     """
     class to make calling other missions easier, you do still kinda have to construct the goals on your own sry
     """
 
-    def __init__(self, node: Node, action_name: str):
+    def __init__(self, node: Node, action_type, action_name: str):
         self.node = node
-        self.ac = ActionClient(node, T, action_name)
+        self.ac = ActionClient(node, action_type, action_name)
 
     # 0 timeout seconds implies no timeout
     # TODO rn there is nothing for timeout_sec, would be a great first issue for someone :) (use self.node.get_clock().now())
     # _=0 should be timeout_sec = 0
     def send_goal_and_block_until_done(self, goal, _=0):
         future = self.ac.send_goal_async(goal)  # rn no feedback
-        while True:
+        running = True
+        while running:
             rclpy.spin_once(self.node, timeout_sec=0.1)
 
             if future.done():
                 result = future.result()
-                self.node.get_logger().info(f"Result: {result}")
-                break
+                result_future = result.get_result_async()
 
-    def send_goal_and_return_future(self, goal: T):
+                while not result_future.done():  # TODO this could be better
+                    rclpy.spin_once(self.node, timeout_sec=0.1)
+                running = False
+
+    def send_goal_and_return_future(self, goal):
         return self.ac.send_goal_async(goal)
 
 
@@ -160,8 +160,8 @@ class NavChannelServer(Node):
             cancel_callback=self.cancel_callback,
         )
 
-        self.move_client = ActionUser[Move](self, "move")
-        self.yaw_tracker_client = ActionUser[YawTracker](self, "yawtracker")
+        self.move_client = ActionUser(self, Move, "move")
+        self.yaw_tracker_client = ActionUser(self, YawTracker, "yawtracker")
 
     def odom_cb(self, msg: Odometry):
         self.recent_odom = msg
@@ -196,11 +196,19 @@ class NavChannelServer(Node):
         goal.goal_pose = p
         while self.detection_count < 5:
             self.move_client.send_goal_and_block_until_done(goal)
+            self.sleep_for(0.5)
 
         # now that we see a red pole, we should center on it??
-        goal = YawTracker.Goal()
-        goal.topic_name = "centroids/red_pole"
-        self.yaw_tracker_client.send_goal_and_block_until_done(goal)
+        # goal = YawTracker.Goal()
+        # goal.topic_name = "centroids/red_pole"
+        # self.yaw_tracker_client.send_goal_and_block_until_done(goal)
+
+    def sleep_for(self, time: float):
+        start_time = self.get_clock().now()
+        duration = rclpy.duration.Duration(seconds=time)
+
+        while (self.get_clock().now() - start_time) < duration:
+            rclpy.spin_once(self, timeout_sec=0.1)  # Allow callbacks while waiting
 
     def try_find_red_pole(self, p1: Odometry, p2: Odometry):
         pose1 = [
@@ -236,6 +244,11 @@ class NavChannelServer(Node):
     def execute_callback(self, goal_handle):
         self.get_logger().warn("spot 1")
         self.spot_and_center_red_pole()
+
+        goal = YawTracker.Goal()
+        goal.topic_name = "centroids/red_pole"
+        self.yaw_tracker_client.send_goal_and_block_until_done(goal)
+
         looking_at_red_pole1 = self.recent_odom
 
         self.get_logger().warn("move")
@@ -243,13 +256,18 @@ class NavChannelServer(Node):
         goal = Move.Goal()
         goal.type = "Relative"
         goal.goal_pose = Pose()
-        goal.goal_pose.orientation.w = 1
+        goal.goal_pose.orientation.w = 1.0
         goal.goal_pose.position.x = 0.5
-        goal.goal_pose.position.y = 1
+        goal.goal_pose.position.y = -1.0
         self.move_client.send_goal_and_block_until_done(goal)
 
         self.get_logger().warn("spot 2")
         self.spot_and_center_red_pole()
+
+        goal = YawTracker.Goal()
+        goal.topic_name = "centroids/red_pole"
+        self.yaw_tracker_client.send_goal_and_block_until_done(goal)
+
         looking_at_red_pole2 = self.recent_odom
 
         red_pole_pose = self.try_find_red_pole(
@@ -261,8 +279,8 @@ class NavChannelServer(Node):
 
         goal = Move.Goal()
         goal.goal_pose.position.x = red_pole_pose[0]
-        goal.goal_pose.position.y = red_pole_pose[1] + 0.2
-        goal.goal_pose.orientation.w = 1
+        goal.goal_pose.position.y = red_pole_pose[1] - 0.2
+        goal.goal_pose.orientation.w = 1.0
         self.move_client.send_goal_and_block_until_done(goal)
 
         goal_handle.succeed()
