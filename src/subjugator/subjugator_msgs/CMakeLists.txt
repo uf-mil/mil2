@@ -39,6 +39,7 @@ rosidl_generate_interfaces(
   "action/Move.action"
   "action/Wait.action"
   "action/StartGate.action"
+  "action/Mechanism.action"
   DEPENDENCIES
   geometry_msgs
   std_msgs
