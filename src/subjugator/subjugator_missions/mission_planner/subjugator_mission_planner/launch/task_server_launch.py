@@ -29,5 +29,11 @@ def generate_launch_description():
                 name="start_gate_server",
                 parameters=[],
             ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="mechanisms_server",
+                name="mechanisms_server",
+                parameters=[],
+            ),
         ],
     )
