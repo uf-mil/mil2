@@ -1,0 +1,10 @@
+mission:
+
+  - task: mechanism
+    parameters:
+      mechanism: "dropper"
+      angle: 50
+  - task: mechanism
+    parameters:
+      mechanism: "torpedo"
+      angle: 100
