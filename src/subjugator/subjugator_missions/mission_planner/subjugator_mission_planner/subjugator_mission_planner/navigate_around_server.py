@@ -85,12 +85,16 @@ class NavigateAroundObjectServer(Node):
         starting_z = currentPose.position.z
 
         for angle in angle_increments:
-            angle_rad = angle * 2 * math.pi / 180
+            angle_rad = angle * math.pi / 180
             x_position = 2 * math.sin(angle_rad / 2)
             y_position = -1 * math.sin(angle_rad)
             pose = Pose()
-            pose.position.x = x_position * self.distance_to_orbit
-            pose.position.y = y_position * self.distance_to_orbit
+            pose.position.x = (
+                currentPose.position.x + x_position * self.distance_to_orbit
+            )
+            pose.position.y = (
+                currentPose.position.y + y_position * self.distance_to_orbit
+            )
             pose.position.z = starting_z
 
             pose.orientation.w = 1.0
