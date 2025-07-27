@@ -1,5 +1,6 @@
 import Jetson.GPIO as GPIO
 import rclpy
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_srvs.srv import Empty, SetBool
@@ -14,21 +15,28 @@ class SubjugatorReadSwitchNode(Node):
         self.timer_ = self.create_timer(0.1, self.check_gpio)
         self.pub = self.create_publisher(String, "read_switch", 10)
         self.prev_value = False  # false = low, true = high
+        self.odom_heard = False
 
         # reset localization
-        self.localization_client = self.create_client(
-            Empty,
-            "/subjugator_localization/reset",
-        )
+        # self.localization_client = self.create_client(
+        # Empty,
+        # "/subjugator_localization/reset",
+        # )
 
         # reset controller
-        self.controller_reset_client = self.create_client(
-            Empty,
-            "/pid_controller/reset",
-        )
+        # self.controller_reset_client = self.create_client(
+        # Empty,
+        # "/pid_controller/reset",
+        # )
 
         # start vs stop controller
         self.controller_client = self.create_client(SetBool, "/pid_controller/enable")
+
+        # start localization
+        self.localization_client = self.create_client(
+            Empty,
+            "/subjugator_localization/enable",
+        )
 
         # unkill
         self.unkill_client = self.create_client(Empty, "/unkill")
@@ -52,18 +60,25 @@ class SubjugatorReadSwitchNode(Node):
         stop_msg = SetBool().Request()
         stop_msg.data = False
 
-        # stop-controller
-        self.controller_client.call(stop_msg)
-        rclpy.spin_once(self, timeout_sec=0.5)
+        self.localization_client.call(msg)
+
+        self.odom_heard = False
+
+        def wait_on_odom(_):
+            self.odom_heard = True
+
+        odom_sub = self.create_subscription(
+            Odometry,
+            "odometry/filtered",
+            wait_on_odom,
+            10,
+        )
+        while not self.odom_heard:
+            rclpy.spin_once(self, timeout_sec=0.2)
+        odom_sub.destroy()
 
         # unkill
         self.unkill_client.call(msg)
-
-        # reset-localization
-        self.localization_client.call(msg)
-
-        # reset-controller
-        self.controller_reset_client.call(msg)
 
         # start-controller
         self.controller_client.call(start_msg)
