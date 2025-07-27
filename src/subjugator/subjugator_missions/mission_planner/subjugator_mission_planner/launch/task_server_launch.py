@@ -29,5 +29,11 @@ def generate_launch_description():
                 name="start_gate_server",
                 parameters=[],
             ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="waypoint_server",
+                name="waypoint_server",
+                parameters=[],
+            ),
         ],
     )

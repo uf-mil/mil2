@@ -1,0 +1,23 @@
+mission:
+
+  - task: waypoint
+    parameters:
+      wp_name: sample_wp
+      goto_wp: false
+      set_wp: true
+  - task: move
+    parameters:
+      type: "Relative"
+      x: 1.0
+      y: 0.0
+      z: 0.0
+      i: 0.0
+      j: 0.0
+      k: 0.0
+      w: 1.0
+      timeout: 120
+  - task: waypoint
+    parameters:
+      wp_name: sample_wp
+      goto_wp: true
+      set_wp: false

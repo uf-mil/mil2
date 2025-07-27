@@ -1,0 +1,13 @@
+# Goal
+string wp_name
+bool goto_wp
+bool set_wp
+
+---
+# Result
+bool success
+string message
+
+---
+# Feedback
+string status_message
