@@ -126,8 +126,6 @@ class MissionPlanner(Node):
                 pose.orientation.w = params.get("w", 1.0)
                 setattr(goal, field_name, pose)
 
-            print(f"Built goal message: {goal}")
-
         return goal
 
     # Send the goal message to the relevant action client

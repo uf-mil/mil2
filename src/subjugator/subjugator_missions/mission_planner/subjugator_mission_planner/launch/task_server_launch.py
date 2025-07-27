@@ -35,5 +35,11 @@ def generate_launch_description():
                 name="yawtracker",
                 parameters=[],
             ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="mechanisms_server",
+                name="mechanisms_server",
+                parameters=[],
+            ),
         ],
     )
