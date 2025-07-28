@@ -2,8 +2,10 @@ import math
 
 import numpy as np
 import rclpy
+from geometry_msgs.msg import Pose
 from rclpy.action.client import ActionClient
 from rclpy.node import Node
+from scipy.spatial.transform import Rotation as R
 
 
 # Computes the euclydian distance between two poses.
@@ -30,6 +32,61 @@ def check_at_goal_pose(
         distance_to_goal < acceptablePosDist
         and orientation_to_goal < acceptableOrientDist
     )
+
+
+# Takes in the sub's current pose and a given pose (in base_link, i.e relative to the sub) and converts it to odom (i.e absolute position)
+def transform_pose_to_odom(currentPose, goalPose):
+
+    absolutePose = Pose()
+
+    current_quat = [
+        currentPose.orientation.x,
+        currentPose.orientation.y,
+        currentPose.orientation.z,
+        currentPose.orientation.w,
+    ]
+    current_rot = R.from_quat(current_quat)
+
+    # Relative position from goal
+    rel_position = np.array(
+        [
+            goalPose.position.x,
+            goalPose.position.y,
+            goalPose.position.z,
+        ],
+    )
+
+    # Rotate relative position into world frame
+    rotated_position = current_rot.apply(rel_position)
+
+    # Add to current position
+    absolute_position = (
+        np.array(
+            [
+                currentPose.position.x,
+                currentPose.position.y,
+                currentPose.position.z,
+            ],
+            currentPose,
+        )
+        + rotated_position
+    )
+
+    absolutePose.position = absolute_position
+    # Relative orientation (as Rotation)
+    rel_quat = [
+        goalPose.orientation.x,
+        goalPose.orientation.y,
+        goalPose.orientation.z,
+        goalPose.orientation.w,
+    ]
+    rel_rot = R.from_quat(rel_quat)
+
+    # Compose rotations: world_rot * relative_rot
+    absolute_rot = current_rot * rel_rot
+    absolute_quat = absolute_rot.as_quat()  # [x, y, z, w]
+
+    absolutePose.orientation = absolute_quat
 
 
 # Finds the closest point between two lines with least squares regression
