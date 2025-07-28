@@ -24,6 +24,7 @@ def generate_launch_description():
     pkg_thruster_manager = get_package_share_directory("subjugator_thruster_manager")
     pkg_localization = get_package_share_directory("subjugator_localization")
     pkg_controller = get_package_share_directory("subjugator_controller")
+    pkg_mission_planner = get_package_share_directory("subjugator_mission_planner")
 
     # Load the URDF file from "description" package
     xacro_file = os.path.join(pkg_project_description, "urdf", "sub9.urdf.xacro")
@@ -117,6 +118,19 @@ def generate_launch_description():
         output="both",
     )
 
+    mission_servers = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_mission_planner, "launch", "task_server_launch.py"),
+        ),
+    )
+
+    mission_planner = Node(
+        package="subjugator_mission_planner",
+        executable="mission_planner",
+        name="subjugator_mission_planner",
+        # output="both", # I am NOT getting spammed
+    )
+
     return LaunchDescription(
         [
             gui_cmd,
@@ -128,5 +142,7 @@ def generate_launch_description():
             controller,
             path_planner,
             trajectory_planner,
+            mission_servers,
+            mission_planner,
         ],
     )
