@@ -1,3 +1,5 @@
+import time
+
 import rclpy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
@@ -68,11 +70,11 @@ class YawTrackerServer(Node):
         return CancelResponse.ACCEPT
 
     def execute_callback(self, goal_handle):
-        rclpy.spin_once(self, timeout_sec=0.1)
+        time.sleep(0.1)
         current_x = self.last_odom.pose.pose.position.x
         current_y = self.last_odom.pose.pose.position.y
         while not self.control_loop(current_x, current_y):
-            rclpy.spin_once(self, timeout_sec=1)
+            time.sleep(1)
 
         # self.detection_sub.destroy()
 
