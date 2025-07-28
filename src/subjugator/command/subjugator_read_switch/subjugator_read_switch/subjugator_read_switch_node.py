@@ -38,6 +38,12 @@ class SubjugatorReadSwitchNode(Node):
             "/subjugator_localization/enable",
         )
 
+        # start mission planner
+        self.start_mission_planner = self.create_client(
+            Empty,
+            "/mission_planner/enable",
+        )
+
         # unkill
         self.unkill_client = self.create_client(Empty, "/unkill")
 
@@ -88,6 +94,9 @@ class SubjugatorReadSwitchNode(Node):
 
         # start-controller
         self.controller_client.call(start_msg)
+
+        # start-mission planner
+        self.start_mission_planner.call(msg)
 
     def __del__(self):
         GPIO.cleanup()

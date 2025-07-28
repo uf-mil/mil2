@@ -7,6 +7,7 @@ from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Pose
 from rclpy.action.client import ActionClient
 from rclpy.node import Node
+from std_srvs.srv import Empty
 from subjugator_msgs import action as action_interfaces
 
 
@@ -42,8 +43,17 @@ class MissionPlanner(Node):
             if hasattr(action, "Goal")
         }
 
+        # server to wait to start until told to by the read_switch
+        self.start_server = self.create_service(
+            Empty,
+            "/mission_planner/enable",
+            self.startup_mission_planner,
+        )
+
+    def startup_mission_planner(self, _: Empty.Request, res: Empty.Response):
         # Timer to periodically check mission progress and start tasks
         self.timer = self.create_timer(0.5, self.execute_mission)
+        return res
 
     # Load mission file from yaml
     def load_mission_file(self, filepath):
