@@ -1,3 +1,4 @@
+import math
 import time
 
 import mission_support
@@ -11,7 +12,6 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
 from subjugator_msgs.action import Move
-from tf2_ros import Buffer, TransformListener
 
 
 class MovementServer(Node):
@@ -38,9 +38,6 @@ class MovementServer(Node):
         # initialize pose
         self.current_pose = Pose()
 
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
-
     # Called when a goal is received. Determines if using vision or dead-reckoning to orbit target
     def goal_callback(self, goal_request):
         self.movementType = goal_request.type
@@ -58,6 +55,20 @@ class MovementServer(Node):
     # Gets current pose
     def odom_callback(self, msg):
         self.current_pose = msg.pose.pose
+
+    def check_at_goal_pose(self, currentPose, goalPose, acceptableDist=0.05):
+        x_dist = currentPose.position.x - goalPose.position.x
+        y_dist = currentPose.position.y - goalPose.position.y
+        z_dist = currentPose.position.z - goalPose.position.z
+
+        i_dist = currentPose.orientation.x - goalPose.orientation.x
+        j_dist = currentPose.orientation.y - goalPose.orientation.y
+        k_dist = currentPose.orientation.z - goalPose.orientation.z
+        w_dist = currentPose.orientation.w - goalPose.orientation.w
+
+        distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
+        orientation_to_goal = math.sqrt(i_dist**2 + j_dist**2 + k_dist**2 + w_dist**2)
+        return distance_to_goal < acceptableDist and orientation_to_goal < 0.1
 
     def execute_callback(self, goal_handle):
         self.get_logger().info(
