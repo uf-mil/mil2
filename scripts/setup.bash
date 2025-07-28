@@ -246,6 +246,8 @@ alias start-controller='ros2 service call /pid_controller/enable std_srvs/srv/Se
 alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: false}"'
 alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"
 
+alias start-mission="ros2 service call /mission_planner/enable std_srvs/srv/Empty"
+
 #explain
 dropper() {
 	if [ $# -lt 1 ]; then
