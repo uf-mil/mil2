@@ -14,7 +14,7 @@ class SubjugatorReadSwitchNode(Node):
 
         self.timer_ = self.create_timer(0.1, self.check_gpio)
         self.pub = self.create_publisher(String, "read_switch", 10)
-        self.prev_value = False  # false = low, true = high
+        self.prev_value = True  # false = low, true = high
         self.odom_heard = False
 
         # reset localization
@@ -48,8 +48,10 @@ class SubjugatorReadSwitchNode(Node):
         msg.data = msg_str
         self.pub.publish(msg)
 
-        if self.prev_value and value == GPIO.LOW:
+        if (not self.prev_value) and value == GPIO.HIGH:
             self.reset_sub()
+
+        self.prev_value = value == GPIO.HIGH
 
     def reset_sub(self):
         msg = Empty().Request()
