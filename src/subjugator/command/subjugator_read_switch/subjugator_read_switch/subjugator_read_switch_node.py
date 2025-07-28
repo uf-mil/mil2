@@ -18,10 +18,10 @@ class SubjugatorReadSwitchNode(Node):
         self.odom_heard = False
 
         # reset localization
-        # self.localization_client = self.create_client(
-        # Empty,
-        # "/subjugator_localization/reset",
-        # )
+        self.reset_localization_client = self.create_client(
+            Empty,
+            "/subjugator_localization/reset",
+        )
 
         # reset controller
         # self.controller_reset_client = self.create_client(
@@ -62,6 +62,7 @@ class SubjugatorReadSwitchNode(Node):
         stop_msg = SetBool().Request()
         stop_msg.data = False
 
+        # start localization
         self.localization_client.call(msg)
 
         self.odom_heard = False
@@ -81,6 +82,9 @@ class SubjugatorReadSwitchNode(Node):
 
         # unkill
         self.unkill_client.call(msg)
+
+        # reset-localization
+        self.reset_localization_client.call(msg)
 
         # start-controller
         self.controller_client.call(start_msg)
