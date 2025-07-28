@@ -131,6 +131,13 @@ def generate_launch_description():
         # output="both", # I am NOT getting spammed
     )
 
+    read_switch = Node(
+        package="subjugator_read_switch",
+        executable="subjugator_read_switch",
+        name="mission_planner",
+        # output="both",
+    )
+
     return LaunchDescription(
         [
             gui_cmd,
@@ -144,5 +151,6 @@ def generate_launch_description():
             trajectory_planner,
             mission_servers,
             mission_planner,
+            read_switch,
         ],
     )
