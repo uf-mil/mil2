@@ -17,6 +17,7 @@ setup(
     entry_points={
         'console_scripts': [
             'sub_RL_train = subjugator_RL.sub_RL_train:main',
+            'sub_RL_test = subjugator_RL.sub_RL_test:main'
         ],
     },
     data_files=[

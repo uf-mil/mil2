@@ -61,6 +61,13 @@ def generate_launch_description():
         output="screen",
     )
 
+    rl_test = Node(
+        package="subjugator_RL",
+        executable="sub_RL_test",
+        name="sub_rl_test",
+        output="screen",
+    )
+    
 
     return LaunchDescription(
         [
@@ -68,5 +75,6 @@ def generate_launch_description():
             subjugator_setup,
             bridge,
             rl_train
+            #rl_test
         ],
     )

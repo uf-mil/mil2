@@ -196,6 +196,7 @@ class SubEnv(gym.Env):
 
         except Exception as e:
             #TEMPprint(f"Could not unpause Gazebo: {e}")
+            pass
 
     def pause_gazebo(self):
         try:
@@ -218,6 +219,7 @@ class SubEnv(gym.Env):
 
         except Exception as e:
             #TEMPprint(f"Could not pause Gazebo: {e}")
+            pass
 
     def reset_localization(self):
         try:
@@ -234,6 +236,7 @@ class SubEnv(gym.Env):
 
         except Exception as e:
             #TEMPprint(f"Could not start filter: {e}")
+            pass
 
 
     def reset_simulation(self):
@@ -261,6 +264,7 @@ class SubEnv(gym.Env):
 
         except Exception as e:
             #TEMPprint(f"Could not start filter: {e}")
+            pass
 
     def reset_ros_time(self):
         try:
@@ -277,6 +281,7 @@ class SubEnv(gym.Env):
             #TEMPprint("Reset ROS time")
         except Exception as e:
             #TEMPprint(f"Could not reset ROS time: {e}")
+            pass
 
     def generate_random_pt(self):
         # Generate random point greater than min_x or y, but less than max_x or y
@@ -316,7 +321,9 @@ class SubEnv(gym.Env):
 
         # sub has reached target
         if distance < 0.5:
-            return 100000
+            return 100
+        
+        time_penalty = -0.5  # Small penalty each step 
 
         if self.previousDistance is not None:
             progress = self.previousDistance - distance
@@ -332,11 +339,11 @@ class SubEnv(gym.Env):
 
         self.previousDistance = distance
 
-        distance_reward = ((5/distance) ** 2) - 1
+        distance_reward = 10 * (1 / (1 + distance)) - 5 # so reward doesnt epxlode when its gets close to target
 
-        total_reward = progress_reward + distance_reward
+        total_reward = progress_reward + distance_reward + time_penalty
 
-        return total_reward
+        return np.clip(total_reward, -20, 50)
 
     def _get_obs(self):
         self.get_attempts += 1
@@ -364,11 +371,11 @@ class SubEnv(gym.Env):
         linear_vel = np.array([linVel.x, linVel.y, linVel.z], dtype=np.float32)
         angular_vel = np.array([angVel.x, angVel.y, angVel.z], dtype=np.float32)
 
-        # #TEMPprint(position)
-        # #TEMPprint(orientation)
-        # #TEMPprint(linear_vel)
-        # #TEMPprint(angular_vel)
-        # #TEMPprint(object_distance)
+        #print(position)
+        #TEMPprint(orientation)
+        #TEMPprint(linear_vel)
+        #TEMPprint(angular_vel)
+        #print(object_distance)
 
         if self.random_pt is not None:
             object_distance = self.random_pt - position
@@ -386,7 +393,7 @@ class SubEnv(gym.Env):
     def _get_info(self):
         #TEMPprint("Getting info")
         return {}
-
+    
     def step(self, action):
         # Send action to the environment
         self.gymNode.publish_action_as_wrench(action)
@@ -420,17 +427,18 @@ class SubEnv(gym.Env):
         x, y = position[0], position[1]
         # Terminate on success
         if object_distance < 0.5:
-            #TEMPprint(f"SUB ENV SUCCESS at x={x:.2f}, y={y:.2f}")
+            print(f"SUB ENV SUCCESS at x={x:.2f}, y={y:.2f}")
+
             terminated = True
         # Terminate if sub veers out too far or glitches off map
         if not (-10.5 < x < 10.5 and -24 < y < 24):
-            #TEMPprint(f"Terminated: Out of bounds at x={x:.2f}, y={y:.2f}")
+            print(f"Terminated: Out of bounds at x={x:.2f}, y={y:.2f}")
             reward = -20000 # massive negative reward for failure
             terminated = True
 
         #TEMPprint("Reward: ", reward)
-        #TEMPprint(object_distance, " - Object distance")
-        #TEMPprint(f"Sub's Position={observation['position']}")
+        print(object_distance, " - Object distance")
+        print(f"Sub's Position={observation['position']}")
         #TEMPprint(f"Action value={action}")
         return observation, reward, terminated, False, info
 
@@ -462,7 +470,7 @@ class SubEnv(gym.Env):
             #TEMPprint("Gazebo service reset failed!")
             # You could raise an exception here if you want the environment to fail
             # raise RuntimeError("Failed to reset submarine using Gazebo services")
-
+            pass
         observation = self._get_obs()
         info = self._get_info()
 
