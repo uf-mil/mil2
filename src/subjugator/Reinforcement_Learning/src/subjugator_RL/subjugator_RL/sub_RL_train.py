@@ -4,9 +4,6 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 
 from subjugator_RL import sub_env
 
-plt.show(block=True)
-
-
 def make_env(env_id, rank, seed=0):
 
     def _init():
@@ -16,14 +13,9 @@ def make_env(env_id, rank, seed=0):
 
     return _init
 
-
 def main():
-    # plt.ion()
-    # plt.plot(1, 2, label='entropy')
-    # plt.show(block=True)
-
-    # Retrian and add rewards onto the plaotting for the graph
-    # add a pentaly for taking a lot of timesteps.
+    # Retrain and add rewards onto the plotting for the graph
+    # add a penalty for taking a lot of timesteps.
     num_cpu = 1
 
     env = SubprocVecEnv([make_env("subRL", i) for i in range(num_cpu)])
