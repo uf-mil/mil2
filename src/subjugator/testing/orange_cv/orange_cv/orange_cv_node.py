@@ -11,8 +11,8 @@ class OrangeCV(Node):
         super().__init__("orange_cv")
         self.orange_pub = self.create_publisher(Orange, "centroids/orange", 10)
 
-        # TODO real camera id
-        self.cap = cv2.VideoCapture(0)
+        cam_path = "/dev/v4l/by-id/usb-Chicony_Tech._Inc._Dell_Webcam_WB7022_77A8ADD45565-video-index0"
+        self.cap = cv2.VideoCapture(cam_path)
 
         self.timer_ = self.create_timer(33 / 1000, self.get_and_pub_frame)
 
@@ -49,7 +49,34 @@ if __name__ == "__main__":
     main()
 
 
-# TODO rotate ts
+def rotate_front_cam(frame: MatLike) -> MatLike:
+    # magic numbers:
+    PADDING = 100
+    rotation_angle = 242
+
+    # Add black padding around the image
+    padded = cv2.copyMakeBorder(
+        frame,
+        top=PADDING,
+        bottom=PADDING,
+        left=PADDING,
+        right=PADDING,
+        borderType=cv2.BORDER_CONSTANT,
+        value=(0, 0, 0),  # black
+    )
+
+    # Get new dimensions
+    (h, w) = padded.shape[:2]
+    center = (w // 2, h // 2)
+
+    # Get rotation matrix
+    M = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
+
+    # Rotate the padded image
+    rotated = cv2.warpAffine(padded, M, (w, h))
+    return rotated
+
+
 def detect_bright_orange_object(image: MatLike):
     """
     Detects the largest bright/neon orange object in an image.
@@ -63,6 +90,9 @@ def detect_bright_orange_object(image: MatLike):
         - centroid: Single centroid as (x, y) or None
         - mask: Binary mask for the detected orange object or None
     """
+
+    image = rotate_front_cam(image)
+
     # Convert to HSV color space
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
