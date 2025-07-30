@@ -1,6 +1,5 @@
 import Jetson.GPIO as GPIO
 import rclpy
-from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_srvs.srv import Empty, SetBool
@@ -55,48 +54,46 @@ class SubjugatorReadSwitchNode(Node):
         self.pub.publish(msg)
 
         if (not self.prev_value) and value == GPIO.HIGH:
+            print("reset")
             self.reset_sub()
+            self.timer_.cancel()
 
         self.prev_value = value == GPIO.HIGH
 
     def reset_sub(self):
-        msg = Empty().Request()
+        msg = Empty.Request()
 
-        start_msg = SetBool().Request()
+        start_msg = SetBool.Request()
         start_msg.data = True
 
-        stop_msg = SetBool().Request()
+        stop_msg = SetBool.Request()
         stop_msg.data = False
 
         # start localization
-        self.localization_client.call(msg)
-
-        self.odom_heard = False
-
-        def wait_on_odom(_):
-            self.odom_heard = True
-
-        odom_sub = self.create_subscription(
-            Odometry,
-            "odometry/filtered",
-            wait_on_odom,
-            10,
-        )
-        while not self.odom_heard:
-            rclpy.spin_once(self, timeout_sec=0.2)
-        odom_sub.destroy()
+        print("start-localization")
+        # future = self.localization_client.call_async(msg)
+        # rclpy.spin_until_future_complete(self, future, timeout_sec=3)
+        print("after start-localization")
 
         # unkill
-        self.unkill_client.call(msg)
+        print("before unkilled")
+        future = self.unkill_client.call_async(msg)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=3)
+        print("unkilled")
 
         # reset-localization
-        self.reset_localization_client.call(msg)
+        future = self.reset_localization_client.call_async(msg)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=3)
 
         # start-controller
-        self.controller_client.call(start_msg)
+        future = self.controller_client.call_async(start_msg)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=3)
 
         # start-mission planner
-        self.start_mission_planner.call(msg)
+        future = self.start_mission_planner.call_async(msg)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=3)
+
+        rclpy.shutdown()
 
     def __del__(self):
         GPIO.cleanup()

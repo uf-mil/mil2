@@ -81,7 +81,7 @@ class NavigateAroundObjectServer(Node):
 
         angle_increments = [45, 90, 135, 180, 225, 270, 315, 360]
 
-        starting_z = currentPose.position.z
+        starting_z = -0.37
 
         for angle in angle_increments:
             angle_rad = angle * math.pi / 180

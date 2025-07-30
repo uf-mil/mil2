@@ -1,12 +1,15 @@
 mission:
+  - task: wait
+    parameters:
+      time: 3.0
 
   - task: move
     parameters:
 
-      type: "Relative"
+      type: "Absolute"
       x: 0.0
       y: 0.0
-      z: -0.7
+      z: -0.27
       i: 0.0
       j: 0.0
       k: 0.0
@@ -14,10 +17,21 @@ mission:
       timeout: 120
   - task: move
     parameters:
-      type: "Relative"
-      x: 5.0
+      type: "Absolute"
+      x: 7.5
       y: 0.0
-      z: -0.7
+      z: -0.27
+      i: 0.0
+      j: 0.0
+      k: 0.0
+      w: 1.0
+      timeout: 120
+  - task: move
+    parameters:
+      type: "Absolute"
+      x: 7.5
+      y: 0.0
+      z: -0.37
       i: 0.0
       j: 0.0
       k: 0.0
@@ -27,14 +41,14 @@ mission:
     parameters:
       object: "None"
 
-      radius: 0.75
+      radius: 1.0
       timeout: 60
   - task: move
     parameters:
-      type: "Relative"
-      x: 8.5
+      type: "Absolute"
+      x: 7.5
       y: 0.0
-      z: -0.7
+      z: -0.27
       i: 0.0
       j: 0.0
       k: 1.0
@@ -42,21 +56,10 @@ mission:
       timeout: 120
   - task: move
     parameters:
-      type: "Relative"
-      x: 5.0
-      y: 0.0
-      z: -0.7
-      i: 0.0
-      j: 0.0
-      k: 1.0
-      w: 0.0
-      timeout: 120
-  - task: move
-    parameters:
-      task: "Relative"
+      task: "Absolute"
       x: 0.0
       y: 0.0
-      z: -0.7
+      z: -0.27
       i: 0.0
       j: 0.0
       k: 1.0
