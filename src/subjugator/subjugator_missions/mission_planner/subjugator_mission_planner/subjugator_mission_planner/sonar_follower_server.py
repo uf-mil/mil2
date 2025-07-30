@@ -1,3 +1,5 @@
+import math
+
 import rclpy
 from geometry_msgs.msg import Pose
 from mil_msgs.msg import ProcessedPing
@@ -82,12 +84,47 @@ class SonarFollowerNode(Node):
         self.get_logger().info("Received cancel request")
         return CancelResponse.ACCEPT
 
-    def execute_callback(self, goal_handle):
-        while not self.heard_ping:
-            self.sleep_for(0.5)
-        self.heard_ping = False  # this is lowk stupid TODO
+    def compare_pings(self, p1: ProcessedPing | None, p2: ProcessedPing):
+        if p1 is None:
+            return False
 
-        for _ in range(5):
+        # normalize both
+        x1 = float(p1.origin_direction_body.x)
+        y1 = float(p1.origin_direction_body.y)
+        p1_mag = math.sqrt(x1 * x1 + y1 * y1)
+        x1 = x1 / p1_mag
+        y1 = y1 / p1_mag
+
+        x2 = float(p2.origin_direction_body.x)
+        y2 = float(p2.origin_direction_body.y)
+        p2_mag = math.sqrt(x2 * x2 + y2 * y2)
+        x2 = x2 / p2_mag
+        y2 = y2 / p2_mag
+
+        # dot product
+        dot_prodcut = (
+            x1 * x2 + y1 * y2
+        )  # this IS the cos of the angle between them (so unitless)
+
+        # inverse cos
+        angle_rad = math.acos(dot_prodcut)  # in radians!!
+        angle_degrees = angle_rad * (180 / math.pi)
+
+        # check angle
+        return angle_degrees > 100
+
+    def execute_callback(self, goal_handle):
+        passed_pinger = False
+        previous_ping = None
+        while not passed_pinger:
+            while not self.heard_ping:
+                self.sleep_for(0.5)
+            self.heard_ping = False  # this is lowk stupid TODO
+
+            # check and see if the current ping is pointing the opposite direction from the past ping
+            passed_pinger = self.compare_pings(previous_ping, self.last_ping)
+            if passed_pinger:
+                break
 
             # just move towards it no rotation
             x = self.last_ping.origin_direction_body.x
@@ -102,6 +139,20 @@ class SonarFollowerNode(Node):
             goal.type = "Relative"
             goal.goal_pose = p
             self.move_client.send_goal_and_block_until_done(goal)
+            self.sleep_for(0.5)
+            previous_ping = self.last_ping
+
+        # move to surface
+        p = Pose()
+        p.orientation.w = 1.0
+        p.position.x = 0.0
+        p.position.y = 0.0
+        p.position.z = 0.7  # todo this is dependent on how far down we moved :))
+        goal = Move.Goal()
+        goal.type = "Relative"
+        goal.goal_pose = p
+        self.move_client.send_goal_and_block_until_done(goal)
+        self.sleep_for(0.5)
 
         goal_handle.succeed()
         result = SonarFollower.Result()
