@@ -75,7 +75,6 @@ class SonarFollowerNode(Node):
         self.heard_ping = True
 
     def goal_callback(self, goal_request):
-        self.wait_time = goal_request.time
         self.get_logger().info("goal to follow sonar")
         return GoalResponse.ACCEPT
 
@@ -88,19 +87,21 @@ class SonarFollowerNode(Node):
             self.sleep_for(0.5)
         self.heard_ping = False  # this is lowk stupid TODO
 
-        # just move towards it no rotation
-        x = self.last_ping.origin_direction_body.x
-        y = self.last_ping.origin_direction_body.y
-        _ = self.last_ping.origin_direction_body.z
+        for _ in range(5):
 
-        p = Pose()
-        p.orientation.w = 1.0
-        p.position.x = x
-        p.position.y = y
-        goal = Move.Goal()
-        goal.type = "Relative"
-        goal.goal_pose = p
-        self.move_client.send_goal_and_block_until_done(goal)
+            # just move towards it no rotation
+            x = self.last_ping.origin_direction_body.x
+            y = self.last_ping.origin_direction_body.y
+            _ = self.last_ping.origin_direction_body.z
+
+            p = Pose()
+            p.orientation.w = 1.0
+            p.position.x = x
+            p.position.y = y
+            goal = Move.Goal()
+            goal.type = "Relative"
+            goal.goal_pose = p
+            self.move_client.send_goal_and_block_until_done(goal)
 
         goal_handle.succeed()
         result = SonarFollower.Result()
