@@ -4,8 +4,8 @@ from rclpy.node import Node
 from subjugator_msgs.srv import Servo
 
 Dropper_Pin = 15
-Gripper_Pin = 33
-Torpedo_Pin = 32
+Gripper_Pin = 32  # 35 and 120 for top and bottom
+Torpedo_Pin = 33
 
 GPIO.setmode(GPIO.BOARD)
 
@@ -17,7 +17,7 @@ Dropper_PWM.start(12)
 # setup gripper pwm
 GPIO.setup(Gripper_Pin, GPIO.OUT, initial=GPIO.HIGH)
 Gripper_PWM = GPIO.PWM(Gripper_Pin, 50)
-Gripper_PWM.start(0)
+Gripper_PWM.start(8.2)
 
 # setup torpedo pwm
 GPIO.setup(Torpedo_Pin, GPIO.OUT, initial=GPIO.HIGH)
