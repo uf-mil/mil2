@@ -95,39 +95,6 @@ def closest_points_between_lines(a1, v1, b1, v2):
     return midpoint
 
 
-def quaternion_to_forward_vector(x, y, z, w):
-    """
-    Convert a quaternion into a unit vector representing the forward direction.
-    Assumes the local forward direction is +X.
-
-    Args:
-        x, y, z, w: Quaternion components
-
-    Returns:
-        np.array of shape (3,) representing unit forward vector in world coords
-    """
-    # Convert quaternion to rotation matrix
-    # Rotation matrix formula from quaternion
-    R = np.array(
-        [
-            [1 - 2 * (y**2 + z**2), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-            [2 * (x * y + z * w), 1 - 2 * (x**2 + z**2), 2 * (y * z - x * w)],
-            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x**2 + y**2)],
-        ],
-    )
-
-    # Local forward vector (pointing along +X)
-    forward_local = np.array([1, 0, 0])
-
-    # Rotate forward vector by quaternion rotation matrix
-    forward_world = R @ forward_local
-
-    # Normalize to get unit vector
-    forward_unit = forward_world / np.linalg.norm(forward_world)
-
-    return forward_unit
-
-
 class NavChannelServer(Node):
     def __init__(self):
         super().__init__("navchannel")
@@ -216,28 +183,40 @@ class NavChannelServer(Node):
             p1.pose.pose.position.y,
             p1.pose.pose.position.z,
         ]
-        dir1 = euler_from_quaternion(
+
+        # Get Euler angles (roll, pitch, yaw)
+        euler_angles1 = euler_from_quaternion(
             [
-                p1.pose.pose.orientation.w,
                 p1.pose.pose.orientation.x,
                 p1.pose.pose.orientation.y,
                 p1.pose.pose.orientation.z,
+                p1.pose.pose.orientation.w,
             ],
         )
+
+        # Convert yaw angle to direction vector (x,y,z)
+        yaw1 = euler_angles1[2]  # The third element is yaw
+        dir1 = np.array([np.cos(yaw1), np.sin(yaw1), 0.0])
 
         pose2 = [
             p2.pose.pose.position.x,
             p2.pose.pose.position.y,
             p2.pose.pose.position.z,
         ]
-        dir2 = euler_from_quaternion(
+
+        # Get Euler angles (roll, pitch, yaw)
+        euler_angles2 = euler_from_quaternion(
             [
-                p2.pose.pose.orientation.w,
                 p2.pose.pose.orientation.x,
                 p2.pose.pose.orientation.y,
                 p2.pose.pose.orientation.z,
+                p2.pose.pose.orientation.w,
             ],
         )
+
+        # Convert yaw angle to direction vector (x,y,z)
+        yaw2 = euler_angles2[2]  # The third element is yaw
+        dir2 = np.array([np.cos(yaw2), np.sin(yaw2), 0.0])
 
         return closest_points_between_lines(pose1, dir1, pose2, dir2)
 
