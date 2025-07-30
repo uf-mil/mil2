@@ -1,0 +1,11 @@
+# Goal
+string idk
+
+---
+# Result
+bool success
+string message
+
+---
+# Feedback
+string status_message
