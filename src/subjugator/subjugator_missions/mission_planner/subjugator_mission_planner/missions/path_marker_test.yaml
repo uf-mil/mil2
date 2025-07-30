@@ -1,0 +1,5 @@
+mission:
+
+  - task: pathmarker
+    parameters:
+      idk: "hi"

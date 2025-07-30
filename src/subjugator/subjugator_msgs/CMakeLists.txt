@@ -39,6 +39,8 @@ rosidl_generate_interfaces(
   "action/Wait.action"
   "action/StartGate.action"
   "action/Mechanism.action"
+  "msg/Orange.msg"
+  "action/PathMarker.action"
   DEPENDENCIES
   geometry_msgs
   std_msgs
