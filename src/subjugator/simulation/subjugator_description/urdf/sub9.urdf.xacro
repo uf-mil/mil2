@@ -82,15 +82,23 @@
   <gazebo>
     <plugin filename="gz-sim-hydrodynamics-system" name="gz::sim::systems::Hydrodynamics">
       <link_name>base_link</link_name>
-      <xU>-30</xU>   <xUabsU>-15</xUabsU>
-      <yV>-40</yV>   <yVabsV>-25</yVabsV>
-      <zW>-50</zW>   <zWabsW>-25</zWabsW>
-      <kP>-30</kP>   <kPabsP>-8</kPabsP>
-      <mQ>-35</mQ>   <mQabsQ>-10</mQabsQ>
-      <nR>-40</nR>   <nRabsR>-20</nRabsR>
+      <xU>-30</xU>
+      <xUabsU>-15</xUabsU>
+      <yV>-40</yV>
+      <yVabsV>-25</yVabsV>
+      <zW>-50</zW>
+      <zWabsW>-25</zWabsW>
+      <kP>-30</kP>
+      <kPabsP>-8</kPabsP>
+      <mQ>-35</mQ>
+      <mQabsQ>-10</mQabsQ>
+      <nR>-40</nR>
+      <nRabsR>-20</nRabsR>
     </plugin>
 
     <plugin filename="ThrusterBridge" name="thrusterBridge::ThrusterBridge"/>
+
+    <plugin filename="MarbleDropper" name="marble_dropper::MarbleDropper"/>
   </gazebo>
 
   <!-- Cameras -->
@@ -101,20 +109,7 @@
   <xacro:mil_dvl_sensor name="dvl_sensor" parent="base_link" xyz="0.3937 0 -0.2413" rpy="0.0 0.0 0.0"/>
 
   <!-- IMU, Magnetometer -->
-  <xacro:mil_imu_magnetometer
-    name="imu"
-    namespace='/imu'
-    parent="base_link"
-    xyz="0.65164 -0.00588 0.052145"
-    rpy="0 0 0"
-    rate="210"
-    ax="0.0"
-    ay="0.0"
-    az="0.0"
-    lx="0.0"
-    ly="0.0"
-    lz="0.0"
-  />
+  <xacro:mil_imu_magnetometer name="imu" namespace='/imu' parent="base_link" xyz="0.65164 -0.00588 0.052145" rpy="0 0 0" rate="210" ax="0.0" ay="0.0" az="0.0" lx="0.0" ly="0.0" lz="0.0"/>
 
   <!--Depth Sensor-->
   <xacro:mil_depth_sensor name="depth_sensor" namespace="/depth" parent="base_link" xyz="0.3 0 0" rpy="0 0 0" update_rate="5" frame_id="depth_sensor_link" noise_mean="0.0" noise_stddev="0"/>
