@@ -35,5 +35,11 @@ def generate_launch_description():
                 name="mechanisms_server",
                 parameters=[],
             ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="navigation_channel_server",
+                name="navigation_channel_server",
+            ),
+
         ],
     )

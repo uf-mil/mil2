@@ -40,6 +40,7 @@ setup(
             "wait_server = subjugator_mission_planner.wait_server:main",
             "start_gate_server = subjugator_mission_planner.start_gate_server:main",
             "mechanisms_server = subjugator_mission_planner.mechanisms_server:main",
+            "navigation_channel_server = subjugator_mission_planner.navigation_channel_server:main",
         ],
     },
 )
