@@ -55,11 +55,6 @@ void MarbleDropper::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
     }
 }
 
-void MarbleDropper::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &ecm)
-{
-    // Unnecessary if not adding velocity to marble(s)
-}
-
 void MarbleDropper::SpawnMarble(std::string const &worldName, std::string const &sdfPath)
 {
     // Load SDF file as string
@@ -102,7 +97,7 @@ void MarbleDropper::SpawnMarble(std::string const &worldName, std::string const 
 
     // Set the pose to X, Y, Z, and roll, pitch, yaw
     // -0.5 offset in Z to not hit sub9
-    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(sub9_pose.X(), sub9_pose.Y(), sub9_pose.Z() - 0.5,
+    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(sub9_pose.X(), sub9_pose.Y() + 0.5, sub9_pose.Z() - 0.25,
                                                               sub9_pose.Roll(), sub9_pose.Pitch(), sub9_pose.Yaw()));
 
     // Send the request to create model in .world
@@ -155,6 +150,9 @@ void MarbleDropper::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
             std::string removeService = "/world/" + worldName + "/remove";
             node.Request(removeService, removeMsg, timeout, reply, result);
 
+            std::cout << "[MarbleDropper] Removed marble: " << spawnedMarbIter->first << " after " << timeElapsed
+                      << " seconds." << std::endl;
+
             // Clean up tracking
             marbleModelNames.erase(spawnedMarbIter->first);
             spawnedMarbIter = marbleSpawnTimes.erase(spawnedMarbIter);
@@ -178,5 +176,4 @@ void MarbleDropper::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
 }  // namespace marble_dropper
 
 // Register plugin for Gazebo
-GZ_ADD_PLUGIN(marble_dropper::MarbleDropper, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate,
-              gz::sim::ISystemPreUpdate)
+GZ_ADD_PLUGIN(marble_dropper::MarbleDropper, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)

@@ -21,6 +21,8 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
   , running_(true)
 {
     publisher_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", PUBLISH_RATE);
+    // Add publisher for keypress events
+    keypress_publisher_ = this->create_publisher<std_msgs::msg::String>("keyboard/keypress", 10);
     this->declare_parameter("linear_speed", 100.0);
     this->declare_parameter("angular_speed", 100.0);
     base_linear_ = this->get_parameter("linear_speed").as_double();
