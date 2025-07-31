@@ -1,0 +1,12 @@
+# Goal
+string mechanism
+uint8 angle
+
+---
+# Result
+bool success
+string message
+
+---
+# Feedback
+string status_message

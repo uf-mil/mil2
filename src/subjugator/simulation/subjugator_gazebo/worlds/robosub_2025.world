@@ -201,7 +201,7 @@
           <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
         </inertial>
       </link>
-      <pose>6.39226 14.8402724 -1.4 0 0 2.5584073</pose>
+      <pose>6.39226 14.8402724 0 0 0 2.5584073</pose>
       <static>true</static>
     </model>
 
@@ -215,7 +215,7 @@
           <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
         </inertial>
       </link>
-      <pose>7.7689738 12.7534905 -1.4 0 0 2.5584073</pose>
+      <pose>7.7689738 12.7534905 0 0 0 2.5584073</pose>
       <static>true</static>
     </model>
 
@@ -229,7 +229,7 @@
           <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
         </inertial>
       </link>
-      <pose>5.0155461 16.9270544 -1.4 0 0 2.5584073</pose>
+      <pose>5.0155461 16.9270544 0 0 0 2.5584073</pose>
       <static>true</static>
     </model>
 
@@ -244,7 +244,7 @@
           <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
         </inertial>
       </link>
-      <pose>3.5881216 14.1882158 -1.4 0 0 2.5584073</pose>
+      <pose>3.5881216 14.1882158 0 0 0 2.5584073</pose>
       <static>true</static>
     </model>
 
@@ -258,7 +258,7 @@
           <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
         </inertial>
       </link>
-      <pose>4.9648355 12.1014338 -1.4 0 0 2.5584073</pose>
+      <pose>4.9648355 12.1014338 0 0 0 2.5584073</pose>
       <static>true</static>
     </model>
 
@@ -272,7 +272,7 @@
           <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
         </inertial>
       </link>
-      <pose>2.2114078 16.2749978 -1.4 0 0 2.5584073</pose>
+      <pose>2.2114078 16.2749978 0 0 0 2.5584073</pose>
       <static>true</static>
     </model>
 
@@ -287,7 +287,7 @@
           <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
         </inertial>
       </link>
-      <pose>1.3839833 11.5361592 -1.4 0 0 2.5584073</pose>
+      <pose>1.3839833 11.5361592 0 0 0 2.5584073</pose>
       <static>true</static>
     </model>
 
@@ -301,7 +301,7 @@
           <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
         </inertial>
       </link>
-      <pose>2.7606971 9.4493772 -1.4 0 0 2.5584073</pose>
+      <pose>2.7606971 9.4493772 0 0 0 2.5584073</pose>
       <static>true</static>
     </model>
 
@@ -315,7 +315,7 @@
           <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
         </inertial>
       </link>
-      <pose>0.0072694 13.6229411 -1.4 0 0 2.5584073</pose>
+      <pose>0.0072694 13.6229411 0 0 0 2.5584073</pose>
       <static>true</static>
     </model>
 
