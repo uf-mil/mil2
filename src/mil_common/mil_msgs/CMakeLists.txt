@@ -33,7 +33,8 @@ set(msg_files
     "msg/HoughTransform.msg"
     "msg/Lines.msg"
     "msg/ObjectDetection.msg"
-    "msg/ObjectDetections.msg")
+    "msg/ObjectDetections.msg"
+    "msg/TruePosition.msg")
 
 set(srv_files "srv/CameraToLidarTransform.srv" "srv/ObjectDBQuery.srv"
               "srv/SetGeometry.srv")

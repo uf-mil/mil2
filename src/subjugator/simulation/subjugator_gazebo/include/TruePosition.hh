@@ -1,10 +1,7 @@
-#ifndef DEPTH_SENSOR_HPP
-#define DEPTH_SENSOR_HPP
+#ifndef TRUE_POSITION_HPP
+#define TRUE_POSITION_HPP
 
-#include <chrono>
 #include <memory>
-#include <mutex>
-#include <random>
 #include <string>
 
 #include <rclcpp/rclcpp.hpp>
@@ -12,18 +9,18 @@
 #include <gz/math/Pose3.hh>
 #include <gz/sim/System.hh>
 #include <gz/sim/components/Pose.hh>
-#include <mil_msgs/msg/depth_stamped.hpp>
+#include <mil_msgs/msg/true_position.hpp>
 #include <sdf/sdf.hh>
 
-namespace depth_sensor
+namespace true_position
 {
 
-class DepthSensor : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
+class TruePosition : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
 {
   public:
-    DepthSensor();
+    TruePosition();
 
-    ~DepthSensor() override = default;
+    ~TruePosition() override = default;
 
     // System Configure
     void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
@@ -36,25 +33,14 @@ class DepthSensor : public gz::sim::System, public gz::sim::ISystemConfigure, pu
     gz::sim::Entity modelEntity_{ gz::sim::kNullEntity };
 
     // ROS node + publisher
-    rclcpp::Publisher<mil_msgs::msg::DepthStamped>::SharedPtr depthPub_;
-
-    // Pose offset
-    gz::math::Pose3d offset_{ gz::math::Pose3d::Zero };
-
-    // Frame name
-    std::string frameName_{ "depth_sensor_frame" };
+    rclcpp::Publisher<mil_msgs::msg::TruePosition>::SharedPtr positionPub_;
 
     // Time bookkeeping in seconds
     double lastPubTime_{ 0.0 };
     double updatePeriod_{ 0.1 };  // default = 10 Hz
 
-    double noiseMean_ = 0.0;
-    double noiseStdDev_ = 0.0;  // default to 0 => no noise if not specified
-    std::mt19937 randomEngine_;
-    std::normal_distribution<double> noiseDist_{ 0.0, 0.0 };
-
     std::string entityName;
 };
-}  // namespace depth_sensor
+}  // namespace true_position
 
 #endif
