@@ -35,6 +35,7 @@ void TruePosition::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf
         this->entityName = "unknown_entity_" + std::to_string(_entity);
     }
 
+    // Grab our update rate from the xacro file
     if (_sdf->HasElement("update_rate"))
     {
         float rate = _sdf->Get<float>("update_rate");
@@ -80,7 +81,7 @@ void TruePosition::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::EntityC
 
         auto const &pose = poseComp->Data();
 
-        // Publish our position/orientation data
+        // Create a msg object to contain our position/orientation data, then publish it
         mil_msgs::msg::TruePosition msg;
         msg.position = { pose.Pos().X(), pose.Pos().Y(), pose.Pos().Z() };
         msg.orientation = { pose.Rot().Roll(), pose.Rot().Pitch(), pose.Rot().Yaw() };
