@@ -105,20 +105,6 @@ void DepthSensor::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::EntityCo
 
         auto const &pose = poseComp->Data();
 
-        {
-            // Print to terminal
-            std::cout << "=== Entity Position Update ===" << std::endl;
-            std::cout << "Entity: " << this->entityName << " (ID: " << this->modelEntity_ << ")" << std::endl;
-            std::cout << "Position - X: " << pose.Pos().X() << ", Y: " << pose.Pos().Y() << ", Z: " << pose.Pos().Z()
-                      << std::endl;
-            std::cout << "Orientation - Roll: " << pose.Rot().Roll() << ", Pitch: " << pose.Rot().Pitch()
-                      << ", Yaw: " << pose.Rot().Yaw() << std::endl;
-            std::cout << "Quaternion - W: " << pose.Rot().W() << ", X: " << pose.Rot().X() << ", Y: " << pose.Rot().Y()
-                      << ", Z: " << pose.Rot().Z() << std::endl;
-            std::cout << "Simulation time: " << _info.simTime.count() / 1e9 << " seconds" << std::endl;
-            std::cout << "===============================" << std::endl;
-        }
-
         // To avoid the deprecated operator+, we manually combine:
         gz::math::Pose3d finalPose = poseComp->Data();
         finalPose.Pos() += this->offset_.Pos();

@@ -5,7 +5,7 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/imu_magnetometer.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/dvl.xacro"/>
-  <!-- <xacro:include filename="$(find subjugator_description)/urdf/xacro/position_sensor.xacro"/> -->
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/true_position.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/hydrophone.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
@@ -98,14 +98,6 @@
     </plugin>
   </gazebo>
 
-  <gazebo reference="base_link">
-    <plugin filename="RealPosition" name="real_position::RealPosition">
-      <target_link>base_link</target_link>
-      <topic>/my_robot/pose</topic>
-      <publish_frequency>10</publish_frequency>
-    </plugin>
-  </gazebo>
-
   <!-- Cameras -->
   <xacro:mil_camera name="front_cam" parent="base_link" xyz="0.78 -0.014274 -0.050" rpy="0 0 0"/>
   <xacro:mil_camera name="down_cam" parent="base_link" xyz="0.45222 0.027913 -0.22" rpy="0 1.57 0"/>
@@ -113,7 +105,7 @@
   <!-- DVL Sensor -->
   <xacro:mil_dvl_sensor name="dvl_sensor" parent="base_link" xyz="0.3937 0 -0.2413" rpy="3.14159 0.0 0.0"/>
 
-  <!-- <xacro:position_sensor name="position_sensor" parent="base_link" xyz="0 0 0" rpy="0 0 0"/> -->
+  <xacro:mil_true_position name="true_position" parent="base_link" xyz="0 0 0" rpy="0.0 0.0 0.0"/>
 
   <!-- IMU, Magnetometer -->
   <xacro:mil_imu_magnetometer
