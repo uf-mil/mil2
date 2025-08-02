@@ -52,6 +52,8 @@ class DepthSensor : public gz::sim::System, public gz::sim::ISystemConfigure, pu
     double noiseStdDev_ = 0.0;  // default to 0 => no noise if not specified
     std::mt19937 randomEngine_;
     std::normal_distribution<double> noiseDist_{ 0.0, 0.0 };
+
+    std::string entityName;
 };
 }  // namespace depth_sensor
 
