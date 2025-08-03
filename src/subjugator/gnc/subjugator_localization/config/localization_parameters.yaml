@@ -43,5 +43,5 @@
     publish_acceleration: true
     debug: true
     debug_out_file: "/home/sub9/debug.txt"
-    frequency: 7.0
+    frequency: 10.0
     disabled_at_startup: true

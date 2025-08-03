@@ -1,0 +1,19 @@
+mission:
+  - task: search_for_object
+    parameters:
+      object: red_gate
+  - task: navigate_through_object
+    parameters:
+      object: red_gate
+  - task: search_for_object
+    parameters:
+      object: black_pole
+  - task: navigate_around_object
+    parameters:
+      object: black_pole
+  - task: search_for_object
+    parameters:
+      object: red_gate
+  - task: navigate_through_object
+    parameters:
+      object: red_gate
