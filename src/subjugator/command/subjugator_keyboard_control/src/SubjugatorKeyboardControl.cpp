@@ -205,7 +205,6 @@ void SubjugatorKeyboardControl::keyboardLoop()
                         std_msgs::msg::String keypress_msg;
                         keypress_msg.data = "m";
                         keypress_publisher_->publish(keypress_msg);
-                        std::cout << "[SubjugatorKeyboardControl] Marble spawn request sent." << std::endl;
                         break;
                     }
                     case 'q':
