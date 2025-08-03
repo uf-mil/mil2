@@ -21,6 +21,8 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
   , running_(true)
 {
     publisher_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", PUBLISH_RATE);
+    // Add publisher for keypress events
+    keypress_publisher_ = this->create_publisher<std_msgs::msg::String>("/keyboard/keypress", 10);
     this->declare_parameter("linear_speed", 100.0);
     this->declare_parameter("angular_speed", 100.0);
     base_linear_ = this->get_parameter("linear_speed").as_double();
@@ -47,6 +49,7 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
         Left        : yaw left   (+torque z)
         e           : roll left  (-torque x)
         r           : roll right (+torque x)
+        t           : Launch torpedo (2 Available)
         q           : Quit
     )");
 }
@@ -196,6 +199,13 @@ void SubjugatorKeyboardControl::keyboardLoop()
                         key_x.pressed = true;
                         key_x.last_time = now;
                         break;
+                    case 't':
+                    {
+                        std_msgs::msg::String keypress_msg;
+                        keypress_msg.data = "t";
+                        keypress_publisher_->publish(keypress_msg);
+                        break;
+                    }
                     case 'q':
                         running_ = false;
                         rclcpp::shutdown();

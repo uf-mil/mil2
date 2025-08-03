@@ -3,9 +3,10 @@
   <model name="torpedo">
     <static>false</static>
     <link name="body">
+
       <!-- Change this to reflect real values -->
       <inertial>
-        <mass>.022</mass>
+        <mass>.0156</mass>
         <inertia>
           <ixx>1.18</ixx>
           <ixy>-0.003</ixy>
@@ -20,15 +21,19 @@
         <linear>0.00001</linear>
         <angular>0.00001</angular>
       </velocity_decay>
-      <collision name='bodycol'>
+
+      <!-- The collision geometry -->
+      <collision name="bodycol">
         <pose>0 0 0 0 1.57 0</pose>
         <geometry>
           <cylinder>
-            <radius>.01</radius>
-            <length>.125</length>
+            <radius>0.1</radius>
+            <length>0.25</length>
           </cylinder>
         </geometry>
       </collision>
+
+      <!-- The physical aspects of the torpedo -->
       <visual name="bodyvisual">
         <pose>0 0 0 0 1.57 0</pose>
         <geometry>
@@ -47,22 +52,11 @@
           <collision>bodycol</collision>
         </contact>
         <update_rate>50</update_rate>
-        <plugin name='gazebo_ros_bumper_controller' filename="libgazebo_ros_bumper.so">
-          <alwaysOn>true</alwaysOn>
-          <bumperTopicName>contact_bumper</bumperTopicName>
-        </plugin>
       </sensor>
+
+      <!-- Add center_of_volume and volume for buoyancy system plugin in world file -->
+      <center_of_volume>0 0 0</center_of_volume>
+      <volume>0.0000156</volume>
     </link>
-
-    <plugin name="torpedo_boyancy" filename="libsubjugator_buoyancy.so">
-      <fluid_density>1000</fluid_density>
-      <drag_coefficient>100</drag_coefficient>
-      <link name="body">
-        <center_of_volume>0 0 0</center_of_volume>
-        <volume>0.0000156</volume>
-      </link>
-    </plugin>
-
-
   </model>
 </sdf>
