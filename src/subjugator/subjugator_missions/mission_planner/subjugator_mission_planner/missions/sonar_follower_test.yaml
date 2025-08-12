@@ -1,0 +1,5 @@
+mission:
+
+  - task: sonarfollower
+    parameters:
+      idk: "hi"
