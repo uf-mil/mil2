@@ -19,9 +19,9 @@ enum class Axis
 
 class Rotation
 {
+  public:
     Eigen::Quaterniond quat_;
 
-  public:
     ////////////////////////////////////////
     // Helpful constructors
     ////////////////////////////////////////
