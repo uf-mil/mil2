@@ -1,16 +1,45 @@
-import math
-import time
-
 import rclpy
-from geometry_msgs.msg import Pose
-from nav_msgs.msg import Odometry
-from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from geometry_msgs.msg import Pose, Quaternion
+from rclpy.action.client import ActionClient
+from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from subjugator_msgs.action import StartGate
+from sensor_msgs.msg import Imu
+from subjugator_msgs.action import Move, StartGate
+from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 
-class StartGateServer(Node):
+class ActionUser:
+    """
+    class to make calling other missions easier, you do still kinda have to construct the goals on your own sry
+    """
+
+    def __init__(self, node: Node, action_type, action_name: str):
+        self.node = node
+        self.ac = ActionClient(node, action_type, action_name)
+
+    # 0 timeout seconds implies no timeout
+    # TODO rn there is nothing for timeout_sec, would be a great first issue for someone :) (use self.node.get_clock().now())
+    # _=0 should be timeout_sec = 0
+    def send_goal_and_block_until_done(self, goal, _=0):
+        future = self.ac.send_goal_async(goal)  # rn no feedback
+        running = True
+        while running:
+            rclpy.spin_once(self.node, timeout_sec=0.1)
+
+            if future.done():
+                result = future.result()
+                result_future = result.get_result_async()
+
+                while not result_future.done():  # TODO this could be better
+                    rclpy.spin_once(self.node, timeout_sec=0.1)
+                running = False
+
+    def send_goal_and_return_future(self, goal):
+        return self.ac.send_goal_async(goal)
+
+
+class StartGateNode(Node):
     def __init__(self):
         super().__init__("startgate")
 
@@ -24,116 +53,83 @@ class StartGateServer(Node):
             cancel_callback=self.cancel_callback,
         )
 
-        # Subscribers
+        self.move_client = ActionUser(self, Move, "move")
 
-        self.create_subscription(Odometry, "/odometry/filtered", self.odom_callback, 10)
-
-        # Publisher for goal poses
-        self.goal_pub = self.create_publisher(Pose, "/goal_pose", 10)
-
-        # initialize pose
-        self.current_pose = Pose()
-
-    # Called when a goal is received. Parses parameters (from yaml) from mission planner
-    def goal_callback(self, goal_request):
-        self.total_dist = goal_request.distance
-        self.numYaws = goal_request.num_yaws
-        self.numRolls = goal_request.num_rolls
-        self.numPitch = goal_request.num_pitch
-
-        self.get_logger().info(
-            f"Received goal to move through start gate with {self.numYaws} yaws, {self.numRolls} rolls, and {self.numPitch} pitches",
+        self.imu_sub = self.create_subscription(
+            Imu,
+            "imu/data",
+            self.imu_cb,
+            10,
         )
+        self.last_imu = Imu()
+        self.heard_imu = False  # TODO del meee??
 
+    def sleep_for(self, time: float):
+        start_time = self.get_clock().now()
+        duration = rclpy.duration.Duration(seconds=time)
+
+        while (self.get_clock().now() - start_time) < duration:
+            rclpy.spin_once(self, timeout_sec=0.1)  # Allow callbacks while waiting
+
+    def imu_cb(self, msg: Imu):
+        self.last_imu = msg
+        self.heard_imu = True
+
+    def goal_callback(self, goal_request):
+        self.get_logger().info("goal to do start gate")
         return GoalResponse.ACCEPT
 
-    def cancel_callback(self, goal_handle):
+    def cancel_callback(self, _):
         self.get_logger().info("Received cancel request")
         return CancelResponse.ACCEPT
 
-    # Gets current pose
-    def odom_callback(self, msg):
-        self.current_pose = msg.pose.pose
+    def execute_callback(self, goal_handle: StartGate.Goal):
+        while not self.heard_imu:
+            self.sleep_for(0.5)
+        self.heard_imu = False
 
-    def check_at_goal_pose(self, currentPose, goalPose, acceptableDist=0.05):
-        x_dist = currentPose.position.x - goalPose.position.x
-        y_dist = currentPose.position.y - goalPose.position.y
-        z_dist = currentPose.position.z - goalPose.position.z
+        current_imu = Quaternion()
+        current_imu.x = self.last_imu.orientation.x
+        current_imu.y = self.last_imu.orientation.y
+        current_imu.z = self.last_imu.orientation.z
+        current_imu.w = self.last_imu.orientation.w
 
-        i_dist = currentPose.orientation.x - goalPose.orientation.x
-        j_dist = currentPose.orientation.y - goalPose.orientation.y
-        k_dist = currentPose.orientation.z - goalPose.orientation.z
-        w_dist = currentPose.orientation.w - goalPose.orientation.w
+        goal_quat = Quaternion()
+        goal_quat.x = goal_handle.x
+        goal_quat.y = goal_handle.y
+        goal_quat.z = goal_handle.z
+        goal_quat.w = goal_handle.w
 
-        distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
-        orientation_to_goal = math.sqrt(i_dist**2 + j_dist**2 + k_dist**2 + w_dist**2)
-        return distance_to_goal < acceptableDist and orientation_to_goal < 0.1
+        # convert both to euler
+        current_euler = euler_from_quaternion(current_imu)
+        goal_euler = euler_from_quaternion(current_imu)
 
-    def execute_callback(self, goal_handle):
-        self.get_logger().info(
-            "Executing move through start gate",
-        )
+        angle_diff = goal_euler[2] - current_euler[2]
 
-        # Align with start gate
+        [w, x, y, z] = quaternion_from_euler(0, 0, angle_diff)
 
-        # TODO with vision
+        # move to look at the abs goal (this will send us to xyz=000
+        looking_at_gate = Pose()
+        looking_at_gate.orientation.x = x
+        looking_at_gate.orientation.y = y
+        looking_at_gate.orientation.z = z
+        looking_at_gate.orientation.w = w
 
-        # After aligning with start gate, use params from yaml to determine how far to go and how to r/p/y
+        goal = Move.Goal()
+        goal.type = "Relative"
+        goal.goal_pose = looking_at_gate
+        self.move_client.send_goal_and_block_until_done(goal)
+        self.sleep_for(0.5)
 
-        dist_per_rotation = self.total_dist / (
-            self.numPitch + self.numRolls + self.numYaws
-        )
-
-        # Generate a set of poses to accomplish the desired number of
-
-        goal_poses = []
-
-        # Generate the goal poses for yawing the sub successive 90 degrees
-        for yaw in range(self.numPitch):
-            pose = Pose()
-            pose.position.x = dist_per_rotation * yaw
-            pose.position.y = 0
-            pose.position.z = 0
-
-            pose.orientation.x = 0
-            pose.orientation.y = 0
-            pose.orientation.z = math.cos((yaw + 1) * math.pi / 4 - math.pi / 2)
-            pose.orientation.w = math.sin((yaw + 1) * math.pi / 4 - math.pi / 2)
-
-            goal_poses.append(pose)
-
-        print(goal_poses)
-        for goal_pose in goal_poses:
-            self.goal_pub.publish(goal_pose)
-
-            self.get_logger().info(f"Sending goal pose {goal_pose}")
-            self.goal_pub.publish(goal_pose)
-
-            near_goal_pose = False
-            while not near_goal_pose:
-                near_goal_pose = self.check_at_goal_pose(
-                    self.current_pose,
-                    goal_pose,
-                    0.2,
-                )
-
-                # slow down the loop and give update odom callback
-                self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
-            self.get_logger().info("Arrived at goal pose!")
-
-        self.get_logger().info("Completed start gate!")
-
-        goal_handle.succeed()
+        # goal_handle.succeed()
         result = StartGate.Result()
         result.success = True
-        result.message = "Successfully moved through start gate (with style!)"
-        time.sleep(1.0)
         return result
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = StartGateServer()
+    node = StartGateNode()
     executor = MultiThreadedExecutor()
     executor.add_node(node)
     executor.spin()
