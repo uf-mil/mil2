@@ -38,6 +38,8 @@ rosidl_generate_interfaces(
   "action/Move.action"
   "action/Wait.action"
   "action/StartGate.action"
+  "action/YawTracker.action"
+  "action/NavChannel.action"
   "action/Mechanism.action"
   DEPENDENCIES
   geometry_msgs
