@@ -4,9 +4,9 @@ from rclpy.action.client import ActionClient
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
+from scipy.spatial.transform import Rotation as R
 from sensor_msgs.msg import Imu
 from subjugator_msgs.action import Move, StartGate
-from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 
 class ActionUser:
@@ -76,6 +76,10 @@ class StartGateNode(Node):
         self.heard_imu = True
 
     def goal_callback(self, goal_request):
+        self.goal_x = goal_request.x
+        self.goal_y = goal_request.y
+        self.goal_z = goal_request.z
+        self.goal_w = goal_request.w
         self.get_logger().info("goal to do start gate")
         return GoalResponse.ACCEPT
 
@@ -95,18 +99,22 @@ class StartGateNode(Node):
         current_imu.w = self.last_imu.orientation.w
 
         goal_quat = Quaternion()
-        goal_quat.x = goal_handle.x
-        goal_quat.y = goal_handle.y
-        goal_quat.z = goal_handle.z
-        goal_quat.w = goal_handle.w
+        goal_quat.x = self.goal_x
+        goal_quat.y = self.goal_y
+        goal_quat.z = self.goal_z
+        goal_quat.w = self.goal_w
 
-        # convert both to euler
-        current_euler = euler_from_quaternion(current_imu)
-        goal_euler = euler_from_quaternion(current_imu)
+        q1 = R.from_quat(
+            [current_imu.x, current_imu.y, current_imu.z, current_imu.w],
+        )  # Starting orientation
+        q2 = R.from_quat(
+            [self.goal_x, self.goal_y, self.goal_z, self.goal_w],
+        )  # Target orientation
 
-        angle_diff = goal_euler[2] - current_euler[2]
+        q_delta = q2 * q1.inv()  # Rotation that transforms q1 to q2
 
-        [w, x, y, z] = quaternion_from_euler(0, 0, angle_diff)
+        print(q_delta.as_quat())  # Outputs (x, y, z, w)
+        (x, y, z, w) = q_delta.as_quat()  # Outputs (x, y, z, w)
 
         # move to look at the abs goal (this will send us to xyz=000
         looking_at_gate = Pose()
