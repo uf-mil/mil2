@@ -124,6 +124,8 @@ class SonarFollowerNode(Node):
 
             # check and see if the current ping is pointing the opposite direction from the past ping
             passed_pinger = self.compare_pings(previous_ping, self.last_ping)
+            if passed_pinger:
+                break
 
             # just move towards it no rotation
             x = self.last_ping.origin_direction_body.x
