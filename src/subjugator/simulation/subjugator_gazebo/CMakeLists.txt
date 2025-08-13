@@ -55,6 +55,9 @@ add_library(Hydrophone SHARED src/Hydrophone.cc)
 # Plugin 5: Thruster Bridge
 add_library(ThrusterBridge SHARED src/ThrusterBridge.cc)
 
+# Plugin 6: Marble Dropper
+add_library(MarbleDropper SHARED src/MarbleDropper.cc)
+
 # Ensures plugin can see include directory to access its header files
 target_include_directories(ExamplePlugin PRIVATE include)
 
@@ -67,6 +70,8 @@ target_include_directories(DepthSensor PRIVATE include)
 target_include_directories(Hydrophone PRIVATE include)
 
 target_include_directories(ThrusterBridge PRIVATE include)
+
+target_include_directories(MarbleDropper PRIVATE include)
 
 # Add additional needed libraries
 target_link_libraries(
@@ -91,6 +96,10 @@ target_link_libraries(DepthSensor gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
 # Link libraries for ThrusterBridge plugin
 target_link_libraries(ThrusterBridge gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
 
+# Link libraries for MarbleDropper plugin
+target_link_libraries(MarbleDropper gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
+target_link_libraries(MarbleDropper ament_index_cpp::ament_index_cpp)
+
 # Specify dependencies using ament_target_dependencies
 ament_target_dependencies(
   ExamplePlugin
@@ -109,9 +118,18 @@ ament_target_dependencies(Hydrophone rclcpp geometry_msgs mil_msgs)
 
 ament_target_dependencies(ThrusterBridge rclcpp subjugator_msgs geometry_msgs)
 
+ament_target_dependencies(MarbleDropper rclcpp subjugator_msgs geometry_msgs)
+
 # Install the plugins
-install(TARGETS UnderwaterCamera ExamplePlugin DVLBridge Hydrophone DepthSensor
-                ThrusterBridge LIBRARY DESTINATION lib/${PROJECT_NAME})
+install(
+  TARGETS UnderwaterCamera
+          ExamplePlugin
+          DVLBridge
+          Hydrophone
+          DepthSensor
+          ThrusterBridge
+          MarbleDropper
+  LIBRARY DESTINATION lib/${PROJECT_NAME})
 
 # Install headers
 install(DIRECTORY include/ DESTINATION include)
