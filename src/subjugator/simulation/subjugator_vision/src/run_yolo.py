@@ -35,7 +35,7 @@ class YoloDetector(Node):
 
     def cb(self, msg: Image):
         frame   = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        results = self.model.predict(frame, conf=0.10, verbose=False)[0]
+        results = self.model.predict(frame, conf=0.20, verbose=False)[0]
 
         arr = PerceptionTargetArray()
         arr.stamp = msg.header.stamp   
@@ -60,7 +60,7 @@ class YoloDetector(Node):
 
             hypo = ObjectHypothesisWithPose()
             hypo.hypothesis.class_id = label
-            hypo.hypothesis.score    = conf
+            hypo.hypothesis.score = conf
             det.results.append(hypo)
             det_arr.detections.append(det)
 

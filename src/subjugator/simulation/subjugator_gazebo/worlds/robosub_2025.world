@@ -57,7 +57,7 @@
     <!-- Sub -->
     <include>
       <uri>package:://subjugator_description/urdf/sub9.urdf</uri>
-      <pose>0 0 0 0 0 0</pose>
+      <pose>-1 20 -0.3 0 0 0</pose>
     </include>
 
     <!-- NED frame -->
@@ -420,7 +420,7 @@
           </inertial>
           <enable_wind>false</enable_wind>
       </link>
-      <pose>-1.19226 20.8402724 -1.4 0 0 3.14</pose>
+      <pose>-1.19226 21.8402724 -1.0 0 0 4.14</pose>
       <static>true</static>
       <self_collide>false</self_collide>
     </model>
