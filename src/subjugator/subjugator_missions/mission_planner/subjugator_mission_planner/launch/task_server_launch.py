@@ -17,5 +17,35 @@ def generate_launch_description():
                 name="movement_server",
                 parameters=[],
             ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="wait_server",
+                name="wait_server",
+                parameters=[],
+            ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="start_gate_server",
+                name="start_gate_server",
+                parameters=[],
+            ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="yawtracker",
+                name="yawtracker",
+                parameters=[],
+            ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="mechanisms_server",
+                name="mechanisms_server",
+                parameters=[],
+            ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="nav_channel_server",
+                name="nav_channel_server",
+                parameters=[],
+            ),
         ],
     )

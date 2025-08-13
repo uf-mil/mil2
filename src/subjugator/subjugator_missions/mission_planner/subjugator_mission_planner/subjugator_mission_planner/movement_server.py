@@ -1,23 +1,28 @@
 import math
+import time
 
+import numpy as np
 import rclpy
+import rclpy.duration
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from subjugator_msgs.action import Movement
+from scipy.spatial.transform import Rotation as R
+from subjugator_msgs.action import Move
+from tf2_ros import Buffer, TransformListener
 
 
 class MovementServer(Node):
     def __init__(self):
-        super().__init__("movement_server")
+        super().__init__("move")
 
         # Action server
         self._action_server = ActionServer(
             self,
-            Movement,
-            "movement_server",
+            Move,
+            "move",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
@@ -32,6 +37,9 @@ class MovementServer(Node):
 
         # initialize pose
         self.current_pose = Pose()
+
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
     # Called when a goal is received. Determines if using vision or dead-reckoning to orbit target
     def goal_callback(self, goal_request):
@@ -56,9 +64,14 @@ class MovementServer(Node):
         y_dist = currentPose.position.y - goalPose.position.y
         z_dist = currentPose.position.z - goalPose.position.z
 
+        i_dist = currentPose.orientation.x - goalPose.orientation.x
+        j_dist = currentPose.orientation.y - goalPose.orientation.y
+        k_dist = currentPose.orientation.z - goalPose.orientation.z
+        w_dist = currentPose.orientation.w - goalPose.orientation.w
+
         distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
-        self.get_logger().info(f"dist: {distance_to_goal}")
-        return distance_to_goal < acceptableDist
+        orientation_to_goal = math.sqrt(i_dist**2 + j_dist**2 + k_dist**2 + w_dist**2)
+        return distance_to_goal < acceptableDist and orientation_to_goal < 0.1
 
     def execute_callback(self, goal_handle):
         self.get_logger().info(
@@ -66,7 +79,66 @@ class MovementServer(Node):
         )
 
         # Generate goal poses for orbit
-        goal_pose = self.movementGoal
+        if self.movementType == "Relative":
+            # Convert current orientation to scipy Rotation object
+            current_quat = [
+                self.current_pose.orientation.x,
+                self.current_pose.orientation.y,
+                self.current_pose.orientation.z,
+                self.current_pose.orientation.w,
+            ]
+            current_rot = R.from_quat(current_quat)
+
+            # Relative position from goal
+            rel_position = np.array(
+                [
+                    self.movementGoal.position.x,
+                    self.movementGoal.position.y,
+                    self.movementGoal.position.z,
+                ],
+            )
+
+            # Rotate relative position into world frame
+            rotated_position = current_rot.apply(rel_position)
+
+            # Add to current position
+            goal_position = (
+                np.array(
+                    [
+                        self.current_pose.position.x,
+                        self.current_pose.position.y,
+                        self.current_pose.position.z,
+                    ],
+                )
+                + rotated_position
+            )
+
+            # Relative orientation (as Rotation)
+            rel_quat = [
+                self.movementGoal.orientation.x,
+                self.movementGoal.orientation.y,
+                self.movementGoal.orientation.z,
+                self.movementGoal.orientation.w,
+            ]
+            rel_rot = R.from_quat(rel_quat)
+
+            # Compose rotations: world_rot * relative_rot
+            goal_rot = current_rot * rel_rot
+            goal_quat = goal_rot.as_quat()  # [x, y, z, w]
+
+            # Create absolute Pose
+            goal_pose = Pose()
+            goal_pose.position.x = goal_position[0]
+            goal_pose.position.y = goal_position[1]
+            goal_pose.position.z = goal_position[2]
+            goal_pose.orientation.x = goal_quat[0]
+            goal_pose.orientation.y = goal_quat[1]
+            goal_pose.orientation.z = goal_quat[2]
+            goal_pose.orientation.w = goal_quat[3]
+
+            self.get_logger().info(f"Converted move to absolute: {goal_pose}")
+        else:
+            goal_pose = self.movementGoal
 
         self.goal_pub.publish(goal_pose)
 
@@ -82,9 +154,10 @@ class MovementServer(Node):
         self.get_logger().info("Completed movement!")
 
         goal_handle.succeed()
-        result = Movement.Result()
+        result = Move.Result()
         result.success = True
         result.message = "Successfully moved to goal pose"
+        time.sleep(1.0)
         return result
 
 

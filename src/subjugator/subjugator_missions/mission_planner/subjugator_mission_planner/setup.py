@@ -1,3 +1,5 @@
+from glob import glob
+
 from setuptools import find_packages, setup
 
 package_name = "subjugator_mission_planner"
@@ -14,7 +16,7 @@ setup(
             ["resource/subjugator_mission_planner"],
         ),
         (f"share/{package_name}", ["package.xml"]),
-        (f"share/{package_name}/missions", ["missions/prequal.yaml"]),
+        (f"share/{package_name}/missions", glob("missions/*.yaml")),
         (
             f"share/{package_name}/launch",
             ["launch/mission_planner_launch.py", "launch/task_server_launch.py"],
@@ -35,6 +37,12 @@ setup(
             "navigate_through_server = subjugator_mission_planner.navigate_through_server:main",
             "search_server = subjugator_mission_planner.search_server:main",
             "movement_server = subjugator_mission_planner.movement_server:main",
+            "wait_server = subjugator_mission_planner.wait_server:main",
+            "start_gate_server = subjugator_mission_planner.start_gate_server:main",
+            "yawtracker = subjugator_mission_planner.yaw_tracker_server:main",
+            "mechanisms_server = subjugator_mission_planner.mechanisms_server:main",
+            "sonar_follower = subjugator_mission_planner.sonar_follower_server:main",
+            "nav_channel_server = subjugator_mission_planner.nav_channel_server:main",
         ],
     },
 )

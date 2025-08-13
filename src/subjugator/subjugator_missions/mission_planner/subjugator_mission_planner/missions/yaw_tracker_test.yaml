@@ -1,0 +1,5 @@
+mission:
+
+  - task: yaw_tracker_server
+    parameters:
+      topic_name: "centroids/red_pole"

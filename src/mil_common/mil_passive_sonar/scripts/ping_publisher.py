@@ -33,10 +33,10 @@ def main():
                 ping_msg.origin_direction_body.x = float(
                     json_data["origin_direction_body"][0],
                 )
-                ping_msg.origin_direction_body.y = float(
+                ping_msg.origin_direction_body.y = -float(
                     json_data["origin_direction_body"][1],
                 )
-                ping_msg.origin_direction_body.z = float(
+                ping_msg.origin_direction_body.z = -float(
                     json_data["origin_direction_body"][2],
                 )
                 ping_msg.frequency = int(json_data["frequency_Hz"])

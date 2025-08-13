@@ -1,0 +1,8 @@
+mission:
+
+  - task: startgate
+    parameters:
+      distance: 10.0
+      num_yaws: 4
+      num_rolls: 0
+      num_pitch: 0

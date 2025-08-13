@@ -1,0 +1,11 @@
+# Goal
+float32 time
+
+---
+# Result
+bool success
+string message
+
+---
+# Feedback
+string status_message

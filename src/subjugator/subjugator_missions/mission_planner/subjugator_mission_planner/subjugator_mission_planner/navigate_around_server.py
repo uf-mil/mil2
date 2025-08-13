@@ -12,13 +12,13 @@ from subjugator_msgs.action import NavigateAround
 
 class NavigateAroundObjectServer(Node):
     def __init__(self):
-        super().__init__("navigate_around_object_server")
+        super().__init__("navigatearound")
 
         # Action server
         self._action_server = ActionServer(
             self,
             NavigateAround,
-            "navigate_around_object",
+            "navigatearound",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
@@ -79,18 +79,23 @@ class NavigateAroundObjectServer(Node):
 
         # Find poses for completing orbit
 
-        x_movements = [0.5, 1.0, 1.5, 2.0, 1.5, 1.0, 0.5, 0.0]
-        y_movements = [-0.5, -1.0, -0.5, 0.0, 0.5, 1.0, 0.5, 0.0]
+        angle_increments = [45, 90, 135, 180, 225, 270, 315, 360]
 
-        for leg in range(len(x_movements)):
+        starting_z = currentPose.position.z
+
+        for angle in angle_increments:
+            angle_rad = angle * math.pi / 180
+            x_position = 2 * math.sin(angle_rad / 2)
+            y_position = -1 * math.sin(angle_rad)
             pose = Pose()
             pose.position.x = (
-                currentPose.position.x + x_movements[leg] * self.distance_to_orbit
+                currentPose.position.x + x_position * self.distance_to_orbit
             )
             pose.position.y = (
-                currentPose.position.y + y_movements[leg] * self.distance_to_orbit
+                currentPose.position.y + y_position * self.distance_to_orbit
             )
-            pose.position.z = currentPose.position.z
+            pose.position.z = starting_z
+
             pose.orientation.w = 1.0
             poses.append(pose)
 
@@ -102,9 +107,6 @@ class NavigateAroundObjectServer(Node):
         z_dist = currentPose.position.z - goalPose.position.z
 
         distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
-        self.get_logger().info(
-            f"dist in around: {distance_to_goal}",
-        )
         return distance_to_goal < acceptableDist
 
     def execute_callback(self, goal_handle):

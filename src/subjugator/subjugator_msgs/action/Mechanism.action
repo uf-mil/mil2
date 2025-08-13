@@ -1,5 +1,6 @@
 # Goal
-string object
+string mechanism
+uint8 angle
 
 ---
 # Result
@@ -7,5 +8,5 @@ bool success
 string message
 
 ---
-# Feedback (optional, we'll leave this for now)
+# Feedback
 string status_message
