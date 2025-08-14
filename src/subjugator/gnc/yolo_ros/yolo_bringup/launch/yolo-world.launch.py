@@ -15,11 +15,12 @@
 
 
 import os
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.substitutions import LaunchConfiguration
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from ament_index_python.packages import get_package_share_directory
+from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
@@ -32,7 +33,7 @@ def generate_launch_description():
                         get_package_share_directory("yolo_bringup"),
                         "launch",
                         "yolo.launch.py",
-                    )
+                    ),
                 ),
                 launch_arguments={
                     "model_type": "World",
@@ -42,13 +43,15 @@ def generate_launch_description():
                     "enable": LaunchConfiguration("enable", default="True"),
                     "threshold": LaunchConfiguration("threshold", default="0.5"),
                     "input_image_topic": LaunchConfiguration(
-                        "input_image_topic", default="/camera/rgb/image_raw"
+                        "input_image_topic",
+                        default="/camera/rgb/image_raw",
                     ),
                     "image_reliability": LaunchConfiguration(
-                        "image_reliability", default="1"
+                        "image_reliability",
+                        default="1",
                     ),
                     "namespace": LaunchConfiguration("namespace", default="yolo"),
                 }.items(),
-            )
-        ]
+            ),
+        ],
     )

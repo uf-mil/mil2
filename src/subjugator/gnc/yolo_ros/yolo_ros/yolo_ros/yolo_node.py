@@ -14,35 +14,31 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-import cv2
-from typing import List, Dict
-from cv_bridge import CvBridge
+from typing import Dict, List
 
 import rclpy
-from rclpy.qos import QoSProfile
-from rclpy.qos import QoSHistoryPolicy
-from rclpy.qos import QoSDurabilityPolicy
-from rclpy.qos import QoSReliabilityPolicy
-from rclpy.lifecycle import LifecycleNode
-from rclpy.lifecycle import TransitionCallbackReturn
-from rclpy.lifecycle import LifecycleState
-
 import torch
-from ultralytics import YOLO, YOLOWorld
-from ultralytics.engine.results import Results
-from ultralytics.engine.results import Boxes
-from ultralytics.engine.results import Masks
-from ultralytics.engine.results import Keypoints
-
-from std_srvs.srv import SetBool
+from cv_bridge import CvBridge
+from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
+from rclpy.qos import (
+    QoSDurabilityPolicy,
+    QoSHistoryPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
+)
 from sensor_msgs.msg import Image
-from yolo_msgs.msg import Point2D
-from yolo_msgs.msg import BoundingBox2D
-from yolo_msgs.msg import Mask
-from yolo_msgs.msg import KeyPoint2D
-from yolo_msgs.msg import KeyPoint2DArray
-from yolo_msgs.msg import Detection
-from yolo_msgs.msg import DetectionArray
+from std_srvs.srv import SetBool
+from ultralytics import YOLO, YOLOWorld
+from ultralytics.engine.results import Boxes, Keypoints, Masks, Results
+from yolo_msgs.msg import (
+    BoundingBox2D,
+    Detection,
+    DetectionArray,
+    KeyPoint2D,
+    KeyPoint2DArray,
+    Mask,
+    Point2D,
+)
 from yolo_msgs.srv import SetClasses
 
 
@@ -146,11 +142,16 @@ class YoloNode(LifecycleNode):
 
         if isinstance(self.yolo, YOLOWorld):
             self._set_classes_srv = self.create_service(
-                SetClasses, "set_classes", self.set_classes_cb
+                SetClasses,
+                "set_classes",
+                self.set_classes_cb,
             )
 
         self._sub = self.create_subscription(
-            Image, "image_raw", self.image_cb, self.image_qos_profile
+            Image,
+            "image_raw",
+            self.image_cb,
+            self.image_qos_profile,
         )
 
         super().on_activate(state)
@@ -330,7 +331,8 @@ class YoloNode(LifecycleNode):
 
             # convert image + predict
             cv_image = self.cv_bridge.imgmsg_to_cv2(
-                msg, desired_encoding=self.yolo_encoding
+                msg,
+                desired_encoding=self.yolo_encoding,
             )
             results = self.yolo.predict(
                 source=cv_image,
@@ -365,7 +367,7 @@ class YoloNode(LifecycleNode):
 
                 aux_msg = Detection()
 
-                if results.boxes or results.obb and hypothesis and boxes:
+                if results.boxes or (results.obb and hypothesis and boxes):
                     aux_msg.class_id = hypothesis[i]["class_id"]
                     aux_msg.class_name = hypothesis[i]["class_name"]
                     aux_msg.score = hypothesis[i]["score"]

@@ -14,29 +14,25 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-import rclpy
-from rclpy.qos import QoSProfile
-from rclpy.qos import QoSHistoryPolicy
-from rclpy.qos import QoSDurabilityPolicy
-from rclpy.qos import QoSReliabilityPolicy
-from rclpy.lifecycle import LifecycleNode
-from rclpy.lifecycle import TransitionCallbackReturn
-from rclpy.lifecycle import LifecycleState
-
 import cv2
-import numpy as np
 import message_filters
+import numpy as np
+import rclpy
 from cv_bridge import CvBridge
-
+from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
+from rclpy.qos import (
+    QoSDurabilityPolicy,
+    QoSHistoryPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
+)
+from sensor_msgs.msg import Image
 from ultralytics.engine.results import Boxes
-from ultralytics.trackers.basetrack import BaseTrack
 from ultralytics.trackers import BOTSORT, BYTETracker
+from ultralytics.trackers.basetrack import BaseTrack
 from ultralytics.utils import IterableSimpleNamespace, yaml_load
 from ultralytics.utils.checks import check_requirements, check_yaml
-
-from sensor_msgs.msg import Image
-from yolo_msgs.msg import Detection
-from yolo_msgs.msg import DetectionArray
+from yolo_msgs.msg import Detection, DetectionArray
 
 
 class TrackingNode(LifecycleNode):
@@ -79,14 +75,22 @@ class TrackingNode(LifecycleNode):
 
         # subs
         image_sub = message_filters.Subscriber(
-            self, Image, "image_raw", qos_profile=image_qos_profile
+            self,
+            Image,
+            "image_raw",
+            qos_profile=image_qos_profile,
         )
         detections_sub = message_filters.Subscriber(
-            self, DetectionArray, "detections", qos_profile=10
+            self,
+            DetectionArray,
+            "detections",
+            qos_profile=10,
         )
 
         self._synchronizer = message_filters.ApproximateTimeSynchronizer(
-            (image_sub, detections_sub), 10, 0.5
+            (image_sub, detections_sub),
+            10,
+            0.5,
         )
         self._synchronizer.registerCallback(self.detections_cb)
 
@@ -162,7 +166,7 @@ class TrackingNode(LifecycleNode):
                     detection.bbox.center.position.y + detection.bbox.size.y / 2,
                     detection.score,
                     detection.class_id,
-                ]
+                ],
             )
 
         # tracking
