@@ -1,0 +1,19 @@
+
+# Goal
+string  red_label
+string  white_label
+float32 target_depth
+float32 row_timeout
+float32 overall_timeout
+int32   max_rows
+float32 target_offset_px
+
+---
+# Result
+bool    success
+string  message
+
+---
+# Feedback
+float32 distance_to_gap
+int32   row_index

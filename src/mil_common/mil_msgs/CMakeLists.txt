@@ -22,7 +22,6 @@ set(msg_files
     "msg/ObjectInImage.msg"
     "msg/ObjectsInImage.msg"
     "msg/PerceptionObject.msg"
-    "msg/PerceptionObjectArray.msg"
     "msg/Point2D.msg"
     "msg/PoseTwistStamped.msg"
     "msg/PoseTwist.msg"
@@ -32,6 +31,9 @@ set(msg_files
     "msg/ProcessedPing.msg"
     "msg/HoughTransform.msg"
     "msg/Lines.msg"
+    "msg/PerceptionTarget.msg"
+    "msg/PerceptionObjectArray.msg"
+    "msg/PerceptionTargetArray.msg"
     "msg/ObjectDetection.msg"
     "msg/ObjectDetections.msg")
 

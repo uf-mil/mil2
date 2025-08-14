@@ -1,8 +1,0 @@
-# StartGate_1.action
----
-# Result
-bool success
-string message
----
-# Feedback (optional)
-string current_state

@@ -40,6 +40,7 @@ rosidl_generate_interfaces(
   "action/StartGate.action"
   "action/YawTracker.action"
   "action/NavChannel.action"
+  "action/NavigateChannel.action"
   "action/Mechanism.action"
   "action/SonarFollower.action"
   DEPENDENCIES
