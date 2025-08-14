@@ -4,6 +4,7 @@ import rclpy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.subscription import Subscription
@@ -42,6 +43,7 @@ class YawTrackerServer(Node):
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
+            callback_group=ReentrantCallbackGroup,
         )
 
     def odom_cb(self, msg: Odometry):

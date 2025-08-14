@@ -5,6 +5,7 @@ from geometry_msgs.msg import Pose
 from mil_msgs.msg import ProcessedPing
 from rclpy.action.client import ActionClient
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from subjugator_msgs.action import Move, SonarFollower
@@ -17,7 +18,12 @@ class ActionUser:
 
     def __init__(self, node: Node, action_type, action_name: str):
         self.node = node
-        self.ac = ActionClient(node, action_type, action_name)
+        self.ac = ActionClient(
+            node,
+            action_type,
+            action_name,
+            callback_group=ReentrantCallbackGroup(),
+        )
 
     # 0 timeout seconds implies no timeout
     # TODO rn there is nothing for timeout_sec, would be a great first issue for someone :) (use self.node.get_clock().now())
@@ -44,6 +50,8 @@ class SonarFollowerNode(Node):
     def __init__(self):
         super().__init__("sonarfollower")
 
+        self.freq = 999999
+
         # Action server
         self._action_server = ActionServer(
             self,
@@ -52,6 +60,7 @@ class SonarFollowerNode(Node):
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
+            callback_group=ReentrantCallbackGroup(),
         )
 
         self.move_client = ActionUser(self, Move, "move")
@@ -73,11 +82,15 @@ class SonarFollowerNode(Node):
             rclpy.spin_once(self, timeout_sec=0.1)  # Allow callbacks while waiting
 
     def ping_cb(self, msg: ProcessedPing):
-        self.last_ping = msg
-        self.heard_ping = True
+        if abs(msg.frequency - self.freq) < 2500:
+            self.last_ping = msg
+            self.heard_ping = True
+        else:
+            print("ignoring a ping with freq = ", msg.frequency)
 
     def goal_callback(self, goal_request):
         self.get_logger().info("goal to follow sonar")
+        self.freq = goal_request.frequency
         return GoalResponse.ACCEPT
 
     def cancel_callback(self, _):
@@ -85,6 +98,9 @@ class SonarFollowerNode(Node):
         return CancelResponse.ACCEPT
 
     def compare_pings(self, p1: ProcessedPing | None, p2: ProcessedPing):
+        self.get_logger().warn(str(p2.origin_direction_body.z))
+        return abs(p2.origin_direction_body.z) >= 0.75
+
         if p1 is None:
             return False
 
@@ -102,13 +118,16 @@ class SonarFollowerNode(Node):
         y2 = y2 / p2_mag
 
         # dot product
-        dot_prodcut = (
+        dot_product = (
             x1 * x2 + y1 * y2
         )  # this IS the cos of the angle between them (so unitless)
 
         # inverse cos
-        angle_rad = math.acos(dot_prodcut)  # in radians!!
+        dot_product = min(1.0, dot_product)
+        dot_product = max(-1.0, dot_product)
+        angle_rad = math.acos(dot_product)  # in radians!!
         angle_degrees = angle_rad * (180 / math.pi)
+        print(angle_degrees)
 
         # check angle
         return angle_degrees > 100
@@ -118,13 +137,16 @@ class SonarFollowerNode(Node):
         previous_ping = None
         while not passed_pinger:
             while not self.heard_ping:
-                self.sleep_for(0.5)
+                self.get_logger().warn("no new pinger heard! sleeping")
+                self.sleep_for(0.1)
             self.heard_ping = False  # this is lowk stupid TODO
 
             # check and see if the current ping is pointing the opposite direction from the past ping
             passed_pinger = self.compare_pings(previous_ping, self.last_ping)
             if passed_pinger:
                 break
+
+            previous_ping = self.last_ping
 
             # just move towards it no rotation
             x = self.last_ping.origin_direction_body.x
@@ -140,24 +162,11 @@ class SonarFollowerNode(Node):
             goal.goal_pose = p
             self.move_client.send_goal_and_block_until_done(goal)
             self.sleep_for(0.5)
-            previous_ping = self.last_ping
-
-        # move to surface
-        p = Pose()
-        p.orientation.w = 1.0
-        p.position.x = 0.0
-        p.position.y = 0.0
-        p.position.z = 0.7  # todo this is dependent on how far down we moved :))
-        goal = Move.Goal()
-        goal.type = "Relative"
-        goal.goal_pose = p
-        self.move_client.send_goal_and_block_until_done(goal)
-        self.sleep_for(0.5)
 
         goal_handle.succeed()
         result = SonarFollower.Result()
         result.success = True
-        result.message = "Wait complete"
+        result.message = "surfaced at sonar"
         return result
 
 

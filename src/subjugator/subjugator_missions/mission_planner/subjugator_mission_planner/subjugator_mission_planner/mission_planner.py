@@ -1,11 +1,13 @@
 import inspect
 import os
+import time
 
 import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Pose
 from rclpy.action.client import ActionClient
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
 from subjugator_msgs import action as action_interfaces
 
@@ -57,6 +59,7 @@ class MissionPlanner(Node):
             return []
 
     def execute_mission(self):
+        time.sleep(0.1)
         if self.executing_task:
             # Currently running a task; wait for it to complete
             return
@@ -98,7 +101,12 @@ class MissionPlanner(Node):
     # Create action clients for each action that was found
     def get_or_create_client(self, task_name, action_class):
         if task_name not in self.action_clients:
-            self.action_clients[task_name] = ActionClient(self, action_class, task_name)
+            self.action_clients[task_name] = ActionClient(
+                self,
+                action_class,
+                task_name,
+                callback_group=ReentrantCallbackGroup(),
+            )
         return self.action_clients[task_name]
 
     # Create a generalizable goal message
@@ -130,43 +138,62 @@ class MissionPlanner(Node):
 
     # Send the goal message to the relevant action client
     def _send_goal(self, client: ActionClient, goal_msg):
-        send_goal_future = client.send_goal_async(
+        self.send_goal_future = client.send_goal_async(
             goal_msg,
             feedback_callback=self.feedback_callback,
         )
-        send_goal_future.add_done_callback(self.goal_response_callback)
+        self.send_goal_future.add_done_callback(self.goal_response_callback)
 
     # Handle the goal response from the action client
     def goal_response_callback(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error("Goal rejected by server")
+        self.goal_handle = future.result()
+        if not self.goal_handle.accepted:
+            self.get_logger().error(
+                f"Goal rejected by server {self.current_task_index}",
+            )
             self.executing_task = False
             self.current_task_index += 1
             return
 
-        self.get_logger().info("Goal accepted, executing...")
-        goal_handle.get_result_async().add_done_callback(self.get_result_callback)
+        self.get_logger().info(f"Goal accepted, executing... {self.current_task_index}")
+        self.goal_handle_result = self.goal_handle.get_result_async().add_done_callback(
+            self.get_result_callback,
+        )
+        self.get_logger().warn("CALLBACK HAS BEEN SET!!")
 
     # Handle feedback from the action clients - currently not used
     def feedback_callback(self, feedback_msg):
         self.get_logger().info(f"Feedback: {feedback_msg.feedback}")
 
+    def sleep_for(self, time: float):
+        start_time = self.get_clock().now()
+        duration = rclpy.duration.Duration(seconds=time)
+
+        while (self.get_clock().now() - start_time) < duration:
+            rclpy.spin_once(self, timeout_sec=0.1)  # Allow callbacks while waiting
+
     # Handles results feedback from the action clients - currently not used but would use for behavior tree type behavior
     def get_result_callback(self, future):
-        result = future.result().result
-        success = getattr(result, "success", False)
-        message = getattr(result, "message", "")
+        self.get_logger().warn("get_result_callback()")
+        try:
+            result = future.result().result
+            success = getattr(result, "success", False)
+            message = getattr(result, "message", "")
+            self.get_logger().warn(f"In result callback!!{message}")
 
-        if success:
-            self.get_logger().info(f"Task {self.current_task_index + 1} succeeded")
-        else:
-            self.get_logger().error(
-                f"Task {self.current_task_index + 1} failed: {message}",
-            )
+            if success:
+                self.get_logger().info(f"Task {self.current_task_index + 1} succeeded")
+            else:
+                self.get_logger().error(
+                    f"Task {self.current_task_index + 1} failed: {message}",
+                )
 
-        self.executing_task = False
-        self.current_task_index += 1
+            self.executing_task = False
+            self.current_task_index += 1
+        except Exception:
+            import traceback
+
+            traceback.print_exc()
 
 
 def main(args=None):

@@ -4,6 +4,7 @@ from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from rclpy.action.client import ActionClient
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from subjugator_msgs.action import Move, NavChannel, YawTracker
@@ -18,7 +19,12 @@ class ActionUser:
 
     def __init__(self, node: Node, action_type, action_name: str):
         self.node = node
-        self.ac = ActionClient(node, action_type, action_name)
+        self.ac = ActionClient(
+            node,
+            action_type,
+            action_name,
+            callback_group=ReentrantCallbackGroup,
+        )
 
     # 0 timeout seconds implies no timeout
     # TODO rn there is nothing for timeout_sec, would be a great first issue for someone :) (use self.node.get_clock().now())
@@ -125,6 +131,7 @@ class NavChannelServer(Node):
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
+            callback_group=ReentrantCallbackGroup,
         )
 
         self.move_client = ActionUser(self, Move, "move")

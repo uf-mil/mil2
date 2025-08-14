@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from subjugator_msgs.action import Wait
@@ -17,6 +18,7 @@ class WaitServer(Node):
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
+            callback_group=ReentrantCallbackGroup(),
         )
 
     def goal_callback(self, goal_request):

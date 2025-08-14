@@ -7,6 +7,7 @@ import rclpy.duration
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
@@ -26,6 +27,7 @@ class MovementServer(Node):
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
+            callback_group=ReentrantCallbackGroup(),
         )
 
         # Subscribers
@@ -147,7 +149,9 @@ class MovementServer(Node):
             near_goal_pose = self.check_at_goal_pose(self.current_pose, goal_pose, 0.2)
 
             # slow down the loop
+            self.get_logger().warn("hi b4")
             self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
+            self.get_logger().warn("hi after")
 
         self.get_logger().info("Arrived at goal pose!")
 
@@ -158,6 +162,7 @@ class MovementServer(Node):
         result.success = True
         result.message = "Successfully moved to goal pose"
         time.sleep(1.0)
+        self.get_logger().warn("very end of move")
         return result
 
 

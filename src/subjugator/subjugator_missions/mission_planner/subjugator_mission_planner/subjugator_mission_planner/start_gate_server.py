@@ -1,7 +1,9 @@
+import numpy as np
 import rclpy
 from geometry_msgs.msg import Pose, Quaternion
 from rclpy.action.client import ActionClient
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
@@ -16,7 +18,12 @@ class ActionUser:
 
     def __init__(self, node: Node, action_type, action_name: str):
         self.node = node
-        self.ac = ActionClient(node, action_type, action_name)
+        self.ac = ActionClient(
+            node,
+            action_type,
+            action_name,
+            callback_group=ReentrantCallbackGroup(),
+        )
 
     # 0 timeout seconds implies no timeout
     # TODO rn there is nothing for timeout_sec, would be a great first issue for someone :) (use self.node.get_clock().now())
@@ -51,6 +58,7 @@ class StartGateNode(Node):
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
+            callback_group=ReentrantCallbackGroup(),
         )
 
         self.move_client = ActionUser(self, Move, "move")
@@ -88,8 +96,10 @@ class StartGateNode(Node):
         return CancelResponse.ACCEPT
 
     def execute_callback(self, goal_handle: StartGate.Goal):
-        while not self.heard_imu:
-            self.sleep_for(0.5)
+        self.get_logger().warn("ex callback in start gate")
+        # while not self.heard_imu:
+        # self.get_logger().warn("waiting on imu")
+        # self.sleep_for(0.5)
         self.heard_imu = False
 
         current_imu = Quaternion()
@@ -116,6 +126,22 @@ class StartGateNode(Node):
         print(q_delta.as_quat())  # Outputs (x, y, z, w)
         (x, y, z, w) = q_delta.as_quat()  # Outputs (x, y, z, w)
 
+        unit_move = np.array([1.0, 0.0, 0.0])
+
+        rotated_unit_move = q_delta.apply(unit_move)
+
+        moving_towards_gate = Pose()
+        moving_towards_gate.position.x = 0.5 * rotated_unit_move[0]
+        moving_towards_gate.position.y = 0.5 * rotated_unit_move[1]
+        moving_towards_gate.position.z = 0.5 * rotated_unit_move[2]
+        moving_towards_gate.orientation.w = 1.0
+
+        goal = Move.Goal()
+        goal.type = "Relative"
+        goal.goal_pose = moving_towards_gate
+        self.move_client.send_goal_and_block_until_done(goal)
+        self.sleep_for(0.5)
+
         # move to look at the abs goal (this will send us to xyz=000
         looking_at_gate = Pose()
         looking_at_gate.orientation.x = x
@@ -126,12 +152,15 @@ class StartGateNode(Node):
         goal = Move.Goal()
         goal.type = "Relative"
         goal.goal_pose = looking_at_gate
+        self.get_logger().warn("BEFORE FINAL MOVE")
         self.move_client.send_goal_and_block_until_done(goal)
-        self.sleep_for(0.5)
 
-        # goal_handle.succeed()
+        goal_handle.succeed()
         result = StartGate.Result()
         result.success = True
+        result.message = "Successfully oriented to start gate"
+        # time.sleep(1.0)
+        self.get_logger().warn("AFTER FINAL MOVE")
         return result
 
 
