@@ -14,11 +14,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from launch import LaunchDescription, LaunchContext
+from launch import LaunchContext, LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
-from launch.conditions import IfCondition
 
 
 def generate_launch_description():
@@ -248,7 +248,7 @@ def generate_launch_description():
                     "agnostic_nms": agnostic_nms,
                     "retina_masks": retina_masks,
                     "image_reliability": image_reliability,
-                }
+                },
             ],
             remappings=[("image_raw", input_image_topic)],
         )
@@ -275,7 +275,7 @@ def generate_launch_description():
                     "depth_image_units_divisor": depth_image_units_divisor,
                     "depth_image_reliability": depth_image_reliability,
                     "depth_info_reliability": depth_info_reliability,
-                }
+                },
             ],
             remappings=[
                 ("depth_image", input_depth_topic),
@@ -350,5 +350,5 @@ def generate_launch_description():
             use_tracking_cmd,
             use_3d_cmd,
             OpaqueFunction(function=run_yolo, args=[use_tracking, use_3d]),
-        ]
+        ],
     )

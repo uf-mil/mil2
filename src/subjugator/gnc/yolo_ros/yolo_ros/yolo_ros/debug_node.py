@@ -14,33 +14,32 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-import cv2
 import random
-import numpy as np
 from typing import Tuple
 
-import rclpy
-from rclpy.duration import Duration
-from rclpy.qos import QoSProfile
-from rclpy.qos import QoSHistoryPolicy
-from rclpy.qos import QoSDurabilityPolicy
-from rclpy.qos import QoSReliabilityPolicy
-from rclpy.lifecycle import LifecycleNode
-from rclpy.lifecycle import TransitionCallbackReturn
-from rclpy.lifecycle import LifecycleState
-
+import cv2
 import message_filters
+import numpy as np
+import rclpy
 from cv_bridge import CvBridge
-from ultralytics.utils.plotting import Annotator, colors
-
+from rclpy.duration import Duration
+from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
+from rclpy.qos import (
+    QoSDurabilityPolicy,
+    QoSHistoryPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
+)
 from sensor_msgs.msg import Image
-from visualization_msgs.msg import Marker
-from visualization_msgs.msg import MarkerArray
-from yolo_msgs.msg import BoundingBox2D
-from yolo_msgs.msg import KeyPoint2D
-from yolo_msgs.msg import KeyPoint3D
-from yolo_msgs.msg import Detection
-from yolo_msgs.msg import DetectionArray
+from ultralytics.utils.plotting import Annotator, colors
+from visualization_msgs.msg import Marker, MarkerArray
+from yolo_msgs.msg import (
+    BoundingBox2D,
+    Detection,
+    DetectionArray,
+    KeyPoint2D,
+    KeyPoint3D,
+)
 
 
 class DebugNode(LifecycleNode):
@@ -81,14 +80,22 @@ class DebugNode(LifecycleNode):
 
         # subs
         self.image_sub = message_filters.Subscriber(
-            self, Image, "image_raw", qos_profile=self.image_qos_profile
+            self,
+            Image,
+            "image_raw",
+            qos_profile=self.image_qos_profile,
         )
         self.detections_sub = message_filters.Subscriber(
-            self, DetectionArray, "detections", qos_profile=10
+            self,
+            DetectionArray,
+            "detections",
+            qos_profile=10,
         )
 
         self._synchronizer = message_filters.ApproximateTimeSynchronizer(
-            (self.image_sub, self.detections_sub), 10, 0.5
+            (self.image_sub, self.detections_sub),
+            10,
+            0.5,
         )
         self._synchronizer.registerCallback(self.detections_cb)
 
@@ -157,7 +164,7 @@ class DebugNode(LifecycleNode):
                 [max_pt[0], min_pt[1]],
                 [max_pt[0], max_pt[1]],
                 [min_pt[0], max_pt[1]],
-            ]
+            ],
         )
 
         # calculate the rotation matrix
@@ -179,7 +186,7 @@ class DebugNode(LifecycleNode):
         # write text
         label = f"{class_name}"
         label += f" ({track_id})" if track_id else ""
-        label += " ({:.3f})".format(score)
+        label += f" ({score:.3f})"
         pos = (min_pt[0] + 5, min_pt[1] + 25)
         font = cv2.FONT_HERSHEY_SIMPLEX
         cv2.putText(cv_image, label, pos, font, 1, color, 1, cv2.LINE_AA)
@@ -369,7 +376,11 @@ class DebugNode(LifecycleNode):
 
         # publish dbg image
         self._dbg_pub.publish(
-            self.cv_bridge.cv2_to_imgmsg(cv_image, encoding="bgr8", header=img_msg.header)
+            self.cv_bridge.cv2_to_imgmsg(
+                cv_image,
+                encoding="bgr8",
+                header=img_msg.header,
+            ),
         )
         self._bb_markers_pub.publish(bb_marker_array)
         self._kp_markers_pub.publish(kp_marker_array)
