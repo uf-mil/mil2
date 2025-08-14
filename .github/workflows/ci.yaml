@@ -136,7 +136,7 @@ jobs:
           tidy "${ALL_CHANGES[@]}"
       - name: Run colcon tests
         run: |
-          export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
+          export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
           source /opt/ros/jazzy/setup.bash
           source install/setup.bash
           set +u
