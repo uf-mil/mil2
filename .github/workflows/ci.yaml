@@ -75,6 +75,11 @@ jobs:
         if: steps.cache-pre-commit.outputs.cache-hit != 'true'
         run: |
           pre-commit install-hooks
+      - name: Install hadolint
+        run: |
+          URL=https://github.com/hadolint/hadolint/releases/download/v2.10.0/hadolint-Linux-x86_64
+          sudo wget -O /bin/hadolint $URL
+          sudo chmod +x /bin/hadolint
       - name: Run pre-commit
         run: |
           pre-commit run --all-files --show-diff-on-failure
@@ -118,7 +123,7 @@ jobs:
           source "$GITHUB_WORKSPACE"/scripts/setup.bash
           set -u
           # Ensure that origin/main is up to date
-          git fetch origin
+          git fetch origin --recurse-submodules=no
           ALL_CHANGES=()
           while IFS='' read -r line; do
             ALL_CHANGES+=("$line")
@@ -131,7 +136,7 @@ jobs:
           tidy "${ALL_CHANGES[@]}"
       - name: Run colcon tests
         run: |
-          export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
+          export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
           source /opt/ros/jazzy/setup.bash
           source install/setup.bash
           set +u

@@ -19,7 +19,8 @@ Rotation::Rotation(std::array<double, 3> const& rot_vec)
 
 Rotation::Rotation(std::array<double, 4> const& quat)
 {
-    quat_ = Eigen::Quaterniond(quat[3], quat[1], quat[2], quat[0]);
+    // this function is never used :)
+    quat_ = Eigen::Quaterniond(quat[3], quat[0], quat[1], quat[2]);
 }
 
 Rotation::Rotation(Eigen::Quaterniond const& quat)

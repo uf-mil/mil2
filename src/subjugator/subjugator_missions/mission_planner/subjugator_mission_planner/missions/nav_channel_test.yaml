@@ -1,0 +1,5 @@
+mission:
+
+  - task: navchannel
+    parameters:
+      number_of_red_poles: 123

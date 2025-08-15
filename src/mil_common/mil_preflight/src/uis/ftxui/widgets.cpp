@@ -426,30 +426,6 @@ bool TestTab::OnMouseEvent(Event event)
     return false;
 }
 
-// class ActionList : public ComponentBase
-// {
-//   public:
-//     using History = std::pair<size_t, bool>;
-
-//     ActionList(std::shared_ptr<TestTab> tab);
-//     ~ActionList();
-
-//   private:
-//     int selector_ = 0;
-//     Box box_;
-// };
-
-// ActionList::ActionList(std::shared_ptr<TestTab> tab)
-// {
-//     Components comps;
-//     Add(Container::Vertical(comps, &selector_));
-// }
-
-// ActionList::~ActionList()
-// {
-
-// }
-
 TestsPage::TestsPage(std::string const& filePath)
 {
     Components pages;
@@ -457,8 +433,8 @@ TestsPage::TestsPage(std::string const& filePath)
 
     tabsContainer_ = Container::Vertical(tabs, &selector_);
     pagesContainer_ = Container::Tab(pages, &selector_);
-    main_ = Container::Horizontal({ tabsContainer_ | vscroll_indicator | frame, Renderer([] { return separator(); }),
-                                    pagesContainer_ | vscroll_indicator | frame | flex });
+    main_ = ResizableSplitLeft(tabsContainer_ | vscroll_indicator | frame, pagesContainer_ | vscroll_indicator | frame,
+                               &mainSize_);
 
     ButtonOption buttonOption = ButtonOption::Simple();
     buttonOption.transform = [&](EntryState const& s)
@@ -738,8 +714,9 @@ class JobReportPanel : public ComponentBase
                                         return panel->isShown();
                                     });
 
-            Add(Container::Horizontal({ left_ | vscroll_indicator | frame, Renderer([] { return separator(); }),
-                                        maybe | flex | vscroll_indicator | yframe }));
+            Add(ResizableSplitLeft(left_ | vscroll_indicator | frame, maybe | flex | vscroll_indicator | yframe,
+                                   &mainSize_));
+
             rendered_ = true;
         }
 
@@ -753,6 +730,7 @@ class JobReportPanel : public ComponentBase
     int selector_ = 0;
     bool rendered_ = false;
     bool* errorOnly_;
+    int mainSize_ = 20;
 };
 
 ReportsPage::ReportsPage()
