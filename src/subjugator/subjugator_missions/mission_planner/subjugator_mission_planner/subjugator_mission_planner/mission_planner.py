@@ -9,12 +9,27 @@ from geometry_msgs.msg import Pose
 from rclpy.action.client import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
+from std_srvs.srv import Empty
 from subjugator_msgs import action as action_interfaces
 
 
 class MissionPlanner(Node):
+    def heard_start(self, req: Empty.Request, res: Empty.Response):
+        self.waiting = False
+        return res
+
     def __init__(self):
         super().__init__("mission_planner")
+
+        # create waiter for coin
+        self.waiting = True
+        self.coin_sub = self.create_service(
+            Empty,
+            "/mission_planner/enable",
+            self.heard_start,
+        )
+        while self.waiting:
+            rclpy.spin_once(self, timeout_sec=0.1)
 
         package_share = get_package_share_directory("subjugator_mission_planner")
         print(f"PATH: {package_share}")
