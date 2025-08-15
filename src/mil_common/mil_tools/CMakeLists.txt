@@ -16,6 +16,7 @@ find_package(backward_ros REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(ftxui REQUIRED)
 
 set(SOURCE_FILES src/geometry/Rotation.cpp src/fs/path.cpp src/os.cpp
                  src/os/FileDescriptor.cpp src/string.cpp)
