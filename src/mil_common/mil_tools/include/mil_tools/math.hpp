@@ -4,7 +4,7 @@
 #include <cfloat>
 #include <numeric>
 
-namespace mil_tools::math
+namespace mil::math
 {
 
 template <typename T>
@@ -21,4 +21,4 @@ bool is_close(T const& a, T const& b, T epsilon = FLT_EPSILON)
     return (diff <= max_val * epsilon);
 }
 
-}  // namespace mil_tools::math
+}  // namespace mil::math

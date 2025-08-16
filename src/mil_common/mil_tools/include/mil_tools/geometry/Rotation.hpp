@@ -7,7 +7,7 @@
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-namespace mil_tools::geometry
+namespace mil::geometry
 {
 
 enum class Axis
@@ -147,4 +147,4 @@ class Rotation
     Rotation imaginary() const;
 };
 
-}  // namespace mil_tools::geometry
+}  // namespace mil::geometry

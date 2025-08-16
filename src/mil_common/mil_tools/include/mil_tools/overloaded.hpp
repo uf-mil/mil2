@@ -1,6 +1,6 @@
 #pragma once
 
-namespace mil_tools::overloaded
+namespace mil::overloaded
 {
 template <class... Ts>
 struct make : Ts...
@@ -9,4 +9,4 @@ struct make : Ts...
 };
 template <class... Ts>
 make(Ts...) -> make<Ts...>;
-}  // namespace mil_tools::overloaded
+}  // namespace mil::overloaded
