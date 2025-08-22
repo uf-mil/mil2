@@ -1,7 +1,5 @@
 #pragma once
 
-#include <iostream>
-
 #include <Eigen/Dense>
 
 #include "au/conversion_policy.hh"
@@ -43,9 +41,7 @@ struct Movement
     Movement left(au::Quantity<Unit, Precision> distance)
     {
         Movement res = *this;
-        std::cout << "LEFT y() before " << res.position.y() << "\n";
         res.position.y() -= distance.in(au::meters);
-        std::cout << "LEFT y() after " << res.position.y() << "\n";
         return res;
     }
     template <typename Unit, typename Precision>

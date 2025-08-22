@@ -46,59 +46,68 @@ install(DIRECTORY include/${PROJECT_NAME}/ DESTINATION include/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  # ament_add_gtest(${PROJECT_NAME}_fs_path_test test/fs/path.cpp)
-  # target_include_directories( ${PROJECT_NAME}_fs_path_test PUBLIC
-  # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  # $<INSTALL_INTERFACE:include>)
-  # target_link_libraries(${PROJECT_NAME}_fs_path_test ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_fs_path_test test/fs/path.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_fs_path_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_fs_path_test ${PROJECT_NAME})
 
-  # ament_add_gtest(${PROJECT_NAME}_string_test test/string.cpp)
-  # target_include_directories( ${PROJECT_NAME}_string_test PUBLIC
-  # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  # $<INSTALL_INTERFACE:include>)
-  # target_link_libraries(${PROJECT_NAME}_string_test ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_string_test test/string.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_string_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_string_test ${PROJECT_NAME})
 
-  # ament_add_gtest(${PROJECT_NAME}_os_test test/os.cpp)
-  # target_include_directories( ${PROJECT_NAME}_os_test PUBLIC
-  # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  # $<INSTALL_INTERFACE:include>) target_link_libraries(${PROJECT_NAME}_os_test
-  # ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_os_test test/os.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_os_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_os_test ${PROJECT_NAME})
 
-  # ament_add_gtest(${PROJECT_NAME}_random_test test/random.cpp)
-  # target_include_directories( ${PROJECT_NAME}_random_test PUBLIC
-  # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  # $<INSTALL_INTERFACE:include>)
-  # target_link_libraries(${PROJECT_NAME}_random_test ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_random_test test/random.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_random_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_random_test ${PROJECT_NAME})
 
-  # ament_add_gtest(${PROJECT_NAME}_overloaded_test test/overloaded.cpp)
-  # target_include_directories( ${PROJECT_NAME}_overloaded_test PUBLIC
-  # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  # $<INSTALL_INTERFACE:include>)
-  # target_link_libraries(${PROJECT_NAME}_overloaded_test ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_overloaded_test test/overloaded.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_overloaded_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_overloaded_test ${PROJECT_NAME})
 
-  # ament_add_gtest(${PROJECT_NAME}_itertools_test test/itertools.cpp)
-  # target_include_directories( ${PROJECT_NAME}_itertools_test PUBLIC
-  # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  # $<INSTALL_INTERFACE:include>)
-  # target_link_libraries(${PROJECT_NAME}_itertools_test ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_itertools_test test/itertools.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_itertools_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_itertools_test ${PROJECT_NAME})
 
-  # ament_add_gtest(${PROJECT_NAME}_rotation_test test/geometry/Rotation.cpp)
-  # target_include_directories( ${PROJECT_NAME}_rotation_test PUBLIC
-  # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  # $<INSTALL_INTERFACE:include>)
-  # target_link_libraries(${PROJECT_NAME}_rotation_test ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_rotation_test test/geometry/Rotation.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_rotation_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_rotation_test ${PROJECT_NAME})
 
-  # ament_add_gtest(${PROJECT_NAME}_math_test test/math.cpp)
-  # target_include_directories( ${PROJECT_NAME}_math_test PUBLIC
-  # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  # $<INSTALL_INTERFACE:include>)
-  # target_link_libraries(${PROJECT_NAME}_math_test ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_math_test test/math.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_math_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_math_test ${PROJECT_NAME})
 
-  # ament_add_gtest(${PROJECT_NAME}_slerp_test test/geometry/Slerp.cpp)
-  # target_include_directories( ${PROJECT_NAME}_slerp_test PUBLIC
-  # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  # $<INSTALL_INTERFACE:include>)
-  # target_link_libraries(${PROJECT_NAME}_slerp_test ${PROJECT_NAME})
+  ament_add_gtest(${PROJECT_NAME}_slerp_test test/geometry/Slerp.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_slerp_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_slerp_test ${PROJECT_NAME})
 
   ament_add_gtest(${PROJECT_NAME}_geometry_movement_utils_test
                   test/geometry/movement_utils.cpp)
