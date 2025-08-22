@@ -10,3 +10,6 @@
 [submodule "ext/FTXUI"]
 	path = ext/FTXUI
 	url = https://github.com/ArthurSonzogni/FTXUI.git
+[submodule "ext/au"]
+	path = ext/au
+	url = https://github.com/uf-mil/au

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <cmath>
+#include <initializer_list>
 #include <ostream>
 
 #include <Eigen/Dense>
@@ -28,7 +30,7 @@ class Rotation
     // Also equivalent to Rotation()
     static Rotation identity()
     {
-        return Rotation(Eigen::Quaterniond(1, 0, 0, 0));
+        return { Eigen::Quaterniond(1, 0, 0, 0) };
     }
 
     ////////////////////////////////////////
@@ -49,36 +51,36 @@ class Rotation
     ////////////////////////////////////////
     // Quaternion accessors
     ////////////////////////////////////////
-    inline Eigen::Quaterniond quat() const
+    [[nodiscard]] inline Eigen::Quaterniond quat() const
     {
         return quat_;
     }
-    inline double quat_w() const
+    [[nodiscard]] inline double quat_w() const
     {
         return quat_.w();
     };
     // Alias for quat_w()
-    inline double real() const
+    [[nodiscard]] inline double real() const
     {
         return quat_.w();
     }
-    inline double quat_x() const
+    [[nodiscard]] inline double quat_x() const
     {
         return quat_.x();
     };
-    inline double quat_y() const
+    [[nodiscard]] inline double quat_y() const
     {
         return quat_.y();
     };
-    inline double quat_z() const
+    [[nodiscard]] inline double quat_z() const
     {
         return quat_.z();
     };
-    inline double norm() const
+    [[nodiscard]] inline double norm() const
     {
         return quat_.norm();
     };
-    inline double abs_imag() const
+    [[nodiscard]] inline double abs_imag() const
     {
         return std::sqrt(quat_.x() * quat_.x() + quat_.y() * quat_.y() + quat_.z() * quat_.z());
     }
@@ -86,39 +88,40 @@ class Rotation
     ////////////////////////////////////////
     // Euler accessors
     ////////////////////////////////////////
-    inline double roll() const
+    [[nodiscard]] inline double roll() const
     {
         return rot_vec(Axis::X, Axis::Y, Axis::Z)[0];
     };
-    inline double pitch() const
+    [[nodiscard]] inline double pitch() const
     {
         return rot_vec(Axis::X, Axis::Y, Axis::Z)[1];
     };
-    inline double yaw() const
+    [[nodiscard]] inline double yaw() const
     {
         return rot_vec(Axis::X, Axis::Y, Axis::Z)[2];
     };
-    inline double roll_deg() const
+    [[nodiscard]] inline double roll_deg() const
     {
         return roll() * 180 / M_PI;
     };
-    inline double pitch_deg() const
+    [[nodiscard]] inline double pitch_deg() const
     {
         return pitch() * 180 / M_PI;
     };
-    inline double yaw_deg() const
+    [[nodiscard]] inline double yaw_deg() const
     {
         return yaw() * 180 / M_PI;
     };
 
-    Eigen::Vector3d rot_vec(Axis const& first = Axis::X, Axis const& second = Axis::Y,
-                            Axis const& third = Axis::Z) const;
-    std::tuple<double, double, double> rot_vec_tuple(Axis const& first = Axis::X, Axis const& second = Axis::Y,
-                                                     Axis const& third = Axis::Z) const;
-    Eigen::Matrix3d rot_mat() const;
-    geometry_msgs::msg::Quaternion quat_msg() const;
-    geometry_msgs::msg::Vector3 rot_vec_msg() const;
-    Eigen::Vector4d quat_vec() const;
+    [[nodiscard]] Eigen::Vector3d rot_vec(Axis const& first = Axis::X, Axis const& second = Axis::Y,
+                                          Axis const& third = Axis::Z) const;
+    [[nodiscard]] std::tuple<double, double, double> rot_vec_tuple(Axis const& first = Axis::X,
+                                                                   Axis const& second = Axis::Y,
+                                                                   Axis const& third = Axis::Z) const;
+    [[nodiscard]] Eigen::Matrix3d rot_mat() const;
+    [[nodiscard]] geometry_msgs::msg::Quaternion quat_msg() const;
+    [[nodiscard]] geometry_msgs::msg::Vector3 rot_vec_msg() const;
+    [[nodiscard]] Eigen::Vector4d quat_vec() const;
 
     ////////////////////////////////////////
     // Operators
@@ -144,7 +147,7 @@ class Rotation
     void normalize();
     void inverse();
     void conjugate();
-    Rotation imaginary() const;
+    [[nodiscard]] Rotation imaginary() const;
 };
 
 }  // namespace mil::geometry
