@@ -2,14 +2,17 @@ import rclpy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from subjugator_msgs.msg import Centroid
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
+from yolo_msgs.msg import Detection
+
+IMAGE_WIDTH = 840
+IMAGE_HEIGHT = 680
 
 
 class CentroidYawTracker(Node):
     def __init__(self):
         super().__init__("centroid_yaw_tracker")
-        self.spotted = False
+        self.spotted: bool = False
 
         self.odom_sub_ = self.create_subscription(
             Odometry,
@@ -20,13 +23,12 @@ class CentroidYawTracker(Node):
         self.last_odom: Odometry = Odometry()
 
         self.centroid_sub_ = self.create_subscription(
-            Centroid,
-            "centroids/green",
+            Detection,
+            "centroids/Green",
             self.centroid_cb,
             10,
         )
-        self.last_centroid: Centroid = Centroid()
-        self.last_centroid.image_width = 640
+        self.last_detection: Detection = Detection()
 
         self.goal_pose_pub = self.create_publisher(Pose, "goal_pose", 10)
 
@@ -35,23 +37,21 @@ class CentroidYawTracker(Node):
     def odom_cb(self, msg: Odometry):
         self.last_odom = msg
 
-    def centroid_cb(self, msg: Centroid):
-        self.last_centroid = msg
+    def centroid_cb(self, msg: Detection):
+        self.last_detection = msg
         self.spotted = True
 
     def control_loop(self):
         if not self.spotted:
             return
 
-        x_error_pixels = (
-            self.last_centroid.image_width / 2 - self.last_centroid.centroid_x
-        )
-        kp = 2.5 / (2 * self.last_centroid.image_width)
+        x_error_pixels = IMAGE_WIDTH / 2 - self.last_detection.bbox.center.position.x
+        kp = -2.5 / (2 * IMAGE_WIDTH)
 
         print("---------")
-        print(x_error_pixels)
+        print("x error pixels: ", x_error_pixels)
         yaw_command = -x_error_pixels * kp
-        print(yaw_command)
+        print("yaw command: ", yaw_command)
         print("---------")
 
         # Get current orientation from odometry

@@ -5,7 +5,7 @@
 #include <array>
 #include <iostream>
 
-using namespace mil_tools::geometry;
+using namespace mil::geometry;
 
 TEST(mil_tools_rotation_slerp, computed_test)
 {

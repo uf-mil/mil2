@@ -7,7 +7,7 @@
 #include <tuple>
 #include <vector>
 
-namespace mil_tools::os
+namespace mil::os
 {
 class FileDescriptor
 {
@@ -42,4 +42,4 @@ class FileDescriptor
     void write(std::vector<char> const& data);
 };
 
-}  // namespace mil_tools::os
+}  // namespace mil::os

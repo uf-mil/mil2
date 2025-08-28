@@ -31,15 +31,21 @@ def generate_launch_description():
             ),
             Node(
                 package="subjugator_mission_planner",
+                executable="yawtracker",
+                name="yawtracker",
+                parameters=[],
+            ),
+            Node(
+                package="subjugator_mission_planner",
                 executable="mechanisms_server",
                 name="mechanisms_server",
                 parameters=[],
             ),
             Node(
                 package="subjugator_mission_planner",
-                executable="navigation_channel_server",
-                name="navigation_channel_server",
+                executable="nav_channel_server",
+                name="nav_channel_server",
+                parameters=[],
             ),
-
         ],
     )

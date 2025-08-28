@@ -2,8 +2,9 @@
 # fig 2 is post-rotate
 
 import subprocess
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 """
 Ok so this sets up the bs graph globally
@@ -18,9 +19,9 @@ y1_data = []
 y2_data = []
 y3_data = []
 
-line1, = ax.plot([], [], label='x stuff')
-line2, = ax.plot([], [], label='y stuff')
-line3, = ax.plot([], [], label='z stuff')
+(line1,) = ax.plot([], [], label="x stuff")
+(line2,) = ax.plot([], [], label="y stuff")
+(line3,) = ax.plot([], [], label="z stuff")
 
 ax.set_xlim(0, 100)
 ax.set_ylim(-10, 10)
@@ -33,13 +34,14 @@ y1_data2 = []
 y2_data2 = []
 y3_data2 = []
 
-line12, = ax2.plot([], [], label='x stuff')
-line22, = ax2.plot([], [], label='y stuff')
-line32, = ax2.plot([], [], label='z stuff')
+(line12,) = ax2.plot([], [], label="x stuff")
+(line22,) = ax2.plot([], [], label="y stuff")
+(line32,) = ax2.plot([], [], label="z stuff")
 
 ax2.set_xlim(0, 100)
 ax2.set_ylim(-10, 10)
 ax2.legend()
+
 
 def vector_to_rpy(v):
     v = np.array(v, dtype=float)
@@ -70,11 +72,11 @@ def vector_to_rpy(v):
         theta = np.arccos(np.clip(np.dot(v_norm, t), -1.0, 1.0))
 
     # Rodrigues' rotation formula to build rotation matrix
-    K = np.array([[0, -axis[2], axis[1]],
-                  [axis[2], 0, -axis[0]],
-                  [-axis[1], axis[0], 0]])
+    K = np.array(
+        [[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]],
+    )
 
-    R = np.eye(3) + np.sin(theta)*K + (1 - np.cos(theta))*(K @ K)
+    R = np.eye(3) + np.sin(theta) * K + (1 - np.cos(theta)) * (K @ K)
 
     # Extract RPY (ZYX order)
     pitch = np.arcsin(-R[2, 0])
@@ -88,27 +90,26 @@ def vector_to_rpy(v):
 
     return roll, pitch, yaw
 
+
 def rotate_about(ax, ay, az, roll, pitch, yaw):
     a_imu = np.array([ax, ay, az])
 
     # Rotation matrices
-    Rx = np.array([
-        [1, 0, 0],
-        [0, np.cos(roll), -np.sin(roll)],
-        [0, np.sin(roll), np.cos(roll)]
-    ])
+    Rx = np.array(
+        [[1, 0, 0], [0, np.cos(roll), -np.sin(roll)], [0, np.sin(roll), np.cos(roll)]],
+    )
 
-    Ry = np.array([
-        [np.cos(pitch), 0, np.sin(pitch)],
-        [0, 1, 0],
-        [-np.sin(pitch), 0, np.cos(pitch)]
-    ])
+    Ry = np.array(
+        [
+            [np.cos(pitch), 0, np.sin(pitch)],
+            [0, 1, 0],
+            [-np.sin(pitch), 0, np.cos(pitch)],
+        ],
+    )
 
-    Rz = np.array([
-        [np.cos(yaw), -np.sin(yaw), 0],
-        [np.sin(yaw), np.cos(yaw), 0],
-        [0, 0, 1]
-    ])
+    Rz = np.array(
+        [[np.cos(yaw), -np.sin(yaw), 0], [np.sin(yaw), np.cos(yaw), 0], [0, 0, 1]],
+    )
 
     # Combined rotation matrix (ZYX order)
     R = Rz @ Ry @ Rx
@@ -123,16 +124,16 @@ def rotate_about(ax, ay, az, roll, pitch, yaw):
 def echo_imu_topic():
     try:
         process = subprocess.Popen(
-            ['ros2', 'topic', 'echo', '/imu/data', '--field', 'linear_acceleration'],
+            ["ros2", "topic", "echo", "/imu/data", "--field", "linear_acceleration"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True  # decode stdout as text (str instead of bytes)
+            text=True,  # decode stdout as text (str instead of bytes)
         )
 
         print("Listening to /imu/data topic (Ctrl+C to stop):")
 
         buffer = []
-        i=0
+        i = 0
 
         for line in process.stdout:
             buffer.append(line)
@@ -146,7 +147,7 @@ def echo_imu_topic():
                 print(f"Roll: {roll:.5f}, Pitch: {pitch:.5f}, Yaw: {yaw:.5f} (radians)")
 
                 x2, y2, z2 = rotate_about(x, y, z, roll, pitch, yaw)
-                
+
                 x_data.append(i)
                 y1_data.append(x)
                 y2_data.append(y)
@@ -185,15 +186,17 @@ def echo_imu_topic():
                 plt.pause(0.01)
 
                 buffer = []
-                i+=1
+                i += 1
 
     except KeyboardInterrupt:
         print("\nStopping...")
         process.terminate()
         process.wait()
 
+
 def main():
     echo_imu_topic()
+
 
 if __name__ == "__main__":
     main()

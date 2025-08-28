@@ -43,9 +43,9 @@ void PathPlanner::odom_cb(nav_msgs::msg::Odometry::SharedPtr const &msg)
 std::vector<geometry_msgs::msg::Pose> PathPlanner::slerp(geometry_msgs::msg::Pose const &goal_pose)
 {
     std::vector<geometry_msgs::msg::Pose> path;
-    mil_tools::geometry::Rotation const start_rot{ last_odom_.pose.pose.orientation };
-    mil_tools::geometry::Rotation const goal_rot{ goal_pose.orientation };
-    mil_tools::geometry::Slerp const slerp(start_rot, goal_rot);
+    mil::geometry::Rotation const start_rot{ last_odom_.pose.pose.orientation };
+    mil::geometry::Rotation const goal_rot{ goal_pose.orientation };
+    mil::geometry::Slerp const slerp(start_rot, goal_rot);
 
     // get vector from current to goal with magnitude 0.33, add this to A one too few times, then final path is B
     // TODO rotations??

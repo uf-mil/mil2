@@ -1,6 +1,6 @@
 #include "mil_tools/geometry/Rotation.hpp"
 
-namespace mil_tools::geometry
+namespace mil::geometry
 {
 
 Rotation::Rotation(std::array<double, 3> const& rot_vec)
@@ -207,4 +207,4 @@ Rotation Rotation::imaginary() const
     return Rotation(Eigen::Vector4d{ quat_.x(), quat_.y(), quat_.z(), 0 });
 }
 
-}  // namespace mil_tools::geometry
+}  // namespace mil::geometry

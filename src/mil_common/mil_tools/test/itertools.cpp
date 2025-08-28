@@ -6,7 +6,7 @@
 
 #include "mil_tools/noncopyable.hpp"
 
-class nocopy : public mil_tools::noncopyable
+class nocopy : public mil::noncopyable
 {
     int x_;
 
@@ -25,7 +25,7 @@ TEST(mil_tools_itertools, enumerate)
     std::vector<std::pair<int, int>> exp_nums = { std::make_pair(0, 10), std::make_pair(1, 20), std::make_pair(2, 30) };
     std::vector<int> sample_nums = { 10, 20, 30 };
     std::vector<std::pair<int, int>> test_nums;
-    for (auto const& [index, value] : mil_tools::itertools::enumerate(sample_nums))
+    for (auto const& [index, value] : mil::itertools::enumerate(sample_nums))
     {
         test_nums.emplace_back(std::make_pair(index, value));
     }
@@ -35,7 +35,7 @@ TEST(mil_tools_itertools, enumerate)
                                                              std::make_pair(2, "third") };
     std::vector<std::string> sample_strings = { "first", "second", "third" };
     std::vector<std::pair<int, std::string>> test_strings;
-    for (auto const& [index, value] : mil_tools::itertools::enumerate(sample_strings))
+    for (auto const& [index, value] : mil::itertools::enumerate(sample_strings))
     {
         test_strings.emplace_back(std::make_pair(index, value));
     }
@@ -48,7 +48,7 @@ TEST(mil_tools_itertools, enumerate)
         sample_nocopy.emplace_back(i);
     }
     int nocopy_count = 0;
-    for (auto const& [index, value] : mil_tools::itertools::enumerate(sample_nocopy))
+    for (auto const& [index, value] : mil::itertools::enumerate(sample_nocopy))
     {
         EXPECT_EQ(index, nocopy_count);
         EXPECT_EQ(&value, &sample_nocopy[nocopy_count]);

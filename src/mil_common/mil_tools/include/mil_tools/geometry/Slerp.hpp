@@ -4,7 +4,7 @@
 
 #include "mil_tools/geometry/Rotation.hpp"
 
-namespace mil_tools::geometry
+namespace mil::geometry
 {
 
 class Slerp
@@ -49,4 +49,4 @@ class Slerp
     }
 };
 
-};  // namespace mil_tools::geometry
+};  // namespace mil::geometry

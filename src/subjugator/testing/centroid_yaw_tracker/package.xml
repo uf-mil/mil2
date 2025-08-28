@@ -4,7 +4,7 @@
   <name>centroid_yaw_tracker</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="nottellingu@gmail.com">jh</maintainer>
+  <maintainer email="jgoodman1@ufl.edu">sub9</maintainer>
   <license>TODO: License declaration</license>
 
   <test_depend>ament_copyright</test_depend>
