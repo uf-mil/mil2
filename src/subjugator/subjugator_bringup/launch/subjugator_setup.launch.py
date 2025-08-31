@@ -8,6 +8,7 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 
 
 def generate_launch_description():
@@ -24,6 +25,7 @@ def generate_launch_description():
     pkg_thruster_manager = get_package_share_directory("subjugator_thruster_manager")
     pkg_localization = get_package_share_directory("subjugator_localization")
     pkg_controller = get_package_share_directory("subjugator_controller")
+    pkg_rosbridge_server = get_package_share_directory("rosbridge_server")
 
     # Load the URDF file from "description" package
     xacro_file = os.path.join(pkg_project_description, "urdf", "sub9.urdf.xacro")
@@ -117,6 +119,16 @@ def generate_launch_description():
         output="both",
     )
 
+    rosbridge_websocket = IncludeLaunchDescription(
+        XMLLaunchDescriptionSource(
+            os.path.join(
+                pkg_rosbridge_server,
+                "launch",
+                "rosbridge_websocket_launch.xml",
+            ),
+        ),
+    )
+
     return LaunchDescription(
         [
             gui_cmd,
@@ -128,5 +140,6 @@ def generate_launch_description():
             controller,
             path_planner,
             trajectory_planner,
+            rosbridge_websocket,
         ],
     )
