@@ -33,10 +33,7 @@
 
 namespace marble_dropper
 {
-class MarbleDropper : public gz::sim::System,
-                      public gz::sim::ISystemConfigure,
-                      public gz::sim::ISystemPreUpdate,
-                      public gz::sim::ISystemPostUpdate
+class MarbleDropper : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
 {
   public:
     MarbleDropper();
@@ -45,9 +42,6 @@ class MarbleDropper : public gz::sim::System,
     // Configure() - Gathers Info at the start of the simulation //
     void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                    gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) override;
-
-    // System PreUpdate - Called every simulation step before physics //
-    void PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &ecm) override;
 
     // System PostUpdate - Called every simulation step to update pinger/marble_dropper distances //
     void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
