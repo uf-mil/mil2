@@ -18,7 +18,7 @@ def generate_launch_description():
     pkg_ros_gz_sim = get_package_share_directory("ros_gz_sim")
 
     # Setup to launch the simulator and Gazebo world
-    gz_sim_world = DeclareLaunchArgument("world", default_value="robosub_2024.world")
+    gz_sim_world = DeclareLaunchArgument("world", default_value="task1_2025.world")
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_ros_gz_sim, "launch", "gz_sim.launch.py"),
