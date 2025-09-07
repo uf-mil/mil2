@@ -31,7 +31,10 @@ $wgSitename = "MILpedia";
 # $wgScriptPath = "/mediawiki";
 # $wgScript = "/w/index.php";
 # $wgArticlePath = "/wiki/Page_title";
-$wgScriptPath = "/w";
+
+# TODO: https://github.com/uf-mil/mil2/issues/224
+$wgScriptPath = "";
+
 $wgArticlePath = "/wiki/$1";
 $wgUsePathInfo = true;
 
