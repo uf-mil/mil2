@@ -1,9 +1,9 @@
 import numpy as np
 import rclpy
-import scipy.spatial.transform.Rotation as R
 from geometry_msgs.msg import Pose, Wrench
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from scipy.spatial.transform import rotation as R
 
 
 class MRAC(Node):
