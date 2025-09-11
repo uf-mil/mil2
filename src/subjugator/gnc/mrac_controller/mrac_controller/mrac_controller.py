@@ -3,7 +3,7 @@ import rclpy
 from geometry_msgs.msg import Pose, Wrench
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from scipy.spatial.transform import rotation as R
+from scipy.spatial.transform import Rotation as R
 
 
 class MRAC(Node):
@@ -39,48 +39,48 @@ class MRAC(Node):
         self.goal = []
         self.current = []
 
+        # Initialize error and error dot
+        self.error = np.zeros((6, 1))
+        self.error_dot = np.zeros((6, 1))
+
         # Initialize gains for the PD controller, can parameterize these later
-        P = np.array([100.0, 100.0, 150.0, 10.0, 5.0, 25.0])
-        D = np.array([60.0, 0.0, 20.0, 0.0, 0.0, 0.0])
+        self.Pmat = np.diagflat([[100.0, 100.0, 150.0, 10.0, 5.0, 25.0]])
+        self.Dmat = np.diagflat([[60.0, 15.0, 150.0, 5.0, 0.0, 10.0]])
 
         # Initialize physical params
         mass = 29.5  # kg
         inertia = [
-            0,
-            0,
-            0,
-        ]  # kgm2  (ixx,iyy, izz)  Can calculate from fusion model (probably?)
+            0.0,
+            0.0,
+            0.0,
+        ]  # kgm2  (ixx,iyy, izz)  Can calculate from fusion model
 
         self.physical_properties = np.array(
             [mass, mass, mass, inertia[0], inertia[1], inertia[2]],
         )
 
-        ones_vec = np.transpose(np.array([1, 1, 1, 1, 1, 1]))
-
-        # Create a square matrix with the gain values along the diagonal (useful for multiplying later)
-        self.Pmat = np.matmul(ones_vec, P)
-        self.Dmat = np.matmul(ones_vec, D)
-
         # Initialize adaptive vectors
-        self.disturbance_estimate = np.zeros(6)
-        self.last_disturbance_estimate = np.zeros(6)
-        self.drag_estimate = np.zeros(6)
-        self.last_drag_estimate = np.zeros(6)
+        self.disturbance_estimate = np.zeros((6, 1))
+        self.last_disturbance_estimate = np.zeros((6, 1))
+        self.drag_estimate = np.zeros((9, 1))
+        self.last_drag_estimate = np.zeros((9, 1))
 
         self.ki = 0.1  # learning gain for the disturbance estimate
         self.kg = 0.1  # learning gain for the drag estimate
         self.dt = 0.05  # step size for learning
 
     def goal_pose_callback(self, msg):
-        # Hears a goal pose from the trajectory planner, then deconstructs it
-
         # Convert the quaternion from the goal pose into rpy
-        goal_rot = quat_to_euler(
-            msg.orientation.x,
-            msg.orientation.y,
-            msg.orientation.z,
-            msg.orientation.w,
+        goal_quat = R.from_quat(
+            [
+                msg.orientation.x,
+                msg.orientation.y,
+                msg.orientation.z,
+                msg.orientation.w,
+            ],
         )
+
+        goal_rot = goal_quat.as_euler("xyz", degrees=True)
 
         # Construct goal pose (x,y,z, roll, pitch, yaw)
         self.goal = [
@@ -93,21 +93,23 @@ class MRAC(Node):
         ]
 
     def odometry_callback(self, msg):
-        # Get the latest pose, then computes control action necessary
-
         # Convert the current rotation to rpy
-        current_rot = quat_to_euler(
-            msg.pose.orientation.x,
-            msg.pose.orientation.y,
-            msg.pose.orientation.z,
-            msg.pose.orientation.w,
+        current_quat = R.from_quat(
+            [
+                msg.pose.pose.orientation.x,
+                msg.pose.pose.orientation.y,
+                msg.pose.pose.orientation.z,
+                msg.pose.pose.orientation.w,
+            ],
         )
 
-        # Create pose
+        current_rot = current_quat.as_euler("xyz", degrees=True)
+
+        # Current pose
         self.current = [
-            msg.pose.position.x,
-            msg.pose.position.y,
-            msg.pose.position.z,
+            msg.pose.pose.position.x,
+            msg.pose.pose.position.y,
+            msg.pose.pose.position.z,
             current_rot[0],
             current_rot[1],
             current_rot[2],
@@ -115,39 +117,32 @@ class MRAC(Node):
 
         # Velocity array
         self.vel = [
-            msg.twist.linear.x,
-            msg.twist.linear.y,
-            msg.twist.linear.z,
-            msg.twist.angular.x,
-            msg.twist.angular.y,
-            msg.twist.angular.z,
+            msg.twist.twist.linear.x,
+            msg.twist.twist.linear.y,
+            msg.twist.twist.linear.z,
+            msg.twist.twist.angular.x,
+            msg.twist.twist.angular.y,
+            msg.twist.twist.angular.z,
         ]
 
-        # Compute e and e_dot based on error from goal pose
-
-        self.error = get_error(self.goal, self.current)
+        # Compute e and e_dot
+        self.error = get_error(self, self.goal, self.current)
         self.error_dot = np.array(self.vel)
 
-        # Decide if using just PD or PD + adaption
+        # Decide if using PD or PD + adaption
         if self.use_adaptive:
-            # TODO Compute anticipation feed forward using the sub's acceleration, angular acceleration, mass, and inertia
-
-            # Compute disturbance estimate
             self.disturbance_estimate = (
                 self.last_disturbance_estimate + self.ki * self.dt * self.error
             )
 
-            # Compute drag regressor - transform velocity into sub frame and compute cross-coupling effects - this will be a super fun 6x9 matrix :)
-
-            # need to add more terms, currently is just vel and angular vel
             self.drag_regression = np.array(
                 [
-                    [self.vel[0] ** 2, 0, 0, 0, 0, 0],
-                    [0, self.vel[1] ** 2, 0, 0, 0, 0],
-                    [0, 0, self.vel[2] ** 2, 0, 0, 0],
-                    [0, 0, 0, self.vel[3] ** 2, 0, 0],
-                    [0, 0, 0, 0, self.vel[4] ** 2, 0],
-                    [0, 0, 0, 0, 0, self.vel[5] ** 2],
+                    [self.vel[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, self.vel[1], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, self.vel[2], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.vel[3], 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.vel[4], 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.vel[5]],
                 ],
             )
 
@@ -155,8 +150,10 @@ class MRAC(Node):
                 self.last_drag_estimate
                 + self.kg
                 * self.dt
-                * np.transpose(self.drag_regression)
-                @ (self.error + self.error_dot)
+                * np.matmul(
+                    np.transpose(self.drag_regression),
+                    (self.error + self.error_dot),
+                )
             )
 
             wrench = (
@@ -165,55 +162,45 @@ class MRAC(Node):
                 + self.disturbance_estimate
                 + np.transpose(self.drag_estimate) @ np.transpose(self.drag_regression)
             )
-
-        # If only PD, compute the wrench with the errors and gains, then publish wrench
         else:
             wrench = self.Pmat @ self.error + self.Dmat @ self.error_dot
 
-        # Update the disturbance and drag estimate
+        # Flatten wrench to ensure shape (6,)
+        wrench = np.array(wrench).flatten()
+
+        # Update adaptive states
         self.last_disturbance_estimate = self.disturbance_estimate
         self.last_drag_estimate = self.drag_estimate
 
-        self.output_wrench.force.x = wrench[0]
-        self.output_wrench.force.y = wrench[1]
-        self.output_wrench.force.z = wrench[2]
-        self.output_wrench.torque.x = wrench[3]
-        self.output_wrench.torque.y = wrench[4]
-        self.output_wrench.torque.z = wrench[5]
+        # Assign as floats (fix for numpy.float64 issue)
+        self.output_wrench.force.x = float(wrench[0])
+        self.output_wrench.force.y = float(wrench[1])
+        self.output_wrench.force.z = float(wrench[2])
+        self.output_wrench.torque.x = float(wrench[3])
+        self.output_wrench.torque.y = float(wrench[4])
+        self.output_wrench.torque.z = float(wrench[5])
+
+        self.cmd_wrench_publisher.publish(self.output_wrench)
 
 
-# Computer error e = goal-current
-def get_error(goal, current):
-    e = np.eye(6)
+# Compute error e = goal-current
+def get_error(self, goal, current):
+    self.error = np.zeros((6, 1))
     for pos in range(len(goal)):
-        e[pos] = goal[pos] - current[pos]
-
-    return e
+        self.error[pos] = goal[pos] - current[pos]
+    return self.error
 
 
 def quat_to_euler(x, y, z, w):
-    # Get the pose as a quaternion
     q = [x, y, z, w]
-
-    # Create a scipy rotation object from quaternion
     rot = R.from_quat(q)
-
-    # Convert the quaternion to roll, pitch, yaw (in rads)
-    rot.as_euler("xyz", degrees=False)
-
-    return rot
+    return rot.as_euler("xyz", degrees=False)
 
 
 def main(args=None):
     rclpy.init(args=args)
-
     mrac_controller = MRAC()
-
     rclpy.spin(mrac_controller)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
     mrac_controller.destroy_node()
     rclpy.shutdown()
 
