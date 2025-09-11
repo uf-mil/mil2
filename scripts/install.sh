@@ -391,6 +391,16 @@ else
 	echo 'set -g default-terminal "screen-256color"' >>~/.tmux.conf
 fi
 
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+Updating submodules...
+$(hash_header)
+$(color "$Res")
+EOF
+
+git submodule update --init --recursive
+
 mil_user_setup_init_colcon
 
 cat <<EOF
