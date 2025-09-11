@@ -64,8 +64,8 @@ class MRAC(Node):
         # Initialize adaptive vectors
         self.disturbance_estimate = np.zeros(6)
         self.last_disturbance_estimate = np.zeros(6)
-        self.drag_estimate = np.zeros(9)
-        self.last_drag_estimate = np.zeros(9)
+        self.drag_estimate = np.zeros(6)
+        self.last_drag_estimate = np.zeros(6)
 
         self.ki = 0.1  # learning gain for the disturbance estimate
         self.kg = 0.1  # learning gain for the drag estimate
@@ -142,12 +142,12 @@ class MRAC(Node):
             # need to add more terms, currently is just vel and angular vel
             self.drag_regression = np.array(
                 [
-                    [self.vel[0], 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, self.vel[1], 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, self.vel[2], 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, self.vel[3], 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, self.vel[4], 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, self.vel[5]],
+                    [self.vel[0] ** 2, 0, 0, 0, 0, 0],
+                    [0, self.vel[1] ** 2, 0, 0, 0, 0],
+                    [0, 0, self.vel[2] ** 2, 0, 0, 0],
+                    [0, 0, 0, self.vel[3] ** 2, 0, 0],
+                    [0, 0, 0, 0, self.vel[4] ** 2, 0],
+                    [0, 0, 0, 0, 0, self.vel[5] ** 2],
                 ],
             )
 
