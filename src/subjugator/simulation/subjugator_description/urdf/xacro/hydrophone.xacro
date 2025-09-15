@@ -24,13 +24,5 @@
       <disableFixedJointLumping>true</disableFixedJointLumping>
       <preserveFixedJoint>true</preserveFixedJoint>
     </gazebo>
-
-    <!-- <gazebo>
-      <plugin
-        filename="Hydrophone"
-        name="hydrophone::Hydrophone">
-        <topic>${name}</topic>
-      </plugin>
-    </gazebo> -->
   </xacro:macro>
 </robot>

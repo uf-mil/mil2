@@ -12,6 +12,7 @@
 #include "rclcpp/rclcpp.hpp"
 
 #include "geometry_msgs/msg/wrench.hpp"
+#include "std_msgs/msg/string.hpp"
 
 // May be used elsewhere if similar logic?
 struct KeyState
@@ -35,6 +36,8 @@ class SubjugatorKeyboardControl final : public rclcpp::Node
 
   private:
     rclcpp::Publisher<geometry_msgs::msg::Wrench>::SharedPtr publisher_;
+    // Add publisher for keypress events
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr keypress_publisher_;
     std::atomic<double> force_x_, force_y_, force_z_;
     std::atomic<double> torque_x_, torque_y_, torque_z_;
     double base_linear_, base_angular_;
