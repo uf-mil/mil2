@@ -59,16 +59,6 @@ def generate_launch_description():
             {"robot_description": robot_desc},
         ],
     )
-    # joint_state_publisher_node = Node(
-    #     package='joint_state_publisher',
-    #     executable='joint_state_publisher',
-    #     name='joint_state_publisher',
-    #     output='screen',
-    #     parameters=[
-    #         {'use_sim_time': True},
-    #         {'robot_description': robot_desc},
-    #     ]
-    # )
 
     # Visualize in RViz
     rviz = Node(
@@ -110,7 +100,6 @@ def generate_launch_description():
         name="depth_to_pose",
         output="screen",
     )
-
 
     controller = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
