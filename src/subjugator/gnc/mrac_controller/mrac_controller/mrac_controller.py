@@ -195,6 +195,7 @@ class MRAC(Node):
             self.output_wrench.torque.y = float(wrench[4])
             self.output_wrench.torque.z = float(wrench[5])
 
+            # Weigh each element of the error so the large value of the angular error (in degs) doesn't overpower the linear values (in m)
             self.error_weight = np.array(
                 [
                     [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -206,7 +207,10 @@ class MRAC(Node):
                 ],
             )
 
+            # multiply the weight matrix by the error
             self.error_dist = self.error_weight @ self.error
+
+            # If the error is < 0.2, the goal pose has been arrived at. Set heard goal to false and send a 0 command (to stop sub spinning infinitely)
             if np.linalg.norm(self.error_dist) < 0.2:
                 self.heard_goal = False
 
