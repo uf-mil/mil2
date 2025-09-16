@@ -10,7 +10,9 @@ class MRAC(Node):
 
     def __init__(self):
 
-        self.use_adaptive = True
+        # Config:
+        self.use_adaptive = False
+
         super().__init__("mrac_controller")
 
         self.goal_subscription = self.create_subscription(
@@ -44,8 +46,8 @@ class MRAC(Node):
         self.error_dot = np.zeros((6, 1))
 
         # Initialize gains for the PD controller, can parameterize these later
-        self.Pmat = np.diagflat([[100.0, 100.0, 150.0, 10.0, 5.0, 25.0]])
-        self.Dmat = np.diagflat([[60.0, 15.0, 150.0, 5.0, 0.0, 10.0]])
+        self.Pmat = np.diagflat([[80.0, 30.0, 45.0, 5.0, 5.0, 5.0]])
+        self.Dmat = np.diagflat([[135.0, 0.0, 2.0, 10.0, 0.0, 5.0]])
 
         # Initialize physical params
         mass = 29.5  # kg
@@ -62,6 +64,7 @@ class MRAC(Node):
         # Initialize adaptive vectors
         self.disturbance_estimate = np.zeros((6, 1))
         self.last_disturbance_estimate = np.zeros((6, 1))
+
         self.drag_estimate = np.zeros((6, 1))
         self.last_drag_estimate = np.zeros((6, 1))
 
@@ -69,18 +72,24 @@ class MRAC(Node):
         self.kg = 0.1  # learning gain for the drag estimate
         self.dt = 0.05  # step size for learning
 
+        self.heard_goal = False
+
     def goal_pose_callback(self, msg):
+
+        print("MRAC heard goal pose")
+        # Hears a goal pose from the trajectory planner, then deconstructs it
+
         # Convert the quaternion from the goal pose into rpy
         goal_quat = R.from_quat(
             [
+                msg.orientation.w,
                 msg.orientation.x,
                 msg.orientation.y,
                 msg.orientation.z,
-                msg.orientation.w,
             ],
         )
 
-        goal_rot = goal_quat.as_euler("xyz", degrees=True)
+        goal_rot = goal_quat.as_euler("xyz", degrees=False)
 
         # Construct goal pose (x,y,z, roll, pitch, yaw)
         self.goal = [
@@ -92,109 +101,134 @@ class MRAC(Node):
             goal_rot[2],
         ]
 
+        self.heard_goal = True
+
     def odometry_callback(self, msg):
-        # Convert the current rotation to rpy
-        current_quat = R.from_quat(
-            [
-                msg.pose.pose.orientation.x,
-                msg.pose.pose.orientation.y,
-                msg.pose.pose.orientation.z,
-                msg.pose.pose.orientation.w,
-            ],
-        )
 
-        current_rot = current_quat.as_euler("xyz", degrees=True)
-
-        # Current pose
-        self.current = [
-            msg.pose.pose.position.x,
-            msg.pose.pose.position.y,
-            msg.pose.pose.position.z,
-            current_rot[0],
-            current_rot[1],
-            current_rot[2],
-        ]
-
-        # Velocity array
-        self.vel = [
-            msg.twist.twist.linear.x,
-            msg.twist.twist.linear.y,
-            msg.twist.twist.linear.z,
-            msg.twist.twist.angular.x,
-            msg.twist.twist.angular.y,
-            msg.twist.twist.angular.z,
-        ]
-
-        # Compute e and e_dot
-        self.error = get_error(self, self.goal, self.current)
-        self.error_dot = np.array(self.vel)
-
-        # Decide if using PD or PD + adaption
-        if self.use_adaptive:
-            self.disturbance_estimate = (
-                self.last_disturbance_estimate + self.ki * self.dt * self.error
-            )
-
-            self.drag_regression = np.array(
+        if self.heard_goal:
+            # Convert the current rotation to rpy
+            current_quat = R.from_quat(
                 [
-                    [self.vel[0] ** 2, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    [0.0, self.vel[1] ** 2, 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, self.vel[2] ** 2, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, self.vel[3] ** 2, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, self.vel[4] ** 2, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, self.vel[5] ** 2],
+                    msg.pose.pose.orientation.x,
+                    msg.pose.pose.orientation.y,
+                    msg.pose.pose.orientation.z,
+                    msg.pose.pose.orientation.w,
                 ],
             )
 
-            self.drag_estimate = (
-                self.last_drag_estimate
-                + self.kg
-                * self.dt
-                * np.matmul(
-                    np.transpose(self.drag_regression),
-                    (self.error + self.error_dot),
+            current_rot = current_quat.as_euler("xyz", degrees=True)
+
+            # Current pose
+            self.current = [
+                msg.pose.pose.position.x,
+                msg.pose.pose.position.y,
+                msg.pose.pose.position.z,
+                current_rot[0],
+                current_rot[1],
+                current_rot[2],
+            ]
+
+            # Velocity array
+            self.vel = [
+                msg.twist.twist.linear.x,
+                msg.twist.twist.linear.y,
+                msg.twist.twist.linear.z,
+                msg.twist.twist.angular.x,
+                msg.twist.twist.angular.y,
+                msg.twist.twist.angular.z,
+            ]
+
+            # Compute e and e_dot
+            self.error = get_error(self, self.goal, self.current)
+            self.error_dot = np.array(self.vel)
+
+            # Decide if using PD or PD + adaption
+            if self.use_adaptive:
+                self.disturbance_estimate = (
+                    self.last_disturbance_estimate + self.ki * self.dt * self.error
                 )
+
+                self.drag_regression = np.array(
+                    [
+                        [self.vel[0] ** 2, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, self.vel[1] ** 2, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, self.vel[2] ** 2, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, self.vel[3] ** 2, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, self.vel[4] ** 2, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, 0.0, self.vel[5] ** 2],
+                    ],
+                )
+
+                self.drag_estimate = (
+                    self.last_drag_estimate
+                    + self.kg
+                    * self.dt
+                    * np.matmul(
+                        np.transpose(self.drag_regression),
+                        (self.error + self.error_dot),
+                    )
+                )
+
+                wrench = (
+                    self.Pmat @ self.error
+                    + self.Dmat @ self.error_dot
+                    + self.disturbance_estimate
+                    + np.transpose(self.drag_estimate)
+                    @ np.transpose(self.drag_regression)
+                )
+            else:
+                wrench = self.Pmat @ self.error  # + self.Dmat @ self.error_dot
+                print(f"error: {(np.linalg.norm(self.error))}")
+
+            # Flatten wrench to ensure shape (6,)
+            wrench = np.array(wrench).flatten()
+
+            # Update adaptive states
+            self.last_disturbance_estimate = self.disturbance_estimate
+            self.last_drag_estimate = self.drag_estimate
+
+            # Assign as floats (fix for numpy.float64 issue)
+            self.output_wrench.force.x = float(wrench[0])
+            self.output_wrench.force.y = float(wrench[1])
+            self.output_wrench.force.z = float(wrench[2])
+            self.output_wrench.torque.x = float(wrench[3])
+            self.output_wrench.torque.y = float(wrench[4])
+            self.output_wrench.torque.z = float(wrench[5])
+
+            self.error_weight = np.array(
+                [
+                    [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0 / 360.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 1.0 / 360.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 360.0],
+                ],
             )
 
-            wrench = (
-                self.Pmat @ self.error
-                + self.Dmat @ self.error_dot
-                + self.disturbance_estimate
-                + np.transpose(self.drag_estimate) @ np.transpose(self.drag_regression)
-            )
-        else:
-            wrench = self.Pmat @ self.error + self.Dmat @ self.error_dot
+            self.error_dist = self.error_weight @ self.error
+            if np.linalg.norm(self.error_dist) < 0.2:
+                self.heard_goal = False
 
-        # Flatten wrench to ensure shape (6,)
-        wrench = np.array(wrench).flatten()
-
-        # Update adaptive states
-        self.last_disturbance_estimate = self.disturbance_estimate
-        self.last_drag_estimate = self.drag_estimate
-
-        # Assign as floats (fix for numpy.float64 issue)
-        self.output_wrench.force.x = float(wrench[0])
-        self.output_wrench.force.y = float(wrench[1])
-        self.output_wrench.force.z = float(wrench[2])
-        self.output_wrench.torque.x = float(wrench[3])
-        self.output_wrench.torque.y = float(wrench[4])
-        self.output_wrench.torque.z = float(wrench[5])
-
-        self.cmd_wrench_publisher.publish(self.output_wrench)
+                self.output_wrench.force.x = 0.0
+                self.output_wrench.force.y = 0.0
+                self.output_wrench.force.z = 0.0
+                self.output_wrench.torque.x = 0.0
+                self.output_wrench.torque.y = 0.0
+                self.output_wrench.torque.z = 0.0
+            self.cmd_wrench_publisher.publish(self.output_wrench)
 
 
 # Compute error e = goal-current
+
+
 def get_error(self, goal, current):
+    # x,y,z,roll,pitch,yaw
     self.error = np.zeros((6, 1))
     for pos in range(len(goal)):
         self.error[pos] = goal[pos] - current[pos]
+
     return self.error
-
-
-def quat_to_euler(x, y, z, w):
-    q = [x, y, z, w]
-    rot = R.from_quat(q)
-    return rot.as_euler("xyz", degrees=False)
 
 
 def main(args=None):
