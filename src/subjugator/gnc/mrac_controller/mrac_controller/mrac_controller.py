@@ -147,15 +147,31 @@ class MRAC(Node):
                 self.disturbance_estimate = (
                     self.last_disturbance_estimate + self.ki * self.dt * self.error
                 )
+                # This matrix should represent how drag is created, it probably needs some work - will look at sub dynamics to create
+                # self.drag_regression = np.array(
+                #     [
+                #         [self.vel[0] ** 2, 0.0, 0.0, 0.0, 0.0, 0.0],
+                #         [0.0, self.vel[1] ** 2, 0.0, 0.0, 0.0, 0.0],
+                #         [0.0, 0.0, self.vel[2] ** 2, 0.0, 0.0, 0.0],
+                #         [0.0, 0.0, 0.0, self.vel[0] ** 2, 0.0, 0.0],
+                #         [0.0, 0.0, 0.0, 0.0, self.vel[1] ** 2, 0.0],
+                #         [0.0, 0.0, 0.0, 0.0, 0.0, self.vel[2] ** 2],
+                #     ],
+                # )
 
+                # Need to convert top left 3x3 to body frame
+                # Need bottom right 3x3 to be undersired angular velocity
+
+                # Matrix is: top right 3x3 is linear drag, top mid 3x3 assumed 0 linear drag from rotation, top right 3x3 is 0
+                # Bottom left 3x3 is linear drag from rotation (assume 0), bottom middle 3x3 is moment caused by linear velocity (main component of drag), bottom right 3x3 is undesired angular velocity
                 self.drag_regression = np.array(
                     [
-                        [self.vel[0] ** 2, 0.0, 0.0, 0.0, 0.0, 0.0],
-                        [0.0, self.vel[1] ** 2, 0.0, 0.0, 0.0, 0.0],
-                        [0.0, 0.0, self.vel[2] ** 2, 0.0, 0.0, 0.0],
-                        [0.0, 0.0, 0.0, self.vel[3] ** 2, 0.0, 0.0],
-                        [0.0, 0.0, 0.0, 0.0, self.vel[4] ** 2, 0.0],
-                        [0.0, 0.0, 0.0, 0.0, 0.0, self.vel[5] ** 2],
+                        [self.vel[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, self.vel[1], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, self.vel[2], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, self.vel[0] ** 2, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, self.vel[1] ** 2, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, 0.0, self.vel[2] ** 2],
                     ],
                 )
 
