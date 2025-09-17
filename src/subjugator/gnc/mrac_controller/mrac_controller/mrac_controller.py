@@ -65,8 +65,8 @@ class MRAC(Node):
         self.disturbance_estimate = np.zeros((6, 1))
         self.last_disturbance_estimate = np.zeros((6, 1))
 
-        self.drag_estimate = np.zeros((6, 1))
-        self.last_drag_estimate = np.zeros((6, 1))
+        self.drag_gains = np.zeros((9, 1))
+        self.last_drag_estimate = np.zeros((9, 1))
 
         self.ki = 0.01  # learning gain for the disturbance estimate
         self.kg = 0.1  # learning gain for the drag estimate
@@ -164,14 +164,16 @@ class MRAC(Node):
 
                 # Matrix is: top right 3x3 is linear drag, top mid 3x3 assumed 0 linear drag from rotation, top right 3x3 is 0
                 # Bottom left 3x3 is linear drag from rotation (assume 0), bottom middle 3x3 is moment caused by linear velocity (main component of drag), bottom right 3x3 is undesired angular velocity
+                # Need to convert velocity to body frame for top left 3x3
+
                 self.drag_regression = np.array(
                     [
-                        [self.vel[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                        [0.0, self.vel[1], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                        [0.0, 0.0, self.vel[2], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                        [0.0, 0.0, 0.0, self.vel[0] ** 2, 0.0, 0.0],
-                        [0.0, 0.0, 0.0, 0.0, self.vel[1] ** 2, 0.0],
-                        [0.0, 0.0, 0.0, 0.0, 0.0, self.vel[2] ** 2],
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, self.vel[0] ** 2, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, self.vel[1] ** 2, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, 0.0, self.vel[2] ** 2, 0.0, 0.0, 0.0],
                     ],
                 )
 
