@@ -1,12 +1,18 @@
 #include "DepthSensor.hh"
 
+#include <gz/msgs/pose.pb.h>
+
 #include <iostream>
 #include <random>
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <gz/common/Console.hh>
+#include <gz/plugin/Register.hh>
 #include <gz/plugin/Register.hh>  // For GZ_ADD_PLUGIN
+#include <gz/sim/Util.hh>
+#include <gz/sim/components/Name.hh>
+#include <gz/sim/components/Pose.hh>
 
 // Register plugin so Gazebo can see it
 GZ_ADD_PLUGIN(depth_sensor::DepthSensor, gz::sim::System, depth_sensor::DepthSensor::ISystemConfigure,
@@ -24,6 +30,16 @@ void DepthSensor::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf:
 {
     // std::cout << "[DepthSensor] Attached to entity ID:" << _entity << std::endl;
     this->modelEntity_ = _entity;
+
+    auto nameComp = _ecm.Component<gz::sim::components::Name>(_entity);
+    if (nameComp)
+    {
+        this->entityName = nameComp->Data();
+    }
+    else
+    {
+        this->entityName = "unknown_entity_" + std::to_string(_entity);
+    }
 
     // Getting values from SDF
     if (_sdf->HasElement("frame_id"))
@@ -86,6 +102,8 @@ void DepthSensor::PostUpdate(gz::sim::UpdateInfo const &_info, gz::sim::EntityCo
             gzerr << "[DepthSensor] Pose component not found for entity [" << this->modelEntity_ << "]\n";
             return;
         }
+
+        auto const &pose = poseComp->Data();
 
         // To avoid the deprecated operator+, we manually combine:
         gz::math::Pose3d finalPose = poseComp->Data();
