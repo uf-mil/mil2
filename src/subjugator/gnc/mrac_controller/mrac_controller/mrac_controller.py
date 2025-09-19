@@ -7,16 +7,18 @@ from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
 
+# This node is for testing a new controller for SubjuGator 9.
+# Once working, this should ideally just become part of the existing subjugator_controller node
 
+
+# Though called MRAC (that was the originally intent), this is not an MRAC controller
+# I will call it the DGA controller (Drag Go Away)
 class MRAC(Node):
 
     def __init__(self):
 
         # Config:
-        self.use_adaptive = False
-
-        # Get epsilon to avoid dividing by 0
-        self.eps = sys.float_info.epsilon
+        self.use_adaptive = True
 
         super().__init__("mrac_controller")
 
@@ -51,20 +53,10 @@ class MRAC(Node):
         self.error_dot = np.zeros((6, 1))
 
         # Initialize gains for the PD controller, can parameterize these later
-        self.Pmat = np.diagflat([[80.0, 30.0, 45.0, 5.0, 5.0, 5.0]])
+        self.Pmat = np.diagflat([[100.0, 125.0, 45.0, 5.0, 5.0, 5.0]])
         self.Dmat = np.diagflat([[135.0, 0.0, 2.0, 10.0, 0.0, 5.0]])
 
-        # Initialize physical params
-        mass = 29.5  # kg
-        inertia = [
-            0.0,
-            0.0,
-            0.0,
-        ]  # kgm2  (ixx,iyy, izz)  Can calculate from fusion model
-
-        self.physical_properties = np.array(
-            [mass, mass, mass, inertia[0], inertia[1], inertia[2]],
-        )
+        self.drag_gains = np.zeros((9, 1))
 
         self.heard_goal = False
 
@@ -132,68 +124,97 @@ class MRAC(Node):
                 msg.twist.twist.angular.z,
             ]
 
-            # Convert velocities to body frame
-            body_vel = self.current_quat.apply(self.vel[0:3])
-
             # Compute e and e_dot
             self.error = get_error(self, self.goal, self.current)
-            self.error_dot = body_vel
+            self.error_dot = np.array(self.vel)
 
             # Decide if using PD or PD + adaption
             if self.use_adaptive:
 
                 # get the sign of each part of the translational velocity
 
-                # Get the sign of each element of the velocity and twist
-                self.sx = self.vel[0] / abs(self.vel[0] + self.eps)
-                self.sy = self.vel[1] / abs(self.vel[1] + self.eps)
-                self.sz = self.vel[2] / abs(self.vel[2] + self.eps)
-                self.stx = self.vel[3] / abs(self.vel[3] + self.eps)
-                self.stx = self.vel[4] / abs(self.vel[4] + self.eps)
-                self.stz = self.vel[5] / abs(self.vel[5] + self.eps)
+                eps = sys.float_info.epsilon
+                self.sx = self.vel[0] / abs(self.vel[0] + eps)
+                self.sy = self.vel[1] / abs(self.vel[1] + eps)
+                self.sz = self.vel[2] / abs(self.vel[2] + eps)
 
-                # Get the velocity squared while keeping its sign - this is our proxy for drag
-                self.vx2 = self.sx * body_vel[0] ** 2
-                self.vy2 = self.sx * body_vel[1] ** 2
-                self.vz2 = self.sx * body_vel[2] ** 2
+                self.stz = self.vel[5] / abs(self.vel[5] + eps)
 
-                # Put the squared velocities in a matrix for easier calculation
+                # Need to convert top left 3x3 to body frame
+                # Need bottom right 3x3 to be undersired angular velocity
+
+                # Matrix is: top right 3x3 is linear drag, top mid 3x3 assumed 0 linear drag from rotation, top right 3x3 is 0
+                # Bottom left 3x3 is linear drag from rotation (assume 0), bottom middle 3x3 is moment caused by linear velocity (main component of drag), bottom right 3x3 is undesired angular velocity
+                # Need to convert velocity to body frame for top left 3x3
+
+                # Convert velocities to body frame
+                body_vel = self.current_quat.apply(self.vel[0:3])
+                self.vx = body_vel[0]
+                self.vx = body_vel[1]
+                self.vx = body_vel[2]
+
                 self.drag_regression = np.array(
-                    [[self.vx2, 0.0, 0.0], [0.0, self.vy2, 0.0], [0.0, 0.0, self.vz2]],
-                )
-
-                # multiply the angular error by drag gains (these will be learned eventually). Here we are essentially only compensating for undersired angular error
-                self.drag_gains = np.transpose(
-                    np.array(
+                    [
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                         [
-                            abs(self.error[3]) * 0.0,
-                            abs(self.error[4]) * 0.0,
-                            abs(self.error[5]) * -100.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            self.sx * self.vel[0] ** 2,
+                            0.0,
+                            self.sz * self.vel[2] ** 2,
+                            0.0,
+                            0.0,
+                            0.0,
                         ],
-                    ),
+                        [
+                            0.0,
+                            0.0,
+                            0.0,
+                            self.sx * self.vel[0] ** 2,
+                            0.0,
+                            self.sz * self.vel[2] ** 2,
+                            0.0,
+                            0.0,
+                            0.0,
+                        ],
+                        [
+                            0.0,
+                            0.0,
+                            0.0,
+                            self.sx * self.vel[0] ** 2,
+                            self.sy * self.vel[1] ** 2,
+                            self.sz * self.vel[2] ** 2,
+                            0.0,
+                            0.0,
+                            self.stz * self.vel[5] ** 2,
+                        ],
+                    ],
                 )
 
-                # Get a 3x1 vec of twist compensation
-                self.twist_comp = np.matmul(self.drag_gains, self.drag_regression)
-
-                print(
-                    f"thetaZ error: {self.error[5]} , Z twist comp: {self.twist_comp[0][2]}",
-                )
-                # Put the 3x1 twist comp below a 3x1 of zeros
-                self.drag_comp = np.transpose(
+                self.drag_gains = np.transpose(
                     np.array(
                         [
                             [
                                 0.0,
                                 0.0,
                                 0.0,
-                                self.twist_comp[0][0],
-                                self.twist_comp[0][1],
-                                self.twist_comp[0][2],
+                                0.0,
+                                -40.0,
+                                0.0,
+                                0.0,
+                                0.0,
+                                0.0,
                             ],
                         ],
                     ),
                 )
+
+                self.drag_comp = np.matmul(self.drag_regression, self.drag_gains)
+
+                print(self.drag_comp)
 
                 wrench = (
                     self.Pmat @ self.error
@@ -231,20 +252,16 @@ class MRAC(Node):
             # multiply the weight matrix by the error
             self.error_dist = self.error_weight @ self.error
 
-            # If the error is < 0.2, the goal pose has been arrived at
+            # If the error is < 0.2, the goal pose has been arrived at. Set heard goal to false and send a 0 command (to stop sub spinning infinitely)
             if np.linalg.norm(self.error_dist) < 0.2:
-                print("Arrived at goal pose")
-
                 self.heard_goal = False
 
-                # Send a final force of 0s to avoid spinning out
                 self.output_wrench.force.x = 0.0
                 self.output_wrench.force.y = 0.0
                 self.output_wrench.force.z = 0.0
                 self.output_wrench.torque.x = 0.0
                 self.output_wrench.torque.y = 0.0
                 self.output_wrench.torque.z = 0.0
-
             self.cmd_wrench_publisher.publish(self.output_wrench)
 
 
