@@ -78,9 +78,9 @@ def generate_launch_description():
     return LaunchDescription(
         [
             gz_sim_world,
-            subjugator_setup,
             gz_sim,
             set_sim_params,
+            subjugator_setup,
             bridge,
         ],
     )
