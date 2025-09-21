@@ -9,6 +9,7 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/collision.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/depth.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/uneven_yaw.xacro"/>
 
   <!-- Base Link of the Sub -->
   <link name="base_link">
@@ -17,7 +18,7 @@
 
     <!-- Inertial Properties -->
     <inertial>
-      <origin rpy="0 0 0" xyz="0.354 0 0"/>
+      <origin rpy="0 0 0" xyz="0.352 0 0"/>
       <!-- Need to be properly calculated at some point -->
       <mass value="20.5"/>
       <inertia ixx="2.4" ixy="0" ixz="0" iyy="2.4" iyz="0.0" izz="3.0"/>
@@ -35,7 +36,7 @@
       <!-- This collision is for calculating the buoyant forces-->
       <origin rpy="0 0 0" xyz="0.354 0 0"/>
       <geometry>
-        <sphere radius="0.1725"/>
+        <sphere radius="0.1695"/>
       </geometry>
     </collision>
 
@@ -82,19 +83,24 @@
   <gazebo>
     <plugin filename="gz-sim-hydrodynamics-system" name="gz::sim::systems::Hydrodynamics">
       <link_name>base_link</link_name>
-      <xUabsU>-25</xUabsU>
-      <xU>-50</xU>
+
+      <xU>-30</xU>
+      <xUabsU>-15</xUabsU>
+      <yV>-40</yV>
       <yVabsV>-25</yVabsV>
-      <yV>-50</yV>
-      <zWabsW>-5</zWabsW>
       <zW>-50</zW>
-      <kPabsP>-650</kPabsP>
-      <kP>-650</kP>
-      <mQabsQ>-750</mQabsQ>
-      <mQ>-750</mQ>
-      <nRabsR>-750</nRabsR>
-      <nR>-750</nR>
+      <zWabsW>-25</zWabsW>
+      <kP>-30</kP>
+      <kPabsP>-8</kPabsP>
+      <mQ>-35</mQ>
+      <mQabsQ>-10</mQabsQ>
+      <nR>-40</nR>
+      <nRabsR>-20</nRabsR>
     </plugin>
+
+    <plugin filename="ThrusterBridge" name="thrusterBridge::ThrusterBridge"/>
+
+    <plugin filename="MarbleDropper" name="marble_dropper::MarbleDropper"/>
   </gazebo>
 
   <!-- Cameras -->
@@ -102,29 +108,19 @@
   <xacro:mil_camera name="down_cam" parent="base_link" xyz="0.45222 0.027913 -0.22" rpy="0 1.57 0"/>
 
   <!-- DVL Sensor -->
-  <xacro:mil_dvl_sensor name="dvl_sensor" parent="base_link" xyz="0.3937 0 -0.2413" rpy="3.14159 0.0 0.0"/>
+  <xacro:mil_dvl_sensor name="dvl_sensor" parent="base_link" xyz="0.3937 0 -0.2413" rpy="0.0 0.0 0.0"/>
 
   <!-- IMU, Magnetometer -->
-  <xacro:mil_imu_magnetometer
-    name="imu"
-    namespace='/imu'
-    parent="base_link"
-    xyz="0.65164 -0.00588 0.052145"
-    rpy="0.0 3.14159 1.570797"
-    rate="210"
-    ax="0.015707963"
-    ay="0.015707963"
-    az="0.015707963"
-    lx="0.08825985"
-    ly="0.08825985"
-    lz="0.08825985"
-  />
+  <xacro:mil_imu_magnetometer name="imu" namespace='/imu' parent="base_link" xyz="0.65164 -0.00588 0.052145" rpy="0 0 0" rate="210" ax="0.0" ay="0.0" az="0.0" lx="0.0" ly="0.0" lz="0.0"/>
 
   <!--Depth Sensor-->
   <xacro:mil_depth_sensor name="depth_sensor" namespace="/depth" parent="base_link" xyz="0.3 0 0" rpy="0 0 0" update_rate="5" frame_id="depth_sensor_link" noise_mean="0.0" noise_stddev="0"/>
 
   <!--MIL HYDROPHONE CALL-->
   <xacro:mil_hydrophone name="hydrophone_sensor" parent="base_link" xyz="0.10 -0.034274 -0.22" rpy="0 1.57 .7853981634"/>
+
+  <!--Uneven Yaw Object-->
+  <xacro:asym_drag_plate parent="base_link" name="asym_drag" pose_x="0.8" pose_y="0" pose_z="0" mass="0.001" yV="0" yVabsV="0"/>
 
   <!-- Thrusters -->
   <!-- Front/Back Left/Right Vertical/Horizontal -->

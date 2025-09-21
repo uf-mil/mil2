@@ -49,6 +49,12 @@ def generate_launch_description():
         ),
         launch_arguments={
             "use_sim_time": "true",
+            "xacro_file": os.path.join(
+                get_package_share_directory("subjugator_description"),
+                "urdf",
+                "sub9_sim.urdf.xacro",
+            ),
+            "gui": "true",
         }.items(),
     )
 
@@ -72,9 +78,9 @@ def generate_launch_description():
     return LaunchDescription(
         [
             gz_sim_world,
+            subjugator_setup,
             gz_sim,
             set_sim_params,
-            subjugator_setup,
             bridge,
         ],
     )
