@@ -65,6 +65,7 @@
                         <density>1</density>
                     </density_change>
                 </graded_buoyancy>
+                <enable>sub9::base_link</enable>
             </plugin>
 
 
