@@ -13,3 +13,6 @@
 [submodule "ext/au"]
 	path = ext/au
 	url = https://github.com/uf-mil/au
+[submodule "src/mil_common/rosbridge_suite"]
+	path = src/mil_common/rosbridge_suite
+	url = https://github.com/RobotWebTools/rosbridge_suite.git
