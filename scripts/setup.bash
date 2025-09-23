@@ -1,6 +1,8 @@
 #! /usr/bin/env bash
 MIL_REPO="$HOME/mil2"
 
+# joe wanted to re-run ci :(
+
 if [[ $(ps -p $$ | tail -n 1 | awk '{ print $4 }') == "zsh" ]]; then
 	source /opt/ros/jazzy/setup.zsh
 else
