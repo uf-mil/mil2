@@ -1,23 +1,26 @@
 import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from sensor_msgs.msg import Imu
 
 
 class MonitoringNode(Node):
     def __init__(self):
         super().__init__("monitoring_node")
         self.data = ""
-        self.pub_ = self.create_publisher(Odometry, "monitoring", 10)
-        self.timer_ = self.create_timer(0.1, self.publish_text)
+        self.pub_dvl_ = self.create_publisher(Odometry, "monitoring_dvl", 10)
+        self.pub_imu_ = self.create_publisher(Imu, "monitoring_imu", 10)
+
         self.create_subscription(Odometry, "dvl/odom", self.dvl_odom_callback, 10)
+        self.create_subscription(Imu, "imu/data", self.imu_data_callback, 10)
 
-    def publish_text(self):
-        msg = Odometry()
-        self.pub_.publish(msg)
+    def dvl_odom_callback(self, dmsg: Odometry):
+        # self.get_logger().info('I heard "%s"' % dmsg.twist.twist.linear.x)
+        self.pub_dvl_.publish(dmsg)
 
-    def dvl_odom_callback(self, msg: Odometry):
-        self.data = msg
-        self.publish_text()
+    def imu_data_callback(self, imsg: Imu):
+        # self.get_logger().info('I heard "%s"' % imsg.linear_acceleration.x)
+        self.pub_imu_.publish(imsg)
 
 
 def main(args=None):
