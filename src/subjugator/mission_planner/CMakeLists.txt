@@ -25,7 +25,7 @@ ament_target_dependencies(operations rclcpp geometry_msgs nav_msgs
                           behaviortree_cpp_v3)
 
 # ---- Missions library (subtree builders)
-add_library(missions subjugator_missions/src/gate_mission.cpp)
+add_library(missions subjugator_missions/src/move_mission.cpp)
 ament_target_dependencies(missions rclcpp behaviortree_cpp_v3)
 
 # ---- Node

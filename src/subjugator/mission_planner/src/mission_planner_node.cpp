@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
     factory.registerNodeType<AtGoalPose>("AtGoalPose");
 
-    GateMission mission;
+    MovementMission mission;
     MissionParams params{};
     std::string const xml = mission.buildTreeXml(params);
     factory.registerBehaviorTreeFromText(xml);

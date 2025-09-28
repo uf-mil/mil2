@@ -20,7 +20,7 @@ class OperationBase
 
     static BT::PortsList commonPorts()
     {
-        // Add shared ports here if you want (e.g., frame_id, debug)
+        // Add shared ports here
         return {};
     }
 };

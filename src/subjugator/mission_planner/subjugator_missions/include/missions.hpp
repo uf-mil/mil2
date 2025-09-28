@@ -14,12 +14,12 @@ class Mission
     virtual std::string buildTreeXml(MissionParams const &) = 0;
 };
 
-class GateMission : public Mission
+class MovementMission : public Mission
 {
   public:
     std::string id() const override
     {
-        return "GateMission";
+        return "MovementMission";
     }
     std::string buildTreeXml(MissionParams const &) override;
 };
