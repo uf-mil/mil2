@@ -23,3 +23,23 @@ class MovementMission : public Mission
     }
     std::string buildTreeXml(MissionParams const &) override;
 };
+
+class RelativeMotionMission : public Mission
+{
+  public:
+    std::string id() const override
+    {
+        return "RelativeMove";
+    }
+    std::string buildTreeXml(MissionParams const &) override;
+};
+
+class SquareTestMission : public Mission
+{
+  public:
+    std::string id() const override
+    {
+        return "SquareTestMission";
+    }
+    std::string buildTreeXml(MissionParams const &) override;
+};
