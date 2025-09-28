@@ -1,24 +1,26 @@
 #pragma once
-#include <chrono>
+#include <behaviortree_cpp_v3/bt_factory.h>
+
 #include <memory>
-#include <optional>
-#include <string>
 
-#include <rclcpp/rclcpp.hpp>
+#include "context.hpp"
 
-class Operation
+// Tiny base to access Context + shared helpers.
+class OperationBase
 {
+  protected:
+    std::shared_ptr<Context> ctx_;
+
   public:
-    enum class opStatus : uint8_t
+    explicit OperationBase(const BT::NodeConfiguration& cfg)
     {
-        Running,
-        Succeeded,
-        Failed,
-        Canceled,
-        Idle,
+        ctx_ = cfg.blackboard->get<std::shared_ptr<Context>>("ctx");
     }
+    virtual ~OperationBase() = default;
 
-    Operation();
-
-    virtual ~Operation() = default;
-}
+    static BT::PortsList commonPorts()
+    {
+        // Add shared ports here if you want (e.g., frame_id, debug)
+        return {};
+    }
+};
