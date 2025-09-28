@@ -43,8 +43,9 @@ RUN cd /var/www/html/extensions/TemplateStyles && touch composer.json && compose
 # Enable apache2 headers
 # Symlink 'w' in /var/www/html to provide cute URLs
 RUN a2enmod headers && ln -s /var/www/html /var/www/html/w
-# Ensure that w symbolic link is owned by user/group 1000
-RUN chown -R 1000:1000 /var/www/html/w
+# Ensure that w symbolic link is owned by user/group 1000 and ensure that images
+# folder is owned by www-data user (which stores cache data)
+RUN chown -R 1000:1000 /var/www/html/w && chown -R www-data:www-data /var/www/html/images
 
 # Setup resources
 COPY branding/mil_white.svg /var/www/html/resources/assets/mil-white.svg
