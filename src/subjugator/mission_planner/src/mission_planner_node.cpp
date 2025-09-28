@@ -31,15 +31,21 @@ int main(int argc, char** argv)
     factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
     factory.registerNodeType<AtGoalPose>("AtGoalPose");
 
-    GateMission mission;
-    MissionParams params{};
+    MovementMission mission;
+    MissionParams params{};  // Does nothing for now
     std::string const xml = mission.buildTreeXml(params);
     factory.registerBehaviorTreeFromText(xml);
+
+    RelativeMotionMission rel_subtree;
+    factory.registerBehaviorTreeFromText(rel_subtree.buildTreeXml(params));
 
     auto blackboard = BT::Blackboard::create();
     blackboard->set("ctx", ctx);
 
-    auto tree = factory.createTree(mission.id(), blackboard);
+    // Create main tree from the square mission XML
+    SquareTestMission square;
+    auto square_xml = square.buildTreeXml(params);
+    auto tree = factory.createTreeFromText(square_xml, blackboard);  // now <SubTree ID="RelativeMove"> resolves
 
     // Log BT transitions to console (pretty neat)
     BT::StdCoutLogger logger_cout(tree);

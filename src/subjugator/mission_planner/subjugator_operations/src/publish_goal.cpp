@@ -1,12 +1,11 @@
 #include "publish_goal.hpp"
 
-#include <cmath>
-
 #include <geometry_msgs/msg/pose.hpp>
 
 BT::PortsList PublishGoalPose::providedPorts()
 {
     BT::PortsList ports;
+    // Inputs
     ports.insert(BT::InputPort<double>("x"));
     ports.insert(BT::InputPort<double>("y"));
     ports.insert(BT::InputPort<double>("z"));
@@ -14,18 +13,22 @@ BT::PortsList PublishGoalPose::providedPorts()
     ports.insert(BT::InputPort<double>("qy"));
     ports.insert(BT::InputPort<double>("qz"));
     ports.insert(BT::InputPort<double>("qw"));
-
-    // default requires 3 args in BT v3: (name, default_value, description)
     ports.insert(BT::InputPort<bool>("relative", false, "Interpret goal relative to current pose"));
+
+    // Outputs: resolved absolute goal (so other nodes can consume it)
+    ports.insert(BT::OutputPort<double>("abs_x"));
+    ports.insert(BT::OutputPort<double>("abs_y"));
+    ports.insert(BT::OutputPort<double>("abs_z"));
+    ports.insert(BT::OutputPort<double>("abs_qx"));
+    ports.insert(BT::OutputPort<double>("abs_qy"));
+    ports.insert(BT::OutputPort<double>("abs_qz"));
+    ports.insert(BT::OutputPort<double>("abs_qw"));
     return ports;
 }
 
 static geometry_msgs::msg::Pose rotateVectorByQuat(geometry_msgs::msg::Pose const& ref, double rx, double ry, double rz)
 {
-    // Rotate (rx,ry,rz) by ref.orientation quaternion
     auto const& q = ref.orientation;
-
-    // Quaternion multiply: v' = q * v * q_conj
     double vx = rx, vy = ry, vz = rz;
     double qw = q.w, qx = q.x, qy = q.y, qz = q.z;
 
@@ -46,16 +49,13 @@ geometry_msgs::msg::Pose PublishGoalPose::composeAbsoluteGoal_(geometry_msgs::ms
                                                                double qw, bool relative)
 {
     geometry_msgs::msg::Pose goal;
-
     if (relative)
     {
-        // Translate relative vector into world frame using current orientation
         auto rel_rotated = rotateVectorByQuat(current, rx, ry, rz);
         goal.position.x = current.position.x + rel_rotated.position.x;
         goal.position.y = current.position.y + rel_rotated.position.y;
         goal.position.z = current.position.z + rel_rotated.position.z;
 
-        // Compose orientation: world_q * rel_q
         auto const& c = current.orientation;
         goal.orientation.x = c.w * qx + c.x * qw + c.y * qz - c.z * qy;
         goal.orientation.y = c.w * qy - c.x * qz + c.y * qw + c.z * qx;
@@ -72,7 +72,6 @@ geometry_msgs::msg::Pose PublishGoalPose::composeAbsoluteGoal_(geometry_msgs::ms
         goal.orientation.z = qz;
         goal.orientation.w = qw;
     }
-
     return goal;
 }
 
@@ -98,11 +97,21 @@ BT::NodeStatus PublishGoalPose::tick()
 
     geometry_msgs::msg::Pose goal = composeAbsoluteGoal_(current, x, y, z, qx, qy, qz, qw, relative);
 
+    // Publish
     ctx_->goal_pub->publish(goal);
     RCLCPP_INFO(ctx_->logger(),
                 "PublishGoalPose: sent goal pos(%.2f,%.2f,%.2f) quat(%.2f,%.2f,%.2f,%.2f) [relative=%s]",
                 goal.position.x, goal.position.y, goal.position.z, goal.orientation.x, goal.orientation.y,
                 goal.orientation.z, goal.orientation.w, relative ? "true" : "false");
+
+    // Expose absolute goal via outputs for downstream nodes (e.g., AtGoalPose)
+    setOutput("abs_x", goal.position.x);
+    setOutput("abs_y", goal.position.y);
+    setOutput("abs_z", goal.position.z);
+    setOutput("abs_qx", goal.orientation.x);
+    setOutput("abs_qy", goal.orientation.y);
+    setOutput("abs_qz", goal.orientation.z);
+    setOutput("abs_qw", goal.orientation.w);
 
     return BT::NodeStatus::SUCCESS;
 }

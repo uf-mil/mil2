@@ -1,12 +1,12 @@
 #include "missions.hpp"
 
-std::string GateMission::buildTreeXml(MissionParams const &)
+std::string MovementMission::buildTreeXml(MissionParams const &)
 {
     // Minimal demo: publish a goal, then wait until AtGoalPose succeeds with retry + timeout.
     // You can bind x,y,z,quaternion via blackboard elsewhere; here we just hardcode a sample.
     return R"BT(
-            <root main_tree_to_execute="GateMission">
-            <BehaviorTree ID="GateMission">
+            <root main_tree_to_execute="MovementMission">
+            <BehaviorTree ID="MovementMission">
                 <Sequence>
                 <Action ID="PublishGoalPose"
                         x="5.0" y="2.0" z="0.0"

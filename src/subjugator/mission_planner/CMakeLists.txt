@@ -17,15 +17,17 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_missions/include)
 
 # ---- Operations library (leaf nodes)
-add_library(
-  operations
-  subjugator_operations/src/publish_goal.cpp # <— ensure this filename exists
-  subjugator_operations/src/at_goal_pose.cpp)
+add_library(operations subjugator_operations/src/publish_goal.cpp
+                       subjugator_operations/src/at_goal_pose.cpp)
 ament_target_dependencies(operations rclcpp geometry_msgs nav_msgs
                           behaviortree_cpp_v3)
 
 # ---- Missions library (subtree builders)
-add_library(missions subjugator_missions/src/gate_mission.cpp)
+add_library(
+  missions
+  subjugator_missions/src/move_mission.cpp
+  subjugator_missions/src/relative_motion_mission.cpp
+  subjugator_missions/src/square_test_mission.cpp)
 ament_target_dependencies(missions rclcpp behaviortree_cpp_v3)
 
 # ---- Node
