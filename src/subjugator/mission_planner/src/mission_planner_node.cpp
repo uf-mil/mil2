@@ -50,7 +50,15 @@ int main(int argc, char** argv)
     while (rclcpp::ok())
     {
         rclcpp::spin_some(node);
-        tree.tickRoot();
+        BT::NodeStatus status = tree.tickRoot();
+
+        if (status == BT::NodeStatus::SUCCESS || status == BT::NodeStatus::FAILURE)
+        {
+            RCLCPP_INFO(node->get_logger(), "Mission finished with status: %s. Shutting down.",
+                        (status == BT::NodeStatus::SUCCESS ? "SUCCESS" : "FAILURE"));
+            tree.haltTree();
+            break;  // exit the loop and shut down the node/process
+        }
         rate.sleep();
     }
 
