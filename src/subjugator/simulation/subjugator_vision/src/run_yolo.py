@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-import os, rclpy, cv2
-from rclpy.node import Node
-from cv_bridge   import CvBridge
-from sensor_msgs.msg   import Image
-from vision_msgs.msg   import Detection2D, Detection2DArray, ObjectHypothesisWithPose, BoundingBox2D
+import os
+
+import rclpy
+from cv_bridge import CvBridge
 from mil_msgs.msg import PerceptionTarget, PerceptionTargetArray
+from rclpy.node import Node
+from sensor_msgs.msg import Image
 from ultralytics import YOLO
+from vision_msgs.msg import (
+    BoundingBox2D,
+    Detection2D,
+    Detection2DArray,
+    ObjectHypothesisWithPose,
+)
 
 
 class YoloDetector(Node):
@@ -14,17 +21,20 @@ class YoloDetector(Node):
 
         # publishers
         self.percep_pub = self.create_publisher(
-            PerceptionTargetArray, "/perception/targets", 10)
+            PerceptionTargetArray,
+            "/perception/targets",
+            10,
+        )
 
         self.declare_parameter("image_topic", "/front_cam/image_raw")
-        self.declare_parameter("model_name",  "new_sim_nav_channel.pt")
+        self.declare_parameter("model_name", "new_sim_nav_channel.pt")
         image_topic = self.get_parameter("image_topic").value
-        model_name  = self.get_parameter("model_name").value
+        model_name = self.get_parameter("model_name").value
 
         self.bridge = CvBridge()
         self.create_subscription(Image, image_topic, self.cb, 10)
-        self.pub_img = self.create_publisher(Image,           "/yolo/image_annotated", 10)
-        self.pub_det = self.create_publisher(Detection2DArray,"/yolo/detections",      10)
+        self.pub_img = self.create_publisher(Image, "/yolo/image_annotated", 10)
+        self.pub_det = self.create_publisher(Detection2DArray, "/yolo/detections", 10)
         self.get_logger().info(f"Subscribed to {image_topic}")
 
         pkg_dir = os.path.dirname(__file__)
@@ -34,22 +44,22 @@ class YoloDetector(Node):
         self.get_logger().info("YOLO-v11 model ready")
 
     def cb(self, msg: Image):
-        frame   = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         results = self.model.predict(frame, conf=0.20, verbose=False)[0]
 
         arr = PerceptionTargetArray()
-        arr.stamp = msg.header.stamp   
+        arr.stamp = msg.header.stamp
 
         det_arr = Detection2DArray()
         det_arr.header = msg.header
 
         for box in results.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-            conf  = float(box.conf)
-            cls   = int(box.cls)
+            conf = float(box.conf)
+            cls = int(box.cls)
             label = self.model.names[cls]
 
-            # Detection2D 
+            # Detection2D
             det = Detection2D()
             det.bbox = BoundingBox2D()
             det.bbox.center.position.x = (x1 + x2) / 2.0
@@ -64,20 +74,20 @@ class YoloDetector(Node):
             det.results.append(hypo)
             det_arr.detections.append(det)
 
-            # PerceptionTarget 
+            # PerceptionTarget
             pt = PerceptionTarget()
             pt.label = label
             pt.cx = det.bbox.center.position.x
-            pt.cy =  det.bbox.center.position.y
+            pt.cy = det.bbox.center.position.y
             pt.width = det.bbox.size_x
             pt.height = det.bbox.size_y
             pt.confidence = conf
             pt.stamp = msg.header.stamp
             arr.targets.append(pt)
 
-        # Overlay image 
+        # Overlay image
         annotated = results.plot()
-        ros_img   = self.bridge.cv2_to_imgmsg(annotated, "bgr8")
+        ros_img = self.bridge.cv2_to_imgmsg(annotated, "bgr8")
         ros_img.header = msg.header
 
         # publish everything once per frame
