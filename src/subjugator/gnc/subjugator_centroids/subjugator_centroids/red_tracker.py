@@ -60,15 +60,17 @@ class RedTracker(CentroidFinder):
 
         return (cx, cy)
 
+
 def test():
     gt = RedTracker("testing/rn/sry")
     gt.debug = True
-    cap =cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0)
     while True:
         ret, frame = cap.read()
         if not ret:
             print("i hate you")
         gt.find_centroid(frame)
-    
+
+
 if __name__ == "__main__":
     test()

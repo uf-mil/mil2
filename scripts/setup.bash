@@ -241,22 +241,22 @@ list_lan_devices() {
 }
 
 function pub_wrench() {
-  if [ "$#" -ne 7 ]; then
-    echo "Usage: pub_wrench fx fy fz tx ty tz duration_seconds"
-    return 1
-  fi
+	if [ "$#" -ne 7 ]; then
+		echo "Usage: pub_wrench fx fy fz tx ty tz duration_seconds"
+		return 1
+	fi
 
-  local fx=$1
-  local fy=$2
-  local fz=$3
-  local tx=$4
-  local ty=$5
-  local tz=$6
-  local duration=$7
+	local fx=$1
+	local fy=$2
+	local fz=$3
+	local tx=$4
+	local ty=$5
+	local tz=$6
+	local duration=$7
 
-  echo "Publishing force for ${duration} seconds..."
+	echo "Publishing force for ${duration} seconds..."
 
-  ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+	ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
   x: ${fx}
   y: ${fy}
   z: ${fz}
@@ -266,11 +266,11 @@ torque:
   z: ${tz}
 "
 
-  sleep "${duration}"
+	sleep "${duration}"
 
-  echo "Stopping force..."
-  
-  ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+	echo "Stopping force..."
+
+	ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
   x: 0.0
   y: 0.0
   z: 0.0
@@ -282,19 +282,20 @@ torque:
 }
 
 function move_rel() {
-  if [ "$#" -eq 0 ] || [ "$#" -gt 6 ]; then
-    echo "Usage: move_rel <dx> [dy] [dz] [droll°] [dpitch°] [dyaw°]"
-    return 1
-  fi
+	if [ "$#" -eq 0 ] || [ "$#" -gt 6 ]; then
+		echo "Usage: move_rel <dx> [dy] [dz] [droll°] [dpitch°] [dyaw°]"
+		return 1
+	fi
 
-  # Fill missing args with zeroes
-  local params=(0 0 0 0 0 0)
-  local i=0
-  for arg in "$@"; do
-    params[$i]=$arg; ((i++))
-  done
+	# Fill missing args with zeroes
+	local params=(0 0 0 0 0 0)
+	local i=0
+	for arg in "$@"; do
+		params[$i]=$arg
+		((i++))
+	done
 
-  python3 - "${params[@]}" <<'PYTHON'
+	python3 - "${params[@]}" <<'PYTHON'
 import sys, time, numpy as np, rclpy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
@@ -342,8 +343,6 @@ node.destroy_node()
 rclpy.shutdown()
 PYTHON
 }
-
-
 
 alias list_mil_devices="list_lan_devices 192.168.37.1/24"
 
