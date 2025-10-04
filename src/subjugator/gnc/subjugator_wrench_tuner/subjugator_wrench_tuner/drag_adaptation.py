@@ -74,6 +74,19 @@ class DragAdaptation(Node):
             ],
         )
 
+        # matrix that ensures only unintended motion is compensated for
+        intention_matrix = np.diagflat(
+            np.array(
+                [
+                    intended(msg.force.x),
+                    intended(msg.force.y),
+                    intended(msg.force.z),
+                    intended(msg.torque.x),
+                    intended(msg.torque.y),
+                    intended(msg.torque.z),
+                ],
+            ),
+        )
         if np.all(self.cmd_force == 0.0) and np.all(self.cmd_torque == 0.0):
             # If all elements of the command wrench are 0 (no command) return no update
             control_wrench = Wrench()
@@ -93,7 +106,10 @@ class DragAdaptation(Node):
 
         print(drag_torque)
         # Concatenate the drag force and drag torque, then negate them
-        drag_compensation = np.hstack((drag_force, drag_torque))
+        drag_vector = np.hstack((drag_force, drag_torque))
+
+        # Ensures only unintended elements of
+        drag_compensation = np.matmul(intention_matrix, drag_vector)
 
         self.cmd_wrench = np.hstack((self.cmd_force, self.cmd_torque))
         self.sum_wrench = self.cmd_wrench + drag_compensation
@@ -111,11 +127,7 @@ class DragAdaptation(Node):
     def accel_callback(self, msg):
         # get recent acceleration
         self.linear_accel = np.array(
-            [
-                msg.accel.accel.linear.x,
-                msg.accel.accel.linear.y,
-                msg.accel.accel.linear.z,
-            ],
+            [msg.accel.accel.linear.x, msg.accel.accel.linear.y, 0.0],
         )
         print(self.linear_accel)
 
@@ -144,3 +156,10 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
+
+
+def intended(cmd):
+    if cmd == 0.0:
+        return 1.0
+    else:
+        return 0.0
