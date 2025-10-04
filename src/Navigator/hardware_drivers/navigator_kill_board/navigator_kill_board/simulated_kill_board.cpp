@@ -1,36 +1,30 @@
 #include "simulated_kill_board.h"
 
+#include <algorithm>
 #include <iostream>
-#include <string>
-#include <vector>
 
 #include "constants.h"
 
-using namespace std;
+namespace navigator_kill_board
+{
 
-/*
-===========================================================================================
-                            NoopSerial
-===========================================================================================
-This is a no-operation serial class that simulates a serial port for testing purposes.
-All methods are implemented to do nothing or return default values.
-*/
+// =============================================================================
+//                                NoopSerial
+// =============================================================================
 
-// Constructor
 NoopSerial::NoopSerial()
 {
-    // Do nothing
+    // Intentionally empty - no operation
 }
 
-// Destructor
 NoopSerial::~NoopSerial()
 {
-    // Do nothing
+    // Intentionally empty - no operation
 }
 
 void NoopSerial::open()
 {
-    // Do nothing
+    // No operation
 }
 
 int NoopSerial::in_waiting() const
@@ -45,45 +39,307 @@ int NoopSerial::out_waiting() const
 
 void NoopSerial::close()
 {
-    // Do nothing
+    // No operation
 }
 
-string NoopSerial::read(int length)
+std::string NoopSerial::read(int length)
 {
     return "";
 }
 
-int NoopSerial::write(string const& data)
+int NoopSerial::write(std::string const& data)
 {
     return static_cast<int>(data.length());
 }
 
 void NoopSerial::flush()
 {
-    // Do nothing
+    // No operation
 }
 
 void NoopSerial::flushInput()
 {
-    // Do nothing
+    // No operation
 }
 
 void NoopSerial::flushOutput()
 {
-    // Do nothing
+    // No operation
 }
 
 void NoopSerial::reset_input_buffer()
 {
-    // Do nothing
+    // No operation
 }
 
 void NoopSerial::reset_output_buffer()
 {
-    // Do nothing
+    // No operation
 }
 
 void NoopSerial::send_break()
 {
-    // Do nothing
+    // No operation
 }
+
+// =============================================================================
+//                              SimulatedSerial
+// =============================================================================
+
+SimulatedSerial::SimulatedSerial() : buffer_("")
+{
+}
+
+int SimulatedSerial::in_waiting() const
+{
+    return static_cast<int>(buffer_.length());
+}
+
+void SimulatedSerial::reset_input_buffer()
+{
+    buffer_.clear();
+}
+
+std::string SimulatedSerial::read(int length)
+{
+    std::string result = buffer_.substr(0, length);
+    buffer_ = buffer_.substr(length);
+    return result;
+}
+
+// =============================================================================
+//                            SimulatedKillBoard
+// =============================================================================
+
+SimulatedKillBoard::SimulatedKillBoard() : has_last_ping_(false), killed_(false), light_("OFF")
+{
+    ros::NodeHandle nh;
+
+    // Initialize memory map - all kill sources start as false
+    memory_["BUTTON_FRONT_PORT"] = false;
+    memory_["BUTTON_AFT_PORT"] = false;
+    memory_["BUTTON_FRONT_STARBOARD"] = false;
+    memory_["BUTTON_AFT_STARBOARD"] = false;
+    memory_["COMPUTER"] = false;
+    memory_["HEARTBEAT_COMPUTER"] = false;
+    memory_["BUTTON_REMOTE"] = false;
+    memory_["HEARTBEAT_REMOTE"] = false;
+
+    // Create ROS services for button kill sources
+    for (auto const& kill_name : KILLS)
+    {
+        if (kill_name.find("BUTTON") == 0)
+        {
+            ros::ServiceServer service = nh.advertiseService<std_srvs::SetBool::Request, std_srvs::SetBool::Response>(
+                "~" + kill_name, [this, kill_name](std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res)
+                { return this->set_button_callback(kill_name, req, res); });
+            service_servers_.push_back(service);
+        }
+    }
+
+    // Create timer for periodic checks (200ms period)
+    timer_ = nh.createTimer(ros::Duration(0.2), &SimulatedKillBoard::timer_callback, this);
+}
+
+bool SimulatedKillBoard::set_button_callback(std::string const& button, std_srvs::SetBool::Request& req,
+                                             std_srvs::SetBool::Response& res)
+{
+    set_kill(button, req.data);
+    res.success = true;
+    return true;
+}
+
+void SimulatedKillBoard::timer_callback(ros::TimerEvent const& event)
+{
+    check_timeout();
+}
+
+void SimulatedKillBoard::check_timeout()
+{
+    if (!has_last_ping_)
+    {
+        return;
+    }
+
+    double time_diff = (ros::Time::now() - last_ping_).toSec();
+    if (time_diff >= TIMEOUT_SECONDS)
+    {
+        set_kill("HEARTBEAT_COMPUTER", true);
+    }
+    else
+    {
+        set_kill("HEARTBEAT_COMPUTER", false);
+    }
+}
+
+void SimulatedKillBoard::set_kill(std::string const& name, bool on, bool update)
+{
+    if (memory_[name] != on)
+    {
+        memory_[name] = on;
+
+        // Update overall killed status - equivalent to np.any()
+        killed_ = false;
+        for (auto const& pair : memory_)
+        {
+            if (pair.second)
+            {
+                killed_ = true;
+                break;
+            }
+        }
+    }
+
+    if (!update)
+    {
+        return;
+    }
+
+    // Add appropriate response to buffer based on the kill state
+    if (name == "BUTTON_FRONT_PORT")
+    {
+        buffer_ += on ? BUTTON_FRONT_PORT_TRUE : BUTTON_FRONT_PORT_FALSE;
+    }
+    else if (name == "BUTTON_AFT_PORT")
+    {
+        buffer_ += on ? BUTTON_AFT_PORT_TRUE : BUTTON_AFT_PORT_FALSE;
+    }
+    else if (name == "BUTTON_FRONT_STARBOARD")
+    {
+        buffer_ += on ? BUTTON_FRONT_STARBOARD_TRUE : BUTTON_FRONT_STARBOARD_FALSE;
+    }
+    else if (name == "BUTTON_AFT_STARBOARD")
+    {
+        buffer_ += on ? BUTTON_AFT_STARBOARD_TRUE : BUTTON_AFT_STARBOARD_FALSE;
+    }
+    else if (name == "COMPUTER")
+    {
+        buffer_ += on ? COMPUTER_TRUE : COMPUTER_FALSE;
+    }
+    else if (name == "HEARTBEAT_COMPUTER")
+    {
+        buffer_ += on ? HEARTBEAT_COMPUTER_TRUE : HEARTBEAT_COMPUTER_FALSE;
+    }
+    else if (name == "BUTTON_REMOTE")
+    {
+        buffer_ += on ? BUTTON_REMOTE_TRUE : BUTTON_REMOTE_FALSE;
+    }
+    else if (name == "HEARTBEAT_REMOTE")
+    {
+        buffer_ += on ? HEARTBEAT_REMOTE_TRUE : HEARTBEAT_REMOTE_FALSE;
+    }
+
+    // Add overall status
+    buffer_ += killed_ ? OVERALL_TRUE : OVERALL_FALSE;
+}
+
+void SimulatedKillBoard::set_light(std::string const& status)
+{
+    if (light_ != status)
+    {
+        std::cout << "setting lights " << status << std::endl;
+        light_ = status;
+    }
+}
+
+char SimulatedKillBoard::get_response(bool boolean) const
+{
+    return boolean ? RESPONSE_TRUE : RESPONSE_FALSE;
+}
+
+void SimulatedKillBoard::get_status(char byte)
+{
+    if (byte == OVERALL_REQUEST)
+    {
+        buffer_ = get_response(killed_) + buffer_;
+        return;
+    }
+
+    // Check each memory item for status requests
+    if (byte == BUTTON_FRONT_PORT_REQUEST)
+    {
+        buffer_ = get_response(memory_.at("BUTTON_FRONT_PORT")) + buffer_;
+    }
+    else if (byte == BUTTON_AFT_PORT_REQUEST)
+    {
+        buffer_ = get_response(memory_.at("BUTTON_AFT_PORT")) + buffer_;
+    }
+    else if (byte == BUTTON_FRONT_STARBOARD_REQUEST)
+    {
+        buffer_ = get_response(memory_.at("BUTTON_FRONT_STARBOARD")) + buffer_;
+    }
+    else if (byte == BUTTON_AFT_STARBOARD_REQUEST)
+    {
+        buffer_ = get_response(memory_.at("BUTTON_AFT_STARBOARD")) + buffer_;
+    }
+    else if (byte == COMPUTER_REQUEST)
+    {
+        buffer_ = get_response(memory_.at("COMPUTER")) + buffer_;
+    }
+    else if (byte == HEARTBEAT_COMPUTER_REQUEST)
+    {
+        buffer_ = get_response(memory_.at("HEARTBEAT_COMPUTER")) + buffer_;
+    }
+    else if (byte == BUTTON_REMOTE_REQUEST)
+    {
+        buffer_ = get_response(memory_.at("BUTTON_REMOTE")) + buffer_;
+    }
+    else if (byte == HEARTBEAT_REMOTE_REQUEST)
+    {
+        buffer_ = get_response(memory_.at("HEARTBEAT_REMOTE")) + buffer_;
+    }
+}
+
+void SimulatedKillBoard::handle_sync(char data)
+{
+    if (data == PING_REQUEST)
+    {
+        last_ping_ = ros::Time::now();
+        has_last_ping_ = true;
+        buffer_ = PING_RESPONSE + buffer_;
+    }
+    else if (data == COMPUTER_KILL_REQUEST)
+    {
+        set_kill("COMPUTER", true);
+        buffer_ = COMPUTER_KILL_RESPONSE + buffer_;
+    }
+    else if (data == COMPUTER_CLEAR_REQUEST)
+    {
+        set_kill("COMPUTER", false);
+        buffer_ = COMPUTER_CLEAR_RESPONSE + buffer_;
+    }
+    else if (data == LIGHTS_OFF_REQUEST)
+    {
+        set_light("OFF");
+        buffer_ = LIGHTS_OFF_RESPONSE + buffer_;
+    }
+    else if (data == LIGHTS_YELLOW_REQUEST)
+    {
+        set_light("YELLOW");
+        buffer_ = LIGHTS_YELLOW_RESPONSE + buffer_;
+    }
+    else if (data == LIGHTS_GREEN_REQUEST)
+    {
+        set_light("GREEN");
+        buffer_ = LIGHTS_GREEN_RESPONSE + buffer_;
+    }
+    else
+    {
+        get_status(data);
+    }
+}
+
+int SimulatedKillBoard::write(std::string const& data)
+{
+    check_timeout();
+
+    // Process each byte in the data
+    for (char byte : data)
+    {
+        handle_sync(byte);
+    }
+
+    return static_cast<int>(data.length());
+}
+
+}  // namespace navigator_kill_board

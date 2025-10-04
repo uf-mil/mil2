@@ -20,98 +20,126 @@ by sending the COMPUTER.KILL.REQUEST and undone with COMPUTER.CLEAR.REQUEST
 
 #pragma once
 
-// Timeout
-#define TIMEOUT_SECONDS 8.0
+#include <string>
+#include <vector>
 
-// Responses
-#define RESPONSE_FALSE 0x00
-#define RESPONSE_TRUE 0x01
+namespace navigator_kill_board
+{
 
-// Ping
-#define PING_REQUEST 0x20
-#define PING_RESPONSE 0x30
+// Timeout - How often board must be pinged to not set HEARTBEAT_REMOTE True
+double const TIMEOUT_SECONDS = 8.0;
 
-// Overall
-#define OVERALL_REQUEST 0x21
-#define OVERALL_TRUE 0x10
-#define OVERALL_FALSE 0x11
+// Response codes for synchronous requests
+char const RESPONSE_FALSE = 0x00;
+char const RESPONSE_TRUE = 0x01;
 
-// Buttons
-#define BUTTON_FRONT_PORT_REQUEST 0x22
-#define BUTTON_FRONT_PORT_TRUE 0x12
-#define BUTTON_FRONT_PORT_FALSE 0x13
+// Ping protocol
+char const PING_REQUEST = 0x20;
+char const PING_RESPONSE = 0x30;
 
-#define BUTTON_AFT_PORT_REQUEST 0x23
-#define BUTTON_AFT_PORT_TRUE 0x14
-#define BUTTON_AFT_PORT_FALSE 0x15
+// Overall kill status - Should be True if any of the others are True
+char const OVERALL_REQUEST = 0x21;
+char const OVERALL_TRUE = 0x10;
+char const OVERALL_FALSE = 0x11;
 
-#define BUTTON_FRONT_STARBOARD_REQUEST 0x24
-#define BUTTON_FRONT_STARBOARD_TRUE 0x16
-#define BUTTON_FRONT_STARBOARD_FALSE 0x17
+// Button kill sources
+char const BUTTON_FRONT_PORT_REQUEST = 0x22;
+char const BUTTON_FRONT_PORT_TRUE = 0x12;
+char const BUTTON_FRONT_PORT_FALSE = 0x13;
 
-#define BUTTON_AFT_STARBOARD_REQUEST 0x25
-#define BUTTON_AFT_STARBOARD_TRUE 0x18
-#define BUTTON_AFT_STARBOARD_FALSE 0x19
+char const BUTTON_AFT_PORT_REQUEST = 0x23;
+char const BUTTON_AFT_PORT_TRUE = 0x14;
+char const BUTTON_AFT_PORT_FALSE = 0x15;
 
-// Heartbeats
-#define HEARTBEAT_COMPUTER_REQUEST 0x26
-#define HEARTBEAT_COMPUTER_TRUE 0x1A
-#define HEARTBEAT_COMPUTER_FALSE 0x1B
+char const BUTTON_FRONT_STARBOARD_REQUEST = 0x24;
+char const BUTTON_FRONT_STARBOARD_TRUE = 0x16;
+char const BUTTON_FRONT_STARBOARD_FALSE = 0x17;
 
-#define BUTTON_REMOTE_REQUEST 0x28
-#define BUTTON_REMOTE_TRUE 0x3A
-#define BUTTON_REMOTE_FALSE 0x3B
+char const BUTTON_AFT_STARBOARD_REQUEST = 0x25;
+char const BUTTON_AFT_STARBOARD_TRUE = 0x18;
+char const BUTTON_AFT_STARBOARD_FALSE = 0x19;
 
-#define HEARTBEAT_REMOTE_REQUEST 0x29
-#define HEARTBEAT_REMOTE_TRUE 0x3C
-#define HEARTBEAT_REMOTE_FALSE 0x3D
+// Heartbeat monitoring - Will return True if not pinged often enough
+char const HEARTBEAT_COMPUTER_REQUEST = 0x26;
+char const HEARTBEAT_COMPUTER_TRUE = 0x1A;
+char const HEARTBEAT_COMPUTER_FALSE = 0x1B;
 
-// Computer kill/clear
-#define COMPUTER_REQUEST 0x27
-#define COMPUTER_TRUE 0x1C
-#define COMPUTER_FALSE 0x1D
+char const BUTTON_REMOTE_REQUEST = 0x28;
+char const BUTTON_REMOTE_TRUE = 0x3A;
+char const BUTTON_REMOTE_FALSE = 0x3B;
 
-#define COMPUTER_KILL_REQUEST 0x45
-#define COMPUTER_KILL_RESPONSE 0x55
-#define COMPUTER_CLEAR_REQUEST 0x46
-#define COMPUTER_CLEAR_RESPONSE 0x56
+char const HEARTBEAT_REMOTE_REQUEST = 0x29;
+char const HEARTBEAT_REMOTE_TRUE = 0x3C;
+char const HEARTBEAT_REMOTE_FALSE = 0x3D;
 
-// Connection
-#define CONNECTED_TRUE 0x1E
-#define CONNECTED_FALSE 0x1F
+// Computer kill/clear - Allows board to be killed over serial
+char const COMPUTER_REQUEST = 0x27;
+char const COMPUTER_TRUE = 0x1C;
+char const COMPUTER_FALSE = 0x1D;
 
-// Lights
-#define LIGHTS_OFF_REQUEST 0x40
-#define LIGHTS_OFF_RESPONSE 0x50
-#define LIGHTS_YELLOW_REQUEST 0x41
-#define LIGHTS_YELLOW_RESPONSE 0x51
-#define LIGHTS_GREEN_REQUEST 0x42
-#define LIGHTS_GREEN_RESPONSE 0x52
+char const COMPUTER_KILL_REQUEST = 0x45;
+char const COMPUTER_KILL_RESPONSE = 0x55;
+char const COMPUTER_CLEAR_REQUEST = 0x46;
+char const COMPUTER_CLEAR_RESPONSE = 0x56;
 
-// Controller
-#define CONTROLLER 0xA0
+// Connection status
+char const CONNECTED_TRUE = 0x1E;
+char const CONNECTED_FALSE = 0x1F;
+
+// Light control - YELLOW turns off GREEN and vice versa
+char const LIGHTS_OFF_REQUEST = 0x40;
+char const LIGHTS_OFF_RESPONSE = 0x50;
+char const LIGHTS_YELLOW_REQUEST = 0x41;
+char const LIGHTS_YELLOW_RESPONSE = 0x51;
+char const LIGHTS_GREEN_REQUEST = 0x42;
+char const LIGHTS_GREEN_RESPONSE = 0x52;
+
+// Controller - Signifies start of controller message (joysticks & buttons)
 
 // Controller sticks (labels only)
-#define CTRL_STICK_UD "UD"
-#define CTRL_STICK_LR "LR"
-#define CTRL_STICK_TQ "TQ"
+char const* const CTRL_STICK_UD = "UD";
+char const* const CTRL_STICK_LR = "LR";
+char const* const CTRL_STICK_TQ = "TQ";
 
 // Controller buttons (labels only)
-#define CTRL_BUTTON_STATION_HOLD "STATION_HOLD"
-#define CTRL_BUTTON_RAISE_KILL "RAISE_KILL"
-#define CTRL_BUTTON_CLEAR_KILL "CLEAR_KILL"
-#define CTRL_BUTTON_THRUSTER_RETRACT "THRUSTER_RETRACT"
-#define CTRL_BUTTON_THRUSTER_DEPLOY "THRUSTER_DEPLOY"
-#define CTRL_BUTTON_GO_INACTIVE "GO_INACTIVE"
-#define CTRL_BUTTON_START "START"
-#define CTRL_BUTTON_EMERGENCY_CONTROL "EMERGENCY_CONTROL"
+char const* const CTRL_BUTTON_STATION_HOLD = "STATION_HOLD";
+char const* const CTRL_BUTTON_RAISE_KILL = "RAISE_KILL";
+char const* const CTRL_BUTTON_CLEAR_KILL = "CLEAR_KILL";
+char const* const CTRL_BUTTON_THRUSTER_RETRACT = "THRUSTER_RETRACT";
+char const* const CTRL_BUTTON_THRUSTER_DEPLOY = "THRUSTER_DEPLOY";
+char const* const CTRL_BUTTON_GO_INACTIVE = "GO_INACTIVE";
+char const* const CTRL_BUTTON_START = "START";
+char const* const CTRL_BUTTON_EMERGENCY_CONTROL = "EMERGENCY_CONTROL";
 
-// Controller button values
-#define CTRL_BUTTON_STATION_HOLD_VAL 0x0001
-#define CTRL_BUTTON_RAISE_KILL_VAL 0x0002
-#define CTRL_BUTTON_CLEAR_KILL_VAL 0x0004
-#define CTRL_BUTTON_THRUSTER_RETRACT_VAL 0x0010
-#define CTRL_BUTTON_THRUSTER_DEPLOY_VAL 0x0020
-#define CTRL_BUTTON_GO_INACTIVE_VAL 0x0040
-#define CTRL_BUTTON_START_VAL 0x0080
-#define CTRL_BUTTON_EMERGENCY_CONTROL_VAL 0x2000
+// Controller - Signifies start of controller message (joysticks & buttons)
+char const CONTROLLER = 0xA0;
+
+// Controller stick names
+std::vector<std::string> const CTRL_STICKS = { "UD", "LR", "TQ" };
+
+// Controller button names
+std::vector<std::string> const CTRL_BUTTONS = { "STATION_HOLD",    "RAISE_KILL",  "CLEAR_KILL", "THRUSTER_RETRACT",
+                                                "THRUSTER_DEPLOY", "GO_INACTIVE", "START",      "EMERGENCY_CONTROL" };
+
+// Controller button values (16-bit values)
+unsigned short const CTRL_BUTTON_STATION_HOLD_VAL = 0x0001;
+unsigned short const CTRL_BUTTON_RAISE_KILL_VAL = 0x0002;
+unsigned short const CTRL_BUTTON_CLEAR_KILL_VAL = 0x0004;
+unsigned short const CTRL_BUTTON_THRUSTER_RETRACT_VAL = 0x0010;
+unsigned short const CTRL_BUTTON_THRUSTER_DEPLOY_VAL = 0x0020;
+unsigned short const CTRL_BUTTON_GO_INACTIVE_VAL = 0x0040;
+unsigned short const CTRL_BUTTON_START_VAL = 0x0080;
+unsigned short const CTRL_BUTTON_EMERGENCY_CONTROL_VAL = 0x2000;
+
+// Kill source names for iteration
+std::vector<std::string> const KILLS = { "OVERALL",
+                                         "BUTTON_FRONT_PORT",
+                                         "BUTTON_AFT_PORT",
+                                         "BUTTON_FRONT_STARBOARD",
+                                         "BUTTON_AFT_STARBOARD",
+                                         "HEARTBEAT_COMPUTER",
+                                         "BUTTON_REMOTE",
+                                         "HEARTBEAT_REMOTE",
+                                         "COMPUTER" };
+
+}  // namespace navigator_kill_board
