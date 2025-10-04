@@ -22,6 +22,7 @@ setup(
     entry_points={
         "console_scripts": [
             "wrench_tuner = subjugator_wrench_tuner.wrench_tuner:main",
+            "drag_adaptation = subjugator_wrench_tuner.drag_adaptation:main",
         ],
     },
 )
