@@ -37,7 +37,10 @@ class DragAdaptation(Node):
         )
         self.control_wrench_publisher  # prevent unused variable warning
 
-        self.mass = 30  # kg
+        self.mass_matrix = np.diagflat(
+            np.array([[0.0, 0.0, 0.0]]),
+        )  # matrix used to weight the linear drag response
+        self.mass = 30 * self.mass_matrix  # kg
         self.inertia = np.diagflat(np.array([[1.63, 2.9, 3.73]]))  # kg m^2
 
         self.linear_accel = np.array(
@@ -101,7 +104,7 @@ class DragAdaptation(Node):
             return
 
         # Calculate force and torque on the sub not from the thrusters
-        drag_force = self.mass * self.linear_accel - self.cmd_force
+        drag_force = np.matmul(self.mass, self.linear_accel) - self.cmd_force
         drag_torque = np.matmul(self.inertia, self.angular_accel) - self.cmd_torque
 
         print(drag_torque)
@@ -110,6 +113,8 @@ class DragAdaptation(Node):
 
         # Ensures only unintended elements of
         drag_compensation = np.matmul(intention_matrix, drag_vector)
+
+        print(drag_compensation)
 
         self.cmd_wrench = np.hstack((self.cmd_force, self.cmd_torque))
         self.sum_wrench = self.cmd_wrench + drag_compensation
@@ -129,7 +134,6 @@ class DragAdaptation(Node):
         self.linear_accel = np.array(
             [msg.accel.accel.linear.x, msg.accel.accel.linear.y, 0.0],
         )
-        print(self.linear_accel)
 
         self.angular_accel = np.array(
             [
