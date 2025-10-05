@@ -19,7 +19,7 @@ _list_complete() {
 	done
 }
 
-# Use Cyclone DDS by default (it's super fast and amazing!)
+# Use Cyclone DDS by default (it's super fast and amazing!) (ci re-run plz)
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI=${MIL_REPO}/cyclone.xml
 
