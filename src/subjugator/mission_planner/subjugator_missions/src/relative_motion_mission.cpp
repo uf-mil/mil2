@@ -13,11 +13,18 @@ std::string RelativeMotionMission::buildTreeXml(MissionParams const &)
                 abs_x="{abs_x}" abs_y="{abs_y}" abs_z="{abs_z}"
                 abs_qx="{abs_qx}" abs_qy="{abs_qy}" abs_qz="{abs_qz}" abs_qw="{abs_qw}"/>
             <Timeout msec="{msec}">
-                <Condition ID="AtGoalPose"
-                    x="{abs_x}" y="{abs_y}" z="{abs_z}"
-                    qx="{abs_qx}" qy="{abs_qy}" qz="{abs_qz}" qw="{abs_qw}"
-                    pos_tol="{pos_tol}" ori_tol_deg="{ori_tol_deg}"
-                    ctx="{ctx}"/>
+                <RetryUntilSuccessful num_attempts="-1">
+                    <Sequence>
+                        <Delay delay_msec="50">
+                            <AlwaysSuccess/>
+                        </Delay>
+                        <Condition ID="AtGoalPose"
+                            x="{abs_x}" y="{abs_y}" z="{abs_z}"
+                            qx="{abs_qx}" qy="{abs_qy}" qz="{abs_qz}" qw="{abs_qw}"
+                            pos_tol="{pos_tol}" ori_tol_deg="{ori_tol_deg}"
+                            ctx="{ctx}"/>
+                    </Sequence>
+                </RetryUntilSuccessful>
             </Timeout>
         </Sequence>
     </BehaviorTree>

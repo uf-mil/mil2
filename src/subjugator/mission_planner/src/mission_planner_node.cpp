@@ -1,5 +1,9 @@
 #include <behaviortree_cpp/bt_factory.h>
 #include <behaviortree_cpp/loggers/bt_cout_logger.h>
+#include <behaviortree_cpp/loggers/groot2_publisher.h>
+#include <behaviortree_cpp/xml_parsing.h>
+
+#include <fstream>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -60,11 +64,17 @@ int main(int argc, char** argv)
     blackboard->set("ctx", ctx);
     auto tree = factory.createTree("SquareTestMission", blackboard);
 
+    // For live feed of tree
+    BT::Groot2Publisher publisher(tree);
+
     // Log BT transitions to console
     BT::StdCoutLogger logger_cout(tree);
 
     RCLCPP_INFO(node->get_logger(), "Mission Planner started. Ticking tree…");
     rclcpp::WallRate rate(20.0);
+
+    std::string xml_models = BT::writeTreeNodesModelXML(factory);
+    std::ofstream("/home/carlos/models.xml") << xml_models;
 
     while (rclcpp::ok())
     {
