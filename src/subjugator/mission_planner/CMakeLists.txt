@@ -9,7 +9,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(behaviortree_cpp_v3 REQUIRED)
+find_package(behaviortree_cpp REQUIRED)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -20,7 +20,7 @@ include_directories(
 add_library(operations subjugator_operations/src/publish_goal.cpp
                        subjugator_operations/src/at_goal_pose.cpp)
 ament_target_dependencies(operations rclcpp geometry_msgs nav_msgs
-                          behaviortree_cpp_v3)
+                          behaviortree_cpp)
 
 # ---- Missions library (subtree builders)
 add_library(
@@ -28,14 +28,13 @@ add_library(
   subjugator_missions/src/move_mission.cpp
   subjugator_missions/src/relative_motion_mission.cpp
   subjugator_missions/src/square_test_mission.cpp)
-ament_target_dependencies(missions rclcpp behaviortree_cpp_v3)
+ament_target_dependencies(missions rclcpp behaviortree_cpp)
 
 # ---- Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
 target_link_libraries(mission_planner_node operations missions)
-# Rely on ament to link BehaviorTree.CPP instead of direct target_link_libraries
 ament_target_dependencies(mission_planner_node rclcpp geometry_msgs nav_msgs
-                          behaviortree_cpp_v3)
+                          behaviortree_cpp)
 
 install(
   TARGETS operations missions mission_planner_node

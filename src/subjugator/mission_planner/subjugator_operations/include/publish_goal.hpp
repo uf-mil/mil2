@@ -1,12 +1,11 @@
 #pragma once
-#include <behaviortree_cpp_v3/bt_factory.h>
+
+#include <behaviortree_cpp/bt_factory.h>
 
 #include "context.hpp"
 #include "operations.hpp"
 
 // Publishes a Pose to /goal_pose.
-// Inputs: goal position (x,y,z) and quaternion (qx,qy,qz,qw)
-// Also supports relative mode, goal is interpreted relative to current pose.
 class PublishGoalPose final : public BT::SyncActionNode, public OperationBase
 {
   public:
@@ -16,7 +15,6 @@ class PublishGoalPose final : public BT::SyncActionNode, public OperationBase
     }
 
     static BT::PortsList providedPorts();
-
     BT::NodeStatus tick() override;
 
   private:

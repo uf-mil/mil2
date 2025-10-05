@@ -11,13 +11,13 @@ std::string MovementMission::buildTreeXml(MissionParams const &)
                 <Action ID="PublishGoalPose"
                         x="5.0" y="2.0" z="0.0"
                         qx="0.0" qy="0.0" qz="0.0" qw="1.0"
-                        relative="false"/>
+                        relative="false" ctx="{ctx}"/>
 
                 <Timeout msec="500">
                     <Condition ID="AtGoalPose"
                                 x="5.0" y="2.0" z="0.0"
                                 qx="0.0" qy="0.0" qz="0.0" qw="1.0"
-                                pos_tol="0.25" ori_tol_deg="12.0"/>
+                                pos_tol="0.25" ori_tol_deg="12.0" ctx="{ctx}"/>
                 </Timeout>
                 </Sequence>
             </BehaviorTree>

@@ -14,8 +14,9 @@ BT::PortsList PublishGoalPose::providedPorts()
     ports.insert(BT::InputPort<double>("qz"));
     ports.insert(BT::InputPort<double>("qw"));
     ports.insert(BT::InputPort<bool>("relative", false, "Interpret goal relative to current pose"));
+    ports.insert(BT::InputPort<std::shared_ptr<Context>>("ctx"));
 
-    // Outputs: resolved absolute goal (so other nodes can consume it)
+    // Outputs: resolved absolute goal
     ports.insert(BT::OutputPort<double>("abs_x"));
     ports.insert(BT::OutputPort<double>("abs_y"));
     ports.insert(BT::OutputPort<double>("abs_z"));
@@ -23,6 +24,7 @@ BT::PortsList PublishGoalPose::providedPorts()
     ports.insert(BT::OutputPort<double>("abs_qy"));
     ports.insert(BT::OutputPort<double>("abs_qz"));
     ports.insert(BT::OutputPort<double>("abs_qw"));
+
     return ports;
 }
 
@@ -77,8 +79,18 @@ geometry_msgs::msg::Pose PublishGoalPose::composeAbsoluteGoal_(geometry_msgs::ms
 
 BT::NodeStatus PublishGoalPose::tick()
 {
+    if (!ctx_)
+    {
+        if (!getInput("ctx", ctx_) || !ctx_)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "PublishGoalPose: missing ctx on blackboard");
+            return BT::NodeStatus::FAILURE;
+        }
+    }
+
     double x, y, z, qx, qy, qz, qw;
     bool relative = false;
+
     if (!getInput("x", x) || !getInput("y", y) || !getInput("z", z) || !getInput("qx", qx) || !getInput("qy", qy) ||
         !getInput("qz", qz) || !getInput("qw", qw) || !getInput("relative", relative))
     {
@@ -91,6 +103,7 @@ BT::NodeStatus PublishGoalPose::tick()
         std::scoped_lock lk(ctx_->odom_mx);
         odom = ctx_->latest_odom;
     }
+
     geometry_msgs::msg::Pose current{};
     if (odom)
         current = odom->pose.pose;
@@ -104,7 +117,7 @@ BT::NodeStatus PublishGoalPose::tick()
                 goal.position.x, goal.position.y, goal.position.z, goal.orientation.x, goal.orientation.y,
                 goal.orientation.z, goal.orientation.w, relative ? "true" : "false");
 
-    // Expose absolute goal via outputs for downstream nodes (e.g., AtGoalPose)
+    // Expose absolute goal via outputs
     setOutput("abs_x", goal.position.x);
     setOutput("abs_y", goal.position.y);
     setOutput("abs_z", goal.position.z);

@@ -1,29 +1,26 @@
 #include "missions.hpp"
 
-// Returns a single <BehaviorTree> that defines the reusable subtree.
-// IMPORTANT: no <root> wrapper here. We'll register this with the factory first.
 std::string RelativeMotionMission::buildTreeXml(MissionParams const &)
 {
-    // Ports (all strings are BT ports):
-    // Inputs to subtree: rx,ry,rz, rqx,rqy,rqz,rqw, pos_tol, ori_tol_deg, msec
-    // Internal wiring: PublishGoalPose exposes abs_* which feed AtGoalPose
     return R"BT(
+<root BTCPP_format="4">
     <BehaviorTree ID="RelativeMove">
-      <Sequence>
-        <Action ID="PublishGoalPose"
-                x="{rx}" y="{ry}" z="{rz}"
-                qx="{rqx}" qy="{rqy}" qz="{rqz}" qw="{rqw}"
-                relative="true"
-                abs_x="{ax}" abs_y="{ay}" abs_z="{az}"
-                abs_qx="{aqx}" abs_qy="{aqy}" abs_qz="{aqz}" abs_qw="{aqw}"/>
-
-        <Timeout msec="{msec}">
-          <Condition ID="AtGoalPose"
-                    x="{ax}" y="{ay}" z="{az}"
-                    qx="{aqx}" qy="{aqy}" qz="{aqz}" qw="{aqw}"
-                    pos_tol="{pos_tol}" ori_tol_deg="{ori_tol_deg}"/>
-        </Timeout>
-      </Sequence>
+        <Sequence>
+            <Action ID="PublishGoalPose"
+                x="{x}" y="{y}" z="{z}"
+                qx="{qx}" qy="{qy}" qz="{qz}" qw="{qw}"
+                relative="true" ctx="{ctx}"
+                abs_x="{abs_x}" abs_y="{abs_y}" abs_z="{abs_z}"
+                abs_qx="{abs_qx}" abs_qy="{abs_qy}" abs_qz="{abs_qz}" abs_qw="{abs_qw}"/>
+            <Timeout msec="{msec}">
+                <Condition ID="AtGoalPose"
+                    x="{abs_x}" y="{abs_y}" z="{abs_z}"
+                    qx="{abs_qx}" qy="{abs_qy}" qz="{abs_qz}" qw="{abs_qw}"
+                    pos_tol="{pos_tol}" ori_tol_deg="{ori_tol_deg}"
+                    ctx="{ctx}"/>
+            </Timeout>
+        </Sequence>
     </BehaviorTree>
-  )BT";
+</root>
+    )BT";
 }
