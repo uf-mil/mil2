@@ -14,12 +14,66 @@ class MonitoringNode(Node):
         self.create_subscription(Odometry, "dvl/odom", self.dvl_odom_callback, 10)
         self.create_subscription(Imu, "imu/data", self.imu_data_callback, 10)
 
+        self.imu_accelerationx_array = []
+        self.imu_accelerationy_array = []
+        self.imu_accelerationz_array = []
+
     def dvl_odom_callback(self, dmsg: Odometry):
-        # self.get_logger().info('I heard "%s"' % dmsg.twist.twist.linear.x)
         self.pub_dvl_.publish(dmsg)
 
     def imu_data_callback(self, imsg: Imu):
-        # self.get_logger().info('I heard "%s"' % imsg.linear_acceleration.x)
+        # create running average for relevant measurements:
+        # acceleration x
+        if self.imu_accelerationx_array.size() <= 3:
+            self.imu_accelerationx_array.append(imsg.linear_acceleration.x)
+        else:
+            imu_accelerationx_avg = (
+                self.imu_accelerationx_array[0]
+                + self.imu_acceleration_array[1]
+                + self.imu_acceleration_array[2]
+            ) / len(self.imu_accelerationx_array)
+            if imsg.linear_acceleration.x > (
+                imu_accelerationx_avg * 5
+            ):  # arbitrary multiplication
+                self.imu_accelerationx_array.append(imsg.linear_acceleration.x)
+                del self.imu_accelerationx_array[0]
+            else:
+                self.get_logger().info("Spike Detected.")
+
+        # acceleration y
+        if self.imu_accelerationy_array.size() <= 3:
+            self.imu_accelerationy_array.append(imsg.linear_acceleration.y)
+        else:
+            imu_accelerationy_avg = (
+                self.imu_accelerationy_array[0]
+                + self.imu_accelerationy_array[1]
+                + self.imu_accelerationy_array[2]
+            ) / len(self.imu_accelerationy_array)
+            if imsg.linear_acceleration.y > (
+                imu_accelerationy_avg * 5
+            ):  # arbitrary multiplication
+                self.imu_accelerationy_array.append(imsg.linear_acceleration.y)
+                del self.imu_accelerationy_array[0]
+            else:
+                self.get_logger().info("Spike Detected.")
+
+        # acceleration z
+        if self.imu_accelerationz_array.size() <= 3:
+            self.imu_accelerationz_array.append(imsg.linear_acceleration.z)
+        else:
+            imu_accelerationz_avg = (
+                self.imu_accelerationz_array[0]
+                + self.imu_accelerationz_array[1]
+                + self.imu_accelerationz_array[2]
+            ) / len(self.imu_accelerationz_array)
+            if imsg.linear_acceleration.z > (
+                imu_accelerationz_avg * 5
+            ):  # arbitrary multiplication
+                self.imu_accelerationz_array.append(imsg.linear_acceleration.z)
+                del self.imu_accelerationz_array[0]
+            else:
+                self.get_logger().info("Spike Detected.")
+
         self.pub_imu_.publish(imsg)
 
 
