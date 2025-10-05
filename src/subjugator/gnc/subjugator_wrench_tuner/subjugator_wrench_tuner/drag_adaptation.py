@@ -41,7 +41,7 @@ class DragAdaptation(Node):
             np.array([[0.0, 0.0, 0.0]]),
         )  # matrix used to weight the linear drag response
         self.mass = 30 * self.mass_matrix  # kg
-        self.inertia = np.diagflat(np.array([[1.63, 2.9, 3.73]]))  # kg m^2
+        self.inertia = np.diagflat(np.array([[0.0, 0.0, -10.0]]))  # kg m^2
 
         self.linear_accel = np.array(
             [
