@@ -43,3 +43,13 @@ class SquareTestMission : public Mission
     }
     std::string buildTreeXml(MissionParams const &) override;
 };
+
+class PassPoleMission : public Mission
+{
+  public:
+    std::string id() const override
+    {
+        return "PassPoleMission";
+    }
+    std::string buildTreeXml(MissionParams const &) override;
+};

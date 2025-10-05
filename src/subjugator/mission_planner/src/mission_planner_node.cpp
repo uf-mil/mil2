@@ -7,10 +7,13 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "advance_until_lost.hpp"
+#include "align_bearing.hpp"
 #include "at_goal_pose.hpp"
 #include "context.hpp"
 #include "missions.hpp"
 #include "publish_goal.hpp"
+#include "wait_for_target.hpp"
 
 int main(int argc, char** argv)
 {
@@ -27,6 +30,24 @@ int main(int argc, char** argv)
                                                                            std::scoped_lock lk(ctx->odom_mx);
                                                                            ctx->latest_odom = *msg;
                                                                        });
+
+    // Perception targets: from your YOLO node
+    ctx->targets_sub = node->create_subscription<mil_msgs::msg::PerceptionTargetArray>(
+        "/perception/targets", 10,
+        [ctx](mil_msgs::msg::PerceptionTargetArray::SharedPtr msg)
+        {
+            std::scoped_lock lk(ctx->detections_mx);
+            ctx->latest_targets = *msg;
+        });
+
+    // Image size (for pixel->angle mapping). Use the same camera as YOLO (default /front_cam/image_raw)
+    ctx->image_sub = node->create_subscription<sensor_msgs::msg::Image>("/front_cam/image_raw", 10,
+                                                                        [ctx](sensor_msgs::msg::Image::SharedPtr msg)
+                                                                        {
+                                                                            std::scoped_lock lk(ctx->img_mx);
+                                                                            ctx->img_width = msg->width;
+                                                                            ctx->img_height = msg->height;
+                                                                        });
 
     // Wait for odometry before starting mission
     RCLCPP_INFO(node->get_logger(), "Waiting for odometry...");
@@ -48,21 +69,25 @@ int main(int argc, char** argv)
     BT::BehaviorTreeFactory factory;
     factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
     factory.registerNodeType<AtGoalPose>("AtGoalPose");
+    factory.registerNodeType<WaitForTarget>("WaitForTarget");
+    factory.registerNodeType<AlignBearing>("AlignBearing");
+    factory.registerNodeType<AdvanceUntilLost>("AdvanceUntilLost");
 
     MissionParams params{};
 
-    // Register subtree first
+    // Register subtrees
     RelativeMotionMission rel_subtree;
     factory.registerBehaviorTreeFromText(rel_subtree.buildTreeXml(params));
-
-    // Register main tree
     SquareTestMission square;
     factory.registerBehaviorTreeFromText(square.buildTreeXml(params));
+
+    PassPoleMission pass_pole;
+    factory.registerBehaviorTreeFromText(pass_pole.buildTreeXml(params));
 
     // Create by name
     auto blackboard = BT::Blackboard::create();
     blackboard->set("ctx", ctx);
-    auto tree = factory.createTree("SquareTestMission", blackboard);
+    auto tree = factory.createTree("PassPoleMission", blackboard);
 
     // For live feed of tree
     BT::Groot2Publisher publisher(tree);

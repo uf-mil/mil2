@@ -10,6 +10,8 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(mil_msgs REQUIRED)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -19,22 +21,35 @@ include_directories(
 # ---- Operations library (leaf nodes)
 add_library(operations subjugator_operations/src/publish_goal.cpp
                        subjugator_operations/src/at_goal_pose.cpp)
-ament_target_dependencies(operations rclcpp geometry_msgs nav_msgs
-                          behaviortree_cpp)
+ament_target_dependencies(
+  operations
+  rclcpp
+  geometry_msgs
+  nav_msgs
+  sensor_msgs
+  mil_msgs
+  behaviortree_cpp)
 
 # ---- Missions library (subtree builders)
 add_library(
   missions
   subjugator_missions/src/move_mission.cpp
   subjugator_missions/src/relative_motion_mission.cpp
-  subjugator_missions/src/square_test_mission.cpp)
+  subjugator_missions/src/square_test_mission.cpp
+  subjugator_missions/src/pass_pole_mission.cpp)
 ament_target_dependencies(missions rclcpp behaviortree_cpp)
 
 # ---- Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
 target_link_libraries(mission_planner_node operations missions)
-ament_target_dependencies(mission_planner_node rclcpp geometry_msgs nav_msgs
-                          behaviortree_cpp)
+ament_target_dependencies(
+  mission_planner_node
+  rclcpp
+  geometry_msgs
+  nav_msgs
+  sensor_msgs
+  mil_msgs
+  behaviortree_cpp)
 
 install(
   TARGETS operations missions mission_planner_node
