@@ -33,6 +33,57 @@ jobs:
       - id: check_skip
         uses: fkirc/skip-duplicate-actions@v5
 
+  ensure_healthcheck:
+    uses: ./.github/workflows/healthcheck.yaml
+    needs: avoid-duplicate-ci
+    if: needs.avoid-duplicate-ci.outputs.should_skip != 'true'
+
+  pre-commit:
+    name: Run pre-commit
+    needs: avoid-duplicate-ci
+    runs-on:
+      group: mala-lab-pre-commit
+    if: needs.avoid-duplicate-ci.outputs.should_skip != 'true'
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          cache: "pip"
+      - name: Install pre-commit hooks
+        run: |
+          python --version
+          pip install "$(grep pre-commit requirements.txt)"
+      - name: Generate pre-commit cache key
+        id: pre-commit_cache_key
+        run: >
+          echo "key=${{ env.CACHE_VERSION }}-${{ env.DEFAULT_PYTHON }}-${{
+          hashFiles('.pre-commit-config.yaml') }}" >> "$GITHUB_OUTPUT"
+      - name: Restore base pre-commit environment
+        id: cache-pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PRE_COMMIT_CACHE }}
+          key: >
+            ${{ runner.os
+            }}-pre-commit-${{ steps.pre-commit_cache_key.outputs.key }}
+      - name: Install pre-commit dependencies if no cache
+        if: steps.cache-pre-commit.outputs.cache-hit != 'true'
+        run: |
+          pre-commit install-hooks
+      - name: Install hadolint
+        run: |
+          URL=https://github.com/hadolint/hadolint/releases/download/v2.10.0/hadolint-Linux-x86_64
+          sudo wget -O /bin/hadolint $URL
+          sudo chmod +x /bin/hadolint
+      - name: Run pre-commit
+        run: |
+          pre-commit run --all-files --show-diff-on-failure
+
   super-ci:
     name: Run tests and build docs
     needs: avoid-duplicate-ci
@@ -42,7 +93,7 @@ jobs:
     steps:
       - name: Configure catkin workspace folder structure
         run: |
-          mkdir -p $GITHUB_WORKSPACE/catkin_ws/src
+          mkdir -p "$GITHUB_WORKSPACE"/catkin_ws/src
           sudo apt reinstall python3-pip
       - name: Check out code from GitHub
         uses: actions/checkout@v4
@@ -56,31 +107,36 @@ jobs:
         run: |
           python3 -m pip config set global.break-system-packages true
           pip3 install -r requirements.txt
-      # We want to run a full test suite in CI - this includes the BlueView
-      # tests!
-      # - name: Install BlueView Sonar SDK
-      #   run: |
-      #     cd $GITHUB_WORKSPACE/catkin_ws/src/mil
-      #     ./scripts/hw/install_bvtsdk --pass ${{ secrets.ZOBELISK_PASSWORD }}
-      #     ls mil_common/drivers/mil_blueview_driver
-      #     echo $PWD
       - name: Install system dependencies and build
         run: |
           # Needed for /etc/update-manager/release-upgrades
           sudo apt-get install -y ubuntu-release-upgrader-core
           rm -rf build install log
-          export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
+          export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
           ALLOW_NONSTANDARD_DIR=1 ./scripts/install.sh
-      # - name: Run catkin_make
-      #   run: |
-      #     cd $GITHUB_WORKSPACE/catkin_ws
-      #     source /opt/ros/noetic/setup.bash
-      #     catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3 \
-      #                 -DPYTHON_INCLUDE_DIR=/usr/include/python3.8 \
-      #                 -j6
+      # - name: tmate
+      #   uses: mxschmitt/action-tmate@v2
+      - name: Run clang-tidy
+        run: |
+          set +u
+          export HOME="$GITHUB_WORKSPACE"/.. # Temporary fix for setup scripts
+          source "$GITHUB_WORKSPACE"/scripts/setup.bash
+          set -u
+          # Ensure that origin/main is up to date
+          git fetch origin --recurse-submodules=no
+          ALL_CHANGES=()
+          while IFS='' read -r line; do
+            ALL_CHANGES+=("$line")
+          done < <(
+            git diff --name-only origin/main \
+              --ignore-submodules \
+              -- "*.cpp" "*.h" "*.hpp"
+          )
+          cd "$GITHUB_WORKSPACE"
+          tidy "${ALL_CHANGES[@]}"
       - name: Run colcon tests
         run: |
-          export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
+          export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
           source /opt/ros/jazzy/setup.bash
           source install/setup.bash
           set +u

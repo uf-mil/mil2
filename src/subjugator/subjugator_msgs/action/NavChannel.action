@@ -1,0 +1,11 @@
+# Goal
+int32 number_of_red_poles
+
+---
+# Result
+bool success
+string message
+
+---
+# Feedback
+string status_message

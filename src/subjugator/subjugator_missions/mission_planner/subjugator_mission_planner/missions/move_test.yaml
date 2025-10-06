@@ -1,0 +1,13 @@
+mission:
+
+  - task: move
+    parameters:
+      type: "Relative"
+      x: 0.0
+      y: 0.0
+      z: -0.7
+      i: 0.0
+      j: 0.0
+      k: 0.0
+      w: 1.0
+      timeout: 120

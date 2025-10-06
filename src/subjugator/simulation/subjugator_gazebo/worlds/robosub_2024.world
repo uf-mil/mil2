@@ -13,7 +13,7 @@
             <!-- Physics Settings -->
             <physics name='default_physics' default='0' type='ode'>
                 <real_time_update_rate>200</real_time_update_rate>
-                <max_step_size>0.005</max_step_size>
+                <max_step_size>0.003</max_step_size>
                 <real_time_factor>1.0</real_time_factor>
             </physics>
 
@@ -40,6 +40,12 @@
 			    filename="gz-sim-dvl-system"
 			    name="gz::sim::systems::DopplerVelocityLogSystem">
 		    </plugin>
+            <plugin
+                filename="Hydrophone"
+                name="hydrophone::Hydrophone">
+                <topic>${name}</topic>
+            </plugin>
+
             <!-- Buoyancy Plugin -->
             <!--
                 To alter a objects's buoyancy do one or both of the following:
@@ -173,14 +179,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -343,7 +349,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_A1'>
+            <model name='Pinger_A1_10000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -362,14 +368,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -392,7 +398,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_A2'>
+            <model name='Pinger_A2_15000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -500,14 +506,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -670,7 +676,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_B1'>
+            <model name='Pinger_B1_20000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -689,14 +695,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -719,7 +725,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_B2'>
+            <model name='Pinger_B2_25000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -827,14 +833,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -997,7 +1003,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_C1'>
+            <model name='Pinger_C1_30000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -1016,14 +1022,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -1046,7 +1052,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_C2'>
+            <model name='Pinger_C2_35000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -1154,14 +1160,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/startgate_2024/startgate.dae</uri>
+                        <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -1324,7 +1330,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_D1'>
+            <model name='Pinger_D1_40000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -1343,14 +1349,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/mapping_torpedoes_2024/mapping_torpedoes.dae</uri>
+                        <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
@@ -1373,7 +1379,7 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
-            <model name='Pinger_D2'>
+            <model name='Pinger_D2_45000'>
                 <link name='link'>
                     <visual name='visual'>
                         <geometry>
@@ -1457,6 +1463,11 @@
                 <static>true</static>
                 <self_collide>false</self_collide>
             </model>
+            <include>
+                <name>Marble</name>
+                <uri>package:://subjugator_description/models/marble_dropper</uri>
+                <pose>1.5 0 0 0 0 0</pose>
+            </include>
             <include>
                 <name>Tubeworm_D</name>
                 <pose>-8.03324 -23.37655 -0.70 0 0 0</pose>

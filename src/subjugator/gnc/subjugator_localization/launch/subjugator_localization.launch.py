@@ -1,98 +1,36 @@
-from dataclasses import dataclass
+import os
 
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
-AvailableTypes = str | list | float | int
-
-
-@dataclass
-class Parameter:
-    name: str
-    value: AvailableTypes
-
-    def dict(self) -> dict[str, AvailableTypes]:
-        return {self.name: self.value}
-
 
 def generate_launch_description():
-    parameters: list[Parameter] = [
-        Parameter("imu0", "/imu/data_raw"),
-        Parameter(
-            "imu0_config",
-            [
-                False,
-                False,
-                False,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-            ],
-        ),
-        Parameter("imu0_differential", False),
-        Parameter("imu0_relative", True),
-        Parameter("imu0_remove_gravitational_acceleration", True),
-        Parameter("imu0_queue_size", 10),
-        Parameter("odom0", "/dvl/velocity"),
-        Parameter(
-            "odom0_config",
-            [
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-        ),
-        Parameter("odom0_differential", False),
-        Parameter("odom0_relative", True),
-        Parameter("odom0_queue_size", 10),
-        #        Parameter("pose0", "/depth/pose"),
-        #        Parameter("pose0_config", [False, False, True,
-        #                                   False, False, False,
-        #                                   False, False, False,
-        #                                   False, False, False,
-        #                                   False, False, False]),
-        #        Parameter("pose0_differential", True),
-        #        Parameter("pose0_relative", True),
-        #        Parameter("pose0_queue_size", 10),
-        Parameter("print_diagnostics", True),
-        Parameter("publish_acceleration", True),
-        # Parameter("debug", True),
-        # Parameter("debug_out_file", os.path.expanduser("~/debug.txt")),
-        Parameter("frequency", 10.0),
-        # Parameter("initial_state", [0.0] * 15),
-    ]
-    import rich
+    config_file = os.path.join(
+        get_package_share_directory("subjugator_localization"),
+        "config",
+        "localization_parameters.yaml",
+    )
 
-    rich.print([p.dict() for p in parameters])
     return LaunchDescription(
         [
             Node(
                 package="robot_localization",
-                namespace="subjugator_localization",
-                executable="ukf_node",
-                name="ukf_filter_node",
-                parameters=[p.dict() for p in parameters],
+                executable="ekf_node",
+                name="subjugator_localization",
+                parameters=[config_file],
+                remappings=[
+                    ("/reset", "/_reset"),  # given, but broken :/
+                    ("/set_pose", "/subjugator_localization/set_pose"),
+                    ("/enable", "/subjugator_localization/enable"),
+                    ("/toggle", "/subjugator_localization/toggle"),
+                ],
+            ),
+            Node(
+                package="subjugator_localization",
+                executable="reset_srv_node.py",
+                name="reset_localization_service",
+                output="screen",
             ),
         ],
     )

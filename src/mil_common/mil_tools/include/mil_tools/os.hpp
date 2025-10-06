@@ -15,7 +15,7 @@
 
 #include "mil_tools/os/FileDescriptor.hpp"
 
-namespace mil_tools::os
+namespace mil::os
 {
 /// Opens a file
 FileDescriptor open(std::string const& filename, int flags);
@@ -28,4 +28,4 @@ std::vector<char> read(int fd, size_t count);
 /// Writes a string to a file descriptor
 void write(int fd, std::vector<char> const& data);
 void write(int fd, std::string const& data);
-};  // namespace mil_tools::os
+};  // namespace mil::os

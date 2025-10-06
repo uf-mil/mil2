@@ -1,0 +1,5 @@
+mission:
+
+  - task: wait
+    parameters:
+      time: 5.0

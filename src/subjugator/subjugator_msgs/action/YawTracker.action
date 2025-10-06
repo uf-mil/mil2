@@ -1,0 +1,11 @@
+# Goal
+string topic_name
+
+---
+# Result
+bool success
+string message
+
+---
+# Feedback
+string status_message

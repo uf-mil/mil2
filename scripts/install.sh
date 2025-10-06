@@ -27,7 +27,7 @@ if [[ $NAME != *"Ubuntu"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu (you're using: ${NAME}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
-if [[ $VERSION != *"24.04"* ]]; then
+if [[ $VERSION != *"24.04"* && $VERSION != *"22.04.5 LTS (Jammy Jellyfish)"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu 24.04 (you're using: ${VERSION}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
@@ -191,13 +191,19 @@ mil_system_install ros-jazzy-desktop-full ros-jazzy-ros-gz
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
 mil_system_install \
+	nlohmann-json3-dev \
+	python3-colcon-common-extensions \
+	ros-jazzy-backward-ros \
+	ros-jazzy-control-toolbox \
+	ros-jazzy-generate-parameter-library \
+	ros-jazzy-geographic-msgs \
+	ros-jazzy-robot-localization \
 	ros-jazzy-rmw-cyclonedds-cpp \
 	ros-jazzy-tf2-sensor-msgs \
-	ros-jazzy-geographic-msgs \
-	ros-jazzy-vision-msgs \
+	ros-jazzy-tf-transformations \
 	ros-jazzy-velodyne \
-	ros-jazzy-backward-ros \
-	python3-colcon-common-extensions
+	ros-jazzy-vision-msgs \
+	ros-jazzy-nav2-util
 
 cat <<EOF
 $(color "$Pur")
@@ -260,7 +266,8 @@ mil_user_install_dependencies() {
 		ripgrep \
 		fzf \
 		aptitude \
-		lm-sensors
+		lm-sensors \
+		libboost-all-dev
 }
 
 # Add line to user's bashrc which source the repo's setup files
@@ -311,13 +318,45 @@ add_hosts_entry() {
 }
 
 # Add /etc/hosts entry for vehicles
-add_hosts_entry "192.168.37.60 sub8"
+add_hosts_entry "192.168.37.60 sub9-mil"
+add_hosts_entry "192.168.37.61 navtube"
 add_hosts_entry "192.168.37.82 navigator-two"
+
+# Install pre-commit hooks for git
+pre-commit install
 
 # Builds the MIL repo
 mil_user_setup_init_colcon() {
 	cd $SCRIPT_DIR/..
-	colcon build
+	set +u
+	cb --generate-compile-commands
+	set -u
+}
+
+# llvm stuff
+llvm() {
+	wget https://apt.llvm.org/llvm.sh
+	chmod +x llvm.sh
+	sudo ./llvm.sh 20
+	sudo apt install -y \
+		clang-format-20 \
+		clang-tidy-20
+	rm llvm.sh
+}
+
+hadolint() {
+	ARCH=$(uname -m)
+	if [ "$ARCH" = "x86_64" ]; then
+		ARCH_URL="hadolint-Linux-x86_64"
+	elif [ "$ARCH" = "aarch64" ]; then
+		ARCH_URL="hadolint-Linux-arm64"
+	else
+		echo "Unsupported architecture: $ARCH"
+		return 1
+	fi
+
+	sudo wget -O /bin/hadolint "https://github.com/hadolint/hadolint/releases/download/v2.12.0/$ARCH_URL"
+	sudo chmod +x /bin/hadolint
 }
 
 cat <<EOF
@@ -330,6 +369,8 @@ EOF
 
 mil_user_install_dependencies
 mil_user_setup_rc
+llvm
+hadolint
 set +u
 . /opt/ros/jazzy/setup.bash
 . "$SCRIPT_DIR/setup.bash"
@@ -349,6 +390,16 @@ if grep 'set -g default-terminal "screen-256color"' ~/tmux.conf; then
 else
 	echo 'set -g default-terminal "screen-256color"' >>~/.tmux.conf
 fi
+
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+Updating submodules...
+$(hash_header)
+$(color "$Res")
+EOF
+
+git submodule update --init --recursive
 
 mil_user_setup_init_colcon
 
