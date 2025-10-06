@@ -1,0 +1,24 @@
+
+services:
+  devcontainer:
+    #Use the Correct doccker file
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    #GPU SUPPORT 
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+
+    # set the folder above this folder as the workspace
+    volumes:
+      - ..:/workspace:cached
+    working_dir: /workspace
+    command: sleep infinity
