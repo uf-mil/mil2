@@ -1,0 +1,9 @@
+mission:
+  - task: navigatechannel
+    parameters:
+      red_label: "red-pole"
+      white_label: "white-pole"
+      overall_timeout: 120.0
+      row_timeout: 3.0
+      max_rows: 3
+      target_offset_px: -50.0

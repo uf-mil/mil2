@@ -101,7 +101,7 @@
            <!-- Sub 9 -->
            <include>
                 <uri>package:://subjugator_description/urdf/sub9.urdf</uri>
-                <pose>0 2.5 0 0 0 0</pose>
+                <pose>0 2.5 0 0 0 90</pose>
             </include>
            <!-- Virtual north, east, and down frame -->
            <include>
@@ -141,14 +141,13 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/woollett_pool_2024/WoollettPool.dae</uri>
-                        </mesh>
+                        <uri>package:://subjugator_description/models/RobotX_2024/woollett_pool_2024/WoollettPool.dae</uri>                        </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/woollett_pool_2024/WoollettPool.dae</uri>
+                        <uri>package:://subjugator_description/models/RobotX_2024/woollett_pool_2024/WoollettPool.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
