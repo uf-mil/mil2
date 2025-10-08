@@ -10,8 +10,11 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>rclcpp_action</depend>
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>Eigen3</depend>
+  <depend>mil_tools</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
@@ -20,3 +23,4 @@
     <build_type>ament_cmake</build_type>
   </export>
 </package>
+
