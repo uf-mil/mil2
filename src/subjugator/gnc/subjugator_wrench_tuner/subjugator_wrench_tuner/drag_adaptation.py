@@ -41,7 +41,7 @@ class DragAdaptation(Node):
             np.array([[0.0, 0.0, 0.0]]),
         )  # matrix used to weight the linear drag response
         self.mass = 30 * self.mass_matrix  # kg
-        self.inertia = np.diagflat(np.array([[0.0, 0.0, -10.0]]))  # kg m^2
+        self.inertia = np.diagflat(np.array([[0.0, 0.0, 10.0]]))  # kg m^2
 
         self.linear_accel = np.array(
             [
@@ -78,15 +78,16 @@ class DragAdaptation(Node):
         )
 
         # matrix that ensures only unintended motion is compensated for
+        # the second parameter for the intended function is max input command for drag adaptation to take effect
         intention_matrix = np.diagflat(
             np.array(
                 [
-                    intended(msg.force.x),
-                    intended(msg.force.y),
-                    intended(msg.force.z),
-                    intended(msg.torque.x),
-                    intended(msg.torque.y),
-                    intended(msg.torque.z),
+                    intended(msg.force.x, 10.0),
+                    intended(msg.force.y, 10.0),
+                    intended(msg.force.z, 10.0),
+                    intended(msg.torque.x, 10.0),
+                    intended(msg.torque.y, 10.0),
+                    intended(msg.torque.z, 10.0),
                 ],
             ),
         )
@@ -109,7 +110,7 @@ class DragAdaptation(Node):
 
         print(drag_torque)
         # Concatenate the drag force and drag torque, then negate them
-        drag_vector = np.hstack((drag_force, drag_torque))
+        drag_vector = -1.0 * np.hstack((drag_force, drag_torque))
 
         # Ensures only unintended elements of
         drag_compensation = np.matmul(intention_matrix, drag_vector)
@@ -162,8 +163,7 @@ if __name__ == "__main__":
     main()
 
 
-def intended(cmd):
-    if cmd == 0.0:
-        return 1.0
-    else:
-        return 0.0
+# This function normalizes commands such that commands within "width" of 0 become close to 1
+# and commands further than width are ~ 0
+def intended(cmd, width):
+    return 37.0 ** (-1.0 * (cmd / width) ** 2.0)
