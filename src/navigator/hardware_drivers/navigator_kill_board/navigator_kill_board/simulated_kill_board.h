@@ -1,11 +1,12 @@
 #pragma once
 
-#include <ros/ros.h>
-#include <std_srvs/SetBool.h>
-
 #include <map>
 #include <string>
 #include <vector>
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <std_srvs/srv/set_bool.hpp>
 
 namespace navigator_kill_board
 {
@@ -68,13 +69,14 @@ class SimulatedSerial : public NoopSerial
 class SimulatedKillBoard : public SimulatedSerial
 {
   private:
-    ros::Time last_ping_;                              //!< Timestamp of last ping received
-    bool has_last_ping_;                               //!< Whether we have received any ping
-    std::map<std::string, bool> memory_;               //!< Kill state memory
-    bool killed_;                                      //!< Overall kill status
-    std::string light_;                                //!< Current light status
-    ros::Timer timer_;                                 //!< Timer for periodic checks
-    std::vector<ros::ServiceServer> service_servers_;  //!< ROS service servers
+    rclcpp::Node::SharedPtr node_;        //!< ROS2 node pointer
+    rclcpp::Time last_ping_;              //!< Timestamp of last ping received
+    bool has_last_ping_;                  //!< Whether we have received any ping
+    std::map<std::string, bool> memory_;  //!< Kill state memory
+    bool killed_;                         //!< Overall kill status
+    std::string light_;                   //!< Current light status
+    rclcpp::TimerBase::SharedPtr timer_;  //!< Timer for periodic checks
+    std::vector<rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr> service_servers_;  //!< ROS2 service servers
 
     /**
      * @brief Service callback for button presses
@@ -84,15 +86,13 @@ class SimulatedKillBoard : public SimulatedSerial
      * @param res Service response
      * @return true if successful
      */
-    bool set_button_callback(std::string const& button, std_srvs::SetBool::Request& req,
-                             std_srvs::SetBool::Response& res);
+    void set_button_callback(std::string const& button, std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+                             std::shared_ptr<std_srvs::srv::SetBool::Response> response);
 
     /**
      * @brief Timer callback for periodic operations
-     *
-     * @param event Timer event (unused)
      */
-    void timer_callback(ros::TimerEvent const& event);
+    void timer_callback();
 
     /**
      * @brief Check for heartbeat timeout and update kill state
@@ -157,6 +157,15 @@ class SimulatedKillBoard : public SimulatedSerial
      * @return Number of bytes written
      */
     int write(std::string const& data) override;
+
+    /**
+     * @brief Get the ROS2 node pointer
+     * @return Shared pointer to the ROS2 node
+     */
+    rclcpp::Node::SharedPtr get_node()
+    {
+        return node_;
+    }
 };
 
 }  // namespace navigator_kill_board

@@ -1,9 +1,10 @@
 #pragma once
 
-#include <ros/ros.h>
-#include <std_msgs/Header.h>
-
 #include <string>
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <std_msgs/msg/header.hpp>
 
 namespace navigator_kill_board
 {
@@ -30,17 +31,25 @@ class HeartbeatServer
      */
     ~HeartbeatServer() = default;
 
+    /**
+     * @brief Get the ROS2 node pointer
+     * @return Shared pointer to the ROS2 node
+     */
+    rclcpp::Node::SharedPtr get_node()
+    {
+        return node_;
+    }
+
   private:
     /**
      * @brief Timer callback that publishes heartbeat messages
-     *
-     * @param event Timer event (unused)
      */
-    void publish(ros::TimerEvent const& event);
+    void publish();
 
-    ros::Publisher pub_;  //!< ROS publisher for heartbeat messages
-    double period_;       //!< Heartbeat period in seconds
-    ros::Timer timer_;    //!< Timer for periodic publishing
+    rclcpp::Node::SharedPtr node_;                             //!< ROS2 node pointer
+    rclcpp::Publisher<std_msgs::msg::Header>::SharedPtr pub_;  //!< ROS2 publisher for heartbeat messages
+    double period_;                                            //!< Heartbeat period in seconds
+    rclcpp::TimerBase::SharedPtr timer_;                       //!< Timer for periodic publishing
 };
 
 }  // namespace navigator_kill_board

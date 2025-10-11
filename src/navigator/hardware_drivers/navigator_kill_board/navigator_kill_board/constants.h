@@ -112,7 +112,7 @@ char const* const CTRL_BUTTON_START = "START";
 char const* const CTRL_BUTTON_EMERGENCY_CONTROL = "EMERGENCY_CONTROL";
 
 // Controller - Signifies start of controller message (joysticks & buttons)
-char const CONTROLLER = 0xA0;
+unsigned char const CONTROLLER = 0xA0;
 
 // Controller stick names
 std::vector<std::string> const CTRL_STICKS = { "UD", "LR", "TQ" };

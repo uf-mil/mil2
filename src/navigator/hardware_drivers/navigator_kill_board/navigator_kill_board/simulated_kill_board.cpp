@@ -44,6 +44,7 @@ void NoopSerial::close()
 
 std::string NoopSerial::read(int length)
 {
+    (void)length;  // Suppress unused parameter warning
     return "";
 }
 
@@ -102,8 +103,11 @@ void SimulatedSerial::reset_input_buffer()
 
 std::string SimulatedSerial::read(int length)
 {
-    std::string result = buffer_.substr(0, length);
-    buffer_ = buffer_.substr(length);
+    // Handle case where buffer is smaller than requested length
+    int actual_length = std::min(length, static_cast<int>(buffer_.size()));
+
+    std::string result = buffer_.substr(0, actual_length);
+    buffer_ = buffer_.substr(actual_length);
     return result;
 }
 
@@ -113,7 +117,7 @@ std::string SimulatedSerial::read(int length)
 
 SimulatedKillBoard::SimulatedKillBoard() : has_last_ping_(false), killed_(false), light_("OFF")
 {
-    ros::NodeHandle nh;
+    node_ = rclcpp::Node::make_shared("simulated_kill_board");
 
     // Initialize memory map - all kill sources start as false
     memory_["BUTTON_FRONT_PORT"] = false;
@@ -130,26 +134,28 @@ SimulatedKillBoard::SimulatedKillBoard() : has_last_ping_(false), killed_(false)
     {
         if (kill_name.find("BUTTON") == 0)
         {
-            ros::ServiceServer service = nh.advertiseService<std_srvs::SetBool::Request, std_srvs::SetBool::Response>(
-                "~" + kill_name, [this, kill_name](std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res)
-                { return this->set_button_callback(kill_name, req, res); });
+            auto service = node_->create_service<std_srvs::srv::SetBool>(
+                kill_name, [this, kill_name](std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+                                             std::shared_ptr<std_srvs::srv::SetBool::Response> response)
+                { this->set_button_callback(kill_name, request, response); });
             service_servers_.push_back(service);
         }
     }
 
     // Create timer for periodic checks (200ms period)
-    timer_ = nh.createTimer(ros::Duration(0.2), &SimulatedKillBoard::timer_callback, this);
+    timer_ =
+        node_->create_wall_timer(std::chrono::milliseconds(200), std::bind(&SimulatedKillBoard::timer_callback, this));
 }
 
-bool SimulatedKillBoard::set_button_callback(std::string const& button, std_srvs::SetBool::Request& req,
-                                             std_srvs::SetBool::Response& res)
+void SimulatedKillBoard::set_button_callback(std::string const& button,
+                                             std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+                                             std::shared_ptr<std_srvs::srv::SetBool::Response> response)
 {
-    set_kill(button, req.data);
-    res.success = true;
-    return true;
+    set_kill(button, request->data);
+    response->success = true;
 }
 
-void SimulatedKillBoard::timer_callback(ros::TimerEvent const& event)
+void SimulatedKillBoard::timer_callback()
 {
     check_timeout();
 }
@@ -161,7 +167,7 @@ void SimulatedKillBoard::check_timeout()
         return;
     }
 
-    double time_diff = (ros::Time::now() - last_ping_).toSec();
+    double time_diff = (node_->now() - last_ping_).seconds();
     if (time_diff >= TIMEOUT_SECONDS)
     {
         set_kill("HEARTBEAT_COMPUTER", true);
@@ -196,6 +202,8 @@ void SimulatedKillBoard::set_kill(std::string const& name, bool on, bool update)
     }
 
     // Add appropriate response to buffer based on the kill state
+    // Buffer initially empty
+    // Buffer += KILL_SOURCE_TRUE if Button is pressed (on=true), else KILL_SOURCE_FALSE
     if (name == "BUTTON_FRONT_PORT")
     {
         buffer_ += on ? BUTTON_FRONT_PORT_TRUE : BUTTON_FRONT_PORT_FALSE;
@@ -294,7 +302,7 @@ void SimulatedKillBoard::handle_sync(char data)
 {
     if (data == PING_REQUEST)
     {
-        last_ping_ = ros::Time::now();
+        last_ping_ = node_->now();
         has_last_ping_ = true;
         buffer_ = PING_RESPONSE + buffer_;
     }
