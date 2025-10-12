@@ -31,7 +31,6 @@ class Slerp
         left.conjugate();
         right = left * right;
         left.conjugate();
-
         double abs_imag = right.abs_imag();
         imag = right.imaginary() / abs_imag;
 

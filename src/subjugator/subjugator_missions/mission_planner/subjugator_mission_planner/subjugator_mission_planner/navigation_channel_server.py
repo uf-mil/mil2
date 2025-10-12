@@ -81,7 +81,6 @@ class NavigateChannelServer(Node):
         pose.position.x = surge
         pose.position.y = 0.0
         pose.position.z = 0.0
-
         # Create quaternion from yaw
         q = R.from_euler("z", yaw).as_quat()
         pose.orientation.x = q[0]
@@ -396,7 +395,6 @@ class NavigateChannelServer(Node):
                     weight = area / MIN_AREA_DETECT
                     weighted_cx_sum += d.cx * weight
                     weight_sum += weight
-
                 if weight_sum > 0:
                     # Find the weighted center of all poles
                     avg_cx = weighted_cx_sum / weight_sum

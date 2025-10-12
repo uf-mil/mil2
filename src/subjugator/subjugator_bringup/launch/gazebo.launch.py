@@ -14,7 +14,6 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     # Configure ROS nodes for launch
-
     # Setup project paths
     pkg_project_bringup = get_package_share_directory("subjugator_bringup")
     pkg_project_gazebo = get_package_share_directory("subjugator_gazebo")

@@ -64,6 +64,7 @@
   gz_type_name: "gz.msgs.Double"
   direction: BIDIRECTIONAL
 
+
   # Camera configuration.
 - ros_topic_name: "/front_cam/image_raw"
   gz_topic_name: "/front_cam/image"
