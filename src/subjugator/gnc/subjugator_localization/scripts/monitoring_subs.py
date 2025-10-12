@@ -32,10 +32,11 @@ class MonitoringNode(Node):
                 + self.imu_acceleration_array[1]
                 + self.imu_acceleration_array[2]
             ) / len(self.imu_accelerationx_array)
-            percent_diff = (imsg.linear_acceleration.x / imu_accelerationx_avg) * 100
-            if (
-                percent_diff < 500 or percent_diff > -500
-            ):  # arbitrary large percentage difference
+            percent_diff = (
+                (imsg.linear_acceleration.x - imu_accelerationx_avg)
+                / imu_accelerationx_avg
+            ) * 100
+            if -500 < percent_diff < 500:  # arbitrary large percentage difference
                 self.imu_accelerationx_array.append(imsg.linear_acceleration.x)
                 del self.imu_accelerationx_array[0]
             else:
@@ -50,10 +51,11 @@ class MonitoringNode(Node):
                 + self.imu_accelerationy_array[1]
                 + self.imu_accelerationy_array[2]
             ) / len(self.imu_accelerationy_array)
-            percent_diff = (imsg.linear_acceleration.y / imu_accelerationy_avg) * 100
-            if (
-                percent_diff < 500 or percent_diff > -500
-            ):  # arbitrary large percentage difference
+            percent_diff = (
+                (imsg.linear_acceleration.y - imu_accelerationy_avg)
+                / imu_accelerationy_avg
+            ) * 100
+            if -500 < percent_diff < 500:  # arbitrary large percentage difference
                 self.imu_accelerationy_array.append(imsg.linear_acceleration.y)
                 del self.imu_accelerationy_array[0]
             else:
@@ -68,7 +70,10 @@ class MonitoringNode(Node):
                 + self.imu_accelerationz_array[1]
                 + self.imu_accelerationz_array[2]
             ) / len(self.imu_accelerationz_array)
-            percent_diff = (imsg.linear_acceleration.z / imu_accelerationz_avg) * 100
+            percent_diff = (
+                (imsg.linear_acceleration.z - imu_accelerationz_avg)
+                / imu_accelerationz_avg
+            ) * 100
             if (
                 percent_diff < 500 or percent_diff > -500
             ):  # arbitrary large percentage difference
