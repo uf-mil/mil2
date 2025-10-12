@@ -42,10 +42,5 @@ def generate_launch_description():
                 name="reset_localization_service",
                 output="screen",
             ),
-            Node(
-                package="subjugator_localization",
-                executable="monitoring_subs.py",
-                name="monitor_sensors",
-            ),
         ],
     )
