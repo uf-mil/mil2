@@ -53,3 +53,13 @@ class PassPoleMission : public Mission
     }
     std::string buildTreeXml(MissionParams const &) override;
 };
+
+class StartGateMission : public Mission
+{
+  public:
+    std::string id() const override
+    {
+        return "StartGateMission";
+    }
+    std::string buildTreeXml(MissionParams const &) override;
+};

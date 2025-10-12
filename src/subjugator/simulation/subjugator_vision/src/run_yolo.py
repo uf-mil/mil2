@@ -27,7 +27,7 @@ class YoloDetector(Node):
         )
 
         self.declare_parameter("image_topic", "/front_cam/image_raw")
-        self.declare_parameter("model_name", "new_sim_nav_channel.pt")
+        self.declare_parameter("model_name", "start_gate_sim.pt")
         image_topic = self.get_parameter("image_topic").value
         model_name = self.get_parameter("model_name").value
 

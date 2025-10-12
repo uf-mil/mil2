@@ -11,6 +11,8 @@
 #include "align_bearing.hpp"
 #include "at_goal_pose.hpp"
 #include "context.hpp"
+#include "detect_target.hpp"
+#include "hone_bearing.hpp"
 #include "missions.hpp"
 #include "publish_goal.hpp"
 #include "wait_for_target.hpp"
@@ -40,7 +42,7 @@ int main(int argc, char** argv)
             ctx->latest_targets = *msg;
         });
 
-    // Image size (for pixel->angle mapping). Use the same camera as YOLO (default /front_cam/image_raw)
+    // Image size (for pixel->angle mapping). Probably do not need
     ctx->image_sub = node->create_subscription<sensor_msgs::msg::Image>("/front_cam/image_raw", 10,
                                                                         [ctx](sensor_msgs::msg::Image::SharedPtr msg)
                                                                         {
@@ -59,7 +61,7 @@ int main(int argc, char** argv)
             std::scoped_lock lk(ctx->odom_mx);
             if (ctx->latest_odom.has_value())
             {
-                RCLCPP_INFO(node->get_logger(), "Odometry received. Starting mission...");
+                RCLCPP_INFO(node->get_logger(), "Odometry received. Starting mission!");
                 break;
             }
         }
@@ -72,6 +74,8 @@ int main(int argc, char** argv)
     factory.registerNodeType<WaitForTarget>("WaitForTarget");
     factory.registerNodeType<AlignBearing>("AlignBearing");
     factory.registerNodeType<AdvanceUntilLost>("AdvanceUntilLost");
+    factory.registerNodeType<DetectTarget>("DetectTarget");
+    factory.registerNodeType<HoneBearing>("HoneBearing");
 
     MissionParams params{};
 
@@ -84,10 +88,13 @@ int main(int argc, char** argv)
     PassPoleMission pass_pole;
     factory.registerBehaviorTreeFromText(pass_pole.buildTreeXml(params));
 
+    StartGateMission start_gate;
+    factory.registerBehaviorTreeFromText(start_gate.buildTreeXml(params));
+
     // Create by name
     auto blackboard = BT::Blackboard::create();
     blackboard->set("ctx", ctx);
-    auto tree = factory.createTree("PassPoleMission", blackboard);
+    auto tree = factory.createTree("StartGateMission", blackboard);
 
     // For live feed of tree
     BT::Groot2Publisher publisher(tree);
