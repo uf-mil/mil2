@@ -141,14 +141,14 @@
                     <visual name='visual'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/woollett_pool_2024/WoollettPool.dae</uri>
+                        <uri>package:://subjugator_description/models/RobotX_2024/woollett_pool_2024/WoollettPool.dae</uri>
                         </mesh>
                     </geometry>
                     </visual>
                     <collision name='collision'>
                     <geometry>
                         <mesh>
-                        <uri>package:://subjugator_description/models/woollett_pool_2024/WoollettPool.dae</uri>
+                        <uri>package:://subjugator_description/models/RobotX_2024/woollett_pool_2024/WoollettPool.dae</uri>
                         </mesh>
                     </geometry>
                     </collision>
