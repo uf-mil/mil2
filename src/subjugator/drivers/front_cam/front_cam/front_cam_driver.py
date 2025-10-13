@@ -42,8 +42,11 @@ class FrontCamDriver(Node):
         super().__init__("front_cam_driver")
 
         # say params exist
-        self.declare_parameter("camera-id", "")
-        self.declare_parameter("camera-topic", "front_cam/raw")
+        self.declare_parameter(
+            "camera-id",
+            "/dev/v4l/by-id/usb-e-con_Systems_See3CAM_CU20_06040000-video-index0",
+        )
+        self.declare_parameter("camera-topic", "front_cam/image_raw")
 
         # Get parameter values
         camera_id = self.get_parameter("camera-id").get_parameter_value().string_value
