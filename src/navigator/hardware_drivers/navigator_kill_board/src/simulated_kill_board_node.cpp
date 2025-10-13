@@ -1,6 +1,6 @@
 #include <rclcpp/rclcpp.hpp>
 
-#include "simulated_kill_board.h"
+#include "navigator_kill_board/simulated_kill_board.h"
 
 int main(int argc, char** argv)
 {

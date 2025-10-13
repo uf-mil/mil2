@@ -21,23 +21,23 @@ find_package(std_srvs REQUIRED)
 # ##############################################################################
 
 # Specify additional locations of header files
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/navigator_kill_board)
+include_directories(include)
 
 # Declare a C++ library
-add_library(${PROJECT_NAME} navigator_kill_board/heartbeat_server.cpp
-                            navigator_kill_board/simulated_kill_board.cpp)
+add_library(${PROJECT_NAME} src/heartbeat_server.cpp
+                            src/simulated_kill_board.cpp)
 
 # Specify dependencies for the library
 ament_target_dependencies(${PROJECT_NAME} rclcpp std_msgs std_srvs)
 
 # Example executable for heartbeat server
-add_executable(heartbeat_server_node nodes/heartbeat_server_node.cpp)
+add_executable(heartbeat_server_node src/heartbeat_server_node.cpp)
 
 target_link_libraries(heartbeat_server_node ${PROJECT_NAME})
 ament_target_dependencies(heartbeat_server_node rclcpp std_msgs)
 
 # Example executable for simulated kill board
-add_executable(simulated_kill_board_node nodes/simulated_kill_board_node.cpp)
+add_executable(simulated_kill_board_node src/simulated_kill_board_node.cpp)
 
 target_link_libraries(simulated_kill_board_node ${PROJECT_NAME})
 ament_target_dependencies(simulated_kill_board_node rclcpp std_msgs std_srvs)
@@ -60,8 +60,8 @@ install(TARGETS heartbeat_server_node simulated_kill_board_node
 
 # Install header files
 install(
-  DIRECTORY navigator_kill_board/
-  DESTINATION include/${PROJECT_NAME}
+  DIRECTORY include/
+  DESTINATION include/
   FILES_MATCHING
   PATTERN "*.h")
 

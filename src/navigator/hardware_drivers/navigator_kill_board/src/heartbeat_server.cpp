@@ -1,4 +1,4 @@
-#include "heartbeat_server.h"
+#include "navigator_kill_board/heartbeat_server.h"
 
 namespace navigator_kill_board
 {
