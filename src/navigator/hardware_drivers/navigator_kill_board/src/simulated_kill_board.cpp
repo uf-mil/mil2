@@ -1,9 +1,9 @@
-#include "simulated_kill_board.h"
+#include "navigator_kill_board/simulated_kill_board.h"
 
 #include <algorithm>
 #include <iostream>
 
-#include "constants.h"
+#include "navigator_kill_board/constants.h"
 
 namespace navigator_kill_board
 {

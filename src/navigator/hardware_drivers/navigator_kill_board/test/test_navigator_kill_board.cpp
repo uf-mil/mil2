@@ -2,9 +2,9 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "constants.h"
-#include "heartbeat_server.h"
-#include "simulated_kill_board.h"
+#include "navigator_kill_board/constants.h"
+#include "navigator_kill_board/heartbeat_server.h"
+#include "navigator_kill_board/simulated_kill_board.h"
 
 class NavigatorKillBoardTest : public ::testing::Test
 {

@@ -1,6 +1,6 @@
 #include <rclcpp/rclcpp.hpp>
 
-#include "heartbeat_server.h"
+#include "navigator_kill_board/heartbeat_server.h"
 
 int main(int argc, char** argv)
 {
