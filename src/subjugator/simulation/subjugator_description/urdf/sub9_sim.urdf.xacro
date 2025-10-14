@@ -113,7 +113,7 @@
   <joint name="base_to_localization" type="fixed">
     <parent link="localization_center"/>
     <child link="base_link"/>
-    <origin xyz="-0.354 0 0" rpy="0 0 0"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
   <!-- Cameras -->
