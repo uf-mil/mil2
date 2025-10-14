@@ -94,7 +94,7 @@ int main(int argc, char** argv)
     // Create by name
     auto blackboard = BT::Blackboard::create();
     blackboard->set("ctx", ctx);
-    auto tree = factory.createTree("StartGateMission", blackboard);
+    auto tree = factory.createTree("SquareTestMission", blackboard);
 
     // For live feed of tree
     BT::Groot2Publisher publisher(tree);

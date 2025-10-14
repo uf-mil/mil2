@@ -20,29 +20,53 @@ std::string StartGateMission::buildTreeXml(MissionParams const &)
         </RetryUntilSuccessful>
 
         <Repeat num_cycles="-1">
-          <Sequence>
-            <SubTree ID="RelativeMove" _autoremap="true"
-                     x="0.0" y="0.0" z="0.0"
-                     qx="0.0" qy="0.0" qz="0.5" qw="0.8660254038"
-                     pos_tol="0.25" ori_tol_deg="8.0" msec="12000"
-                     ctx="{ctx}"/>
-            <SubTree ID="RelativeMove" _autoremap="true"
-                     x="0.0" y="0.0" z="0.0"
-                     qx="0.0" qy="0.0" qz="-0.5" qw="0.8660254038"
-                     pos_tol="0.25" ori_tol_deg="8.0" msec="12000"
-                     ctx="{ctx}"/>
-            <SubTree ID="RelativeMove" _autoremap="true"
-                     x="0.0" y="0.0" z="0.0"
-                     qx="0.0" qy="0.0" qz="-0.5" qw="0.8660254038"
-                     pos_tol="0.25" ori_tol_deg="8.0" msec="12000"
-                     ctx="{ctx}"/>
-            <SubTree ID="RelativeMove" _autoremap="true"
-                     x="0.0" y="0.0" z="0.0"
-                     qx="0.0" qy="0.0" qz="0.5" qw="0.8660254038"
-                     pos_tol="0.25" ori_tol_deg="8.0" msec="12000"
-                     ctx="{ctx}"/>
-          </Sequence>
+        <Sequence>
+
+          <!-- +15 degrees to 60 degrees -->
+          <Repeat num_cycles="4">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                      x="0.0" y="0.0" z="0.0"
+                      qx="0.0" qy="0.0"
+                      qz="0.1305261922" qw="0.9914448614"
+                      pos_tol="0.25" ori_tol_deg="6.0" yaw_only="true"
+                      msec="4000"
+                      ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+
+          <!-- -15 degrees to -60 degrees -->
+          <Repeat num_cycles="8">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                      x="0.0" y="0.0" z="0.0"
+                      qx="0.0" qy="0.0"
+                      qz="-0.1305261922" qw="0.9914448614"
+                      pos_tol="0.25" ori_tol_deg="6.0" yaw_only="true"
+                      msec="4000"
+                      ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+
+          <!-- +15° x4 (back to center) -->
+          <Repeat num_cycles="4">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                      x="0.0" y="0.0" z="0.0"
+                      qx="0.0" qy="0.0"
+                      qz="0.1305261922" qw="0.9914448614"
+                      pos_tol="0.25" ori_tol_deg="6.0" yaw_only="true"
+                      msec="4000"
+                      ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+
+        </Sequence>
         </Repeat>
+
       </Parallel>
 
       <!-- 2) Hone orientation toward the shark with offset -->
