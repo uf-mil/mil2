@@ -44,6 +44,12 @@ def generate_launch_description():
             os.path.join(this_package, "launch", "subjugator_setup.launch.py"),
         ),
         launch_arguments={
+            "use_sim_time": "false",
+            "xacro_file": os.path.join(
+                get_package_share_directory("subjugator_description"),
+                "urdf",
+                "sub9.urdf.xacro",
+            ),
             "gui": "false",
         }.items(),
     )

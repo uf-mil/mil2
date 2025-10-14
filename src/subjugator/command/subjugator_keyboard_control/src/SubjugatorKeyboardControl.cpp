@@ -47,6 +47,7 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
         Left        : yaw left   (+torque z)
         e           : roll left  (-torque x)
         r           : roll right (+torque x)
+        m           : Spawn marble
         q           : Quit
     )");
 }
@@ -196,6 +197,15 @@ void SubjugatorKeyboardControl::keyboardLoop()
                         key_x.pressed = true;
                         key_x.last_time = now;
                         break;
+                    case 'm':
+                    {
+                        std::cout << "[SubjugatorKeyboardControl] Spawning marble..." << std::endl;
+                        std_msgs::msg::String keypress_msg;
+                        keypress_msg.data = "m";
+                        keypress_publisher_->publish(keypress_msg);
+                        std::cout << "[SubjugatorKeyboardControl] Marble spawn request sent." << std::endl;
+                        break;
+                    }
                     case 'q':
                         running_ = false;
                         rclcpp::shutdown();

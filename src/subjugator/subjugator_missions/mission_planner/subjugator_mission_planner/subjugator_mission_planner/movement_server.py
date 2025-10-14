@@ -37,6 +37,7 @@ class MovementServer(Node):
 
         # initialize pose
         self.current_pose = Pose()
+        self.last_pose = None
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -71,23 +72,30 @@ class MovementServer(Node):
 
         distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
         orientation_to_goal = math.sqrt(i_dist**2 + j_dist**2 + k_dist**2 + w_dist**2)
-        return distance_to_goal < acceptableDist and orientation_to_goal < 0.1
+        return distance_to_goal < acceptableDist and orientation_to_goal < 0.05
 
     def execute_callback(self, goal_handle):
         self.get_logger().info(
             f"Executing move to {self.movementGoal}, {self.movementType}",
         )
+        # Choose reference pose if last pose is set
+        if self.last_pose is not None:
+            reference_pose = self.last_pose
+            self.get_logger().info("Using last goal pose as reference")
+        else:
+            reference_pose = self.current_pose
+            self.get_logger().info("No previous goal, using current pose as reference")
 
         # Generate goal poses for orbit
         if self.movementType == "Relative":
-            # Convert current orientation to scipy Rotation object
-            current_quat = [
-                self.current_pose.orientation.x,
-                self.current_pose.orientation.y,
-                self.current_pose.orientation.z,
-                self.current_pose.orientation.w,
+            # Convert reference orientation to scipy Rotation object
+            ref_quat = [
+                reference_pose.orientation.x,
+                reference_pose.orientation.y,
+                reference_pose.orientation.z,
+                reference_pose.orientation.w,
             ]
-            current_rot = R.from_quat(current_quat)
+            ref_rot = R.from_quat(ref_quat)
 
             # Relative position from goal
             rel_position = np.array(
@@ -99,15 +107,15 @@ class MovementServer(Node):
             )
 
             # Rotate relative position into world frame
-            rotated_position = current_rot.apply(rel_position)
+            rotated_position = ref_rot.apply(rel_position)
 
             # Add to current position
             goal_position = (
                 np.array(
                     [
-                        self.current_pose.position.x,
-                        self.current_pose.position.y,
-                        self.current_pose.position.z,
+                        reference_pose.position.x,
+                        reference_pose.position.y,
+                        reference_pose.position.z,
                     ],
                 )
                 + rotated_position
@@ -123,7 +131,7 @@ class MovementServer(Node):
             rel_rot = R.from_quat(rel_quat)
 
             # Compose rotations: world_rot * relative_rot
-            goal_rot = current_rot * rel_rot
+            goal_rot = ref_rot * rel_rot
             goal_quat = goal_rot.as_quat()  # [x, y, z, w]
 
             # Create absolute Pose
@@ -149,6 +157,7 @@ class MovementServer(Node):
             # slow down the loop
             self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
 
+        self.last_pose = goal_pose
         self.get_logger().info("Arrived at goal pose!")
 
         self.get_logger().info("Completed movement!")

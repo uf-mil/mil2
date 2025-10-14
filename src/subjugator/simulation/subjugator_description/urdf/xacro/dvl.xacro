@@ -70,14 +70,14 @@
               </boundaries>
               <bins>10</bins>
               <noise type="gaussian">
-                <stddev>0.015</stddev>
+                <stddev>0.0</stddev>
               </noise>
               <visualize>true</visualize>
             </water_mass_mode>
             <bottom_mode>
               <when>best</when>
               <noise type="gaussian">
-                <stddev>0.005</stddev>
+                <stddev>0.0</stddev>
               </noise>
               <visualize>true</visualize>
             </bottom_mode>
@@ -85,7 +85,7 @@
           <maximum_range>200.</maximum_range>
           <minimum_range>0.3</minimum_range>
           <!-- ENU to FSD -->
-          <reference_frame>0 0 0 3.14 0 -1.57</reference_frame>
+          <reference_frame>0 0 0 0 0 0</reference_frame>
         </gz:dvl>
       </sensor>
     </gazebo>

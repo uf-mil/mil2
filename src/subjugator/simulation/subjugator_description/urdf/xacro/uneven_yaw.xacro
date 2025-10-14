@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro
+    name="asym_drag_plate"
+    params="
+      parent:=base_link
+      name:=asym_drag
+      pose_x:=0.8 pose_y:=0.25 pose_z:=0
+      mass:=0.001
+      ixx:=1.0e-03 iyy:=1.0e-03 izz:=1.0e-03
+      joint_type:=revolute
+      keep_fixed:=true
+      yV:=-0 yVabsV:=-0
+      xU:=0 xUabsU:=0 zW:=0 zWabsW:=0 kP:=0 kPabsP:=0 mQ:=0 mQabsQ:=0 nR:=0 nRabsR:=0
+    "
+  >
+    <xacro:if value="${keep_fixed}">
+      <gazebo>
+        <preserveFixedJoint>true</preserveFixedJoint>
+      </gazebo>
+    </xacro:if>
+
+    <!-- The plate link -->
+    <link name="${name}">
+      <inertial>
+        <mass value="${mass}"/>
+        <inertia ixx="${ixx}" ixy="0" ixz="0" iyy="${iyy}" iyz="0" izz="${izz}"/>
+      </inertial>
+    </link>
+
+    <!-- Joint (revolute with zero limits avoids fixed-joint reduction reliably) -->
+    <joint name="${name}_joint" type="${joint_type}">
+      <parent link="${parent}"/>
+      <child link="${name}"/>
+      <origin xyz="${pose_x} ${pose_y} ${pose_z}"/>
+      <axis xyz="0 0 1"/>
+      <limit lower="0" upper="0" effort="0" velocity="0"/>
+    </joint>
+
+    <!-- Hydrodynamics plugin attached to the plate -->
+    <gazebo>
+      <plugin filename="gz-sim-hydrodynamics-system" name="gz::sim::systems::Hydrodynamics">
+        <link_name>${name}</link_name>
+        <yV>${yV}</yV>
+        <yVabsV>${yVabsV}</yVabsV>
+        <xU>${xU}</xU>
+        <xUabsU>${xUabsU}</xUabsU>
+        <zW>${zW}</zW>
+        <zWabsW>${zWabsW}</zWabsW>
+        <kP>${kP}</kP>
+        <kPabsP>${kPabsP}</kPabsP>
+        <mQ>${mQ}</mQ>
+        <mQabsQ>${mQabsQ}</mQabsQ>
+        <nR>${nR}</nR>
+        <nRabsR>${nRabsR}</nRabsR>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</robot>

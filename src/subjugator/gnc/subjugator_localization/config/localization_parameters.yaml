@@ -3,7 +3,7 @@
   ros__parameters:
     world_frame: odom
     odom_frame: odom
-    base_link_frame: base_link
+    base_link_frame: localization_center
 
     imu0: "/imu/data"
     imu0_config: [
