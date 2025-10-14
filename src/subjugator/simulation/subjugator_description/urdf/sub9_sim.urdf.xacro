@@ -82,7 +82,7 @@
 
   <gazebo>
     <plugin filename="gz-sim-hydrodynamics-system" name="gz::sim::systems::Hydrodynamics">
-      <link_name>base_link</link_name>
+      <link_name>localization_center</link_name>
 
       <xU>-30</xU>
       <xUabsU>-15</xUabsU>
@@ -102,6 +102,19 @@
 
     <plugin filename="MarbleDropper" name="marble_dropper::MarbleDropper"/>
   </gazebo>
+
+  <link name="localization_center">
+    <inertial>
+      <mass value="0.001"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+    </inertial>
+  </link>
+  <joint name="base_to_localization" type="fixed">
+    <parent link="localization_center"/>
+    <child link="base_link"/>
+    <origin xyz="-0.354 0 0" rpy="0 0 0"/>
+  </joint>
 
   <!-- Cameras -->
   <xacro:mil_camera name="front_cam" parent="base_link" xyz="0.78 -0.014274 -0.050" rpy="0 0 0"/>
