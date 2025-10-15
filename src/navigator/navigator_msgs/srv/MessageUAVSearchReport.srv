@@ -1,0 +1,7 @@
+string object1 # 'R' for the R pad, 'N' for the N pad
+geographic_msgs/GeoPoint object1_location
+string object2
+geographic_msgs/GeoPoint object2_location
+int8 uav_status # 1=manual, 2=autonomous, 3=faulted
+---
+string message
