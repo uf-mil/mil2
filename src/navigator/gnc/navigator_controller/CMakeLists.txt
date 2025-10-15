@@ -9,6 +9,11 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+
+add_executable(gps_to_baselink_odom src/gps_to_baselink_odom.cpp)
+ament_target_dependencies(gps_to_baselink_odom rclcpp std_msgs nav_msgs tf2)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
