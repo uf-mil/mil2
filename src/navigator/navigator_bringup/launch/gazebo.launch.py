@@ -16,14 +16,17 @@ def generate_launch_description():
     # Configure ROS nodes for launch
 
     # Setup project paths
-    pkg_project_bringup = get_package_share_directory("subjugator_bringup")
-    pkg_project_gazebo = get_package_share_directory("subjugator_gazebo")
-    # pkg_project_description = get_package_share_directory("subjugator_description")
+    pkg_project_bringup = get_package_share_directory("navigator_bringup")
+    pkg_project_gazebo = get_package_share_directory("navigator_gazebo")
+    # pkg_project_description = get_package_share_directory("navigator_description")
+    # pkg_project_sim_description = get_package_share_directory(
+    #     "navigator_sim_description",
+    # )
     pkg_ros_gz_sim = get_package_share_directory("ros_gz_sim")
-    pkg_controller = get_package_share_directory("subjugator_controller")
+    pkg_controller = get_package_share_directory("navigator_controller")
 
     # Setup to launch the simulator and Gazebo world
-    gz_sim_world = DeclareLaunchArgument("world", default_value="robosub_2025.world")
+    gz_sim_world = DeclareLaunchArgument("world", default_value="robotx2024_1.world")
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_ros_gz_sim, "launch", "gz_sim.launch.py"),
@@ -44,16 +47,16 @@ def generate_launch_description():
     set_sim_params = SetLaunchConfiguration("param_file", sim_pid_yaml)
 
     # Include the Subjugator_Setup Launch file
-    subjugator_setup = IncludeLaunchDescription(
+    navigator_setup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_project_bringup, "launch", "subjugator_setup.launch.py"),
+            os.path.join(pkg_project_bringup, "launch", "navigator_setup.launch.py"),
         ),
         launch_arguments={
             "use_sim_time": "true",
             "xacro_file": os.path.join(
-                get_package_share_directory("subjugator_description"),
+                get_package_share_directory("navigator_sim_description"),
                 "urdf",
-                "sub9_sim.urdf.xacro",
+                "navigator.urdf.xacro",
             ),
             "gui": "true",
         }.items(),
@@ -68,7 +71,7 @@ def generate_launch_description():
                 "config_file": os.path.join(
                     pkg_project_bringup,
                     "config",
-                    "subjugator_bridge.yaml",
+                    "navigator_bridge.yaml",
                 ),
                 "qos_overrides./tf_static.publisher.durability": "transient_local",
             },
@@ -81,7 +84,7 @@ def generate_launch_description():
             gz_sim_world,
             gz_sim,
             set_sim_params,
-            subjugator_setup,
+            navigator_setup,
             bridge,
         ],
     )

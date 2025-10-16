@@ -22,11 +22,11 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description():
 
     # Setup project paths
-    pkg_project_bringup = get_package_share_directory("subjugator_bringup")
-    pkg_project_description = get_package_share_directory("subjugator_description")
-    pkg_thruster_manager = get_package_share_directory("subjugator_thruster_manager")
-    pkg_localization = get_package_share_directory("subjugator_localization")
-    pkg_controller = get_package_share_directory("subjugator_controller")
+    pkg_project_bringup = get_package_share_directory("navigator_bringup")
+    pkg_project_description = get_package_share_directory("navigator_description")
+    pkg_thruster_manager = get_package_share_directory("navigator_thruster_manager")
+    pkg_localization = get_package_share_directory("navigator_localization")
+    pkg_controller = get_package_share_directory("navigator_controller")
 
     # Args
     gui_cmd = DeclareLaunchArgument(
@@ -38,7 +38,7 @@ def generate_launch_description():
     xacro_file_arg = DeclareLaunchArgument(
         "xacro_file",
         default_value=PathJoinSubstitution(
-            [pkg_project_description, "urdf", "sub9.urdf.xacro"],
+            [pkg_project_description, "urdf", "navigator.urdf.xacro"],
         ),
         description="Path to the robot xacro file",
     )
@@ -56,14 +56,14 @@ def generate_launch_description():
     )
 
     # Write an on-disk URDF
-    urdf_out = os.path.join(pkg_project_description, "urdf", "sub9.urdf")
+    urdf_out = os.path.join(pkg_project_description, "urdf", "navigator.urdf")
     generate_urdf = ExecuteProcess(
         cmd=["xacro", LaunchConfiguration("xacro_file"), "-o", urdf_out],
         output="screen",
     )
 
     # # Convert URDF to SDF using Gazebo's gz tool
-    # sdf_file = os.path.join(pkg_project_description, 'urdf', 'sub9.sdf')
+    # sdf_file = os.path.join(pkg_project_description, 'urdf', 'navigator.sdf')
     # try:
     #     subprocess.run(['gz', 'sdf', '-p', urdf_file], check=True, stdout=open(sdf_file, 'w'))
     #     print(f"Successfully converted {urdf_file} to {sdf_file}")
@@ -88,7 +88,7 @@ def generate_launch_description():
         executable="rviz2",
         arguments=[
             "-d",
-            os.path.join(pkg_project_bringup, "config", "subjugator.rviz"),
+            os.path.join(pkg_project_bringup, "config", "navigator.rviz"),
         ],
         condition=IfCondition(LaunchConfiguration("gui")),
     )
@@ -104,7 +104,7 @@ def generate_launch_description():
             os.path.join(
                 pkg_localization,
                 "launch",
-                "subjugator_localization.launch.py",
+                "navigator_localization.launch.py",
             ),
         ),
         launch_arguments={
@@ -117,7 +117,7 @@ def generate_launch_description():
     )
 
     # depth_to_pose = Node(
-    # package="subjugator_localization",
+    # package="navigator_localization",
     # executable="depth_to_pose_node.py",
     # name="depth_to_pose",
     # output="screen",
@@ -130,23 +130,23 @@ def generate_launch_description():
     )
 
     path_planner = Node(
-        package="subjugator_path_planner",
-        executable="subjugator_path_planner",
-        name="subjugator_path_planner",
+        package="navigator_path_planner",
+        executable="navigator_path_planner",
+        name="navigator_path_planner",
         output="both",
     )
 
     trajectory_planner = Node(
-        package="subjugator_trajectory_planner",
+        package="navigator_trajectory_planner",
         executable="trajectory_planner",
-        name="subjugator_trajectory_planner",
+        name="navigator_trajectory_planner",
         output="both",
     )
 
     # wrench_tuner = IncludeLaunchDescription(
     # PythonLaunchDescriptionSource(
     # os.path.join(
-    # get_package_share_directory("subjugator_wrench_tuner"),
+    # get_package_share_directory("navigator_wrench_tuner"),
     # "launch",
     # "wrench_tuner_launch.py",
     # ),
