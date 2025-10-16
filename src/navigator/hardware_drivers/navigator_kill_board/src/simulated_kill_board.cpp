@@ -1,3 +1,22 @@
+// Copyright 2025 University of Florida Machine Intelligence Laboratory
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 #include "navigator_kill_board/simulated_kill_board.h"
 
 #include <algorithm>
@@ -48,7 +67,7 @@ std::string NoopSerial::read(int length)
     return "";
 }
 
-int NoopSerial::write(std::string const& data)
+int NoopSerial::write(std::string const &data)
 {
     return static_cast<int>(data.length());
 }
@@ -130,7 +149,7 @@ SimulatedKillBoard::SimulatedKillBoard() : has_last_ping_(false), killed_(false)
     memory_["HEARTBEAT_REMOTE"] = false;
 
     // Create ROS services for button kill sources
-    for (auto const& kill_name : KILLS)
+    for (auto const &kill_name : KILLS)
     {
         if (kill_name.find("BUTTON") == 0)
         {
@@ -147,7 +166,7 @@ SimulatedKillBoard::SimulatedKillBoard() : has_last_ping_(false), killed_(false)
         node_->create_wall_timer(std::chrono::milliseconds(200), std::bind(&SimulatedKillBoard::timer_callback, this));
 }
 
-void SimulatedKillBoard::set_button_callback(std::string const& button,
+void SimulatedKillBoard::set_button_callback(std::string const &button,
                                              std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
                                              std::shared_ptr<std_srvs::srv::SetBool::Response> response)
 {
@@ -178,7 +197,7 @@ void SimulatedKillBoard::check_timeout()
     }
 }
 
-void SimulatedKillBoard::set_kill(std::string const& name, bool on, bool update)
+void SimulatedKillBoard::set_kill(std::string const &name, bool on, bool update)
 {
     if (memory_[name] != on)
     {
@@ -186,7 +205,7 @@ void SimulatedKillBoard::set_kill(std::string const& name, bool on, bool update)
 
         // Update overall killed status - equivalent to np.any()
         killed_ = false;
-        for (auto const& pair : memory_)
+        for (auto const &pair : memory_)
         {
             if (pair.second)
             {
@@ -241,7 +260,7 @@ void SimulatedKillBoard::set_kill(std::string const& name, bool on, bool update)
     buffer_ += killed_ ? OVERALL_TRUE : OVERALL_FALSE;
 }
 
-void SimulatedKillBoard::set_light(std::string const& status)
+void SimulatedKillBoard::set_light(std::string const &status)
 {
     if (light_ != status)
     {
@@ -337,7 +356,7 @@ void SimulatedKillBoard::handle_sync(char data)
     }
 }
 
-int SimulatedKillBoard::write(std::string const& data)
+int SimulatedKillBoard::write(std::string const &data)
 {
     check_timeout();
 

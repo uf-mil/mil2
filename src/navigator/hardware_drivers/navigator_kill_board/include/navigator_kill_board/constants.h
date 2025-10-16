@@ -1,3 +1,22 @@
+// Copyright 2025 University of Florida Machine Intelligence Laboratory
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 /*
 Navigator's kill board communicates over serial using the hex codes listed below.
 
@@ -20,6 +39,7 @@ by sending the COMPUTER.KILL.REQUEST and undone with COMPUTER.CLEAR.REQUEST
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -97,19 +117,19 @@ char const LIGHTS_GREEN_RESPONSE = 0x52;
 // Controller - Signifies start of controller message (joysticks & buttons)
 
 // Controller sticks (labels only)
-char const* const CTRL_STICK_UD = "UD";
-char const* const CTRL_STICK_LR = "LR";
-char const* const CTRL_STICK_TQ = "TQ";
+char const *const CTRL_STICK_UD = "UD";
+char const *const CTRL_STICK_LR = "LR";
+char const *const CTRL_STICK_TQ = "TQ";
 
 // Controller buttons (labels only)
-char const* const CTRL_BUTTON_STATION_HOLD = "STATION_HOLD";
-char const* const CTRL_BUTTON_RAISE_KILL = "RAISE_KILL";
-char const* const CTRL_BUTTON_CLEAR_KILL = "CLEAR_KILL";
-char const* const CTRL_BUTTON_THRUSTER_RETRACT = "THRUSTER_RETRACT";
-char const* const CTRL_BUTTON_THRUSTER_DEPLOY = "THRUSTER_DEPLOY";
-char const* const CTRL_BUTTON_GO_INACTIVE = "GO_INACTIVE";
-char const* const CTRL_BUTTON_START = "START";
-char const* const CTRL_BUTTON_EMERGENCY_CONTROL = "EMERGENCY_CONTROL";
+char const *const CTRL_BUTTON_STATION_HOLD = "STATION_HOLD";
+char const *const CTRL_BUTTON_RAISE_KILL = "RAISE_KILL";
+char const *const CTRL_BUTTON_CLEAR_KILL = "CLEAR_KILL";
+char const *const CTRL_BUTTON_THRUSTER_RETRACT = "THRUSTER_RETRACT";
+char const *const CTRL_BUTTON_THRUSTER_DEPLOY = "THRUSTER_DEPLOY";
+char const *const CTRL_BUTTON_GO_INACTIVE = "GO_INACTIVE";
+char const *const CTRL_BUTTON_START = "START";
+char const *const CTRL_BUTTON_EMERGENCY_CONTROL = "EMERGENCY_CONTROL";
 
 // Controller - Signifies start of controller message (joysticks & buttons)
 unsigned char const CONTROLLER = 0xA0;
@@ -122,14 +142,14 @@ std::vector<std::string> const CTRL_BUTTONS = { "STATION_HOLD",    "RAISE_KILL",
                                                 "THRUSTER_DEPLOY", "GO_INACTIVE", "START",      "EMERGENCY_CONTROL" };
 
 // Controller button values (16-bit values)
-unsigned short const CTRL_BUTTON_STATION_HOLD_VAL = 0x0001;
-unsigned short const CTRL_BUTTON_RAISE_KILL_VAL = 0x0002;
-unsigned short const CTRL_BUTTON_CLEAR_KILL_VAL = 0x0004;
-unsigned short const CTRL_BUTTON_THRUSTER_RETRACT_VAL = 0x0010;
-unsigned short const CTRL_BUTTON_THRUSTER_DEPLOY_VAL = 0x0020;
-unsigned short const CTRL_BUTTON_GO_INACTIVE_VAL = 0x0040;
-unsigned short const CTRL_BUTTON_START_VAL = 0x0080;
-unsigned short const CTRL_BUTTON_EMERGENCY_CONTROL_VAL = 0x2000;
+uint16_t const CTRL_BUTTON_STATION_HOLD_VAL = 0x0001;
+uint16_t const CTRL_BUTTON_RAISE_KILL_VAL = 0x0002;
+uint16_t const CTRL_BUTTON_CLEAR_KILL_VAL = 0x0004;
+uint16_t const CTRL_BUTTON_THRUSTER_RETRACT_VAL = 0x0010;
+uint16_t const CTRL_BUTTON_THRUSTER_DEPLOY_VAL = 0x0020;
+uint16_t const CTRL_BUTTON_GO_INACTIVE_VAL = 0x0040;
+uint16_t const CTRL_BUTTON_START_VAL = 0x0080;
+uint16_t const CTRL_BUTTON_EMERGENCY_CONTROL_VAL = 0x2000;
 
 // Kill source names for iteration
 std::vector<std::string> const KILLS = { "OVERALL",
