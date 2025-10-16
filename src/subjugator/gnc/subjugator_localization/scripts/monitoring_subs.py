@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node

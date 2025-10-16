@@ -35,7 +35,8 @@ def generate_launch_description():
             Node(
                 package="subjugator_localization",
                 executable="monitoring_subs.py",
-                name="monitor_sensors",
+                name="monitoring",
+                output="screen",
             ),
         ],
     )
