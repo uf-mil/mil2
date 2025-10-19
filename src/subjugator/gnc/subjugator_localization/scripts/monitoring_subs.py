@@ -61,7 +61,9 @@ class MonitoringNode(Node):
                 self.imu_accelerationy_array.append(imsg.linear_acceleration.y)
                 del self.imu_accelerationy_array[0]
             else:
-                self.get_logger().info("Spike Detected a lin_accel_y.")
+                self.get_logger().info(
+                    "Spike Detected a lin_accel_y.",
+                )  # tells us where spike occurred.
 
         # acceleration z
         if len(self.imu_accelerationz_array) <= 3:
