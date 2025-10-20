@@ -379,4 +379,38 @@ torpedo() {
 	ros2 service call /torpedo subjugator_msgs/srv/Servo "{angle: '$1'}"
 }
 
+# Mission Planner launcher
+mp() {
+	if [[ $# -ne 1 ]]; then
+		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission>"
+		return 2
+	fi
+
+	local mission="$1"
+	case "$mission" in
+	SquareTestMission | StartGateMission | PassPoleMission)
+		echo "Launching mission_planner with mission: ${mission}"
+		ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
+		;;
+	*)
+		echo "Invalid mission: ${mission}"
+		echo "Valid missions: SquareTestMission  StartGateMission  PassPoleMission"
+		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
+		return 2
+		;;
+	esac
+}
+
+_mp_complete() {
+	local cur
+	cur=${COMP_WORDS[COMP_CWORD]}
+
+	local opts="SquareTestMission StartGateMission PassPoleMission"
+	COMPREPLY=()
+	while IFS='' read -r line; do
+		COMPREPLY+=("$line")
+	done < <(compgen -W "$opts" -- "$cur")
+}
+complete -F _mp_complete mp
+
 export ROS_DOMAIN_ID=37

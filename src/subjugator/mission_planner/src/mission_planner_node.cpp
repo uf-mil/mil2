@@ -24,6 +24,9 @@ int main(int argc, char** argv)
     auto ctx = std::make_shared<Context>();
     ctx->node = node;
 
+    node->declare_parameter<std::string>("mission", "SquareTestMission");
+    std::string mission_to_run = node->get_parameter("mission").as_string();
+
     // Topics to subscribe/publish to
     ctx->goal_pub = node->create_publisher<geometry_msgs::msg::Pose>("/goal_pose", 10);
     ctx->odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("/odometry/filtered", 10,
@@ -94,13 +97,24 @@ int main(int argc, char** argv)
     // Create by name
     auto blackboard = BT::Blackboard::create();
     blackboard->set("ctx", ctx);
-    auto tree = factory.createTree("SquareTestMission", blackboard);
+
+    std::unique_ptr<BT::Tree> tree_ptr;
+    try
+    {
+        tree_ptr = std::make_unique<BT::Tree>(factory.createTree(mission_to_run, blackboard));
+    }
+    catch (std::exception const& e)
+    {
+        RCLCPP_FATAL(node->get_logger(), "Unknown mission '%s' Error: %s", mission_to_run.c_str(), e.what());
+        rclcpp::shutdown();
+        return 1;
+    }
 
     // For live feed of tree
-    BT::Groot2Publisher publisher(tree);
+    BT::Groot2Publisher publisher(*tree_ptr);
 
     // Log BT transitions to console
-    BT::StdCoutLogger logger_cout(tree);
+    BT::StdCoutLogger logger_cout(*tree_ptr);
 
     RCLCPP_INFO(node->get_logger(), "Mission Planner started. Ticking tree…");
     rclcpp::WallRate rate(20.0);
@@ -111,13 +125,13 @@ int main(int argc, char** argv)
     while (rclcpp::ok())
     {
         rclcpp::spin_some(node);
-        BT::NodeStatus status = tree.tickOnce();
+        BT::NodeStatus status = tree_ptr->tickOnce();
 
         if (status == BT::NodeStatus::SUCCESS || status == BT::NodeStatus::FAILURE)
         {
             RCLCPP_INFO(node->get_logger(), "Mission finished with status: %s. Shutting down.",
                         (status == BT::NodeStatus::SUCCESS ? "SUCCESS" : "FAILURE"));
-            tree.haltTree();
+            tree_ptr->haltTree();
             break;
         }
         rate.sleep();
