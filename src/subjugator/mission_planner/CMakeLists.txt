@@ -12,11 +12,10 @@ find_package(nav_msgs REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(mil_msgs REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_missions/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
+                    ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
 
 # ---- Operations library (leaf nodes)
 add_library(
@@ -25,6 +24,7 @@ add_library(
   subjugator_operations/src/at_goal_pose.cpp
   subjugator_operations/src/detect_target.cpp
   subjugator_operations/src/hone_bearing.cpp)
+
 ament_target_dependencies(
   operations
   rclcpp
@@ -34,19 +34,9 @@ ament_target_dependencies(
   mil_msgs
   behaviortree_cpp)
 
-# ---- Missions library (subtree builders)
-add_library(
-  missions
-  subjugator_missions/src/move_mission.cpp
-  subjugator_missions/src/relative_motion_mission.cpp
-  subjugator_missions/src/square_test_mission.cpp
-  subjugator_missions/src/pass_pole_mission.cpp
-  subjugator_missions/src/start_gate_mission.cpp)
-ament_target_dependencies(missions rclcpp behaviortree_cpp)
-
 # ---- Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
-target_link_libraries(mission_planner_node operations missions)
+target_link_libraries(mission_planner_node operations)
 ament_target_dependencies(
   mission_planner_node
   rclcpp
@@ -54,16 +44,16 @@ ament_target_dependencies(
   nav_msgs
   sensor_msgs
   mil_msgs
-  behaviortree_cpp)
+  behaviortree_cpp
+  ament_index_cpp)
 
 install(
-  TARGETS operations missions mission_planner_node
+  TARGETS operations mission_planner_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib)
 
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY subjugator_operations/include/ DESTINATION include)
-install(DIRECTORY subjugator_missions/include/ DESTINATION include)
-
+install(DIRECTORY subjugator_missions/xml/ DESTINATION share/${PROJECT_NAME}/bt)
 ament_package()

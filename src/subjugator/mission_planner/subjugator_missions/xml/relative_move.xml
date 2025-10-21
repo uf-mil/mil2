@@ -1,8 +1,3 @@
-#include "missions.hpp"
-
-std::string RelativeMotionMission::buildTreeXml(MissionParams const &)
-{
-    return R"BT(
 <root BTCPP_format="4">
     <BehaviorTree ID="RelativeMove">
         <Sequence>
@@ -29,5 +24,3 @@ std::string RelativeMotionMission::buildTreeXml(MissionParams const &)
         </Sequence>
     </BehaviorTree>
 </root>
-    )BT";
-}

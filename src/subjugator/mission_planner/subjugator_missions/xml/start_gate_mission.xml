@@ -1,8 +1,3 @@
-#include "missions.hpp"
-
-std::string StartGateMission::buildTreeXml(MissionParams const &)
-{
-    return R"BT(
 <root BTCPP_format="4" main_tree_to_execute="StartGateMission">
   <BehaviorTree ID="StartGateMission">
     <Sequence>
@@ -118,5 +113,3 @@ std::string StartGateMission::buildTreeXml(MissionParams const &)
     </Sequence>
   </BehaviorTree>
 </root>
-)BT";
-}

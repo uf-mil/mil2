@@ -9,10 +9,10 @@ BT::PortsList PublishGoalPose::providedPorts()
     ports.insert(BT::InputPort<double>("x"));
     ports.insert(BT::InputPort<double>("y"));
     ports.insert(BT::InputPort<double>("z"));
-    ports.insert(BT::InputPort<double>("qx"));
-    ports.insert(BT::InputPort<double>("qy"));
-    ports.insert(BT::InputPort<double>("qz"));
-    ports.insert(BT::InputPort<double>("qw"));
+    ports.insert(BT::InputPort<double>("q.x"));
+    ports.insert(BT::InputPort<double>("q.y"));
+    ports.insert(BT::InputPort<double>("q.z"));
+    ports.insert(BT::InputPort<double>("q.w"));
     ports.insert(BT::InputPort<bool>("relative", false, "Interpret goal relative to current pose"));
     ports.insert(BT::InputPort<std::shared_ptr<Context>>("ctx"));
 
@@ -21,9 +21,9 @@ BT::PortsList PublishGoalPose::providedPorts()
     ports.insert(BT::OutputPort<double>("abs_y"));
     ports.insert(BT::OutputPort<double>("abs_z"));
     ports.insert(BT::OutputPort<double>("abs_qx"));
-    ports.insert(BT::OutputPort<double>("abs_qy"));
-    ports.insert(BT::OutputPort<double>("abs_qz"));
-    ports.insert(BT::OutputPort<double>("abs_qw"));
+    ports.insert(BT::OutputPort<double>("abs_q.y"));
+    ports.insert(BT::OutputPort<double>("abs_q.z"));
+    ports.insert(BT::OutputPort<double>("abs_q.w"));
 
     return ports;
 }
@@ -31,24 +31,22 @@ BT::PortsList PublishGoalPose::providedPorts()
 static geometry_msgs::msg::Pose rotateVectorByQuat(geometry_msgs::msg::Pose const& ref, double rx, double ry, double rz)
 {
     auto const& q = ref.orientation;
-    double vx = rx, vy = ry, vz = rz;
-    double qw = q.w, qx = q.x, qy = q.y, qz = q.z;
 
-    double w1 = -qx * vx - qy * vy - qz * vz;
-    double x1 = qw * vx + qy * vz - qz * vy;
-    double y1 = qw * vy + qz * vx - qx * vz;
-    double z1 = qw * vz + qx * vy - qy * vx;
+    double w1 = -q.x * rx - q.y * ry - q.z * rz;
+    double x1 = q.w * rx + q.y * rz - q.z * ry;
+    double y1 = q.w * ry + q.z * rx - q.x * rz;
+    double z1 = q.w * rz + q.x * ry - q.y * rx;
 
     geometry_msgs::msg::Pose out = ref;
-    out.position.x = x1 * qw - w1 * qx - y1 * qz + z1 * qy;
-    out.position.y = y1 * qw - w1 * qy - z1 * qx + x1 * qz;
-    out.position.z = z1 * qw - w1 * qz - x1 * qy + y1 * qx;
+    out.position.x = x1 * q.w - w1 * q.x - y1 * q.z + z1 * q.y;
+    out.position.y = y1 * q.w - w1 * q.y - z1 * q.x + x1 * q.z;
+    out.position.z = z1 * q.w - w1 * q.z - x1 * q.y + y1 * q.x;
     return out;
 }
 
 geometry_msgs::msg::Pose PublishGoalPose::composeAbsoluteGoal_(geometry_msgs::msg::Pose const& current, double rx,
-                                                               double ry, double rz, double qx, double qy, double qz,
-                                                               double qw, bool relative)
+                                                               double ry, double rz, double q.x, double q.y, double q.z,
+                                                               double q.w, bool relative)
 {
     geometry_msgs::msg::Pose goal;
     if (relative)
@@ -59,20 +57,20 @@ geometry_msgs::msg::Pose PublishGoalPose::composeAbsoluteGoal_(geometry_msgs::ms
         goal.position.z = current.position.z + rel_rotated.position.z;
 
         auto const& c = current.orientation;
-        goal.orientation.x = c.w * qx + c.x * qw + c.y * qz - c.z * qy;
-        goal.orientation.y = c.w * qy - c.x * qz + c.y * qw + c.z * qx;
-        goal.orientation.z = c.w * qz + c.x * qy - c.y * qx + c.z * qw;
-        goal.orientation.w = c.w * qw - c.x * qx - c.y * qy - c.z * qz;
+        goal.orientation.x = c.w * q.x + c.x * q.w + c.y * q.z - c.z * q.y;
+        goal.orientation.y = c.w * q.y - c.x * q.z + c.y * q.w + c.z * q.x;
+        goal.orientation.z = c.w * q.z + c.x * q.y - c.y * q.x + c.z * q.w;
+        goal.orientation.w = c.w * q.w - c.x * q.x - c.y * q.y - c.z * q.z;
     }
     else
     {
         goal.position.x = rx;
         goal.position.y = ry;
         goal.position.z = rz;
-        goal.orientation.x = qx;
-        goal.orientation.y = qy;
-        goal.orientation.z = qz;
-        goal.orientation.w = qw;
+        goal.orientation.x = q.x;
+        goal.orientation.y = q.y;
+        goal.orientation.z = q.z;
+        goal.orientation.w = q.w;
     }
     return goal;
 }
@@ -88,11 +86,11 @@ BT::NodeStatus PublishGoalPose::tick()
         }
     }
 
-    double x, y, z, qx, qy, qz, qw;
+    double x, y, z, q.x, q.y, q.z, q.w;
     bool relative = false;
 
-    if (!getInput("x", x) || !getInput("y", y) || !getInput("z", z) || !getInput("qx", qx) || !getInput("qy", qy) ||
-        !getInput("qz", qz) || !getInput("qw", qw) || !getInput("relative", relative))
+    if (!getInput("x", x) || !getInput("y", y) || !getInput("z", z) || !getInput("q.x", q.x) || !getInput("q.y", q.y) ||
+        !getInput("q.z", q.z) || !getInput("q.w", q.w) || !getInput("relative", relative))
     {
         RCLCPP_ERROR(ctx_->logger(), "PublishGoalPose: missing required inputs.");
         return BT::NodeStatus::FAILURE;
@@ -108,7 +106,7 @@ BT::NodeStatus PublishGoalPose::tick()
     if (odom)
         current = odom->pose.pose;
 
-    geometry_msgs::msg::Pose goal = composeAbsoluteGoal_(current, x, y, z, qx, qy, qz, qw, relative);
+    geometry_msgs::msg::Pose goal = composeAbsoluteGoal_(current, x, y, z, q.x, q.y, q.z, q.w, relative);
 
     // Publish
     ctx_->goal_pub->publish(goal);
@@ -122,9 +120,9 @@ BT::NodeStatus PublishGoalPose::tick()
     setOutput("abs_y", goal.position.y);
     setOutput("abs_z", goal.position.z);
     setOutput("abs_qx", goal.orientation.x);
-    setOutput("abs_qy", goal.orientation.y);
-    setOutput("abs_qz", goal.orientation.z);
-    setOutput("abs_qw", goal.orientation.w);
+    setOutput("abs_q.y", goal.orientation.y);
+    setOutput("abs_q.z", goal.orientation.z);
+    setOutput("abs_q.w", goal.orientation.w);
 
     return BT::NodeStatus::SUCCESS;
 }

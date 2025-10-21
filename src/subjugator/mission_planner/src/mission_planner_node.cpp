@@ -13,9 +13,10 @@
 #include "context.hpp"
 #include "detect_target.hpp"
 #include "hone_bearing.hpp"
-#include "missions.hpp"
 #include "publish_goal.hpp"
 #include "wait_for_target.hpp"
+
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 int main(int argc, char** argv)
 {
@@ -80,19 +81,11 @@ int main(int argc, char** argv)
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
 
-    MissionParams params{};
-
-    // Register subtrees
-    RelativeMotionMission rel_subtree;
-    factory.registerBehaviorTreeFromText(rel_subtree.buildTreeXml(params));
-    SquareTestMission square;
-    factory.registerBehaviorTreeFromText(square.buildTreeXml(params));
-
-    PassPoleMission pass_pole;
-    factory.registerBehaviorTreeFromText(pass_pole.buildTreeXml(params));
-
-    StartGateMission start_gate;
-    factory.registerBehaviorTreeFromText(start_gate.buildTreeXml(params));
+    // Load all tree models from installed xml
+    std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");
+    std::string const bt_dir = (std::filesystem::path(pkg_share) / "bt").string();
+    auto bt_path = [&](std::string const& file) { return (std::filesystem::path(bt_dir) / file).string(); };
+    factory.registerBehaviorTreeFromFile(bt_path("sub9_missions.xml"));
 
     // Create by name
     auto blackboard = BT::Blackboard::create();

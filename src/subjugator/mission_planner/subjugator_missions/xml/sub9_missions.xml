@@ -1,0 +1,12 @@
+<!--
+    This file is created to simplify adding missions to the sub9 missions.
+    Also hoping that this format will make it easy to load in missions for
+    different robots in the future.
+-->
+<root BTCPP_format="4">
+    <include path="absolute_move.xml"/>
+    <include path="relative_move.xml"/>
+    <include path="square_test_mission.xml"/>
+    <include path="pass_pole_mission.xml"/>
+    <include path="start_gate_mission.xml"/>
+</root>

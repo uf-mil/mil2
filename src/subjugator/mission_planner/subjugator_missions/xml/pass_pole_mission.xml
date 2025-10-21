@@ -1,8 +1,3 @@
-#include "missions.hpp"
-
-std::string PassPoleMission::buildTreeXml(MissionParams const &)
-{
-    return R"BT(
 <root BTCPP_format="4" main_tree_to_execute="PassPoleMission">
   <BehaviorTree ID="PassPoleMission">
     <Sequence>
@@ -31,5 +26,3 @@ std::string PassPoleMission::buildTreeXml(MissionParams const &)
     </Sequence>
   </BehaviorTree>
 </root>
-  )BT";
-}
