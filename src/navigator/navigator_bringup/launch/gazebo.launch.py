@@ -5,7 +5,6 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
-    SetLaunchConfiguration,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -23,7 +22,9 @@ def generate_launch_description():
     #     "navigator_sim_description",
     # )
     pkg_ros_gz_sim = get_package_share_directory("ros_gz_sim")
-    pkg_controller = get_package_share_directory("navigator_controller")
+
+    # !!! Uncomment once navigator_controller is created !!!
+    # pkg_controller = get_package_share_directory("navigator_controller")
 
     # Setup to launch the simulator and Gazebo world
     gz_sim_world = DeclareLaunchArgument("world", default_value="robotx2024_1.world")
@@ -42,9 +43,10 @@ def generate_launch_description():
         }.items(),
     )
 
+    # !!! Uncomment once navigator_controller is created !!!
     # Get controller to use sim values
-    sim_pid_yaml = os.path.join(pkg_controller, "config", "sim_pid_controller.yaml")
-    set_sim_params = SetLaunchConfiguration("param_file", sim_pid_yaml)
+    # sim_pid_yaml = os.path.join(pkg_controller, "config", "sim_pid_controller.yaml")
+    # set_sim_params = SetLaunchConfiguration("param_file", sim_pid_yaml)
 
     # Include the Subjugator_Setup Launch file
     navigator_setup = IncludeLaunchDescription(
@@ -83,7 +85,8 @@ def generate_launch_description():
         [
             gz_sim_world,
             gz_sim,
-            set_sim_params,
+            # !!! Uncomment once navigator_controller is created !!!
+            # set_sim_params,
             navigator_setup,
             bridge,
         ],

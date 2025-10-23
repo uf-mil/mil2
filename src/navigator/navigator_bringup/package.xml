@@ -4,13 +4,19 @@
   <name>navigator_bringup</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="cckreis0507@gmail.com">ckreis</maintainer>
+  <maintainer email="cckreis0507@gmail.com">Carter Kreis</maintainer>
   <license>TODO: License declaration</license>
+  <author>Carter Kreis</author>
+
+  <depend>joint_state_publisher_gui</depend>
+  <depend>navigator_description</depend>
+  <depend>navigator_gazebo</depend>
+  <depend>ros_gz</depend>
+  <depend>sdformat_urdf</depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
