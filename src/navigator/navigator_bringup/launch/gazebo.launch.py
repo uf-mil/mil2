@@ -17,7 +17,7 @@ def generate_launch_description():
     # Setup project paths
     pkg_project_bringup = get_package_share_directory("navigator_bringup")
     pkg_project_gazebo = get_package_share_directory("navigator_gazebo")
-    # pkg_project_description = get_package_share_directory("navigator_description")
+    pkg_project_description = get_package_share_directory("navigator_description")
     # pkg_project_sim_description = get_package_share_directory(
     #     "navigator_sim_description",
     # )
@@ -56,7 +56,7 @@ def generate_launch_description():
         launch_arguments={
             "use_sim_time": "true",
             "xacro_file": os.path.join(
-                get_package_share_directory("navigator_sim_description"),
+                pkg_project_description,
                 "urdf",
                 "navigator.urdf.xacro",
             ),

@@ -5,10 +5,8 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,
-    IncludeLaunchDescription,
 )
 from launch.conditions import IfCondition
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     Command,
     FindExecutable,
@@ -24,9 +22,11 @@ def generate_launch_description():
     # Setup project paths
     pkg_project_bringup = get_package_share_directory("navigator_bringup")
     pkg_project_description = get_package_share_directory("navigator_description")
-    pkg_thruster_manager = get_package_share_directory("navigator_thruster_manager")
-    pkg_localization = get_package_share_directory("navigator_localization")
-    pkg_controller = get_package_share_directory("navigator_controller")
+
+    # !!! Uncomment once navigator_controller is created !!!
+    # pkg_thruster_manager = get_package_share_directory("navigator_thruster_manager")
+    # pkg_localization = get_package_share_directory("navigator_localization")
+    # pkg_controller = get_package_share_directory("navigator_controller")
 
     # Args
     gui_cmd = DeclareLaunchArgument(
@@ -93,28 +93,29 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("gui")),
     )
 
-    thruster_manager = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_thruster_manager, "launch", "thruster_manager.launch.py"),
-        ),
-    )
-
-    localization = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                pkg_localization,
-                "launch",
-                "navigator_localization.launch.py",
-            ),
-        ),
-        launch_arguments={
-            "params_file": os.path.join(
-                pkg_localization,
-                "config",
-                "localization_parameters.yaml",
-            ),
-        }.items(),
-    )
+    # !!! Uncomment once navigator_controller is created !!!
+    # thruster_manager = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(pkg_thruster_manager, "launch", "thruster_manager.launch.py"),
+    #     ),
+    # )
+    # !!! Uncomment once navigator_localization is created !!!
+    # localization = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(
+    #             pkg_localization,
+    #             "launch",
+    #             "navigator_localization.launch.py",
+    #         ),
+    #     ),
+    #     launch_arguments={
+    #         "params_file": os.path.join(
+    #             pkg_localization,
+    #             "config",
+    #             "localization_parameters.yaml",
+    #         ),
+    #     }.items(),
+    # )
 
     # depth_to_pose = Node(
     # package="navigator_localization",
@@ -123,11 +124,12 @@ def generate_launch_description():
     # output="screen",
     # )
 
-    controller = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_controller, "launch", "pid_controller.launch.py"),
-        ),
-    )
+    # !!! Uncomment once navigator_localization is created !!!
+    # controller = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(pkg_controller, "launch", "pid_controller.launch.py"),
+    #     ),
+    # )
 
     path_planner = Node(
         package="navigator_path_planner",
@@ -161,9 +163,10 @@ def generate_launch_description():
             robot_state_publisher_node,
             # joint_state_publisher_node,
             rviz,
-            thruster_manager,
-            localization,
-            controller,
+            # !!! Uncomment once navigator_localization is created !!!
+            # thruster_manager,
+            # localization,
+            # controller,
             path_planner,
             trajectory_planner,
         ],
