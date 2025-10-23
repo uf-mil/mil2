@@ -7,7 +7,6 @@ from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from std_msgs.msg import String
-from mil_msgs.msg import PerceptionTarget
 from subjugator_msgs.action import NavigateAround
 
 
