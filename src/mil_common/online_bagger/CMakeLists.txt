@@ -21,45 +21,28 @@ add_executable(${PROJECT_NAME}_server_node src/server.cpp)
 add_library(${PROJECT_NAME}_client src/client.cpp)
 add_executable(${PROJECT_NAME} src/online_bagger.cpp)
 
-ament_target_dependencies(${PROJECT_NAME}_server_node 
-        rclcpp 
-        mil_msgs
-        std_msgs
-        rclcpp_action
-        rosbag2_cpp
-        Boost
-)
+ament_target_dependencies(
+  ${PROJECT_NAME}_server_node
+  rclcpp
+  mil_msgs
+  std_msgs
+  rclcpp_action
+  rosbag2_cpp
+  Boost)
 
-ament_target_dependencies(${PROJECT_NAME}_client
-        rclcpp 
-        mil_msgs
-        std_msgs
-        rclcpp_action
-)
+ament_target_dependencies(${PROJECT_NAME}_client rclcpp mil_msgs std_msgs
+                          rclcpp_action)
 
-ament_target_dependencies(${PROJECT_NAME}
-        mil_tools
-        rclcpp
-        Boost
-)
+ament_target_dependencies(${PROJECT_NAME} mil_tools rclcpp Boost)
 
-target_link_libraries(${PROJECT_NAME}
-        ${PROJECT_NAME}_client
-        ftxui::screen
-        ftxui::dom
-        ftxui::component
-)
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_client ftxui::screen
+                      ftxui::dom ftxui::component)
 
 install(TARGETS ${PROJECT_NAME}_server_node ${PROJECT_NAME}_client
-        DESTINATION lib/${PROJECT_NAME} 
-)
+        DESTINATION lib/${PROJECT_NAME})
 
-install(TARGETS ${PROJECT_NAME}
-        DESTINATION bin
-)
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 
-install(DIRECTORY launch/
-  DESTINATION share/${PROJECT_NAME}/launch
-)
+install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 
 ament_package()

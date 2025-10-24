@@ -1,16 +1,17 @@
 #pragma once
 
 #include <rclcpp/rclcpp.hpp>
-#include <rclcpp_action/client.hpp>
 
-#include "mil_msgs/srv/bag_topics.hpp"
 #include "mil_msgs/action/bag_online.hpp"
+#include "mil_msgs/srv/bag_topics.hpp"
+
+#include <rclcpp_action/client.hpp>
 
 namespace online_bagger
 {
-class Client: public rclcpp::Node
+class Client : public rclcpp::Node
 {
-    public:
+  public:
     using BagOnlineGoalHandle = rclcpp_action::ClientGoalHandle<mil_msgs::action::BagOnline>;
     using TopicsFuture = std::shared_future<std::vector<std::string>>;
     using BagFuture = std::shared_future<std::pair<bool, std::string>>;
@@ -36,15 +37,15 @@ class Client: public rclcpp::Node
 
     Client();
     ~Client();
-    
-    State get_state();
-    
-    TopicsFuture get_bag_topics(std::function<void(TopicsFuture)> callback = nullptr);
-    BagFuture bag(const BagOptions& options);
 
-    private:
+    State get_state();
+
+    TopicsFuture get_bag_topics(std::function<void(TopicsFuture)> callback = nullptr);
+    BagFuture bag(BagOptions const& options);
+
+  private:
     using TopicsPromise = std::promise<std::vector<std::string>>;
-    using BagPromise = std::promise<std::pair<bool,std::string>>;
+    using BagPromise = std::promise<std::pair<bool, std::string>>;
 
     std::atomic<bool> bagging;
     rclcpp_action::Client<mil_msgs::action::BagOnline>::SharedPtr action_client;
@@ -52,8 +53,6 @@ class Client: public rclcpp::Node
     rclcpp::TimerBase::SharedPtr alive_timer;
 
     std::function<void(State old_state, State new_state)> on_state_change;
-    
 };
 
-}
-
+}  // namespace online_bagger
