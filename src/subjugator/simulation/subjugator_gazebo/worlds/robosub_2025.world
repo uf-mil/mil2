@@ -191,9 +191,10 @@
       <self_collide>false</self_collide>
     </model>
 
-    <model name='Gripper_Base'>
+    <!-- Gripper Base (in World for Testing, will be added to Sub9) -->
+    <model name='Gripper'>
       <link name='link'>
-        <visual name='visual'>
+        <visual name='GripperBase'>
           <geometry>
             <mesh>
               <uri>
@@ -202,7 +203,7 @@
             </mesh>
           </geometry>
         </visual>
-        <collision name='collision'>
+        <!-- <collision name='collision'>
           <geometry>
             <mesh>
               <uri>
@@ -210,7 +211,16 @@
               </uri>
             </mesh>
           </geometry>
-        </collision>
+        </collision> -->
+        <visual name='GripperArm'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/gripper_2025/gripper_arm.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
           <pose>0 0 0 0 0 0</pose>
