@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace mil_tools::string
+namespace mil::string
 {
 std::vector<std::string> split(std::string const &s, std::string const &delim);
 bool startswith(std::string const &s, std::string const &prefix);
@@ -15,4 +15,4 @@ std::string lstrip(std::string const &s);
 std::string rstrip(std::string const &s);
 std::string removeprefix(std::string const &s, std::string const &prefix);
 std::string removesuffix(std::string const &s, std::string const &suffix);
-}  // namespace mil_tools::string
+}  // namespace mil::string

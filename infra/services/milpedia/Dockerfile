@@ -28,13 +28,24 @@ RUN git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-Citoid
     git clone --depth 1 https://github.com/jmnote/SimpleMathJax /var/www/html/extensions/SimpleMathJax && \
     git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-TemplateStyles /var/www/html/extensions/TemplateStyles -b REL1_43
 
-# Install vim (for easier debugging)
-RUN apt-get update && apt-get install -y vim=2:9.0.1378-2+deb12u2 --no-install-recommends && \
+# Install vim (for easier debugging) and wget
+RUN apt-get update && apt-get install -y vim=2:9.0.1378-2+deb12u2 wget=1.21.4-1ubuntu4.1 --no-install-recommends && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install composer
+RUN wget --progress=dot:giga -cO - https://getcomposer.org/composer-2.phar > /usr/local/bin/composer && \
+    chmod +x /usr/local/bin/composer
+
+# Run composer in TemplateStyles to finish installation (https://www.mediawiki.org/wiki/Extension:TemplateStyles#Installation)
+# hadolint ignore=DL3003
+RUN cd /var/www/html/extensions/TemplateStyles && touch composer.json && composer install --no-dev
 
 # Enable apache2 headers
 # Symlink 'w' in /var/www/html to provide cute URLs
 RUN a2enmod headers && ln -s /var/www/html /var/www/html/w
+# Ensure that w symbolic link is owned by user/group 1000 and ensure that images
+# folder is owned by www-data user (which stores cache data)
+RUN chown -R 1000:1000 /var/www/html/w && chown -R www-data:www-data /var/www/html/images
 
 # Setup resources
 COPY branding/mil_white.svg /var/www/html/resources/assets/mil-white.svg

@@ -11,6 +11,10 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Werror)
 endif()
 
+set(AU_LIB "${CMAKE_SOURCE_DIR}/../../../ext/au")
+message(STATUS "AU_LIB: ${AU_LIB}")
+install(DIRECTORY ${AU_LIB}/ DESTINATION include/${PROJECT_NAME}/)
+
 find_package(ament_cmake REQUIRED)
 find_package(backward_ros REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -24,10 +28,13 @@ add_library(${PROJECT_NAME} ${SOURCE_FILES})
 target_include_directories(
   ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                          $<INSTALL_INTERFACE:include> ${EIGEN3_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${AU_LIB}>
+                                                  $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(${PROJECT_NAME} rclcpp Eigen3 tf2_geometry_msgs)
 ament_export_dependencies(rclcpp Eigen3 tf2_geometry_msgs)
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_include_directories(include)
+include_directories(include)
 
 install(
   TARGETS ${PROJECT_NAME}
@@ -102,6 +109,15 @@ if(BUILD_TESTING)
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
            $<INSTALL_INTERFACE:include>)
   target_link_libraries(${PROJECT_NAME}_slerp_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_geometry_movement_utils_test
+                  test/geometry/movement_utils.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_geometry_movement_utils_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include>)
+  target_link_libraries(${PROJECT_NAME}_geometry_movement_utils_test
+                        ${PROJECT_NAME})
 endif()
 
 ament_package()

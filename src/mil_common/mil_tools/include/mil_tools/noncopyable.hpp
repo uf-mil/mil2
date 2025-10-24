@@ -1,4 +1,4 @@
-namespace mil_tools
+namespace mil
 {
 
 /** Inherit from this class to prevent copying and assignment. */
@@ -15,4 +15,4 @@ class noncopyable
     noncopyable& operator=(noncopyable&&) = default;
 };
 
-}  // namespace mil_tools
+}  // namespace mil

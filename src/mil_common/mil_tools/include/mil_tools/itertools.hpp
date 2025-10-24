@@ -3,7 +3,7 @@
 #include <iterator>
 #include <tuple>
 
-namespace mil_tools::itertools
+namespace mil::itertools
 {
 // https://www.reedbeta.com/blog/python-like-enumerate-in-cpp17/
 template <typename T, typename TIter = decltype(std::begin(std::declval<T>())),
@@ -44,4 +44,4 @@ constexpr auto enumerate(T&& iterable)
     };
     return iterable_wrapper{ std::forward<T>(iterable) };
 }
-}  // namespace mil_tools::itertools
+}  // namespace mil::itertools

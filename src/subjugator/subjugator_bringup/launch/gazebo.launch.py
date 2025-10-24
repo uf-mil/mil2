@@ -2,7 +2,11 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    SetLaunchConfiguration,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
@@ -16,9 +20,10 @@ def generate_launch_description():
     pkg_project_gazebo = get_package_share_directory("subjugator_gazebo")
     # pkg_project_description = get_package_share_directory("subjugator_description")
     pkg_ros_gz_sim = get_package_share_directory("ros_gz_sim")
+    pkg_controller = get_package_share_directory("subjugator_controller")
 
     # Setup to launch the simulator and Gazebo world
-    gz_sim_world = DeclareLaunchArgument("world", default_value="robosub_2024.world")
+    gz_sim_world = DeclareLaunchArgument("world", default_value="robosub_2025.world")
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_ros_gz_sim, "launch", "gz_sim.launch.py"),
@@ -34,12 +39,24 @@ def generate_launch_description():
         }.items(),
     )
 
+    # Get controller to use sim values
+    sim_pid_yaml = os.path.join(pkg_controller, "config", "sim_pid_controller.yaml")
+    set_sim_params = SetLaunchConfiguration("param_file", sim_pid_yaml)
+
     # Include the Subjugator_Setup Launch file
     subjugator_setup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_project_bringup, "launch", "subjugator_setup.launch.py"),
         ),
-        launch_arguments={}.items(),
+        launch_arguments={
+            "use_sim_time": "true",
+            "xacro_file": os.path.join(
+                get_package_share_directory("subjugator_description"),
+                "urdf",
+                "sub9_sim.urdf.xacro",
+            ),
+            "gui": "true",
+        }.items(),
     )
 
     # Bridge ROS topics and Gazebo messages for establishing communication
@@ -59,7 +76,6 @@ def generate_launch_description():
         output="screen",
     )
 
-<<<<<<< online_bagger
     bagger = Node(
         package="online_bagger",
         executable="online_bagger_server_node",
@@ -68,18 +84,10 @@ def generate_launch_description():
                 # add topics to bag here
                 "topics": ["/imu/data"],
             },
-=======
-    return LaunchDescription(
-        [
-            gz_sim_world,
-            gz_sim,
-            subjugator_setup,
-            bridge,
->>>>>>> main
         ],
-        output="screen",
     )
 
     return LaunchDescription(
-        [gz_sim, subjugator_setup, bridge, bagger],
+        [gz_sim_world, gz_sim, set_sim_params, subjugator_setup, bridge, bagger],
+        output="screen",
     )

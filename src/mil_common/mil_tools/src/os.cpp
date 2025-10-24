@@ -2,7 +2,7 @@
 
 #include "mil_tools/os/FileDescriptor.hpp"
 
-namespace mil_tools::os
+namespace mil::os
 {
 std::tuple<FileDescriptor, FileDescriptor> openpty()
 {
@@ -70,4 +70,4 @@ FileDescriptor open(std::string const& filename, int flags)
     }
     return FileDescriptor(fd);
 }
-}  // namespace mil_tools::os
+}  // namespace mil::os

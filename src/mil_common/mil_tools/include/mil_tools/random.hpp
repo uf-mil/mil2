@@ -2,7 +2,7 @@
 
 #include <random>
 
-namespace mil_tools::random
+namespace mil::random
 {
 
 std::string random_string(size_t length)
@@ -23,4 +23,4 @@ std::string random_string(size_t length)
     return str;
 }
 
-}  // namespace mil_tools::random
+}  // namespace mil::random

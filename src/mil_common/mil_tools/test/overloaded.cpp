@@ -4,7 +4,7 @@
 
 TEST(Overloaded, Test)
 {
-    auto f = mil_tools::overloaded::make{
+    auto f = mil::overloaded::make{
         [](int const& x) { return x + 1; },
         [](double const& x) { return x + 2; },
         [](auto const& x) { return x + "3"; },
