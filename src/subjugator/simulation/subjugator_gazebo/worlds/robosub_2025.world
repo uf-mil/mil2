@@ -191,13 +191,13 @@
       <self_collide>false</self_collide>
     </model>
 
-    <model name='Gripper_Arm'>
+    <model name='Gripper_Base'>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <mesh>
               <uri>
-                package:://subjugator_description/models/gripper_2025/gripper_arm.dae
+                package:://subjugator_description/models/gripper_2025/gripper_base.dae
               </uri>
             </mesh>
           </geometry>
