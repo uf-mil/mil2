@@ -23,6 +23,9 @@ struct Context
     std::mutex odom_mx;
     std::optional<nav_msgs::msg::Odometry> latest_odom;
 
+    std::mutex last_goal_mx;
+    std::optional<geometry_msgs::msg::Pose> last_goal;
+
     std::mutex detections_mx;
     std::optional<mil_msgs::msg::PerceptionTargetArray> latest_targets;
 

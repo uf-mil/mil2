@@ -7,6 +7,7 @@
     <include path="absolute_move.xml"/>
     <include path="relative_move.xml"/>
     <include path="square_test_mission.xml"/>
+    <include path="BUST_mission.xml"/>
     <include path="pass_pole_mission.xml"/>
     <include path="start_gate_mission.xml"/>
 </root>

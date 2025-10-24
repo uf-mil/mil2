@@ -122,6 +122,10 @@ BT::NodeStatus HoneBearing::onRunning()
     out.orientation.w = c.w * d.w - c.x * d.x - c.y * d.y - c.z * d.z;
 
     ctx_->goal_pub->publish(out);
+    {
+        std::scoped_lock lk(ctx_->last_goal_mx);
+        ctx_->last_goal = out;
+    }
 
     RCLCPP_INFO_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 500,
                          "HoneBearing: bearing=%.1f°, desired=%.1f° (offset=%.1f°), yaw_delta=%.1f°", bearing, desired,
