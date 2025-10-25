@@ -13,3 +13,6 @@
 [submodule "ext/au"]
 	path = ext/au
 	url = https://github.com/uf-mil/au
+[submodule "ext/cppystruct"]
+	path = ext/cppystruct
+	url = https://github.com/karkason/cppystruct.git
