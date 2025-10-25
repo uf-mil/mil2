@@ -4,6 +4,11 @@
       "cmake-args": [
         "-DBUILD_SHARED_LIBS=ON"
       ]
+    },
+    "CPPYSTRUCT": {
+      "cmake-args": [
+        "-DCPPYSTRUCT_TEST=OFF"
+      ]
     }
   }
 }
