@@ -17,4 +17,6 @@ install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME}/)
 
 install(PROGRAMS scripts/reset_srv_node.py DESTINATION lib/${PROJECT_NAME})
 
+install(PROGRAMS scripts/depth_to_pose_node.py DESTINATION lib/${PROJECT_NAME})
+
 ament_package()
