@@ -75,8 +75,8 @@ class PairedSerial
         if (pthread_create(&workThread2_, NULL, workThreadFunc2_, this) < 0)
             goto cancelThread;
 
-        std::cout << "Slave pty 1 name: " << s1Name << std::endl;
-        std::cout << "Slave pty 2 name: " << s2Name << std::endl;
+        std::cout << "S pty 1 name: " << s1Name << std::endl;
+        std::cout << "S pty 2 name: " << s2Name << std::endl;
         goto ret;
 
     cancelThread:
@@ -152,7 +152,7 @@ void* PairedSerial<BufferSize>::workThreadFunc1_(void* arg)
     while (serial->waitConnection(serial->m1Fd_) == -1)
         ;
 
-    std::cout << "Slave pty 1 connected" << std::endl;
+    std::cout << "S pty 1 connected" << std::endl;
 
     while (1)
     {
@@ -173,7 +173,7 @@ void* PairedSerial<BufferSize>::workThreadFunc2_(void* arg)
     while (serial->waitConnection(serial->m2Fd_) == -1)
         ;
 
-    std::cout << "Slave pty 2 connected" << std::endl;
+    std::cout << "S pty 2 connected" << std::endl;
 
     while (1)
     {
