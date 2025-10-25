@@ -17,11 +17,14 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rclcpp REQUIRED)
 
+# Self deps
+find_package(mil_tools REQUIRED)
+
 # External deps
 find_package(backward_ros REQUIRED)
 
 # Define your library target
-add_library(${PROJECT_NAME} INTERFACE)
+add_library(${PROJECT_NAME} src/driver.cpp)
 
 # Install the python module for this package
 ament_python_install_package(${PROJECT_NAME})
@@ -33,20 +36,21 @@ include_directories(include)
 set(CPPYSTRUCT_LIB "${CMAKE_SOURCE_DIR}/../../../ext/cppystruct")
 message(STATUS "CPPYSTRUCT_LIB INCLUDE PATH: ${CPPYSTRUCT_LIB}/include")
 
-# Include the directory containing cppystruct.h
+# Include cppystruct header files
 target_include_directories(
   ${PROJECT_NAME}
-  INTERFACE $<BUILD_INTERFACE:${CPPYSTRUCT_LIB}/include> # This makes
-                                                         # <cppystruct.h> work
-            $<INSTALL_INTERFACE:include>)
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<BUILD_INTERFACE:${CPPYSTRUCT_LIB}/include>
+         $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/../CPPYSTRUCT/include>
+         $<INSTALL_INTERFACE:include>)
 
-# Install cppystruct headers so they're available for dependent packages
-install(DIRECTORY ${CPPYSTRUCT_LIB}/include/
-        DESTINATION include/${PROJECT_NAME})
-# Ensure the include directory is installed properly
-install(DIRECTORY ${CPPYSTRUCT_LIB}/include/cppystruct
-        DESTINATION include/${PROJECT_NAME})
+# Install the library
+install(
+  TARGETS ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}
+  LIBRARY DESTINATION lib/${PROJECT_NAME})
 
+# Install header files
 install(DIRECTORY include DESTINATION include/${PROJECT_NAME})
 
 install(PROGRAMS test/calculator_device.py test/calculator_device_noros.py
@@ -76,12 +80,21 @@ if(BUILD_TESTING)
   endforeach()
 
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(${PROJECT_NAME}_test_packet test/test_packet.cpp)
+  ament_add_gtest(${PROJECT_NAME}_packet_test test/test_packet.cpp)
   target_include_directories(
-    ${PROJECT_NAME}_test_packet
+    ${PROJECT_NAME}_packet_test
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
            $<INSTALL_INTERFACE:include>)
-  target_link_libraries(${PROJECT_NAME}_test_packet ${PROJECT_NAME})
+  target_link_libraries(${PROJECT_NAME}_packet_test ${PROJECT_NAME})
+
+  ament_add_gtest(${PROJECT_NAME}_driver_test test/test_driver.cpp)
+  target_include_directories(
+    ${PROJECT_NAME}_driver_test
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           $<INSTALL_INTERFACE:include> ${mil_tools_INCLUDE_DIRS})
+  target_link_libraries(${PROJECT_NAME}_driver_test ${PROJECT_NAME}
+                        mil_tools::mil_tools)
+
 endif()
 
 ament_package()
