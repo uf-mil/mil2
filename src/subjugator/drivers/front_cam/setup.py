@@ -21,6 +21,9 @@ setup(
     license="TODO: License declaration",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["front_cam = front_cam.front_cam_driver:main"],
+        "console_scripts": [
+            "front_cam = front_cam.front_cam_driver:main",
+            "web_cam = front_cam.webcam_compressed:main",
+        ],
     },
 )
