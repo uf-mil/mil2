@@ -1,0 +1,7 @@
+<root main_tree_to_execute="TopicTickerTest">
+  <BehaviorTree ID="TopicTickerTest">
+    <TopicTicker name="topic_ticker" topic_name="dvl/odom" ctx="{ctx}">
+      <CountWhenTicked name="counter_action"/>
+    </TopicTicker>
+  </BehaviorTree>
+</root>

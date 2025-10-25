@@ -17,6 +17,8 @@
 #include "wait_for_target.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <count_when_ticked.hpp>
+#include <topic_ticker.hpp>
 
 int main(int argc, char** argv)
 {
@@ -80,6 +82,9 @@ int main(int argc, char** argv)
     factory.registerNodeType<AdvanceUntilLost>("AdvanceUntilLost");
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
+
+    factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
+    factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
 
     // Load all tree models from installed xml
     std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");
