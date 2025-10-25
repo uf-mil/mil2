@@ -1,7 +1,8 @@
-#include <electrical_protocol_cpp/driver.h>
 #include <gtest/gtest.h>
 #include <pthread.h>
 #include <semaphore.h>
+
+#include "electrical_protocol/driver.h"
 
 #include <mil_tools/pairedSerial.hpp>
 

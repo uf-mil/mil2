@@ -11,7 +11,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "electrical_protocol_cpp/packet.h"
+#include "electrical_protocol/packet.h"
 
 namespace electrical_protocol
 {

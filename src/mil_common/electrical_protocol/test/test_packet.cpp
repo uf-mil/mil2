@@ -1,56 +1,113 @@
 #include <gtest/gtest.h>
 
-#include "electrical_protocol/Packet.h"
+#include "electrical_protocol/packet.h"
 
-class TestPacket : public electrical_protocol::Packet<TestPacket, 0x03, 0x07, "i">
+TEST(packet, packunpack)
 {
-    int fav_number_ = 0;
+    electrical_protocol::Packet packet(1, 1);
 
-  public:
-    constexpr TestPacket(int fav_number) : fav_number_(fav_number)
-    {
-        pack();
-    }
-    inline bool operator==(TestPacket const& other) const
-    {
-        return fav_number_ == other.fav_number_;
-    }
-    inline bool operator!=(TestPacket const& other) const
-    {
-        return !(*this == other);
-    }
-    constexpr void unpack_handle(std::array<char, SIZE> const& spliced_data)
-    {
-        fav_number_ = std::get<0>(pystruct::unpack(PY_STRING("i"), spliced_data));
-    }
-    constexpr std::array<char, DATA_LEN> pack_format() const
-    {
-        return pystruct::pack(PY_STRING("i"), fav_number_);
-    }
-};
+    unsigned ta = 42;
+    float tb = 3.14;
+    double tc = 2.7182818;
+    int td = 7;
+    char te = 'A';
+    std::string tf = "Hello";
+    bool tg = true;
+    uint64_t th = 987654321;
 
-TEST(electrical_protocol, test_packet)
-{
-    constexpr TestPacket packet(3701);
-    // Sync characters
-    static_assert(packet.data[0] == 0x37);
-    static_assert(packet.data[1] == 0x01);
-    // Class and subclass IDs
-    static_assert(packet.data[2] == 0x03);
-    static_assert(packet.data[3] == 0x07);
-    // data length
-    static_assert(packet.data[4] == 0x04);
-    static_assert(packet.data[5] == 0x00);
-    // data (int of 3701)
-    static_assert(packet.data[6] == 0x75);
-    static_assert(packet.data[7] == 0xE);
-    static_assert(packet.data[8] == 0x0);
-    static_assert(packet.data[9] == 0x0);
-    ASSERT_EQ(packet, TestPacket(3701));
+    EXPECT_THROW(packet.unpack(PY_STRING("Ifdhc5s?Q")), std::out_of_range);
+
+    packet.pack(PY_STRING("Ifdhc5s?Q"), ta, tb, tc, td, te, tf, tg, th);
+    auto [ra, rb, rc, rd, re, rf, rg, rh] = packet.unpack(PY_STRING("Ifdhc5s?Q"));
+
+    EXPECT_EQ(ta, ra);
+    EXPECT_EQ(tb, rb);
+    EXPECT_EQ(tc, rc);
+    EXPECT_EQ(td, rd);
+    EXPECT_EQ(te, re);
+    EXPECT_EQ(tf, rf);
+    EXPECT_EQ(tg, rg);
+    EXPECT_EQ(th, rh);
+
+    EXPECT_THROW(packet.unpack(PY_STRING("Ifdhc5s?QQ")), std::out_of_range);
 }
 
-int main(int argc, char** argv)
+std::string testString("The Machine Intelligence Laboratory (MIL) "
+                       "provides a synergistic environment dedicated "
+                       "to the study and development of intelligent, autonomous robots. "
+                       "The faculty and students associated with the laboratory "
+                       "conduct research in the theory and realization of "
+                       "machine intelligence covering topics such as machine learning, "
+                       "real-time computer vision, statistical modeling, robot kinematics, "
+                       "autonomous vehicles, teleoperation and human interfaces, "
+                       "robot and nonlinear control, computational intelligence, "
+                       "neural networks, and general robotics. "
+                       "Applications of MIL research include autonomous underwater vehicles (AUVs), "
+                       "autonomous water surface vehicles (ASVs), autonomous land vehicles, "
+                       "autonomous air vehicles (AAVs including quadcopters and micro air vehicles, MAVs) , "
+                       "swarm robots, humanoid robots, and autonomous household robots.");
+
+TEST(packet, size)
 {
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    electrical_protocol::Packet packet(1, 1);
+    packet.pack(PY_STRING("831s"), testString);
+    EXPECT_EQ(packet.size(), 831);
+    EXPECT_THROW(packet.unpack(PY_STRING("832s")), std::out_of_range);
+}
+
+TEST(packet, id)
+{
+    electrical_protocol::Packet packet1(1, 1);
+    EXPECT_EQ(packet1.id().first, 1);
+    EXPECT_EQ(packet1.id().second, 1);
+
+    electrical_protocol::Packet packet2(packet1);
+    EXPECT_EQ(packet2.id().first, 1);
+    EXPECT_EQ(packet2.id().second, 1);
+
+    electrical_protocol::Packet packet3(std::move(packet1));
+    EXPECT_EQ(packet3.id().first, 1);
+    EXPECT_EQ(packet3.id().second, 1);
+
+    electrical_protocol::Packet packet4(2, 2);
+
+    EXPECT_THROW(packet4 = packet1, std::runtime_error);
+    EXPECT_THROW(packet4 = std::move(packet1), std::runtime_error);
+}
+
+TEST(packet, move)
+{
+    electrical_protocol::Packet packet1(1, 1);
+    packet1.pack(PY_STRING("831s"), testString);
+
+    electrical_protocol::Packet packet2 = std::move(packet1);
+    EXPECT_EQ(packet2.size(), 831);
+    EXPECT_EQ(packet1.size(), 0);
+
+    packet1 = std::move(packet2);
+    EXPECT_EQ(packet1.size(), 831);
+    EXPECT_EQ(packet2.size(), 0);
+}
+
+TEST(packet, copy)
+{
+    electrical_protocol::Packet packet1(1, 1);
+    packet1.pack(PY_STRING("831s"), testString);
+
+    electrical_protocol::Packet packet2 = packet1;
+    EXPECT_EQ(packet1.size(), 831);
+    EXPECT_EQ(packet2.size(), 831);
+}
+
+TEST(packet, randomAccess)
+{
+    electrical_protocol::Packet packet(1, 1);
+    EXPECT_THROW(packet[1], std::out_of_range);
+
+    packet.resize(10);
+    EXPECT_NO_THROW(packet[3] = packet[2] = 10);
+    EXPECT_THROW(packet[10], std::out_of_range);
+
+    uint8_t a = packet[3];
+    EXPECT_EQ(a, 10);
 }

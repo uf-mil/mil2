@@ -10,6 +10,8 @@
   <buildtool_depend>ament</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
   <test_depend>python3-pytest</test_depend>
+  <depend>CPPYSTRUCT</depend>
+  <depend>mil_tools</depend>
 
   <exec_depend>rclpy</exec_depend>
 
