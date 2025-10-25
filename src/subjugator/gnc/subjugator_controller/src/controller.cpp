@@ -191,9 +191,9 @@ void PIDController::publish_commands(std::array<double, 6> const &commands)
     msg.force.x = force_base_link.x();
     msg.force.y = force_base_link.y();
     msg.force.z = force_base_link.z();
-    msg.torque.x = commands[3];  // torque_base_link.x();
-    msg.torque.y = commands[4];  // torque_base_link.y();
-    msg.torque.z = commands[5];  // torque_base_link.z();
+    msg.torque.x = torque_base_link.x();
+    msg.torque.y = torque_base_link.y();
+    msg.torque.z = torque_base_link.z();
 
     pub_cmd_wrench_->publish(msg);
 }
@@ -255,7 +255,7 @@ void PIDController::reset(std::shared_ptr<std_srvs::srv::Empty::Request> const,
     for (size_t i = 0; i < pid_vec_.size(); i++)
     {
         // reset pid instances (call reset(true) to keep the integral term instead)
-        pid_vec_[i].reset();
+        pid_vec_[i].reset();  // pid_vec_[i] = control_toolbox::Pid();
         pid_vec_[i].set_gains(param_map_["kp"].first[i], param_map_["ki"].first[i], param_map_["kd"].first[i],
                               param_map_["imax"].first[i], param_map_["imin"].first[i],
                               param_map_["antiwindup"].first[i]);

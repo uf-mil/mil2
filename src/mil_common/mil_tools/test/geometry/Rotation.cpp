@@ -6,8 +6,8 @@
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-using mil_tools::geometry::Axis;
-using mil_tools::geometry::Rotation;
+using mil::geometry::Axis;
+using mil::geometry::Rotation;
 
 TEST(mil_tools_geometry_rotation, identity)
 {

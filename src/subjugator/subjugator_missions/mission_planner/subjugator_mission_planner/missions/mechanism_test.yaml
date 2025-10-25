@@ -1,0 +1,37 @@
+mission:
+  - task: move
+    parameters:
+      type: "Relative"
+      x: 2.5
+      y: 0.0
+      z: -0.1
+      i: 0.0
+      j: 0.0
+      k: 0.0
+      w: 1.0
+      timeout: 120
+  - task: move
+    parameters:
+      type: "Relative"
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      i: 0.0
+      j: 0.0
+      k: 1.0
+      w: 0.0
+      timeout: 120
+  - task: wait
+    parameters:
+      time: 3.0
+  - task: mechanism
+    parameters:
+      mechanism: "torpedo"
+      angle: 35
+  - task: wait
+    parameters:
+      time: 1.0
+  - task: mechanism
+    parameters:
+      mechanism: "torpedo"
+      angle: 82

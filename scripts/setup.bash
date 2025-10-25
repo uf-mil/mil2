@@ -1,6 +1,8 @@
 #! /usr/bin/env bash
 MIL_REPO="$HOME/mil2"
 
+# joe wanted to re-run ci :(
+
 if [[ $(ps -p $$ | tail -n 1 | awk '{ print $4 }') == "zsh" ]]; then
 	source /opt/ros/jazzy/setup.zsh
 else
@@ -17,8 +19,9 @@ _list_complete() {
 	done
 }
 
-# Use Cyclone DDS by default (it's super fast and amazing!)
+# Use Cyclone DDS by default (it's super fast and amazing!) (ci re-run plz)
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI=${MIL_REPO}/cyclone.xml
 
 # Setup colcon_cd
 source "/usr/share/colcon_cd/function/colcon_cd.sh"
@@ -237,6 +240,110 @@ list_lan_devices() {
 	nmap -sP "$1" -oG - | awk '/Up$/{print $2}'
 }
 
+function pub_wrench() {
+	if [ "$#" -ne 7 ]; then
+		echo "Usage: pub_wrench fx fy fz tx ty tz duration_seconds"
+		return 1
+	fi
+
+	local fx=$1
+	local fy=$2
+	local fz=$3
+	local tx=$4
+	local ty=$5
+	local tz=$6
+	local duration=$7
+
+	echo "Publishing force for ${duration} seconds..."
+
+	ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+  x: ${fx}
+  y: ${fy}
+  z: ${fz}
+torque:
+  x: ${tx}
+  y: ${ty}
+  z: ${tz}
+"
+
+	sleep "${duration}"
+
+	echo "Stopping force..."
+
+	ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+  x: 0.0
+  y: 0.0
+  z: 0.0
+torque:
+  x: 0.0
+  y: 0.0
+  z: 0.0
+"
+}
+
+function move_rel() {
+	if [ "$#" -eq 0 ] || [ "$#" -gt 6 ]; then
+		echo "Usage: move_rel <dx> [dy] [dz] [droll°] [dpitch°] [dyaw°]"
+		return 1
+	fi
+
+	# Fill missing args with zeroes
+	local params=(0 0 0 0 0 0)
+	local i=0
+	for arg in "$@"; do
+		params[$i]=$arg
+		((i++))
+	done
+
+	python3 - "${params[@]}" <<'PYTHON'
+import sys, time, numpy as np, rclpy
+from geometry_msgs.msg import Pose
+from nav_msgs.msg import Odometry
+from scipy.spatial.transform import Rotation as R
+
+dx, dy, dz, droll_deg, dpitch_deg, dyaw_deg = map(float, sys.argv[1:])
+
+rclpy.init()
+node = rclpy.create_node('move_relative_publisher')
+
+current_pose = None
+def odom_cb(msg):
+    global current_pose
+    current_pose = msg.pose.pose
+node.create_subscription(Odometry, '/odometry/filtered', odom_cb, 10)
+
+while rclpy.ok() and current_pose is None:
+    rclpy.spin_once(node, timeout_sec=0.1)
+
+body_rot = R.from_quat([
+    current_pose.orientation.x,
+    current_pose.orientation.y,
+    current_pose.orientation.z,
+    current_pose.orientation.w])
+
+abs_pos = np.array([current_pose.position.x,
+                    current_pose.position.y,
+                    current_pose.position.z]) \
+          + body_rot.apply([dx, dy, dz])
+
+abs_rot = body_rot * R.from_euler('xyz',
+             np.deg2rad([droll_deg, dpitch_deg, dyaw_deg]))
+qx, qy, qz, qw = abs_rot.as_quat()
+
+goal = Pose()
+goal.position.x, goal.position.y, goal.position.z = abs_pos
+goal.orientation.x, goal.orientation.y, goal.orientation.z, goal.orientation.w = qx, qy, qz, qw
+
+pub = node.create_publisher(Pose, '/goal_pose', 10)
+time.sleep(0.2)             # allow DDS match-up
+pub.publish(goal)
+node.get_logger().info(f'Published relative goal:\n{goal}')
+time.sleep(0.3)
+node.destroy_node()
+rclpy.shutdown()
+PYTHON
+}
+
 alias list_mil_devices="list_lan_devices 192.168.37.1/24"
 
 # aliases for localization and controller service calls
@@ -271,3 +378,5 @@ torpedo() {
 
 	ros2 service call /torpedo subjugator_msgs/srv/Servo "{angle: '$1'}"
 }
+
+export ROS_DOMAIN_ID=37

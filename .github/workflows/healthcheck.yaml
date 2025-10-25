@@ -45,7 +45,7 @@ jobs:
     steps:
       - name: milwiki
         run: |
-          ping -c 1 milwiki.cbrxyz.com &> /dev/null
+          wget milwiki.cbrxyz.com -O /dev/null &> /dev/null
       - name: mil website
         run: |
           ping -c 1 mil.ufl.edu &> /dev/null

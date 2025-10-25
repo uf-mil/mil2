@@ -46,7 +46,7 @@ repos:
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
-        exclude: ^NaviGator/simulation/VRX
+        exclude: ^NaviGator/simulation/VRX|subjugator/gnc/yolo_ros
   - repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.10
     hooks:
@@ -105,3 +105,12 @@ repos:
       - id: no-commit-to-branch
         args:
           - --branch=master
+  - repo: local
+    hooks:
+      - id: prettier-world
+        name: prettier world
+        description: Apply Prettier with plugin-xml to gazebo world files
+        entry: prettier --write --parser=xml --xml-whitespace-sensitivity=ignore
+        language: node
+        files: .world$
+        additional_dependencies: [prettier@2.8.7, "@prettier/plugin-xml@2.2.0"]

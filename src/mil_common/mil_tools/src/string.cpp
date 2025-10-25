@@ -1,6 +1,6 @@
 #include "mil_tools/string.hpp"
 
-namespace mil_tools::string
+namespace mil::string
 {
 std::vector<std::string> split(std::string const &str, std::string const &delim)
 {
@@ -72,4 +72,4 @@ std::string removesuffix(std::string const &s, std::string const &suffix)
     }
     return s;
 }
-}  // namespace mil_tools::string
+}  // namespace mil::string

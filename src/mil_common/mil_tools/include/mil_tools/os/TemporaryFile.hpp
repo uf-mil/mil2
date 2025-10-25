@@ -13,7 +13,7 @@
 #include "mil_tools/os/FileDescriptor.hpp"
 #include "mil_tools/string.hpp"
 
-namespace mil_tools::os
+namespace mil::os
 {
 
 class TemporaryFile
@@ -31,7 +31,7 @@ class TemporaryFile
         {
             throw std::runtime_error("Failed to create temporary file " + path() + ": " + strerror(errno));
         }
-        name_ = mil_tools::string::removeprefix(name.data(), tmp_path_);
+        name_ = mil::string::removeprefix(name.data(), tmp_path_);
         fd_ = FileDescriptor(raw_fd);
     }
     FileDescriptor fd_;
@@ -86,4 +86,4 @@ class TemporaryFile
     };
 };
 
-}  // namespace mil_tools::os
+}  // namespace mil::os

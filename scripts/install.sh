@@ -146,7 +146,7 @@ $(hash_header)$(color "$Res")
 EOF
 
 # Ensure that locales are set up correctly
-sudo apt update && sudo apt install locales
+sudo apt update && sudo apt install -y locales
 sudo locale-gen en_US en_US.UTF-8
 sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 export LANG=en_US.UTF-8
@@ -390,6 +390,16 @@ if grep 'set -g default-terminal "screen-256color"' ~/tmux.conf; then
 else
 	echo 'set -g default-terminal "screen-256color"' >>~/.tmux.conf
 fi
+
+cat <<EOF
+$(color "$Pur")
+$(hash_header)
+Updating submodules...
+$(hash_header)
+$(color "$Res")
+EOF
+
+git submodule update --init --recursive
 
 mil_user_setup_init_colcon
 

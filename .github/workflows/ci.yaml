@@ -75,6 +75,11 @@ jobs:
         if: steps.cache-pre-commit.outputs.cache-hit != 'true'
         run: |
           pre-commit install-hooks
+      - name: Install hadolint
+        run: |
+          URL=https://github.com/hadolint/hadolint/releases/download/v2.10.0/hadolint-Linux-x86_64
+          sudo wget -O /bin/hadolint $URL
+          sudo chmod +x /bin/hadolint
       - name: Run pre-commit
         run: |
           pre-commit run --all-files --show-diff-on-failure
@@ -86,26 +91,12 @@ jobs:
     runs-on:
       group: mala-lab-noble
     steps:
-      - name: Configure catkin workspace folder structure
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE"/catkin_ws/src
-          sudo apt reinstall python3-pip
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Setup ROS2 Jazzy
-        uses: ros-tooling/setup-ros@v0.7
-        with:
-          required-ros-distributions: jazzy
-      - name: Install pip dependencies
-        run: |
-          python3 -m pip config set global.break-system-packages true
-          pip3 install -r requirements.txt
       - name: Install system dependencies and build
         run: |
-          # Needed for /etc/update-manager/release-upgrades
-          sudo apt-get install -y ubuntu-release-upgrader-core
           rm -rf build install log
           export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
           ALLOW_NONSTANDARD_DIR=1 ./scripts/install.sh
@@ -118,7 +109,7 @@ jobs:
           source "$GITHUB_WORKSPACE"/scripts/setup.bash
           set -u
           # Ensure that origin/main is up to date
-          git fetch origin
+          git fetch origin --recurse-submodules=no
           ALL_CHANGES=()
           while IFS='' read -r line; do
             ALL_CHANGES+=("$line")
@@ -131,7 +122,7 @@ jobs:
           tidy "${ALL_CHANGES[@]}"
       - name: Run colcon tests
         run: |
-          export HOME=$GITHUB_WORKSPACE # Temporary fix for setup scripts
+          export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
           source /opt/ros/jazzy/setup.bash
           source install/setup.bash
           set +u

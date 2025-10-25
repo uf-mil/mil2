@@ -1,6 +1,6 @@
 #include "mil_tools/fs/path.hpp"
 
-namespace mil_tools::fs::path
+namespace mil::fs::path
 {
 
 std::optional<std::string> home()
@@ -22,4 +22,4 @@ std::string expanduser(std::string const &path)
     return *home_opt + std::string(path).substr(1);
 }
 
-}  // namespace mil_tools::fs::path
+}  // namespace mil::fs::path

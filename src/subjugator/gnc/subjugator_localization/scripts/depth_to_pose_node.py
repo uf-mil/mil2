@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""
+Convert /depth (mil_msgs/DepthStamped) to /depth/pose
+(geometry_msgs/PoseWithCovarianceStamped) so the EKF
+can fuse an absolute Z measurement in simulation.
+"""
+import rclpy
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from mil_msgs.msg import DepthStamped
+from rclpy.node import Node
+
+
+class DepthToPose(Node):
+    def __init__(self):
+        super().__init__("depth_to_pose")
+        self.bias = None
+        self.sub = self.create_subscription(DepthStamped, "/depth", self.cb, 10)
+        self.pub = self.create_publisher(PoseWithCovarianceStamped, "/depth/pose", 10)
+
+    def cb(self, msg: DepthStamped):
+        p = PoseWithCovarianceStamped()
+        p.header.stamp = msg.header.stamp
+        p.header.frame_id = "odom"
+
+        if self.bias is None:
+            self.bias = msg.depth
+
+        relative_depth = msg.depth - self.bias
+        p.pose.pose.position.z = -relative_depth
+
+        p.pose.pose.orientation.w = 1.0
+        p.pose.covariance[0] = 1e3
+        p.pose.covariance[7] = 1e3
+        p.pose.covariance[14] = 0.000025
+        p.pose.covariance[21] = 1e3
+        p.pose.covariance[28] = 1e3
+        p.pose.covariance[35] = 1e3
+        self.pub.publish(p)
+
+
+def main():
+    rclpy.init()
+    rclpy.spin(DepthToPose())
+    rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
