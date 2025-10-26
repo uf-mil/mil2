@@ -9,6 +9,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(mil_msgs REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
@@ -38,6 +39,7 @@ ament_target_dependencies(
   rclcpp
   geometry_msgs
   nav_msgs
+  mil_msgs
   sensor_msgs
   yolo_msgs
   behaviortree_cpp
@@ -53,6 +55,7 @@ ament_target_dependencies(
   rclcpp
   geometry_msgs
   nav_msgs
+  mil_msgs
   sensor_msgs
   yolo_msgs
   behaviortree_cpp

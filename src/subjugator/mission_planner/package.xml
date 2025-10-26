@@ -12,12 +12,12 @@
   <depend>behaviortree_cpp</depend>
   <depend>geometry_msgs</depend>
   <depend>lifecycle_msgs</depend>
+  <depend>mil_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>rcl_interfaces</depend>
   <depend>rclcpp</depend>
   <depend>yolo_msgs</depend>
 
-  <build_depend>mil_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <exec_depend>sensor_msgs</exec_depend>
 
