@@ -12,11 +12,11 @@ find_package(navigator_gazebo REQUIRED)
 # Install project launch files
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 
-# Install URDF files
-install(DIRECTORY urdf DESTINATION share/${PROJECT_NAME}/urdf)
+# Install URDF files install(DIRECTORY urdf DESTINATION
+# share/${PROJECT_NAME}/urdf)
 
-# Install project configuration files
-install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
+# Install project configuration files install(DIRECTORY config/ DESTINATION
+# share/${PROJECT_NAME}/config)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
