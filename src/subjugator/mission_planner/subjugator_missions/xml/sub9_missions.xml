@@ -10,4 +10,5 @@
     <include path="pass_pole_mission.xml"/>
     <include path="start_gate_mission.xml"/>
     <include path="topic_ticker_test_mission.xml"/>
+    <include path="sonar_follower_test_mission.xml"/>
 </root>
