@@ -7,16 +7,20 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "advance_until_lost.hpp"
-#include "align_bearing.hpp"
+#include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
+#include "check_yolo_model.hpp"
 #include "context.hpp"
 #include "detect_target.hpp"
+#include "determine_channel_side.hpp"
+#include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
+#include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
-#include "wait_for_target.hpp"
+#include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <yolo_msgs/msg/detection_array.hpp>
 
 int main(int argc, char** argv)
 {
@@ -38,13 +42,13 @@ int main(int argc, char** argv)
                                                                        });
 
     // Perception targets: from your YOLO node
-    ctx->targets_sub = node->create_subscription<mil_msgs::msg::PerceptionTargetArray>(
-        "/perception/targets", 10,
-        [ctx](mil_msgs::msg::PerceptionTargetArray::SharedPtr msg)
-        {
-            std::scoped_lock lk(ctx->detections_mx);
-            ctx->latest_targets = *msg;
-        });
+    ctx->targets_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>("/yolo/detections", 10,
+                                                                  [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
+                                                                  {
+                                                                      std::scoped_lock lk(ctx->detections_mx);
+                                                                      ctx->latest_detections = *msg;
+                                                                  });
 
     // Image size (for pixel->angle mapping). Probably do not need
     ctx->image_sub = node->create_subscription<sensor_msgs::msg::Image>("/front_cam/image_raw", 10,
@@ -75,11 +79,14 @@ int main(int argc, char** argv)
     BT::BehaviorTreeFactory factory;
     factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
     factory.registerNodeType<AtGoalPose>("AtGoalPose");
-    factory.registerNodeType<WaitForTarget>("WaitForTarget");
-    factory.registerNodeType<AlignBearing>("AlignBearing");
-    factory.registerNodeType<AdvanceUntilLost>("AdvanceUntilLost");
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
+    factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
+    factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
+    factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
+    factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
+    factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
+    factory.registerNodeType<HasFoundPair>("HasFoundPair");
 
     // Load all tree models from installed xml
     std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");

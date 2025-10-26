@@ -6,8 +6,8 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
-#include <mil_msgs/msg/perception_target_array.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <yolo_msgs/msg/detection_array.hpp>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -63,22 +63,22 @@ BT::NodeStatus HoneBearing::onRunning()
     }
 
     // Find best detection with matching label
-    std::optional<mil_msgs::msg::PerceptionTargetArray> arr;
+    std::optional<yolo_msgs::msg::DetectionArray> arr;
     {
         std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_targets;
+        arr = ctx_->latest_detections;
     }
-    if (!arr || arr->targets.empty())
+    if (!arr || arr->detections.empty())
         return BT::NodeStatus::RUNNING;
 
-    mil_msgs::msg::PerceptionTarget const* best = nullptr;
-    float best_conf = 0.f;
-    for (auto const& t : arr->targets)
+    yolo_msgs::msg::Detection const* best = nullptr;
+    double best_conf = 0.0;
+    for (auto const& det : arr->detections)
     {
-        if (t.label == label && t.confidence >= min_conf && t.confidence > best_conf)
+        if (det.class_name == label && det.score >= min_conf && det.score > best_conf)
         {
-            best = &t;
-            best_conf = t.confidence;
+            best = &det;
+            best_conf = det.score;
         }
     }
 
@@ -86,7 +86,7 @@ BT::NodeStatus HoneBearing::onRunning()
         return BT::NodeStatus::RUNNING;
 
     // Pixel -> bearing (deg). Center=0, right positive.
-    double cx = best->cx;
+    double cx = best->bbox.center.position.x;
     double bearing = ((cx - (double)W / 2.0) / ((double)W / 2.0)) * (fov / 2.0);
 
     double desired = offset_deg;

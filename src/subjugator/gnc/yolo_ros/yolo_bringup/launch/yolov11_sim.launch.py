@@ -19,13 +19,14 @@ def generate_launch_description():
                 ),
                 launch_arguments={
                     "model": LaunchConfiguration(
-                        "model", default="/home/carlos/mil2/models/start_gate_sim.pt"
+                        "model",
+                        default="/home/carlos/mil2/src/subjugator/gnc/subjugator_vision/models/start_gate_sim.pt",
                     ),
                     "input_image_topic": LaunchConfiguration(
                         "input_image_topic", default="/front_cam/image_raw"
                     ),
                     "image_reliability": LaunchConfiguration(
-                        "image_reliability", default="2"
+                        "image_reliability", default="1"
                     ),
                     "namespace": LaunchConfiguration("namespace", default="yolo"),
                     "device": LaunchConfiguration("device", default="cpu"),

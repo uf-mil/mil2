@@ -11,8 +11,10 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(mil_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(yolo_msgs REQUIRED)
+find_package(lifecycle_msgs REQUIRED)
+find_package(rcl_interfaces REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
@@ -23,7 +25,13 @@ add_library(
   subjugator_operations/src/publish_goal.cpp
   subjugator_operations/src/at_goal_pose.cpp
   subjugator_operations/src/detect_target.cpp
-  subjugator_operations/src/hone_bearing.cpp)
+  subjugator_operations/src/hone_bearing.cpp
+  subjugator_operations/src/check_yolo_model.cpp
+  subjugator_operations/src/track_largest_poles.cpp
+  subjugator_operations/src/poles_big_enough.cpp
+  subjugator_operations/src/determine_channel_side.cpp
+  subjugator_operations/src/any_poles_detected.cpp
+  subjugator_operations/src/has_found_pair.cpp)
 
 ament_target_dependencies(
   operations
@@ -31,10 +39,13 @@ ament_target_dependencies(
   geometry_msgs
   nav_msgs
   sensor_msgs
-  mil_msgs
-  behaviortree_cpp)
+  yolo_msgs
+  behaviortree_cpp
+  lifecycle_msgs
+  rcl_interfaces
+  ament_index_cpp)
 
-# ---- Node
+# Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
 target_link_libraries(mission_planner_node operations)
 ament_target_dependencies(
@@ -43,7 +54,7 @@ ament_target_dependencies(
   geometry_msgs
   nav_msgs
   sensor_msgs
-  mil_msgs
+  yolo_msgs
   behaviortree_cpp
   ament_index_cpp)
 
@@ -56,4 +67,6 @@ install(
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY subjugator_operations/include/ DESTINATION include)
 install(DIRECTORY subjugator_missions/xml/ DESTINATION share/${PROJECT_NAME}/bt)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../gnc/subjugator_vision/models/
+        DESTINATION share/${PROJECT_NAME}/models)
 ament_package()

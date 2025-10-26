@@ -21,6 +21,9 @@ BT::PortsList PublishGoalPose::providedPorts()
 
     // Degrees API (default on)
     ports.insert(BT::InputPort<bool>("use_euler_deg", true, "Use roll/pitch/yaw degrees"));
+    ports.insert(BT::InputPort<bool>("keep_current_pos_abs", true,
+                                     "If absolute orientation, keep current position instead of 0,0,0"));
+
     ports.insert(BT::InputPort<double>("roll_deg", 0.0, "Roll (deg)"));
     ports.insert(BT::InputPort<double>("pitch_deg", 0.0, "Pitch (deg)"));
     ports.insert(BT::InputPort<double>("yaw_deg", 0.0, "Yaw (deg)"));
@@ -195,6 +198,15 @@ BT::NodeStatus PublishGoalPose::tick()
         base.orientation.x = base.orientation.y = base.orientation.z = 0.0;
         base.orientation.w = 1.0;
         RCLCPP_WARN(ctx_->logger(), "PublishGoalPose: composing without odom; assuming world origin.");
+    }
+
+    bool keep_cur_abs = true;
+    (void)getInput("keep_current_pos_abs", keep_cur_abs);
+    if (!relative && keep_cur_abs)
+    {
+        x = base.position.x;
+        y = base.position.y;
+        z = base.position.z;
     }
 
     // Compose absolute goal and publish

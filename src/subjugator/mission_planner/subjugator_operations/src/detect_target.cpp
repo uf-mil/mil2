@@ -5,6 +5,8 @@
 #include <sstream>
 #include <vector>
 
+#include <yolo_msgs/msg/detection_array.hpp>
+
 BT::NodeStatus DetectTarget::tick()
 {
     if (!ctx_)
@@ -27,16 +29,16 @@ BT::NodeStatus DetectTarget::tick()
         return BT::NodeStatus::FAILURE;
     }
 
-    std::optional<mil_msgs::msg::PerceptionTargetArray> arr;
+    std::optional<yolo_msgs::msg::DetectionArray> arr;
     {
         std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_targets;
+        arr = ctx_->latest_detections;
     }
     if (!arr)
         return BT::NodeStatus::FAILURE;
 
-    for (auto const& t : arr->targets)
-        if (t.label == label && t.confidence >= min_conf)
+    for (auto const& det : arr->detections)
+        if (det.class_name == label && det.score >= min_conf)
             return BT::NodeStatus::SUCCESS;
 
     return BT::NodeStatus::FAILURE;
