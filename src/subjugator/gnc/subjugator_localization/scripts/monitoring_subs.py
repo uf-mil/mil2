@@ -26,32 +26,68 @@ class MonitoringNode(Node):
     def imu_data_callback(self, imsg: Imu):
         # create running average for relevant measurements:
         # acceleration x
-        if len(self.imu_accelerationx_array) <= 3:
+        if len(self.imu_accelerationx_array) <= 20:
             self.imu_accelerationx_array.append(imsg.linear_acceleration.x)
         else:
             imu_accelerationx_avg = (
-                self.imu_accelerationx_array[0]
-                + self.imu_accelerationx_array[1]
-                + self.imu_accelerationx_array[2]
+                abs(self.imu_accelerationx_array[0])
+                + abs(self.imu_accelerationx_array[1])
+                + abs(self.imu_accelerationx_array[2])
+                + abs(self.imu_accelerationx_array[3])
+                + abs(self.imu_accelerationx_array[4])
+                + abs(self.imu_accelerationx_array[5])
+                + abs(self.imu_accelerationx_array[6])
+                + abs(self.imu_accelerationx_array[7])
+                + abs(self.imu_accelerationx_array[8])
+                + abs(self.imu_accelerationx_array[9])
+                + abs(self.imu_accelerationx_array[10])
+                + abs(self.imu_accelerationx_array[11])
+                + abs(self.imu_accelerationx_array[12])
+                + abs(self.imu_accelerationx_array[13])
+                + abs(self.imu_accelerationx_array[14])
+                + abs(self.imu_accelerationx_array[15])
+                + abs(self.imu_accelerationx_array[16])
+                + abs(self.imu_accelerationx_array[17])
+                + abs(self.imu_accelerationx_array[18])
+                + abs(self.imu_accelerationx_array[19])
             ) / len(self.imu_accelerationx_array)
             percent_diff = (
-                (imsg.linear_acceleration.x - imu_accelerationx_avg)
+                (abs(imsg.linear_acceleration.x) - imu_accelerationx_avg)
                 / imu_accelerationx_avg
             ) * 100
             if -500 < percent_diff < 500:  # arbitrary large percentage difference
                 self.imu_accelerationx_array.append(imsg.linear_acceleration.x)
                 del self.imu_accelerationx_array[0]
             else:
-                self.get_logger().info("Spike Detected at lin_accel_x.")
+                self.get_logger().info(
+                    f"Spike Detected at lin_accel_x: {imsg.linear_acceleration.x}",
+                )
 
         # acceleration y
-        if len(self.imu_accelerationy_array) <= 3:
+        if len(self.imu_accelerationy_array) <= 20:
             self.imu_accelerationy_array.append(imsg.linear_acceleration.y)
         else:
             imu_accelerationy_avg = (
-                self.imu_accelerationy_array[0]
-                + self.imu_accelerationy_array[1]
-                + self.imu_accelerationy_array[2]
+                abs(self.imu_accelerationy_array[0])
+                + abs(self.imu_accelerationy_array[1])
+                + abs(self.imu_accelerationy_array[2])
+                + abs(self.imu_accelerationy_array[3])
+                + abs(self.imu_accelerationy_array[4])
+                + abs(self.imu_accelerationy_array[5])
+                + abs(self.imu_accelerationy_array[6])
+                + abs(self.imu_accelerationy_array[7])
+                + abs(self.imu_accelerationy_array[8])
+                + abs(self.imu_accelerationy_array[9])
+                + abs(self.imu_accelerationy_array[10])
+                + abs(self.imu_accelerationy_array[12])
+                + abs(self.imu_accelerationy_array[12])
+                + abs(self.imu_accelerationy_array[13])
+                + abs(self.imu_accelerationy_array[14])
+                + abs(self.imu_accelerationy_array[15])
+                + abs(self.imu_accelerationy_array[16])
+                + abs(self.imu_accelerationy_array[17])
+                + abs(self.imu_accelerationy_array[18])
+                + abs(self.imu_accelerationy_array[19])
             ) / len(self.imu_accelerationy_array)
             percent_diff = (
                 (imsg.linear_acceleration.y - imu_accelerationy_avg)
@@ -62,7 +98,7 @@ class MonitoringNode(Node):
                 del self.imu_accelerationy_array[0]
             else:
                 self.get_logger().info(
-                    "Spike Detected a lin_accel_y.",
+                    f"Spike Detected a lin_accel_y: {imsg.linear_acceleration.y}",
                 )  # tells us where spike occurred.
 
         # acceleration z
