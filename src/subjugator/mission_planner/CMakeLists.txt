@@ -15,6 +15,7 @@ find_package(ament_index_cpp REQUIRED)
 find_package(yolo_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
+find_package(mil_msgs REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
@@ -40,6 +41,7 @@ ament_target_dependencies(
   nav_msgs
   sensor_msgs
   yolo_msgs
+  mil_msgs
   behaviortree_cpp
   lifecycle_msgs
   rcl_interfaces
