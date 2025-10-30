@@ -1,0 +1,230 @@
+<root BTCPP_format="4" main_tree_to_execute="NavChannelMission">
+    <BehaviorTree ID="NavChannelMission">
+        <Sequence>
+
+            <!-- 0)  Use correct YOLO model -->
+            <Action ID="CheckYoloModel"
+                    model_filename="new_sim_nav_channel.pt"
+                    yolo_node="/yolo/yolo_node"
+                    models_rel_dir="models"
+                    ctx="{ctx}"/>
+
+            <!-- 1) Survey +/-45 deg while tracking largest poles -->
+            <Parallel success_count="2" failure_count="2">
+                <!-- Tracking survey-->
+                <ForceSuccess>
+                    <Timeout msec="35000">
+                        <Action ID="TrackLargestPoles"
+                                min_conf="0.20" fov_deg="110.0" require_red_left="false"
+                                reset_on_start="true" ctx="{ctx}"
+                                best_qx="{best_qx}" best_qy="{best_qy}" best_qz="{best_qz}" best_qw="{best_qw}"
+                                best_target_qx="{best_target_qx}" best_target_qy="{best_target_qy}"
+                                best_target_qz="{best_target_qz}" best_target_qw="{best_target_qw}"
+                                best_score="{best_score}" best_bearing_deg="{best_bearing_deg}" best_mid_cx_px="{best_mid_cx_px}"
+                                red_cx_px="{red_cx_px}" red_cy_px="{red_cy_px}" red_w_px="{red_w_px}" red_h_px="{red_h_px}"
+                                white_cx_px="{white_cx_px}" white_cy_px="{white_cy_px}" white_w_px="{white_w_px}" white_h_px="{white_h_px}"/>
+                    </Timeout>
+                </ForceSuccess>
+
+                <!-- Sweeping motion-->
+                <Sequence>
+                    <Repeat num_cycles="3">
+                        <Fallback>
+                            <SubTree ID="RelativeMove" _autoremap="true"
+                                yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                            <AlwaysSuccess/>
+                        </Fallback>
+                    </Repeat>
+
+                    <Repeat num_cycles="6">
+                        <Fallback>
+                            <SubTree ID="RelativeMove" _autoremap="true"
+                                yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                            <AlwaysSuccess/>
+                        </Fallback>
+                    </Repeat>
+
+                    <Repeat num_cycles="3">
+                        <Fallback>
+                            <SubTree ID="RelativeMove" _autoremap="true"
+                                yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                            <AlwaysSuccess/>
+                        </Fallback>
+                    </Repeat>
+                </Sequence>
+            </Parallel>
+
+            <!-- Hone yaw to center R-W -->
+            <Sequence>
+                 <Action ID="PublishGoalPose"
+                    use_euler_deg="false" relative="false" keep_current_pos_abs="true"
+                    qx="{best_target_qx}" qy="{best_target_qy}" qz="{best_target_qz}" qw="{best_target_qw}" ctx="{ctx}"
+                    abs_x="{goal_x}" abs_y="{goal_y}" abs_z="{goal_z}"
+                    abs_qx="{goal_qx}" abs_qy="{goal_qy}" abs_qz="{goal_qz}" abs_qw="{goal_qw}"/>
+
+                <Timeout msec="10000">
+                    <RetryUntilSuccessful num_attempts="-1">
+                        <Sequence>
+                            <Delay delay_msec="250"><AlwaysSuccess/></Delay>
+                            <Condition ID="AtGoalPose"
+                                        x="{goal_x}" y="{goal_y}" z="{goal_z}"
+                                        qx="{goal_qx}" qy="{goal_qy}" qz="{goal_qz}" qw="{goal_qw}"
+                                        pos_tol="0.25" ori_tol_deg="8.0" ctx="{ctx}"/>
+                        </Sequence>
+                    </RetryUntilSuccessful>
+                </Timeout>
+            </Sequence>
+
+            <RetryUntilSuccessful num_attempts="-1">
+                <Fallback>
+                    <Condition ID="PolesBigEnough"
+                            min_height_px="100.0"
+                            min_width_px="10.0"
+                            min_conf="0.30"
+                            consecutive_frames="2"
+                            need_both="true"
+                            ctx="{ctx}"/>
+
+                    <Sequence>
+                        <SubTree ID="RelativeMove" _autoremap="true" x="0.5"
+                            pos_tol="0.25" ori_tol_deg="30.0" msec="6000"
+                            ctx="{ctx}"/>
+                        <AlwaysFailure/>
+                    </Sequence>
+                </Fallback>
+            </RetryUntilSuccessful>
+
+            <!-- Decide channel side -->
+            <Fallback>
+                <Sequence>
+                    <Timeout msec="12000">
+                        <Action ID="DetermineChannelSide"
+                                min_conf="0.30"
+                                consecutive_frames="3"
+                                ctx="{ctx}"
+                                channel_side="{channel_side}"
+                                require_red_left="{require_red_left}"
+                                is_right="{is_right}"/>
+                    </Timeout>
+                    <AlwaysSuccess/>
+                </Sequence>
+                <AlwaysSuccess/>
+            </Fallback>
+
+            <!-- 4) Row-by-row navigation loop:
+                    - Survey +/-30 degrees for the next R-W pair (ordering constrained by require_red_left)
+                    - Point at pair midpoint (absolute yaw, keep position)
+                    - Move forward 1 m
+                    - If poles but no pair: move 1 m and retry
+                    - If no poles: move 0.5 m and SUCCESS -->
+            <RetryUntilSuccessful num_attempts="-1">
+                <Fallback>
+
+                    <Sequence>
+                        <Parallel success_count="2" failure_count="2">
+                            <Fallback>
+                                <Timeout msec="35000">
+                                    <Action ID="TrackLargestPoles"
+                                        min_conf="0.30" fov_deg="110.0" require_red_left="{require_red_left}"
+                                        reset_on_start="true" ctx="{ctx}"
+                                        best_qx="{best_qx}" best_qy="{best_qy}" best_qz="{best_qz}" best_qw="{best_qw}"
+                                        best_target_qx="{best_target_qx}" best_target_qy="{best_target_qy}"
+                                        best_target_qz="{best_target_qz}" best_target_qw="{best_target_qw}"
+                                        best_score="{best_score}" best_bearing_deg="{best_bearing_deg}" best_mid_cx_px="{best_mid_cx_px}"
+                                        red_cx_px="{red_cx_px}" red_cy_px="{red_cy_px}" red_w_px="{red_w_px}" red_h_px="{red_h_px}"
+                                        white_cx_px="{white_cx_px}" white_cy_px="{white_cy_px}" white_w_px="{white_w_px}" white_h_px="{white_h_px}"
+                                        found_pair="{found_pair}"/>
+                                </Timeout>
+                                <AlwaysSuccess/>
+                            </Fallback>
+
+                            <!-- survey -->
+                            <Sequence>
+                                <!-- -30 degrees -->
+                                <Repeat num_cycles="2">
+                                    <Fallback>
+                                        <SubTree ID="RelativeMove" _autoremap="true"
+                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                                        <AlwaysSuccess/>
+                                    </Fallback>
+                                </Repeat>
+                                <!-- to +30 degrees total -->
+                                <Repeat num_cycles="4">
+                                    <Fallback>
+                                        <SubTree ID="RelativeMove" _autoremap="true"
+                                            yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                                        <AlwaysSuccess/>
+                                    </Fallback>
+                                </Repeat>
+                                <!-- back to center -->
+                                <Repeat num_cycles="2">
+                                    <Fallback>
+                                        <SubTree ID="RelativeMove" _autoremap="true"
+                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                                        <AlwaysSuccess/>
+                                    </Fallback>
+                                </Repeat>
+                            </Sequence>
+                        </Parallel>
+
+                        <!-- pair actually found -->
+                        <Condition ID="HasFoundPair" found_pair="{found_pair}"/>
+
+                        <!-- point at memorized midpoint (absolute yaw only) -->
+                        <Action ID="PublishGoalPose"
+                                use_euler_deg="false" relative="false" keep_current_pos_abs="true"
+                                qx="{best_target_qx}" qy="{best_target_qy}" qz="{best_target_qz}" qw="{best_target_qw}" ctx="{ctx}"
+                                abs_x="{goal2_x}" abs_y="{goal2_y}" abs_z="{goal2_z}"
+                                abs_qx="{goal2_qx}" abs_qy="{goal2_qy}" abs_qz="{goal2_qz}" abs_qw="{goal2_qw}"/>
+
+                        <Timeout msec="10000">
+                            <RetryUntilSuccessful num_attempts="-1">
+                                <Sequence>
+                                    <Delay delay_msec="250"><AlwaysSuccess/></Delay>
+                                    <Condition ID="AtGoalPose"
+                                        x="{goal2_x}" y="{goal2_y}" z="{goal2_z}"
+                                        qx="{goal2_qx}" qy="{goal2_qy}" qz="{goal2_qz}" qw="{goal2_qw}"
+                                        pos_tol="0.25" ori_tol_deg="8.0" ctx="{ctx}"/>
+                                </Sequence>
+                            </RetryUntilSuccessful>
+                        </Timeout>
+
+                        <!-- forward 1 m then keep looping -->
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                            x="1.0" pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+
+                        <AlwaysFailure/>
+                    </Sequence>
+
+                    <!-- Poles exist but no valid pair: move 1 m and retry -->
+                    <Sequence>
+                        <Action ID="AnyPolesDetected" min_conf="0.30" ctx="{ctx}"/>
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                            x="1.0" pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+                        <AlwaysFailure/>
+                    </Sequence>
+
+                    <!-- No poles at all: nudge 0.5 m and SUCCESS -->
+                    <Sequence>
+                        <Repeat num_cycles="30">
+                            <Sequence>
+                                <Delay delay_msec="200"><AlwaysSuccess/></Delay>
+                                    <Inverter>
+                                        <Action ID="AnyPolesDetected" min_conf="0.30" ctx="{ctx}"/>
+                                    </Inverter>
+                            </Sequence>
+                        </Repeat>
+
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                            x="0.5" pos_tol="0.25" ori_tol_deg="180.0" msec="5000" ctx="{ctx}"/>
+
+                        <AlwaysSuccess/>
+                    </Sequence>
+
+
+                </Fallback>
+            </RetryUntilSuccessful>
+
+        </Sequence>
+    </BehaviorTree>
+</root>

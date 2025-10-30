@@ -379,4 +379,86 @@ torpedo() {
 	ros2 service call /torpedo subjugator_msgs/srv/Servo "{angle: '$1'}"
 }
 
+# Mission Planner launcher
+mp() {
+	if [[ $# -ne 1 ]]; then
+		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission|BUSTMission|NavChannelMission>"
+		return 2
+	fi
+
+	local mission="$1"
+	case "$mission" in
+	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission)
+		echo "Launching mission_planner with mission: ${mission}"
+		ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
+		;;
+	*)
+		echo "Invalid mission: ${mission}"
+		echo "Valid missions: SquareTestMission  StartGateMission  PassPoleMission BUSTMission NavChannelMission"
+		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
+		return 2
+		;;
+	esac
+}
+
+_mp_complete() {
+	local cur
+	cur=${COMP_WORDS[COMP_CWORD]}
+
+	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission"
+	COMPREPLY=()
+	while IFS='' read -r line; do
+		COMPREPLY+=("$line")
+	done < <(compgen -W "$opts" -- "$cur")
+}
+complete -F _mp_complete mp
+
+# Swap yolo model
+yolo-swap() {
+	if [[ -z $1 ]]; then
+		echo "Usage: yolo-swap <model_filename[.pt]>"
+		return 1
+	fi
+
+	local fname="$1"
+	[[ $fname != *.pt ]] && fname="${fname}.pt"
+
+	local repo_root=""
+	if git rev-parse --show-toplevel &>/dev/null; then
+		repo_root="$(git rev-parse --show-toplevel)"
+	elif [[ -n $MIL_REPO && -d $MIL_REPO ]]; then
+		repo_root="$MIL_REPO"
+	elif [[ -d "$HOME/mil2" ]]; then
+		repo_root="$HOME/mil2"
+	else
+		echo 'Could not locate repo root. Set $MIL_REPO or run inside the repo.'
+		return 1
+	fi
+
+	local models_dir="$repo_root/src/subjugator/gnc/subjugator_vision/models"
+	local model_path="$models_dir/$fname"
+	local node="${YOLO_NODE:-/yolo/yolo_node}"
+
+	if [[ ! -f $model_path ]]; then
+		echo "Model not found: $model_path"
+		echo "Available models:"
+		ls -1 "$models_dir"/*.pt 2>/dev/null || true
+		return 1
+	fi
+
+	echo "Swapping $node to model:"
+	echo "  $model_path"
+	set -e
+	ros2 lifecycle set "$node" deactivate
+	ros2 lifecycle set "$node" cleanup
+	ros2 param set "$node" model "$model_path"
+	ros2 lifecycle set "$node" configure
+	ros2 lifecycle set "$node" activate
+	set +e
+
+	echo "New Model:"
+	ros2 param get "$node" model
+	ros2 lifecycle get "$node"
+}
+
 export ROS_DOMAIN_ID=37

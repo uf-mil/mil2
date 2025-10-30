@@ -2,7 +2,7 @@
 <package format="3">
   <name>subjugator_vision</name>
   <version>0.0.0</version>
-  <description>Vision utilities for the Subjugator simulator.</description>
+  <description>Vision utilities for Subjugator</description>
 
   <maintainer email="c.chavez@ufl.edu">Carlos Chavez</maintainer>
   <license>TODO: License declaration</license>
@@ -20,8 +20,6 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>ultralytics</exec_depend>
   <exec_depend>vision_msgs</exec_depend>
-
-  <!-- Pure-Python third-party libs (pip) -->
 
   <export>
     <build_type>ament_cmake</build_type>
