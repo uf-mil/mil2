@@ -239,6 +239,7 @@ sudo apt-get install -y python3-rosdep
 sudo rm -rf /etc/ros/rosdep/sources.list.d/* # Delete this file first - if not deleted, error could be thrown
 sudo rosdep init
 sudo rosdep update
+sudo rosdep install --from-paths src --ignore-src -r -y
 
 # If this script is not ~/mil2/scripts/install.sh, throw an error to prevent members
 # from installing the repo in the wrong location. Setting ALLOW_NONSTANDARD_DIR=1
