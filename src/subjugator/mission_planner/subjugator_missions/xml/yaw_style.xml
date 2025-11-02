@@ -1,0 +1,8 @@
+<root main_tree_to_execute="YawStyle">
+    <BehaviorTree ID="YawStyle">
+        <Repeat num_cycles="8">
+            <SonarFollower name="yaw_style" ctx="{ctx}" />
+            <Delay msec="5000" />
+        </Repeat>
+    </BehaviorTree>
+</root>
