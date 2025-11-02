@@ -46,7 +46,8 @@ class YawStyle : public BT::SyncActionNode
             // we must have moved at least once b4 running style points ig
             if (!ctx_->last_goal.has_value())
             {
-                return BT::NodeStatus::FAILURE;
+                ctx_->last_goal.emplace(geometry_msgs::msg::Pose());
+                // return BT::NodeStatus::FAILURE;
             }
             last_goal = *ctx_->last_goal;
         }
@@ -76,6 +77,10 @@ class YawStyle : public BT::SyncActionNode
         last_goal.orientation.w = w3;
 
         ctx_->goal_pub->publish(last_goal);
+        {
+            std::scoped_lock lk(ctx_->last_goal_mx);
+            ctx_->last_goal.emplace(last_goal);
+        }
 
         return BT::NodeStatus::SUCCESS;
     }

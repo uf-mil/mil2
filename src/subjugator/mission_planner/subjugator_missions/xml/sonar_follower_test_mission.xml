@@ -1,12 +1,12 @@
 <root main_tree_to_execute="SonarFollowerTest">
-  <BehaviorTree ID="SonarFollowerTest">
-  <SonarFollower name="sonar_follower" ctx="{ctx}" sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
-        <Action ID="PublishGoalPose"
+    <BehaviorTree ID="SonarFollowerTest">
+        <SonarFollower name="sonar_follower" ctx="{ctx}" sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
+            <Action ID="PublishGoalPose"
             x="{sonar_x}" y="{sonar_y}" z="0.0"
             qx="0.0" qy="0.0" qz="{sonar_z}" qw="{sonar_w}"
             relative="true" ctx="{ctx}"
             abs_x="{abs_x}" abs_y="{abs_y}" abs_z="{abs_z}"
             abs_qx="{abs_qx}" abs_qy="{abs_qy}" abs_qz="{abs_qz}" abs_qw="{abs_qw}"/>
-    </SonarFollower>
-  </BehaviorTree>
+        </SonarFollower>
+    </BehaviorTree>
 </root>
