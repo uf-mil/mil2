@@ -62,9 +62,7 @@
       <Action ID="HoneBearing"
               label="shark"
               offset_deg="0.0"
-              tolerance_deg="10.0"
               fov_deg="110.0"
-              max_step_deg="5.0"
               min_conf="0.40"
               ctx="{ctx}"/>
 
