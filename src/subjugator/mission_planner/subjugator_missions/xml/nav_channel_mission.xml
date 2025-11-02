@@ -56,7 +56,7 @@
 
             <!-- Hone yaw to center R-W -->
             <Sequence>
-                 <Action ID="PublishGoalPose"
+                <Action ID="PublishGoalPose"
                     use_euler_deg="false" relative="false" keep_current_pos_abs="true"
                     qx="{best_target_qx}" qy="{best_target_qy}" qz="{best_target_qz}" qw="{best_target_qw}" ctx="{ctx}"
                     abs_x="{goal_x}" abs_y="{goal_y}" abs_z="{goal_z}"
