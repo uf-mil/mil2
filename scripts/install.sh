@@ -221,6 +221,9 @@ fi
 # Install Python 3 dependencies
 sudo pip3 install -r requirements.txt
 
+# Install MiDAS for depth estimation
+pip install git+https://github.com/intel-isl/MiDaS.git
+
 cat <<EOF
 $(color "$Pur")
 $(hash_header)

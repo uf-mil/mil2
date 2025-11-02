@@ -1,0 +1,30 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/opt/ros/jazzy/include/**",
+        "/home/aarush-tripathi/mil2/src/mil_common/electrical_protocol/include/**",
+        "/home/aarush-tripathi/mil2/src/mil_common/mil_preflight/include/**",
+        "/home/aarush-tripathi/mil2/src/mil_common/mil_tools/include/**",
+        "/home/aarush-tripathi/mil2/src/navigator/hardware_drivers/navigator_kill_board/include/**",
+        "/home/aarush-tripathi/mil2/src/subjugator/command/subjugator_keyboard_control/include/**",
+        "/home/aarush-tripathi/mil2/src/subjugator/gnc/subjugator_controller/include/**",
+        "/home/aarush-tripathi/mil2/src/subjugator/gnc/subjugator_path_planner/include/**",
+        "/home/aarush-tripathi/mil2/src/subjugator/gnc/subjugator_thruster_manager/include/**",
+        "/home/aarush-tripathi/mil2/src/subjugator/gnc/subjugator_trajectory_planner/include/**",
+        "/home/aarush-tripathi/mil2/src/subjugator/simulation/subjugator_gazebo/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
