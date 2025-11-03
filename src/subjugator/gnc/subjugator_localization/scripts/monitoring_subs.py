@@ -59,6 +59,7 @@ class MonitoringNode(Node):
                 (abs(imsg.linear_acceleration.x) - imu_accelerationx_avg)
                 / imu_accelerationx_avg
             ) * 100
+
             if -3000 < percent_diff < 3000:  # arbitrary large percentage difference
                 self.imu_accelerationx_array.append(imsg.linear_acceleration.x)
                 del self.imu_accelerationx_array[0]
@@ -86,7 +87,7 @@ class MonitoringNode(Node):
                 + abs(self.imu_accelerationy_array[8])
                 + abs(self.imu_accelerationy_array[9])
                 + abs(self.imu_accelerationy_array[10])
-                + abs(self.imu_accelerationy_array[12])
+                + abs(self.imu_accelerationy_array[11])
                 + abs(self.imu_accelerationy_array[12])
                 + abs(self.imu_accelerationy_array[13])
                 + abs(self.imu_accelerationy_array[14])
@@ -100,6 +101,7 @@ class MonitoringNode(Node):
                 (imsg.linear_acceleration.y - imu_accelerationy_avg)
                 / imu_accelerationy_avg
             ) * 100
+
             if -3000 < percent_diff < 3000:  # arbitrary large percentage difference
                 self.imu_accelerationy_array.append(imsg.linear_acceleration.y)
                 del self.imu_accelerationy_array[0]
@@ -127,7 +129,7 @@ class MonitoringNode(Node):
                 + abs(self.imu_accelerationz_array[8])
                 + abs(self.imu_accelerationz_array[9])
                 + abs(self.imu_accelerationz_array[10])
-                + abs(self.imu_accelerationz_array[12])
+                + abs(self.imu_accelerationz_array[11])
                 + abs(self.imu_accelerationz_array[12])
                 + abs(self.imu_accelerationz_array[13])
                 + abs(self.imu_accelerationz_array[14])
@@ -141,6 +143,7 @@ class MonitoringNode(Node):
                 (imsg.linear_acceleration.z - imu_accelerationz_avg)
                 / imu_accelerationz_avg
             ) * 100
+
             if -3000 < percent_diff < 3000:  # arbitrary large percentage difference
                 self.imu_accelerationz_array.append(imsg.linear_acceleration.z)
                 del self.imu_accelerationz_array[0]

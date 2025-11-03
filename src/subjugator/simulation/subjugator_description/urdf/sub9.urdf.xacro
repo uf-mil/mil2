@@ -97,6 +97,14 @@
     </plugin>
   </gazebo>
 
+  <!-- Define a frame at the actual center of rotation -->
+  <link name="localization_center"/>
+  <joint name="base_to_localization" type="fixed">
+    <parent link="localization_center"/>
+    <child link="base_link"/>
+    <origin xyz="-0.354 0 0" rpy="0 0 0"/>
+  </joint>
+
   <!-- Cameras -->
   <xacro:mil_camera name="front_cam" parent="base_link" xyz="0.78 -0.014274 -0.050" rpy="0 0 0"/>
   <xacro:mil_camera name="down_cam" parent="base_link" xyz="0.45222 0.027913 -0.22" rpy="0 1.57 0"/>
