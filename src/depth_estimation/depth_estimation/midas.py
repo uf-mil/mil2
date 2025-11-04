@@ -7,9 +7,9 @@ import torch
 
 def midas_infer(img: cv2.typing.MatLike):
 
-    model_type = "DPT_Large"
+    # model_type = "MiDAS"
     # model_type = "DPT_Hybrid"
-    # model_type = "MiDaS_small"
+    model_type = "MiDaS_small"
 
     midas: Any = torch.hub.load("intel-isl/MiDaS", model_type)
 

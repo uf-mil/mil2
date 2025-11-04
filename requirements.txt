@@ -63,3 +63,4 @@ requests>=2.32.2
 # MiDAS
 opencv-python>=4.6.0.66
 torch>=1.7.0
+timm>=1.0.21
