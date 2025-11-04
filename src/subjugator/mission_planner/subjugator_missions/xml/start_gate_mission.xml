@@ -1,0 +1,101 @@
+<root BTCPP_format="4" main_tree_to_execute="StartGateMission">
+  <BehaviorTree ID="StartGateMission">
+    <Sequence>
+
+      <!-- 1) Survey sweep 60 degrees each way -->
+      <Parallel success_count="1" failure_count="2">
+        <RetryUntilSuccessful num_attempts="-1">
+          <Sequence>
+            <Delay delay_msec="200"><AlwaysSuccess/></Delay>
+            <Condition ID="DetectTarget"
+                       label="shark"
+                       min_conf="0.20"
+                       ctx="{ctx}"/>
+          </Sequence>
+        </RetryUntilSuccessful>
+
+        <Repeat num_cycles="-1">
+          <Sequence>
+
+            <!-- +15 degrees to 60 degrees -->
+            <Repeat num_cycles="4">
+              <Fallback>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         yaw_deg="15.0"
+                         pos_tol="0.25" ori_tol_deg="6.0"
+                         msec="4000"
+                         ctx="{ctx}"/>
+                <AlwaysSuccess/>
+              </Fallback>
+            </Repeat>
+
+            <!-- -15 degrees to -60 degrees -->
+            <Repeat num_cycles="8">
+              <Fallback>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         yaw_deg="-15.0"
+                         pos_tol="0.25" ori_tol_deg="6.0"
+                         msec="4000"
+                         ctx="{ctx}"/>
+                <AlwaysSuccess/>
+              </Fallback>
+            </Repeat>
+
+            <!-- +15° x4 (back to center) -->
+            <Repeat num_cycles="4">
+              <Fallback>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         yaw_deg="15.0"
+                         pos_tol="0.25" ori_tol_deg="6.0"
+                         msec="4000"
+                         ctx="{ctx}"/>
+                <AlwaysSuccess/>
+              </Fallback>
+            </Repeat>
+
+          </Sequence>
+        </Repeat>
+
+      </Parallel>
+
+      <!-- 2) Hone orientation toward the shark with offset -->
+      <Action ID="HoneBearing"
+              label="shark"
+              offset_deg="0.0"
+              fov_deg="110.0"
+              min_conf="0.40"
+              ctx="{ctx}"/>
+
+      <!-- 3) Then down and forward -->
+      <SubTree ID="RelativeMove" _autoremap="true"
+               z="-0.5"
+               pos_tol="0.25" ori_tol_deg="12.0" msec="10000"
+               ctx="{ctx}"/>
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="3.0"
+               pos_tol="0.25" ori_tol_deg="180.0" msec="45000"
+               ctx="{ctx}"/>
+
+      <!-- 4) Short second survey (±45°), no detection gating -->
+      <Sequence>
+        <SubTree ID="RelativeMove" _autoremap="true"
+                 yaw_deg="45.0"
+                 pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
+                 ctx="{ctx}"/>
+        <SubTree ID="RelativeMove" _autoremap="true"
+                 yaw_deg="-45.0"
+                 pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
+                 ctx="{ctx}"/>
+        <SubTree ID="RelativeMove" _autoremap="true"
+                 yaw_deg="-45.0"
+                 pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
+                 ctx="{ctx}"/>
+        <SubTree ID="RelativeMove" _autoremap="true"
+                 yaw_deg="45.0"
+                 pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
+                 ctx="{ctx}"/>
+      </Sequence>
+
+    </Sequence>
+  </BehaviorTree>
+</root>
