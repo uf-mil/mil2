@@ -7,8 +7,71 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in further dependencies
-# manually. find_package(<dependency> REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(geographic_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+
+rosidl_generate_interfaces(
+  ${PROJECT_NAME}
+  # ------ msgs ------
+  "msg/Acceleration.msg"
+  "msg/PoseTwist.msg"
+  "msg/Coordinates.msg"
+  "msg/PoseTwistStamped.msg"
+  "msg/PerceptionObject.msg"
+  "msg/PerceptionObjectArray.msg"
+  "msg/DockShape.msg"
+  "msg/DockShapes.msg"
+  "msg/KillStatus.msg"
+  "msg/Host.msg"
+  "msg/Hosts.msg"
+  "msg/ColoramaDebug.msg"
+  "msg/ScanTheCode.msg"
+  "msg/DroneTarget.msg"
+  "msg/DroneTin.msg"
+  # ------ srvs ------
+  "srv/AcousticBeacon.srv"
+  "srv/ChooseAnimal.srv"
+  "srv/MoveToWaypoint.srv"
+  "srv/ShooterManual.srv"
+  "srv/VisionRequest.srv"
+  "srv/GetDockShape.srv"
+  "srv/GetDockShapes.srv"
+  "srv/StartGate.srv"
+  "srv/SetROI.srv"
+  "srv/CoordinateConversion.srv"
+  "srv/StereoShapeDetector.srv"
+  "srv/ScanTheCodeMission.srv"
+  "srv/ObjectDBQuery.srv"
+  "srv/CameraDBQuery.srv"
+  "srv/CameraToLidarTransform.srv"
+  "srv/KeyboardControl.srv"
+  "srv/ColorRequest.srv"
+  "srv/FindPinger.srv"
+  "srv/SetFrequency.srv"
+  "srv/GetDockBays.srv"
+  "srv/MessageDetectDock.srv"
+  "srv/MessageEntranceExitGate.srv"
+  "srv/MessageFindFling.srv"
+  "srv/MessageFollowPath.srv"
+  "srv/MessageWildlifeEncounter.srv"
+  "srv/MessageUAVReplenishment.srv"
+  "srv/MessageUAVSearchReport.srv"
+  "srv/TwoClosestCones.srv"
+  # 2024 RobotX service files
+  "srv/BallLauncherDrops.srv"
+  "srv/DroneMission.srv"
+  # ------ actions ------
+  "action/ClassifyUnknown.action"
+  "action/ShooterDo.action"
+  DEPENDENCIES
+  std_msgs
+  geographic_msgs
+  geometry_msgs
+  sensor_msgs
+  action_msgs)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
