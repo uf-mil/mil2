@@ -51,11 +51,16 @@ class DepthNode(Node):
         self.bridge = CvBridge()
 
     def listener_callback(self, img: Image, cam: Cam):
+        print("Published data received! Conducting inference")
         inference = midas_infer(self.bridge.imgmsg_to_cv2(img))
+
         if cam == Cam.FRONT_CAM:
+            print("publishing to front cam...")
             self.front_cam_pub.publish(self.bridge.cv2_to_imgmsg(inference))
         else:
+            print("publishing to down cam...")
             self.down_cam_pub.publish(self.bridge.cv2_to_imgmsg(inference))
+        print("Published map")
 
 
 def main(args=None):
