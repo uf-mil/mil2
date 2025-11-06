@@ -117,8 +117,8 @@ jobs:
           done < <(
             git diff --name-only origin/main \
               --ignore-submodules \
-              -- "*.cpp" "*.h" "*.hpp" \
-              --diff-filter=ACMRT
+              --diff-filter=ACMRT \
+              -- "*.cpp" "*.h" "*.hpp"
           )
           cd "$GITHUB_WORKSPACE"
           tidy "${ALL_CHANGES[@]}"
