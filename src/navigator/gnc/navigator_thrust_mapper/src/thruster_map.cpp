@@ -30,39 +30,21 @@ namespace navigator_thrust_mapper
 double vrx_force_to_command_scalar(double force)
 {
     if (force > 250.0)
-    {
         return 1.0;
-    }
-    else if (force < -100.0)
-    {
+    if (force < -100.0)
         return -1.0;
-    }
-    else if (force > 3.27398)
-    {
-        // vrx inverse: force->command | force > 3.27398
-        // -0.2 log(-0.246597 (0.56 - 4.73341/(-0.01 + x)^0.38))
+    if (force > 3.27398)
         return -0.2 * std::log(-0.246597 * (0.56 - (4.73341 / std::pow((-0.01 + force), 0.38))));
-    }
-    else if (force < 0.0)
-    {
-        // vrx inverse: force->command | force < 3.27398
-        // -0.113122 log(-154.285 (0.99 - (1.88948x10^12)/(199.13 + x)^5.34))
+    if (force < 0.0)
         return -0.113122 * std::log(-154.285 * (0.99 - ((1.88948e12) / std::pow((199.13 + force), 5.34))));
-    }
-    else
-    {
-        // approx broken range as straight line with 0.01cmd/3.2N
-        return (0.01 / 3.27398) * force;
-    }
+    return (0.01 / 3.27398) * force;
 }
 
 Eigen::VectorXd vrx_force_to_command(Eigen::VectorXd const &forces)
 {
     Eigen::VectorXd result(forces.size());
     for (int i = 0; i < forces.size(); ++i)
-    {
         result(i) = vrx_force_to_command_scalar(forces(i));
-    }
     return result;
 }
 
@@ -78,112 +60,68 @@ ThrusterMap::ThrusterMap(std::vector<std::string> const &names, std::vector<std:
                          std::vector<std::string> const &joints)
   : names(names), joints(joints), force_to_command_(force_to_command), force_limit_(force_limit)
 {
-    // Validate force limits
     if (force_limit.size() != 2 || force_limit[1] > force_limit[0])
-    {
-        throw std::invalid_argument("force_limit must have 2 elements with force_limit[1] <= force_limit[0]");
-    }
+        throw std::invalid_argument("force_limit invalid");
 
-    size_t n_thrusters = names.size();
-    if (positions.size() != n_thrusters || angles.size() != n_thrusters)
-    {
-        throw std::invalid_argument("names, positions, and angles must have the same length");
-    }
+    size_t n = names.size();
+    if (positions.size() != n || angles.size() != n)
+        throw std::invalid_argument("size mismatch");
 
-    // Build thruster allocation matrix
-    // Each column represents one thruster's contribution to [surge, sway, yaw]
-    thruster_matrix_ = Eigen::MatrixXd::Zero(3, n_thrusters);
-
-    for (size_t i = 0; i < n_thrusters; ++i)
+    thruster_matrix_ = Eigen::MatrixXd::Zero(3, n);
+    for (size_t i = 0; i < n; ++i)
     {
-        // Offset from center of mass
         double l_x = positions[i][0] - com[0];
         double l_y = positions[i][1] - com[1];
-
-        // Thruster direction
-        double cos_angle = std::cos(angles[i]);
-        double sin_angle = std::sin(angles[i]);
-
-        // Torque effect: cross product of position and direction vectors
-        double torque_effect = l_x * sin_angle - l_y * cos_angle;
-
-        // Fill column i of the thruster matrix
-        thruster_matrix_(0, i) = cos_angle;      // surge component
-        thruster_matrix_(1, i) = sin_angle;      // sway component
-        thruster_matrix_(2, i) = torque_effect;  // yaw component
+        double cos_a = std::cos(angles[i]);
+        double sin_a = std::sin(angles[i]);
+        double torque = l_x * sin_a - l_y * cos_a;
+        thruster_matrix_(0, i) = cos_a;
+        thruster_matrix_(1, i) = sin_a;
+        thruster_matrix_(2, i) = torque;
     }
 
-    // Compute pseudoinverse using SVD
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(thruster_matrix_, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::VectorXd sv = svd.singularValues();
+    double thresh = 1e-10 * std::max(thruster_matrix_.rows(), thruster_matrix_.cols()) * sv.maxCoeff();
 
-    // Compute pseudoinverse manually: A^+ = V * Sigma^+ * U^T
-    Eigen::VectorXd singularValues = svd.singularValues();
-    double threshold = 1e-10 * std::max(thruster_matrix_.rows(), thruster_matrix_.cols()) * singularValues.maxCoeff();
+    Eigen::VectorXd sv_inv(sv.size());
+    for (int i = 0; i < sv.size(); ++i)
+        sv_inv(i) = (sv(i) > thresh) ? 1.0 / sv(i) : 0.0;
 
-    Eigen::VectorXd singularValues_inv(singularValues.size());
-    for (int i = 0; i < singularValues.size(); ++i)
-    {
-        if (singularValues(i) > threshold)
-        {
-            singularValues_inv(i) = 1.0 / singularValues(i);
-        }
-        else
-        {
-            singularValues_inv(i) = 0.0;
-        }
-    }
-
-    thruster_matrix_inv_ = svd.matrixV() * singularValues_inv.asDiagonal() * svd.matrixU().transpose();
+    thruster_matrix_inv_ = svd.matrixV() * sv_inv.asDiagonal() * svd.matrixU().transpose();
 }
 
 ThrusterMap ThrusterMap::from_urdf(std::string const &urdf_string, std::string const &transmission_suffix)
 {
-    // TODO: Implement URDF parsing using urdfdom
-    // For now, return a default instance with analytic 4-thruster configuration
     std::vector<std::string> names = { "FL", "FR", "BL", "BR" };
     std::vector<std::array<double, 2>> positions = { { 0.5, 0.5 }, { 0.5, -0.5 }, { -0.5, 0.5 }, { -0.5, -0.5 } };
     std::vector<double> angles = { 0.0, 0.0, 0.0, 0.0 };
     std::vector<std::string> joints = { "fl_joint", "fr_joint", "bl_joint", "br_joint" };
-
-    auto force_to_command = generate_linear_force_to_command(1.0);
-    std::array<double, 2> force_limit = { 250.0, -250.0 };
-
-    return ThrusterMap(names, positions, angles, force_to_command, force_limit, { 0.0, 0.0 }, joints);
+    auto fc = generate_linear_force_to_command(1.0);
+    std::array<double, 2> fl = { 250.0, -250.0 };
+    return ThrusterMap(names, positions, angles, fc, fl, { 0.0, 0.0 }, joints);
 }
 
 ThrusterMap ThrusterMap::from_vrx_urdf(std::string const &urdf_string)
 {
-    // TODO: Implement URDF parsing for VRX using urdfdom and tf2
-    // For now, return a default instance with VRX-style force conversion
     std::vector<std::string> names = { "FL", "FR", "BL", "BR" };
     std::vector<std::array<double, 2>> positions = { { 0.5, 0.5 }, { 0.5, -0.5 }, { -0.5, 0.5 }, { -0.5, -0.5 } };
     std::vector<double> angles = { 0.0, 0.0, 0.0, 0.0 };
-
-    auto force_to_command = [](Eigen::VectorXd const &forces) { return vrx_force_to_command(forces); };
-    std::array<double, 2> force_limit = { 250.0, -100.0 };
-
-    return ThrusterMap(names, positions, angles, force_to_command, force_limit);
+    auto fc = [](Eigen::VectorXd const &f) { return vrx_force_to_command(f); };
+    std::array<double, 2> fl = { 250.0, -100.0 };
+    return ThrusterMap(names, positions, angles, fc, fl);
 }
 
 std::vector<double> ThrusterMap::wrench_to_thrusts(std::array<double, 3> const &wrench) const
 {
-    // Convert wrench to Eigen vector
-    Eigen::Vector3d wrench_vec(wrench[0], wrench[1], wrench[2]);
+    Eigen::Vector3d w(wrench[0], wrench[1], wrench[2]);
+    Eigen::VectorXd forces = thruster_matrix_inv_ * w;
 
-    // Solve: thruster_forces = thruster_matrix_inv * wrench
-    Eigen::VectorXd forces = thruster_matrix_inv_ * wrench_vec;
-
-    // Clip forces to limits
     for (int i = 0; i < forces.size(); ++i)
-    {
         forces(i) = std::max(force_limit_[1], std::min(force_limit_[0], forces(i)));
-    }
 
-    // Convert forces to command units
-    Eigen::VectorXd commands = force_to_command_(forces);
-
-    // Convert to std::vector
-    return std::vector<double>(commands.data(), commands.data() + commands.size());
+    Eigen::VectorXd cmds = force_to_command_(forces);
+    return std::vector<double>(cmds.data(), cmds.data() + cmds.size());
 }
 
 }  // namespace navigator_thrust_mapper

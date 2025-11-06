@@ -29,6 +29,7 @@
 
 #include <geometry_msgs/msg/wrench_stamped.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float32.hpp>
 
 using std::placeholders::_1;
@@ -100,6 +101,10 @@ class ThrusterMapperNode : public rclcpp::Node
         wrench_sub_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
             "/wrench/cmd", 1, std::bind(&ThrusterMapperNode::wrench_cb, this, _1));
 
+        // Subscribe to kill alarm
+        kill_sub_ = this->create_subscription<std_msgs::msg::Bool>("/kill", 1,
+                                                                   std::bind(&ThrusterMapperNode::kill_cb, this, _1));
+
         // timer to publish at 30 Hz
         timer_ = this->create_wall_timer(std::chrono::milliseconds(33),
                                          std::bind(&ThrusterMapperNode::publish_thrusts, this));
@@ -113,6 +118,19 @@ class ThrusterMapperNode : public rclcpp::Node
         wrench_[0] = msg->wrench.force.x;
         wrench_[1] = msg->wrench.force.y;
         wrench_[2] = msg->wrench.torque.z;
+    }
+
+    void kill_cb(std_msgs::msg::Bool::SharedPtr const msg)
+    {
+        kill_ = msg->data;
+        if (kill_)
+        {
+            RCLCPP_WARN(this->get_logger(), "Kill signal received - thrusters disabled");
+        }
+        else
+        {
+            RCLCPP_INFO(this->get_logger(), "Kill signal cleared - thrusters enabled");
+        }
     }
 
     void publish_thrusts()
@@ -170,6 +188,7 @@ class ThrusterMapperNode : public rclcpp::Node
     sensor_msgs::msg::JointState joint_state_msg_;
 
     rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr wrench_sub_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr kill_sub_;
     rclcpp::TimerBase::SharedPtr timer_;
 };
 
