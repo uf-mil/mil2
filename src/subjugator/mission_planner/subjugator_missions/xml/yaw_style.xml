@@ -1,0 +1,17 @@
+<root BTCPP_format="4" main_tree_to_execute="YawStyleTest">
+    <BehaviorTree ID="YawStyleTest">
+        <Sequence>
+            <SubTree ID="RelativeMove" _autoremap="true"
+                x="0.0" y="0.0" z="-0.2"
+                pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+                ctx="{ctx}"/>
+            <Delay delay_msec="10000"><AlwaysSuccess/></Delay>
+            <Repeat num_cycles="8">
+                <Sequence>
+                    <YawStyle name="yaw_style" ctx="{ctx}" />
+                    <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
+                </Sequence>
+            </Repeat>
+        </Sequence>
+    </BehaviorTree>
+</root>
