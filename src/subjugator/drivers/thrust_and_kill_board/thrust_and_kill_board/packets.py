@@ -7,8 +7,8 @@ from electrical_protocol import Packet
 @dataclass
 class TemperaturePacketRequest(
     Packet,
-    class_id=0x06,
-    subclass_id=0x00,
+    class_id=0x02,
+    subclass_id=0x05,
     payload_format="",
 ):
     """
@@ -19,8 +19,8 @@ class TemperaturePacketRequest(
 @dataclass
 class TemperaturePacketRecieve(
     Packet,
-    class_id=0x06,
-    subclass_id=0x01,
+    class_id=0x02,
+    subclass_id=0x06,
     payload_format="<ff",
 ):
     """
