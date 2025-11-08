@@ -167,7 +167,6 @@ class ThrustAndKillNode(
         if isinstance(packet, TemperaturePacketRecieve):
             msg = Temperature()
             msg.sensor0 = float(packet.t0)
-            msg.sensor1 = float(packet.t1)
             self.temperatures_pub.publish(msg)
             self.get_logger().info(
                 f"Temperatures (°C): sensor0={msg.sensor0:.2f}, sensor1={msg.sensor1:.2f}",

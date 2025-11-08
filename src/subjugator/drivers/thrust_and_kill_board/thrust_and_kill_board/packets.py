@@ -28,7 +28,6 @@ class TemperaturePacketRecieve(
     """
 
     t0: float
-    t1: float
 
 
 @dataclass
