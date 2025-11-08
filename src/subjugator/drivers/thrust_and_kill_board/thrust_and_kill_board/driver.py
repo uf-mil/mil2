@@ -10,7 +10,7 @@ from electrical_protocol import AckPacket, NackPacket, Packet, SerialDeviceNode
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from std_msgs.msg import String
 from std_srvs.srv import Empty
-from subjugator_msgs.msg import ThrusterEfforts
+from subjugator_msgs.msg import Temperature, ThrusterEfforts
 
 from thrust_and_kill_board.packets import (
     HeartbeatReceivePacket,
@@ -18,6 +18,8 @@ from thrust_and_kill_board.packets import (
     KillReceivePacket,
     KillSetPacket,
     KillStatus,
+    TemperaturePacketRecieve,
+    TemperaturePacketRequest,
     ThrusterId,
     ThrustSetPacket,
 )
@@ -33,8 +35,12 @@ def msg_to_string(msg):
 
 class ThrustAndKillNode(
     SerialDeviceNode[
-        ThrustSetPacket | HeartbeatSetPacket | KillSetPacket,
-        HeartbeatReceivePacket | AckPacket | NackPacket | KillReceivePacket,
+        ThrustSetPacket | HeartbeatSetPacket | KillSetPacket | TemperaturePacketRequest,
+        HeartbeatReceivePacket
+        | AckPacket
+        | NackPacket
+        | KillReceivePacket
+        | TemperaturePacketRecieve,
     ],
 ):
 
@@ -65,6 +71,23 @@ class ThrustAndKillNode(
         baudrate_val = (
             self.get_parameter("baudrate").get_parameter_value().integer_value
         )
+
+        # Getting temperature data
+        temperature_description = ParameterDescriptor(
+            type=ParameterType.PARAMETER_DOUBLE,
+            description="Period to request temperatures",
+        )
+        self.declare_parameter(
+            "temperature_request_period_sec",
+            1.0,
+            descriptor=temperature_description,
+        )
+        temp_period = float(
+            self.get_parameter("temperature_request_period_sec")
+            .get_parameter_value()
+            .double_value,
+        )
+
         self.connect(port_val, baudrate_val)
         # TODO (kill, cbrxyz): uf-mil/mil2#85
         self.thruster_sub = self.create_subscription(
@@ -86,11 +109,21 @@ class ThrustAndKillNode(
             10,
         )
 
+        self.temperatures_pub = self.create_publisher(
+            Temperature,
+            "sub9_temp",
+            10,
+        )
+
         self.create_service(Empty, "kill", self._set_kill)
         self.create_service(Empty, "unkill", self._unset_kill)
 
         self.send_heartbeat_timer = self.create_timer(0.9, self._send_heartbeat)
         self.check_heartbeat_timer = self.create_timer(0.5, self._check_heartbeat)
+        self.temp_request_timer = self.create_timer(
+            temp_period,
+            self._send_temperature_request,
+        )
         self.last_heartbeat_time = time.monotonic()
         self.heartbeat_timedout = False
 
@@ -131,6 +164,15 @@ class ThrustAndKillNode(
         if isinstance(packet, KillReceivePacket):
             self.get_logger().error(f"Received kill packet from thrusters: {packet}")
 
+        if isinstance(packet, TemperaturePacketRecieve):
+            msg = Temperature()
+            msg.sensor0 = float(packet.t0)
+            msg.sensor1 = float(packet.t1)
+            self.temperatures_pub.publish(msg)
+            self.get_logger().info(
+                f"Temperatures (°C): sensor0={msg.sensor0:.2f}, sensor1={msg.sensor1:.2f}",
+            )
+
     def _set_kill(self, request, response):
         self.get_logger().info("Received kill service request.")
         self.send_packet(KillSetPacket(True, KillStatus.SOFTWARE_REQUESTED))
@@ -156,6 +198,10 @@ class ThrustAndKillNode(
             else:
                 self.get_logger().error("Thrust board heartbeat re-established!")
                 self.heartbeat_timedout = False
+
+    def _send_temperature_request(self):
+        self.send_packet(TemperaturePacketRequest())
+        self.get_logger().debug("Sent TemperaturePacketRequest()")
 
 
 def main(args=None):
