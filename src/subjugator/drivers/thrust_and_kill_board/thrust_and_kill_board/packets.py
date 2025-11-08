@@ -21,7 +21,7 @@ class TemperaturePacketRecieve(
     Packet,
     class_id=0x02,
     subclass_id=0x06,
-    payload_format="<ff",
+    payload_format="<f",
 ):
     """
     Receiving data from all temperature sensors.
