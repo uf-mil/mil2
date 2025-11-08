@@ -22,7 +22,9 @@ from thrust_and_kill_board.packets import (
     ThrustSetPacket,
 )
 
-DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E4624CF5C30F4A22-if00"
+# note that you also need to mess with the yaml file in the config dir
+DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E4623C80DF43092D-if00"  # v2
+# DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E4624CF5C30F4A22-if00" # v1
 DEFAULT_BAUDRATE = 115200
 
 
