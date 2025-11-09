@@ -14,6 +14,8 @@
  * limitations under the License.
  *
  */
+#include "Buoyancy.hh"
+
 #include <gz/msgs/wrench.pb.h>
 
 #include <map>
@@ -24,20 +26,9 @@
 #include <utility>
 #include <vector>
 
-#include <gz/common/Mesh.hh>
-#include <gz/common/MeshManager.hh>
-#include <gz/common/Profiler.hh>
-
-#include <gz/plugin/Register.hh>
-
-#include <gz/math/Helpers.hh>
-#include <gz/math/Pose3.hh>
-#include <gz/math/Vector3.hh>
-
-#include <gz/msgs/Utility.hh>
-
-#include <sdf/sdf.hh>
-
+#include "gz/sim/Link.hh"
+#include "gz/sim/Model.hh"
+#include "gz/sim/Util.hh"
 #include "gz/sim/components/CenterOfVolume.hh"
 #include "gz/sim/components/Collision.hh"
 #include "gz/sim/components/Gravity.hh"
@@ -47,11 +38,16 @@
 #include "gz/sim/components/Pose.hh"
 #include "gz/sim/components/Volume.hh"
 #include "gz/sim/components/World.hh"
-#include "gz/sim/Link.hh"
-#include "gz/sim/Model.hh"
-#include "gz/sim/Util.hh"
 
-#include "Buoyancy.hh"
+#include <gz/common/Mesh.hh>
+#include <gz/common/MeshManager.hh>
+#include <gz/common/Profiler.hh>
+#include <gz/math/Helpers.hh>
+#include <gz/math/Pose3.hh>
+#include <gz/math/Vector3.hh>
+#include <gz/msgs/Utility.hh>
+#include <gz/plugin/Register.hh>
+#include <sdf/sdf.hh>
 
 using namespace gz;
 using namespace sim;
@@ -59,598 +55,550 @@ using namespace systems;
 
 class gz::sim::systems::BuoyancyPrivate
 {
-  public: enum BuoyancyType
-  {
-    /// \brief Applies same buoyancy to whole world.
-    UNIFORM_BUOYANCY,
-    /// \brief Uses z-axis to determine buoyancy of the world
-    /// This is useful for worlds where we want to simulate the ocean interface.
-    /// Or for instance if we want to simulate different levels of buoyancies
-    /// at different depths.
-    GRADED_BUOYANCY
-  };
-  public: BuoyancyType buoyancyType{BuoyancyType::UNIFORM_BUOYANCY};
-  /// \brief Get the fluid density based on a pose.
-  /// \param[in] _pose The pose to use when computing the fluid density. The
-  /// pose frame is left undefined because this function currently returns
-  /// a constant value, see the todo in the function implementation.
-  /// \return The fluid density at the givein pose.
-  public: double UniformFluidDensity(const math::Pose3d &_pose) const;
-
-  /// \brief Get the resultant buoyant force on a shape.
-  /// \param[in] _pose World pose of the shape's origin.
-  /// \param[in] _shape The collision mesh of a shape. Currently must
-  /// be box or sphere.
-  /// \param[in] _gravity Gravity acceleration in the world frame.
-  /// Updates this->buoyancyForces containing {force, center_of_volume} to be
-  /// applied on the link.
   public:
-  template<typename T>
-  void GradedFluidDensity(
-    const math::Pose3d &_pose, const T &_shape, const math::Vector3d &_gravity);
+    enum BuoyancyType
+    {
+        /// \brief Applies same buoyancy to whole world.
+        UNIFORM_BUOYANCY,
+        /// \brief Uses z-axis to determine buoyancy of the world
+        /// This is useful for worlds where we want to simulate the ocean interface.
+        /// Or for instance if we want to simulate different levels of buoyancies
+        /// at different depths.
+        GRADED_BUOYANCY
+    };
 
-  /// \brief Check for new links to apply buoyancy forces to. Calculates the
-  /// volume and center of volume for every new link and stages them to be
-  /// commited when `CommitNewEntities` is called.
-  /// \param[in] _ecm The Entity Component Manager.
-  public: void CheckForNewEntities(const EntityComponentManager &_ecm);
+  public:
+    BuoyancyType buoyancyType{ BuoyancyType::UNIFORM_BUOYANCY };
+    /// \brief Get the fluid density based on a pose.
+    /// \param[in] _pose The pose to use when computing the fluid density. The
+    /// pose frame is left undefined because this function currently returns
+    /// a constant value, see the todo in the function implementation.
+    /// \return The fluid density at the givein pose.
+  public:
+    double UniformFluidDensity(math::Pose3d const &_pose) const;
 
-  /// \brief Commits the new entities to the ECM.
-  /// \param[in] _ecm The Entity Component Manager.
-  public: void CommitNewEntities(EntityComponentManager &_ecm);
+    /// \brief Get the resultant buoyant force on a shape.
+    /// \param[in] _pose World pose of the shape's origin.
+    /// \param[in] _shape The collision mesh of a shape. Currently must
+    /// be box or sphere.
+    /// \param[in] _gravity Gravity acceleration in the world frame.
+    /// Updates this->buoyancyForces containing {force, center_of_volume} to be
+    /// applied on the link.
+  public:
+    template <typename T>
+    void GradedFluidDensity(math::Pose3d const &_pose, T const &_shape, math::Vector3d const &_gravity);
 
-  /// \brief Check if an entity is enabled or not.
-  /// \param[in] _entity Target entity
-  /// \param[in] _ecm Entity component manager
-  /// \return True if buoyancy should be applied.
-  public: bool IsEnabled(Entity _entity,
-      const EntityComponentManager &_ecm) const;
+    /// \brief Check for new links to apply buoyancy forces to. Calculates the
+    /// volume and center of volume for every new link and stages them to be
+    /// committed when `CommitNewEntities` is called.
+    /// \param[in] _ecm The Entity Component Manager.
+  public:
+    void CheckForNewEntities(EntityComponentManager const &_ecm);
 
-  /// \brief Model interface
-  public: Entity world{kNullEntity};
+    /// \brief Commits the new entities to the ECM.
+    /// \param[in] _ecm The Entity Component Manager.
+  public:
+    void CommitNewEntities(EntityComponentManager &_ecm);
 
-  /// \brief The density of the fluid in which the object is submerged in
-  /// kg/m^3. Defaults to 1000, the fluid density of water.
-  public: double fluidDensity{1000};
+    /// \brief Check if an entity is enabled or not.
+    /// \param[in] _entity Target entity
+    /// \param[in] _ecm Entity component manager
+    /// \return True if buoyancy should be applied.
+  public:
+    bool IsEnabled(Entity _entity, EntityComponentManager const &_ecm) const;
 
-  /// \brief When using GradedBuoyancy, we provide a different buoyancy for
-  /// each layer. The key on this map is height in meters and the value is fluid
-  /// density. I.E all the fluid between $key$m and $next_key$m has the density
-  /// $value$kg/m^3. Everything below the first key is considered as having
-  /// fluidDensity.
-  public: std::map<double, double> layers;
+    /// \brief Model interface
+  public:
+    Entity world{ kNullEntity };
 
-  /// \brief Holds information about forces contributed by a single collision
-  /// shape.
-  public: struct BuoyancyActionPoint
-  {
-    /// \brief The force to be applied, expressed in the world frame.
-    math::Vector3d force;
+    /// \brief The density of the fluid in which the object is submerged in
+    /// kg/m^3. Defaults to 1000, the fluid density of water.
+  public:
+    double fluidDensity{ 1000 };
 
-    /// \brief The point from which the force will be applied, expressed in
-    /// the collision's frame.
-    math::Vector3d point;
+    /// \brief When using GradedBuoyancy, we provide a different buoyancy for
+    /// each layer. The key on this map is height in meters and the value is fluid
+    /// density. I.E all the fluid between $key$m and $next_key$m has the density
+    /// $value$kg/m^3. Everything below the first key is considered as having
+    /// fluidDensity.
+  public:
+    std::map<double, double> layers;
 
-    /// \brief The world pose of the collision.
-    math::Pose3d pose;
-  };
+    /// \brief Holds information about forces contributed by a single collision
+    /// shape.
+  public:
+    struct BuoyancyActionPoint
+    {
+        /// \brief The force to be applied, expressed in the world frame.
+        math::Vector3d force;
 
-  /// \brief List of points from where the forces act.
-  /// This holds values refent to the current link being processed and must be
-  /// cleared between links.
-  /// \TODO(chapulina) It's dangerous to keep link-specific values in a member
-  /// variable. We should consider reducing the scope of this variable and pass
-  /// it across functions as needed.
-  public: std::vector<BuoyancyActionPoint> buoyancyForces;
+        /// \brief The point from which the force will be applied, expressed in
+        /// the collision's frame.
+        math::Vector3d point;
 
-  /// \brief Resolve all forces as if they act as a Wrench from the give pose.
-  /// \param[in] _linkInWorld The point from which all poses are to be resolved.
-  /// This is the link's origin in the world frame.
-  /// \return A pair of {force, torque} describing the wrench to be applied
-  /// at _pose, expressed in the world frame.
-  public: std::pair<math::Vector3d, math::Vector3d> ResolveForces(
-    const math::Pose3d &_linkInWorld);
+        /// \brief The world pose of the collision.
+        math::Pose3d pose;
+    };
 
-  /// \brief Scoped names of entities that buoyancy should apply to. If empty,
-  /// all links will receive buoyancy.
-  public: std::unordered_set<std::string> enabled;
+    /// \brief List of points from where the forces act.
+    /// This holds values refent to the current link being processed and must be
+    /// cleared between links.
+    /// \TODO(chapulina) It's dangerous to keep link-specific values in a member
+    /// variable. We should consider reducing the scope of this variable and pass
+    /// it across functions as needed.
+  public:
+    std::vector<BuoyancyActionPoint> buoyancyForces;
 
-  /// \brief Center of volumes to be added on the next Pre-update
-  public: std::unordered_map<Entity, math::Vector3d> centerOfVolumes;
+    /// \brief Resolve all forces as if they act as a Wrench from the give pose.
+    /// \param[in] _linkInWorld The point from which all poses are to be resolved.
+    /// This is the link's origin in the world frame.
+    /// \return A pair of {force, torque} describing the wrench to be applied
+    /// at _pose, expressed in the world frame.
+  public:
+    std::pair<math::Vector3d, math::Vector3d> ResolveForces(math::Pose3d const &_linkInWorld);
 
-  /// \brief Volumes to be added on the next.
-  public: std::unordered_map<Entity, double> volumes;
+    /// \brief Scoped names of entities that buoyancy should apply to. If empty,
+    /// all links will receive buoyancy.
+  public:
+    std::unordered_set<std::string> enabled;
+
+    /// \brief Center of volumes to be added on the next Pre-update
+  public:
+    std::unordered_map<Entity, math::Vector3d> centerOfVolumes;
+
+    /// \brief Volumes to be added on the next.
+  public:
+    std::unordered_map<Entity, double> volumes;
 };
 
 //////////////////////////////////////////////////
-double BuoyancyPrivate::UniformFluidDensity(const math::Pose3d &/*_pose*/) const
+double BuoyancyPrivate::UniformFluidDensity(math::Pose3d const & /*_pose*/) const
 {
-  return this->fluidDensity;
+    return this->fluidDensity;
 }
 
 //////////////////////////////////////////////////
-template<typename T>
-void BuoyancyPrivate::GradedFluidDensity(
-  const math::Pose3d &_pose, const T &_shape, const math::Vector3d &_gravity)
+template <typename T>
+void BuoyancyPrivate::GradedFluidDensity(math::Pose3d const &_pose, T const &_shape, math::Vector3d const &_gravity)
 {
-  auto prevLayerFluidDensity = this->fluidDensity;
-  auto prevLayerVol = 0.0;
-  auto centerOfBuoyancy = math::Vector3d{0, 0, 0};
+    auto prevLayerFluidDensity = this->fluidDensity;
+    auto prevLayerVol = 0.0;
+    auto centerOfBuoyancy = math::Vector3d{ 0, 0, 0 };
 
-  for (const auto &[height, currFluidDensity] : this->layers)
-  {
-    // TODO(arjo): Transform plane and slice the shape
-    math::Planed plane{math::Vector3d{0, 0, 1}, height - _pose.Pos().Z()};
-    auto vol = _shape.VolumeBelow(plane);
-
-    // Short circuit.
-    if (vol <= 0)
+    for (auto const &[height, currFluidDensity] : this->layers)
     {
-      prevLayerFluidDensity = currFluidDensity;
-      continue;
-    }
+        // TODO(arjo): Transform plane and slice the shape
+        math::Planned plane{ math::Vector3d{ 0, 0, 1 }, height - _pose.Pos().Z() };
+        auto vol = _shape.VolumeBelow(plane);
 
-    // Calculate point from which force is applied
-    auto cov = _shape.CenterOfVolumeBelow(plane);
+        // Short circuit.
+        if (vol <= 0)
+        {
+            prevLayerFluidDensity = currFluidDensity;
+            continue;
+        }
 
-    if (!cov.has_value())
-    {
-      prevLayerFluidDensity = currFluidDensity;
-      continue;
+        // Calculate point from which force is applied
+        auto cov = _shape.CenterOfVolumeBelow(plane);
+
+        if (!cov.has_value())
+        {
+            prevLayerFluidDensity = currFluidDensity;
+            continue;
+        }
+
+        // Archimedes principle for this layer
+        auto forceMag = -(vol - prevLayerVol) * _gravity * prevLayerFluidDensity;
+
+        // Accumulate layers.
+        prevLayerFluidDensity = currFluidDensity;
+
+        auto cob = (cov.value() * vol - centerOfBuoyancy * prevLayerVol) / (vol - prevLayerVol);
+        centerOfBuoyancy = cov.value();
+        auto buoyancyAction = BuoyancyActionPoint{ forceMag, cob, _pose };
+        this->buoyancyForces.push_back(buoyancyAction);
+
+        prevLayerVol = vol;
     }
+    // For the rest of the layers.
+    auto vol = _shape.Volume();
+
+    // No force contributed by this layer.
+    if (std::abs(vol - prevLayerVol) < 1e-10)
+        return;
 
     // Archimedes principle for this layer
-    auto forceMag =  - (vol - prevLayerVol) * _gravity * prevLayerFluidDensity;
+    auto forceMag = -(vol - prevLayerVol) * _gravity * prevLayerFluidDensity;
 
-    // Accumulate layers.
-    prevLayerFluidDensity = currFluidDensity;
-
-    auto cob = (cov.value() * vol - centerOfBuoyancy * prevLayerVol)
-      / (vol - prevLayerVol);
-    centerOfBuoyancy = cov.value();
-    auto buoyancyAction = BuoyancyActionPoint
-    {
-      forceMag,
-      cob,
-      _pose
-    };
+    // Calculate centre of buoyancy
+    auto cov = math::Vector3d{ 0, 0, 0 };
+    auto cob = (cov * vol - centerOfBuoyancy * prevLayerVol) / (vol - prevLayerVol);
+    centerOfBuoyancy = cov;
+    auto buoyancyAction = BuoyancyActionPoint{ forceMag, cob, _pose };
     this->buoyancyForces.push_back(buoyancyAction);
-
-    prevLayerVol = vol;
-  }
-  // For the rest of the layers.
-  auto vol = _shape.Volume();
-
-  // No force contributed by this layer.
-  if (std::abs(vol - prevLayerVol) < 1e-10)
-    return;
-
-  // Archimedes principle for this layer
-  auto forceMag = - (vol - prevLayerVol) * _gravity * prevLayerFluidDensity;
-
-  // Calculate centre of buoyancy
-  auto cov = math::Vector3d{0, 0, 0};
-  auto cob =
-    (cov * vol - centerOfBuoyancy * prevLayerVol) / (vol - prevLayerVol);
-  centerOfBuoyancy = cov;
-  auto buoyancyAction = BuoyancyActionPoint
-  {
-    forceMag,
-    cob,
-    _pose
-  };
-  this->buoyancyForces.push_back(buoyancyAction);
 }
 
 //////////////////////////////////////////////////
-std::pair<math::Vector3d, math::Vector3d> BuoyancyPrivate::ResolveForces(
-  const math::Pose3d &_linkInWorld)
+std::pair<math::Vector3d, math::Vector3d> BuoyancyPrivate::ResolveForces(math::Pose3d const &_linkInWorld)
 {
-  auto force = math::Vector3d{0, 0, 0};
-  auto torque = math::Vector3d{0, 0, 0};
+    auto force = math::Vector3d{ 0, 0, 0 };
+    auto torque = math::Vector3d{ 0, 0, 0 };
 
-  for (const auto &b : this->buoyancyForces)
-  {
-    force += b.force;
+    for (auto const &b : this->buoyancyForces)
+    {
+        force += b.force;
 
-    // Pose offset from application point (COV) to collision origin, expressed
-    // in the collision frame
-    math::Pose3d pointInCol{b.point, math::Quaterniond::Identity};
+        // Pose offset from application point (COV) to collision origin, expressed
+        // in the collision frame
+        math::Pose3d pointInCol{ b.point, math::Quaterniond::Identity };
 
-    // Application point in the world frame
-    auto pointInWorld = b.pose * pointInCol;
+        // Application point in the world frame
+        auto pointInWorld = b.pose * pointInCol;
 
-    // Offset between the link origin and the force application point
-    auto offset = _linkInWorld.Pos() - pointInWorld.Pos();
+        // Offset between the link origin and the force application point
+        auto offset = _linkInWorld.Pos() - pointInWorld.Pos();
 
-    torque += b.force.Cross(offset);
-  }
+        torque += b.force.Cross(offset);
+    }
 
-  return {force, torque};
+    return { force, torque };
 }
 
 //////////////////////////////////////////////////
-void BuoyancyPrivate::CheckForNewEntities(const EntityComponentManager &_ecm)
+void BuoyancyPrivate::CheckForNewEntities(EntityComponentManager const &_ecm)
 {
-  // Compute the volume and center of volume for each new link
-  _ecm.Each<components::Link, components::Inertial>(
-      [&](const Entity &_entity,
-          const components::Link *,
-          const components::Inertial *) -> bool
-  {
-    // Skip if the entity already has a volume and center of volume
-    if (_ecm.EntityHasComponentType(_entity,
-          components::CenterOfVolume().TypeId()) &&
-        _ecm.EntityHasComponentType(_entity,
-          components::Volume().TypeId()))
-    {
-      return true;
-    }
-
-    if (!this->IsEnabled(_entity, _ecm))
-    {
-      return true;
-    }
-
-    Link link(_entity);
-
-    std::vector<Entity> collisions = _ecm.ChildrenByComponents(
-        _entity, components::Collision());
-
-    double volumeSum = 0;
-    gz::math::Vector3d weightedPosInLinkSum =
-      gz::math::Vector3d::Zero;
-
-    // Compute the volume of the link by iterating over all the collision
-    // elements and storing each geometry's volume.
-    for (const Entity &collision : collisions)
-    {
-      double volume = 0;
-      const components::CollisionElement *coll =
-        _ecm.Component<components::CollisionElement>(collision);
-
-      if (!coll)
-      {
-        gzerr << "Invalid collision pointer. This shouldn't happen\n";
-        continue;
-      }
-
-      switch (coll->Data().Geom()->Type())
-      {
-        case sdf::GeometryType::BOX:
-          volume = coll->Data().Geom()->BoxShape()->Shape().Volume();
-          break;
-        case sdf::GeometryType::SPHERE:
-          volume = coll->Data().Geom()->SphereShape()->Shape().Volume();
-          break;
-        case sdf::GeometryType::CYLINDER:
-          volume = coll->Data().Geom()->CylinderShape()->Shape().Volume();
-          break;
-        case sdf::GeometryType::PLANE:
-          // Ignore plane shapes. They have no volume and are not expected
-          // to be buoyant.
-          break;
-        case sdf::GeometryType::MESH:
-          {
-            std::string file = asFullPath(
-                coll->Data().Geom()->MeshShape()->Uri(),
-                coll->Data().Geom()->MeshShape()->FilePath());
-            if (common::MeshManager::Instance()->IsValidFilename(file))
+    // Compute the volume and center of volume for each new link
+    _ecm.Each<components::Link, components::Inertial>(
+        [&](Entity const &_entity, components::Link const *, components::Inertial const *) -> bool
+        {
+            // Skip if the entity already has a volume and center of volume
+            if (_ecm.EntityHasComponentType(_entity, components::CenterOfVolume().TypeId()) &&
+                _ecm.EntityHasComponentType(_entity, components::Volume().TypeId()))
             {
-              const common::Mesh *mesh =
-                common::MeshManager::Instance()->Load(file);
-              if (mesh)
-                volume = mesh->Volume();
-              else
-                gzerr << "Unable to load mesh[" << file << "]\n";
+                return true;
             }
-            else
+
+            if (!this->IsEnabled(_entity, _ecm))
             {
-              gzerr << "Invalid mesh filename[" << file << "]\n";
+                return true;
             }
-            break;
-          }
-        default:
-          gzerr << "Unsupported collision geometry["
-            << static_cast<int>(coll->Data().Geom()->Type()) << "]\n";
-          break;
-      }
 
-      volumeSum += volume;
-      auto poseInLink = _ecm.Component<components::Pose>(collision)->Data();
-      weightedPosInLinkSum += volume * poseInLink.Pos();
-    }
+            Link link(_entity);
 
-    if (volumeSum > 0)
-    {
-      // Stage calculation results for future commit. We do this because
-      // during PostUpdate the ECM is const, so we can't modify it,
-      this->centerOfVolumes[_entity] = weightedPosInLinkSum / volumeSum;
-      this->volumes[_entity] = volumeSum;
-    }
+            std::vector<Entity> collisions = _ecm.ChildrenByComponents(_entity, components::Collision());
 
-    return true;
-  });
+            double volumeSum = 0;
+            gz::math::Vector3d weightedPosInLinkSum = gz::math::Vector3d::Zero;
+
+            // Compute the volume of the link by iterating over all the collision
+            // elements and storing each geometry's volume.
+            for (Entity const &collision : collisions)
+            {
+                double volume = 0;
+                components::CollisionElement const *coll = _ecm.Component<components::CollisionElement>(collision);
+
+                if (!coll)
+                {
+                    gzerr << "Invalid collision pointer. This shouldn't happen\n";
+                    continue;
+                }
+
+                switch (coll->Data().Geom()->Type())
+                {
+                    case sdf::GeometryType::BOX:
+                        volume = coll->Data().Geom()->BoxShape()->Shape().Volume();
+                        break;
+                    case sdf::GeometryType::SPHERE:
+                        volume = coll->Data().Geom()->SphereShape()->Shape().Volume();
+                        break;
+                    case sdf::GeometryType::CYLINDER:
+                        volume = coll->Data().Geom()->CylinderShape()->Shape().Volume();
+                        break;
+                    case sdf::GeometryType::PLANE:
+                        // Ignore plane shapes. They have no volume and are not expected
+                        // to be buoyant.
+                        break;
+                    case sdf::GeometryType::MESH:
+                    {
+                        std::string file = asFullPath(coll->Data().Geom()->MeshShape()->Uri(),
+                                                      coll->Data().Geom()->MeshShape()->FilePath());
+                        if (common::MeshManager::Instance()->IsValidFilename(file))
+                        {
+                            common::Mesh const *mesh = common::MeshManager::Instance()->Load(file);
+                            if (mesh)
+                                volume = mesh->Volume();
+                            else
+                                gzerr << "Unable to load mesh[" << file << "]\n";
+                        }
+                        else
+                        {
+                            gzerr << "Invalid mesh filename[" << file << "]\n";
+                        }
+                        break;
+                    }
+                    default:
+                        gzerr << "Unsupported collision geometry[" << static_cast<int>(coll->Data().Geom()->Type())
+                              << "]\n";
+                        break;
+                }
+
+                volumeSum += volume;
+                auto poseInLink = _ecm.Component<components::Pose>(collision)->Data();
+                weightedPosInLinkSum += volume * poseInLink.Pos();
+            }
+
+            if (volumeSum > 0)
+            {
+                // Stage calculation results for future commit. We do this because
+                // during PostUpdate the ECM is const, so we can't modify it,
+                this->centerOfVolumes[_entity] = weightedPosInLinkSum / volumeSum;
+                this->volumes[_entity] = volumeSum;
+            }
+
+            return true;
+        });
 }
 
 //////////////////////////////////////////////////
 void BuoyancyPrivate::CommitNewEntities(EntityComponentManager &_ecm)
 {
-  for (const auto [_entity, _cov] : this->centerOfVolumes)
-  {
-    if (_ecm.HasEntity(_entity))
+    for (auto const [_entity, _cov] : this->centerOfVolumes)
     {
-      _ecm.CreateComponent(_entity, components::CenterOfVolume(_cov));
-    }
-  }
-
-  for (const auto [_entity, _vol] : this->volumes)
-  {
-    if (_ecm.HasEntity(_entity))
-    {
-      _ecm.CreateComponent(_entity, components::Volume(_vol));
-    }
-  }
-
-  this->centerOfVolumes.clear();
-  this->volumes.clear();
-}
-
-//////////////////////////////////////////////////
-bool BuoyancyPrivate::IsEnabled(Entity _entity,
-  const EntityComponentManager &_ecm) const
-{
-  // If there's nothing enabled, all entities are enabled
-  if (this->enabled.empty())
-    return true;
-
-  auto entity = _entity;
-  while (entity != kNullEntity)
-  {
-    // Fully scoped name
-    auto name = scopedName(entity, _ecm, "::", false);
-
-    // Remove world name
-    name = removeParentScope(name, "::");
-
-    if (this->enabled.find(name) != this->enabled.end())
-      return true;
-
-    // Check parent
-    auto parentComp = _ecm.Component<components::ParentEntity>(entity);
-
-    if (nullptr == parentComp)
-      return false;
-
-    entity = parentComp->Data();
-  }
-
-  return false;
-}
-
-//////////////////////////////////////////////////
-Buoyancy::Buoyancy()
-  : dataPtr(std::make_unique<BuoyancyPrivate>())
-{
-}
-
-//////////////////////////////////////////////////
-void Buoyancy::Configure(const Entity &_entity,
-    const std::shared_ptr<const sdf::Element> &_sdf,
-    EntityComponentManager &_ecm,
-    EventManager &/*_eventMgr*/)
-{
-  // Store the world.
-  this->dataPtr->world = _entity;
-
-  // Get the gravity (defined in world frame)
-  const components::Gravity *gravity = _ecm.Component<components::Gravity>(
-      this->dataPtr->world);
-  if (!gravity)
-  {
-    gzerr << "Unable to get the gravity vector. Make sure this plugin is "
-      << "attached to a <world>, not a <model>." << std::endl;
-    return;
-  }
-
-  if (_sdf->HasElement("uniform_fluid_density"))
-  {
-    this->dataPtr->fluidDensity = _sdf->Get<double>("uniform_fluid_density");
-  }
-  else if (_sdf->HasElement("graded_buoyancy"))
-  {
-    this->dataPtr->buoyancyType =
-      BuoyancyPrivate::BuoyancyType::GRADED_BUOYANCY;
-
-    auto gradedElement = _sdf->GetFirstElement();
-    if (gradedElement == nullptr)
-    {
-      gzerr << "Unable to get element description" << std::endl;
-      return;
-    }
-
-    auto argument = gradedElement->GetFirstElement();
-    while (argument != nullptr)
-    {
-      if (argument->GetName() == "default_density")
-      {
-        argument->GetValue()->Get<double>(this->dataPtr->fluidDensity);
-        gzdbg << "Default density set to "
-          << this->dataPtr->fluidDensity << std::endl;
-      }
-      if (argument->GetName() == "density_change")
-      {
-        auto depth = argument->Get<double>("above_depth", 0.0);
-        auto density = argument->Get<double>("density", 0.0);
-        if (!depth.second)
+        if (_ecm.HasEntity(_entity))
         {
-          gzwarn << "No <above_depth> tag was found as a "
-            << "child of <density_change>" << std::endl;
+            _ecm.CreateComponent(_entity, components::CenterOfVolume(_cov));
         }
-        if (!density.second)
-        {
-          gzwarn << "No <density> tag was found as a "
-            << "child of <density_change>" << std::endl;
-        }
-        this->dataPtr->layers[depth.first] = density.first;
-        gzdbg << "Added layer at " << depth.first << ", "
-          <<  density.first << std::endl;
-      }
-      argument = argument->GetNextElement();
     }
-  }
-  else
-  {
-    gzwarn <<
-      "Neither <graded_buoyancy> nor <uniform_fluid_density> specified"
-      << std::endl
-      << "\tDefaulting to <uniform_fluid_density>1000</uniform_fluid_density>"
-      << std::endl;
-  }
 
-  if (_sdf->HasElement("enable"))
-  {
-    for (auto enableElem = _sdf->FindElement("enable");
-        enableElem != nullptr;
-        enableElem = enableElem->GetNextElement("enable"))
+    for (auto const [_entity, _vol] : this->volumes)
     {
-      this->dataPtr->enabled.insert(enableElem->Get<std::string>());
+        if (_ecm.HasEntity(_entity))
+        {
+            _ecm.CreateComponent(_entity, components::Volume(_vol));
+        }
     }
-  }
+
+    this->centerOfVolumes.clear();
+    this->volumes.clear();
 }
 
 //////////////////////////////////////////////////
-void Buoyancy::PreUpdate(const UpdateInfo &_info,
-    EntityComponentManager &_ecm)
+bool BuoyancyPrivate::IsEnabled(Entity _entity, EntityComponentManager const &_ecm) const
 {
-  GZ_PROFILE("Buoyancy::PreUpdate");
-  this->dataPtr->CheckForNewEntities(_ecm);
-  this->dataPtr->CommitNewEntities(_ecm);
-  // Only update if not paused.
-  if (_info.paused)
-    return;
+    // If there's nothing enabled, all entities are enabled
+    if (this->enabled.empty())
+        return true;
 
-  const components::Gravity *gravity = _ecm.Component<components::Gravity>(
-      this->dataPtr->world);
-  if (!gravity)
-  {
-    gzerr << "Unable to get the gravity vector. Has gravity been defined?"
-           << std::endl;
-    return;
-  }
-
-  _ecm.Each<components::Link,
-            components::Volume,
-            components::CenterOfVolume>(
-      [&](const Entity &_entity,
-          const components::Link *,
-          const components::Volume *_volume,
-          const components::CenterOfVolume *_centerOfVolume) -> bool
+    auto entity = _entity;
+    while (entity != kNullEntity)
     {
-      // World pose of the link.
-      math::Pose3d linkWorldPose = worldPose(_entity, _ecm);
+        // Fully scoped name
+        auto name = scopedName(entity, _ecm, "::", false);
 
-      Link link(_entity);
+        // Remove world name
+        name = removeParentScope(name, "::");
 
-      math::Vector3d buoyancy;
-      // By Archimedes' principle,
-      // buoyancy = -(mass*gravity)*fluid_density/object_density
-      // object_density = mass/volume, so the mass term cancels.
-      if (this->dataPtr->buoyancyType
-        == BuoyancyPrivate::BuoyancyType::UNIFORM_BUOYANCY)
-      {
-        buoyancy =
-        -this->dataPtr->UniformFluidDensity(linkWorldPose) *
-        _volume->Data() * gravity->Data();
+        if (this->enabled.find(name) != this->enabled.end())
+            return true;
 
-        // Convert the center of volume to the world frame
-        math::Vector3d offsetWorld = linkWorldPose.Rot().RotateVector(
-            _centerOfVolume->Data());
-        // Compute the torque that should be applied due to buoyancy and
-        // the center of volume.
-        math::Vector3d torque = offsetWorld.Cross(buoyancy);
+        // Check parent
+        auto parentComp = _ecm.Component<components::ParentEntity>(entity);
 
-        // Apply the wrench to the link. This wrench is applied in the
-        // Physics System.
-        link.AddWorldWrench(_ecm, buoyancy, torque);
-      }
-      else if (this->dataPtr->buoyancyType
-        == BuoyancyPrivate::BuoyancyType::GRADED_BUOYANCY)
-      {
-        std::vector<Entity> collisions = _ecm.ChildrenByComponents(
-          _entity, components::Collision());
-        this->dataPtr->buoyancyForces.clear();
+        if (nullptr == parentComp)
+            return false;
 
-        for (auto e : collisions)
+        entity = parentComp->Data();
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////
+Buoyancy::Buoyancy() : dataPtr(std::make_unique<BuoyancyPrivate>())
+{
+}
+
+//////////////////////////////////////////////////
+void Buoyancy::Configure(Entity const &_entity, std::shared_ptr<sdf::Element const> const &_sdf,
+                         EntityComponentManager &_ecm, EventManager & /*_eventMgr*/)
+{
+    // Store the world.
+    this->dataPtr->world = _entity;
+
+    // Get the gravity (defined in world frame)
+    components::Gravity const *gravity = _ecm.Component<components::Gravity>(this->dataPtr->world);
+    if (!gravity)
+    {
+        gzerr << "Unable to get the gravity vector. Make sure this plugin is "
+              << "attached to a <world>, not a <model>." << std::endl;
+        return;
+    }
+
+    if (_sdf->HasElement("uniform_fluid_density"))
+    {
+        this->dataPtr->fluidDensity = _sdf->Get<double>("uniform_fluid_density");
+    }
+    else if (_sdf->HasElement("graded_buoyancy"))
+    {
+        this->dataPtr->buoyancyType = BuoyancyPrivate::BuoyancyType::GRADED_BUOYANCY;
+
+        auto gradedElement = _sdf->GetFirstElement();
+        if (gradedElement == nullptr)
         {
-          const components::CollisionElement *coll =
-            _ecm.Component<components::CollisionElement>(e);
+            gzerr << "Unable to get element description" << std::endl;
+            return;
+        }
 
-          auto pose = worldPose(e, _ecm);
-
-          if (!coll)
-          {
-            gzerr << "Invalid collision pointer. This shouldn't happen\n";
-            continue;
-          }
-
-          switch (coll->Data().Geom()->Type())
-          {
-            case sdf::GeometryType::BOX:
-              this->dataPtr->GradedFluidDensity<math::Boxd>(
-                pose,
-                coll->Data().Geom()->BoxShape()->Shape(),
-                gravity->Data());
-              break;
-            case sdf::GeometryType::SPHERE:
-              this->dataPtr->GradedFluidDensity<math::Sphered>(
-                pose,
-                coll->Data().Geom()->SphereShape()->Shape(),
-                gravity->Data());
-              break;
-            default:
+        auto argument = gradedElement->GetFirstElement();
+        while (argument != nullptr)
+        {
+            if (argument->GetName() == "default_density")
             {
-              static bool warned{false};
-              if (!warned)
-              {
-                gzwarn << "Only <box> and <sphere> collisions are supported "
-                  << "by the graded buoyancy option." << std::endl;
-                warned = true;
-              }
-              break;
+                argument->GetValue()->Get<double>(this->dataPtr->fluidDensity);
+                gzdbg << "Default density set to " << this->dataPtr->fluidDensity << std::endl;
             }
-          }
+            if (argument->GetName() == "density_change")
+            {
+                auto depth = argument->Get<double>("above_depth", 0.0);
+                auto density = argument->Get<double>("density", 0.0);
+                if (!depth.second)
+                {
+                    gzwarn << "No <above_depth> tag was found as a "
+                           << "child of <density_change>" << std::endl;
+                }
+                if (!density.second)
+                {
+                    gzwarn << "No <density> tag was found as a "
+                           << "child of <density_change>" << std::endl;
+                }
+                this->dataPtr->layers[depth.first] = density.first;
+                gzdbg << "Added layer at " << depth.first << ", " << density.first << std::endl;
+            }
+            argument = argument->GetNextElement();
         }
-        auto [force, torque] = this->dataPtr->ResolveForces(linkWorldPose);
-        // Apply the wrench to the link. This wrench is applied in the
-        // Physics System.
-        link.AddWorldWrench(_ecm, force, torque);
-      }
+    }
+    else
+    {
+        gzwarn << "Neither <graded_buoyancy> nor <uniform_fluid_density> specified" << std::endl
+               << "\tDefaulting to <uniform_fluid_density>1000</uniform_fluid_density>" << std::endl;
+    }
 
-      return true;
-  });
+    if (_sdf->HasElement("enable"))
+    {
+        for (auto enableElem = _sdf->FindElement("enable"); enableElem != nullptr;
+             enableElem = enableElem->GetNextElement("enable"))
+        {
+            this->dataPtr->enabled.insert(enableElem->Get<std::string>());
+        }
+    }
 }
 
 //////////////////////////////////////////////////
-void Buoyancy::PostUpdate(
-                const UpdateInfo &/*_info*/,
-                const EntityComponentManager &_ecm)
+void Buoyancy::PreUpdate(UpdateInfo const &_info, EntityComponentManager &_ecm)
 {
-  this->dataPtr->CheckForNewEntities(_ecm);
+    GZ_PROFILE("Buoyancy::PreUpdate");
+    this->dataPtr->CheckForNewEntities(_ecm);
+    this->dataPtr->CommitNewEntities(_ecm);
+    // Only update if not paused.
+    if (_info.paused)
+        return;
+
+    components::Gravity const *gravity = _ecm.Component<components::Gravity>(this->dataPtr->world);
+    if (!gravity)
+    {
+        gzerr << "Unable to get the gravity vector. Has gravity been defined?" << std::endl;
+        return;
+    }
+
+    _ecm.Each<components::Link, components::Volume, components::CenterOfVolume>(
+        [&](Entity const &_entity, components::Link const *, components::Volume const *_volume,
+            components::CenterOfVolume const *_centerOfVolume) -> bool
+        {
+            // World pose of the link.
+            math::Pose3d linkWorldPose = worldPose(_entity, _ecm);
+
+            Link link(_entity);
+
+            math::Vector3d buoyancy;
+            // By Archimedes' principle,
+            // buoyancy = -(mass*gravity)*fluid_density/object_density
+            // object_density = mass/volume, so the mass term cancels.
+            if (this->dataPtr->buoyancyType == BuoyancyPrivate::BuoyancyType::UNIFORM_BUOYANCY)
+            {
+                buoyancy = -this->dataPtr->UniformFluidDensity(linkWorldPose) * _volume->Data() * gravity->Data();
+
+                // Convert the center of volume to the world frame
+                math::Vector3d offsetWorld = linkWorldPose.Rot().RotateVector(_centerOfVolume->Data());
+                // Compute the torque that should be applied due to buoyancy and
+                // the center of volume.
+                math::Vector3d torque = offsetWorld.Cross(buoyancy);
+
+                // Apply the wrench to the link. This wrench is applied in the
+                // Physics System.
+                link.AddWorldWrench(_ecm, buoyancy, torque);
+            }
+            else if (this->dataPtr->buoyancyType == BuoyancyPrivate::BuoyancyType::GRADED_BUOYANCY)
+            {
+                std::vector<Entity> collisions = _ecm.ChildrenByComponents(_entity, components::Collision());
+                this->dataPtr->buoyancyForces.clear();
+
+                for (auto e : collisions)
+                {
+                    components::CollisionElement const *coll = _ecm.Component<components::CollisionElement>(e);
+
+                    auto pose = worldPose(e, _ecm);
+
+                    if (!coll)
+                    {
+                        gzerr << "Invalid collision pointer. This shouldn't happen\n";
+                        continue;
+                    }
+
+                    switch (coll->Data().Geom()->Type())
+                    {
+                        case sdf::GeometryType::BOX:
+                            this->dataPtr->GradedFluidDensity<math::Boxd>(
+                                pose, coll->Data().Geom()->BoxShape()->Shape(), gravity->Data());
+                            break;
+                        case sdf::GeometryType::SPHERE:
+                            this->dataPtr->GradedFluidDensity<math::Sphered>(
+                                pose, coll->Data().Geom()->SphereShape()->Shape(), gravity->Data());
+                            break;
+                        default:
+                        {
+                            static bool warned{ false };
+                            if (!warned)
+                            {
+                                gzwarn << "Only <box> and <sphere> collisions are supported "
+                                       << "by the graded buoyancy option." << std::endl;
+                                warned = true;
+                            }
+                            break;
+                        }
+                    }
+                }
+                auto [force, torque] = this->dataPtr->ResolveForces(linkWorldPose);
+                // Apply the wrench to the link. This wrench is applied in the
+                // Physics System.
+                link.AddWorldWrench(_ecm, force, torque);
+            }
+
+            return true;
+        });
 }
 
 //////////////////////////////////////////////////
-bool Buoyancy::IsEnabled(Entity _entity,
-    const EntityComponentManager &_ecm) const
+void Buoyancy::PostUpdate(UpdateInfo const & /*_info*/, EntityComponentManager const &_ecm)
 {
-  return this->dataPtr->IsEnabled(_entity, _ecm);
+    this->dataPtr->CheckForNewEntities(_ecm);
 }
 
-GZ_ADD_PLUGIN(Buoyancy,
-                    System,
-                    Buoyancy::ISystemConfigure,
-                    Buoyancy::ISystemPreUpdate,
-                    Buoyancy::ISystemPostUpdate)
+//////////////////////////////////////////////////
+bool Buoyancy::IsEnabled(Entity _entity, EntityComponentManager const &_ecm) const
+{
+    return this->dataPtr->IsEnabled(_entity, _ecm);
+}
 
-GZ_ADD_PLUGIN_ALIAS(Buoyancy,
-                          "gz::sim::systems::Buoyancy")
+GZ_ADD_PLUGIN(Buoyancy, System, Buoyancy::ISystemConfigure, Buoyancy::ISystemPreUpdate, Buoyancy::ISystemPostUpdate)
+
+GZ_ADD_PLUGIN_ALIAS(Buoyancy, "gz::sim::systems::Buoyancy")
