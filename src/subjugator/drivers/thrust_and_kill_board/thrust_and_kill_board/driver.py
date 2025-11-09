@@ -171,7 +171,7 @@ class ThrustAndKillNode(
             msg.sensor0 = float(packet.t0)
             self.temperatures_pub.publish(msg)
             self.get_logger().info(
-                f"Temperatures (°C): sensor0={msg.sensor0:.2f}, sensor1={msg.sensor1:.2f}",
+                f"Temperatures (°C): sensor0={msg.sensor0:.2f}",
             )
 
     def _set_kill(self, request, response):
