@@ -33,7 +33,7 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
     base_angular_ = this->get_parameter("angular_speed").as_double();
 
     // Create a subscription to odometry/filtered
-    odom_subscriber_ = this->create_subscription<geometry_msgs::msg::Pose>(
+    odom_subscriber_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "odometry/filtered", 10, std::bind(&SubjugatorKeyboardControl::odometryCallback, this, std::placeholders::_1));
     initTerminal();
 
@@ -72,7 +72,7 @@ SubjugatorKeyboardControl::~SubjugatorKeyboardControl()
     restoreTerminal();
 }
 
-void SubjugatorKeyboardControl::odometryCallback(geometry_msgs::msg::Pose::SharedPtr const msg)
+void SubjugatorKeyboardControl::odometryCallback(nav_msgs::msg::Odometry::SharedPtr const msg)
 {
     // store a copy in last_odom_
     last_odom_ = *msg;  // copy pointwise
@@ -265,10 +265,10 @@ void SubjugatorKeyboardControl::keyboardLoop()
     }
 }
 
-geometry_msgs::msg::Pose SubjugatorKeyboardControl::rotateVectorByQuat(geometry_msgs::msg::Pose const &ref, double dx,
+geometry_msgs::msg::Pose SubjugatorKeyboardControl::rotateVectorByQuat(nav_msgs::msg::Odometry const &ref, double dx,
                                                                        double dy, double dz)
 {
-    auto const &q = ref.orientation;
+    auto const &q = ref.pose.pose.orientation;
 
     // Standard quaternion-vector multiplication: v' = q * v * q^-1
     // For pure vector v = (dx,dy,dz), quaternion multiplication simplifies to:
@@ -323,12 +323,15 @@ geometry_msgs::msg::Pose SubjugatorKeyboardControl::createGoalPose() const
     // Rotate the delta vector by the current orientation
     auto rel_rotated = rotateVectorByQuat(last_odom_, x_movement, y_movement, z_movement);
     // Add rotated delta to the current pose
-    goal.position.x = last_odom_.position.x + rel_rotated.position.x;
-    goal.position.y = last_odom_.position.y + rel_rotated.position.y;
-    goal.position.z = last_odom_.position.z + rel_rotated.position.z;
+    auto current_x = last_odom_.pose.pose.position.x;
+    auto current_y = last_odom_.pose.pose.position.y;
+    auto current_z = last_odom_.pose.pose.position.z;
+    goal.position.x = current_x + rel_rotated.position.x;
+    goal.position.y = current_y + rel_rotated.position.y;
+    goal.position.z = current_z + rel_rotated.position.z;
 
     // Combine current orientation with the incremental rotation
-    auto const &c = last_odom_.orientation;
+    auto const &c = last_odom_.pose.pose.orientation;
     goal.orientation.x = c.w * qx + c.x * qw + c.y * qz - c.z * qy;
     goal.orientation.y = c.w * qy - c.x * qz + c.y * qw + c.z * qx;
     goal.orientation.z = c.w * qz + c.x * qy - c.y * qx + c.z * qw;
