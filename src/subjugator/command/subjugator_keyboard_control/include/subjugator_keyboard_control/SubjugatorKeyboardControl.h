@@ -11,6 +11,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
+#include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/wrench.hpp"
 #include "std_msgs/msg/string.hpp"
 
@@ -35,9 +36,12 @@ class SubjugatorKeyboardControl final : public rclcpp::Node
     ~SubjugatorKeyboardControl() override;
 
   private:
-    rclcpp::Publisher<geometry_msgs::msg::Wrench>::SharedPtr publisher_;
+    rclcpp::Publisher<geometry_msgs::msg::Wrench>::SharedPtr wrench_publisher_;
+    rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr pose_publisher_;
+    rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr odom_subscriber_;
     // Add publisher for keypress events
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr keypress_publisher_;
+    void odometryCallback(geometry_msgs::msg::Pose::SharedPtr const msg);
     std::atomic<double> force_x_, force_y_, force_z_;
     std::atomic<double> torque_x_, torque_y_, torque_z_;
     double base_linear_, base_angular_;
@@ -45,9 +49,14 @@ class SubjugatorKeyboardControl final : public rclcpp::Node
     std::thread publisher_thread_;
     std::atomic<bool> running_;
     termios old_terminal_settings_{};
+    geometry_msgs::msg::Pose last_odom_;
     bool terminal_initialized_{ false };
+    bool use_smart_control_{ false };
     void initTerminal();
     void restoreTerminal() const;
     void keyboardLoop();
     void publishLoop() const;
+    geometry_msgs::msg::Pose createGoalPose() const;
+    static geometry_msgs::msg::Pose rotateVectorByQuat(geometry_msgs::msg::Pose const& ref, double rx, double ry,
+                                                       double rz);
 };

@@ -3,6 +3,9 @@
 #include <poll.h>
 #include <unistd.h>
 
+#include <cmath>
+#include <functional>
+
 using namespace std::chrono_literals;
 using namespace std::chrono;
 using std::atomic;
@@ -20,12 +23,18 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
   , torque_z_(0.0)
   , running_(true)
 {
-    publisher_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", PUBLISH_RATE);
+    // Create separate publishers for wrenches and goal poses
+    wrench_publisher_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", PUBLISH_RATE);
+    pose_publisher_ = this->create_publisher<geometry_msgs::msg::Pose>("goal_pose", PUBLISH_RATE);
+
     this->declare_parameter("linear_speed", 100.0);
     this->declare_parameter("angular_speed", 100.0);
     base_linear_ = this->get_parameter("linear_speed").as_double();
     base_angular_ = this->get_parameter("angular_speed").as_double();
 
+    // Create a subscription to odometry/filtered
+    odom_subscriber_ = this->create_subscription<geometry_msgs::msg::Pose>(
+        "odometry/filtered", 10, std::bind(&SubjugatorKeyboardControl::odometryCallback, this, std::placeholders::_1));
     initTerminal();
 
     // Start keyboard and publisher threads
@@ -48,6 +57,7 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
         e           : roll left  (-torque x)
         r           : roll right (+torque x)
         m           : Spawn marble
+        t           : toggle control mode (raw/smart)
         q           : Quit
     )");
 }
@@ -60,6 +70,12 @@ SubjugatorKeyboardControl::~SubjugatorKeyboardControl()
     if (publisher_thread_.joinable())
         publisher_thread_.join();
     restoreTerminal();
+}
+
+void SubjugatorKeyboardControl::odometryCallback(geometry_msgs::msg::Pose::SharedPtr const msg)
+{
+    // store a copy in last_odom_
+    last_odom_ = *msg;  // copy pointwise
 }
 
 void SubjugatorKeyboardControl::initTerminal()
@@ -87,13 +103,13 @@ void SubjugatorKeyboardControl::restoreTerminal() const
 void SubjugatorKeyboardControl::keyboardLoop()
 {
     KeyState arrow_up, arrow_down, arrow_left, arrow_right;
-    KeyState key_e, key_r, key_w, key_s, key_a, key_d, key_z, key_x;
+    KeyState key_e, key_r, key_w, key_s, key_a, key_d, key_z, key_x, key_t;
 
     double current_force_x = 0.0, current_force_y = 0.0, current_force_z = 0.0;
     double current_torque_x = 0.0, current_torque_y = 0.0, current_torque_z = 0.0;
 
-    std::vector<KeyState*> keys = { &arrow_up, &arrow_down, &arrow_left, &arrow_right, &key_e, &key_r,
-                                    &key_w,    &key_s,      &key_a,      &key_d,       &key_z, &key_x };
+    std::vector<KeyState *> keys = { &arrow_up, &arrow_down, &arrow_left, &arrow_right, &key_e, &key_r, &key_w,
+                                     &key_s,    &key_a,      &key_d,      &key_z,       &key_x, &key_t };
 
     AxisEffect letter_effects[] = {
         { &arrow_up, -base_angular_, &current_torque_y },    { &arrow_down, base_angular_, &current_torque_y },
@@ -197,6 +213,18 @@ void SubjugatorKeyboardControl::keyboardLoop()
                         key_x.pressed = true;
                         key_x.last_time = now;
                         break;
+                    case 't':
+                        if (use_smart_control_)
+                        {
+                            RCLCPP_INFO(this->get_logger(), "Using raw control");
+                            use_smart_control_ = false;
+                        }
+                        else
+                        {
+                            RCLCPP_INFO(this->get_logger(), "Using smart control");
+                            use_smart_control_ = true;
+                        }
+                        break;
                     case 'm':
                     {
                         std::cout << "[SubjugatorKeyboardControl] Spawning marble..." << std::endl;
@@ -217,7 +245,7 @@ void SubjugatorKeyboardControl::keyboardLoop()
             }
         }
 
-        for (auto& effect : letter_effects)
+        for (auto &effect : letter_effects)
         {
             if (effect.key->pressed)
             {
@@ -237,20 +265,102 @@ void SubjugatorKeyboardControl::keyboardLoop()
     }
 }
 
+geometry_msgs::msg::Pose SubjugatorKeyboardControl::rotateVectorByQuat(geometry_msgs::msg::Pose const &ref, double dx,
+                                                                       double dy, double dz)
+{
+    auto const &q = ref.orientation;
+
+    // Standard quaternion-vector multiplication: v' = q * v * q^-1
+    // For pure vector v = (dx,dy,dz), quaternion multiplication simplifies to:
+    double x = dx * (1 - 2 * q.y * q.y - 2 * q.z * q.z) + dy * (2 * q.x * q.y - 2 * q.z * q.w) +
+               dz * (2 * q.x * q.z + 2 * q.y * q.w);
+
+    double y = dx * (2 * q.x * q.y + 2 * q.z * q.w) + dy * (1 - 2 * q.x * q.x - 2 * q.z * q.z) +
+               dz * (2 * q.y * q.z - 2 * q.x * q.w);
+
+    double z = dx * (2 * q.x * q.z - 2 * q.y * q.w) + dy * (2 * q.y * q.z + 2 * q.x * q.w) +
+               dz * (1 - 2 * q.x * q.x - 2 * q.y * q.y);
+
+    geometry_msgs::msg::Pose out;
+    out.position.x = x;
+    out.position.y = y;
+    out.position.z = z;
+
+    // Orientation is irrelevant here; we just need the rotated delta
+    out.orientation.x = 0.0;
+    out.orientation.y = 0.0;
+    out.orientation.z = 0.0;
+    out.orientation.w = 1.0;
+
+    return out;
+}
+
+geometry_msgs::msg::Pose SubjugatorKeyboardControl::createGoalPose() const
+{
+    // Movement increments (meters and radians)
+    double x_movement = 0.001 * force_x_.load();
+    double y_movement = 0.001 * force_y_.load();
+    double z_movement = 0.001 * force_z_.load();
+    double roll = 0.01 * torque_x_.load();
+    double pitch = 0.01 * torque_y_.load();
+    double yaw = 0.01 * torque_z_.load();
+
+    // Convert roll, pitch, yaw to quaternion (ZYX order)
+    double cr = std::cos(roll * 0.5);
+    double sr = std::sin(roll * 0.5);
+    double cp = std::cos(pitch * 0.5);
+    double sp = std::sin(pitch * 0.5);
+    double cy = std::cos(yaw * 0.5);
+    double sy = std::sin(yaw * 0.5);
+
+    double qw = cy * cp * cr + sy * sp * sr;
+    double qx = cy * cp * sr - sy * sp * cr;
+    double qy = cy * sp * cr + sy * cp * sr;
+    double qz = sy * cp * cr - cy * sp * sr;
+
+    geometry_msgs::msg::Pose goal;
+
+    // Rotate the delta vector by the current orientation
+    auto rel_rotated = rotateVectorByQuat(last_odom_, x_movement, y_movement, z_movement);
+    // Add rotated delta to the current pose
+    goal.position.x = last_odom_.position.x + rel_rotated.position.x;
+    goal.position.y = last_odom_.position.y + rel_rotated.position.y;
+    goal.position.z = last_odom_.position.z + rel_rotated.position.z;
+
+    // Combine current orientation with the incremental rotation
+    auto const &c = last_odom_.orientation;
+    goal.orientation.x = c.w * qx + c.x * qw + c.y * qz - c.z * qy;
+    goal.orientation.y = c.w * qy - c.x * qz + c.y * qw + c.z * qx;
+    goal.orientation.z = c.w * qz + c.x * qy - c.y * qx + c.z * qw;
+    goal.orientation.w = c.w * qw - c.x * qx - c.y * qy - c.z * qz;
+
+    return goal;
+}
+
 void SubjugatorKeyboardControl::publishLoop() const
 {
     rclcpp::Rate rate(PUBLISH_RATE);
     while (rclcpp::ok() && running_)
     {
-        auto current_msg = geometry_msgs::msg::Wrench();
-        current_msg.force.x = force_x_.load();
-        current_msg.force.y = force_y_.load();
-        current_msg.force.z = force_z_.load();
-        current_msg.torque.x = torque_x_.load();
-        current_msg.torque.y = torque_y_.load();
-        current_msg.torque.z = torque_z_.load();
+        if (!use_smart_control_)
+        {
+            auto current_msg = geometry_msgs::msg::Wrench();
+            current_msg.force.x = force_x_.load();
+            current_msg.force.y = force_y_.load();
+            current_msg.force.z = force_z_.load();
+            current_msg.torque.x = torque_x_.load();
+            current_msg.torque.y = torque_y_.load();
+            current_msg.torque.z = torque_z_.load();
 
-        publisher_->publish(current_msg);
-        rate.sleep();
+            wrench_publisher_->publish(current_msg);
+            rate.sleep();
+        }
+        else
+        {
+            auto current_msg = this->createGoalPose();
+
+            pose_publisher_->publish(current_msg);
+            rate.sleep();
+        }
     }
 }
