@@ -268,7 +268,8 @@ mil_user_install_dependencies() {
 		fzf \
 		aptitude \
 		lm-sensors \
-		libboost-all-dev
+		libboost-all-dev \
+		ros-jazzy-behaviortree-cpp
 }
 
 # Add line to user's bashrc which source the repo's setup files
