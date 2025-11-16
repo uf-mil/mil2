@@ -1,0 +1,46 @@
+<root BTCPP_format="4" main_tree_to_execute="Behold">
+    <BehaviorTree ID="Behold">
+        <Sequence>
+            <!-- first move down -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                x="0.0" y="0.0" z="-0.2"
+                pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+                ctx="{ctx}"/>
+
+            <!-- I think the pos tol isn't strict enough, so we will delay a little -->
+            <Delay delay_msec="2000"><AlwaysSuccess/></Delay>
+
+            <!-- run start gate mission THIS IS LOOKING FOR SHARK DON'T DO THAT -->
+            <SubTree ID="StartGateMission" ctx="{ctx}"/>
+
+            <!-- go to pinger -->
+            <SubTree ID="SonarFollowerTest" ctx="{ctx}"/>
+
+            <!-- surface TODO would be nice to have some command to surface while remaining in place-->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                x="0.0" y="0.0" z="0.3"
+                pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+                ctx="{ctx}"/>
+
+            <!-- wait -->
+            <Delay delay_msec="5000"><AlwaysSuccess/></Delay>
+
+            <!-- back down -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                x="0.0" y="0.0" z="-0.3"
+                pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+                ctx="{ctx}"/>
+
+            <!-- back down -->
+            <Delay delay_msec="5000"><AlwaysSuccess/></Delay>
+
+            <!-- return home -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                x="0.0" y="0.0" z="-0.3" relative="false"
+                pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+                ctx="{ctx}"/>
+
+
+        </Sequence>
+    </BehaviorTree>
+</root>
