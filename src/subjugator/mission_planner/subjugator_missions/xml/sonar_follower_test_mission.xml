@@ -1,4 +1,4 @@
-<root main_tree_to_execute="SonarFollowerTest">
+<root BTCPP_format="4" main_tree_to_execute="SonarFollowerTest">
     <BehaviorTree ID="SonarFollowerTest">
         <SonarFollower name="sonar_follower" ctx="{ctx}" sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
             <SubTree ID="RelativeMove" _autoremap="true"
