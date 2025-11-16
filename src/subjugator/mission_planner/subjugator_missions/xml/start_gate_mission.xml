@@ -67,8 +67,9 @@
               ctx="{ctx}"/>
 
       <!-- 3) Then down and forward -->
+      <!-- lowk maybe delete this -->
       <SubTree ID="RelativeMove" _autoremap="true"
-               z="-0.1" <!-- lowk maybe delete this -->
+               z="-0.1"
                pos_tol="0.25" ori_tol_deg="12.0" msec="10000"
                ctx="{ctx}"/>
       <SubTree ID="RelativeMove" _autoremap="true"
