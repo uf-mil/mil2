@@ -13,7 +13,7 @@ def midas_infer(img: cv2.typing.MatLike):
 
     midas: Any = torch.hub.load("intel-isl/MiDaS", model_type)
 
-    device = torch.device("mps") if torch.mps.is_available() else torch.device("cpu")
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     midas.to(device)
     midas.eval()
 
