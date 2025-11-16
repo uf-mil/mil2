@@ -68,34 +68,13 @@
 
       <!-- 3) Then down and forward -->
       <SubTree ID="RelativeMove" _autoremap="true"
-               z="-0.5"
+               z="-0.1" <!-- lowk maybe delete this -->
                pos_tol="0.25" ori_tol_deg="12.0" msec="10000"
                ctx="{ctx}"/>
       <SubTree ID="RelativeMove" _autoremap="true"
                x="3.0"
                pos_tol="0.25" ori_tol_deg="180.0" msec="45000"
                ctx="{ctx}"/>
-
-      <!-- 4) Short second survey (±45°), no detection gating -->
-      <Sequence>
-        <SubTree ID="RelativeMove" _autoremap="true"
-                 yaw_deg="45.0"
-                 pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
-                 ctx="{ctx}"/>
-        <SubTree ID="RelativeMove" _autoremap="true"
-                 yaw_deg="-45.0"
-                 pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
-                 ctx="{ctx}"/>
-        <SubTree ID="RelativeMove" _autoremap="true"
-                 yaw_deg="-45.0"
-                 pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
-                 ctx="{ctx}"/>
-        <SubTree ID="RelativeMove" _autoremap="true"
-                 yaw_deg="45.0"
-                 pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
-                 ctx="{ctx}"/>
-      </Sequence>
-
     </Sequence>
   </BehaviorTree>
 </root>
