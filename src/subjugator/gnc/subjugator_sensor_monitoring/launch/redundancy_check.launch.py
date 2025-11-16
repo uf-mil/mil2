@@ -1,13 +1,21 @@
+"""Launch file for redundancy check node."""
+
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, IncludeLaunchDescription, TimerAction
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import (
+    ExecuteProcess,
+    IncludeLaunchDescription,
+    TimerAction,
+)
+from launch.launch_description_sources import (
+    PythonLaunchDescriptionSource,
+)
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-
+    """Generate launch description for redundancy check."""
     localization_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             [
@@ -21,7 +29,6 @@ def generate_launch_description():
             ],
         ),
     )
-
     # Service call to enable localization
     enable_localization = TimerAction(
         period=5.0,  # Wait 2 seconds
@@ -39,7 +46,6 @@ def generate_launch_description():
             ),
         ],
     )
-
     return LaunchDescription(
         [
             Node(

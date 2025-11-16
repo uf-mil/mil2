@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+"""Redundancy check node for comparing DVL and IMU sensor data."""
 import rclpy
 import rclpy.node
 from geometry_msgs.msg import Vector3Stamped
@@ -12,7 +12,10 @@ from tf2_ros.transform_listener import TransformListener
 
 
 class RedundancyCheckNode(rclpy.node.Node):
+    """Node to check redundancy between DVL and IMU sensors."""
+
     def __init__(self):
+        """Initialize the redundancy check node."""
         super().__init__("redundancy_check_node")
 
         self.imu_subscriber = self.create_subscription(
@@ -42,27 +45,29 @@ class RedundancyCheckNode(rclpy.node.Node):
         self.get_logger().info("Redundancy Check Node has been started.")
 
     def imu_callback(self, msg):
+        """Handle incoming IMU messages."""
         self.imu_data = msg
 
     def dvl_callback(self, msg):
+        """Handle incoming DVL messages."""
         self.dvl_data = msg
         # Only checking when DVL received new data
         self.check_redundancy()
 
     def check_redundancy(self):
-
+        """Check redundancy between DVL and IMU data."""
         # imu_transform frame id: imu_link
         # dvl transfor frame id: odom
         # No direct redundancy check.
         # DVL = Linear x,y,z velocities
         # IMU - Roll, Pitch, Yaw rates, Angular Velocity, Liner Accel x,y,z
-        # Differentiate DVL velocity --> compare against IMU linear acceleration
+        # Differentiate DVL velocity --> compare against IMU linear accel
 
         # Main redundancy check logic:
         if self.imu_data is None or self.dvl_data is None:
             return
 
-        # Calculate currenbt time from DVL data timestamp
+        # Calculate current time from DVL data timestamp
         current_time = rclpy.time.Time.from_msg(self.dvl_data.header.stamp)
 
         if self.previous_dvl_time is None:
@@ -73,7 +78,9 @@ class RedundancyCheckNode(rclpy.node.Node):
         dt = (current_time - self.previous_dvl_time).nanoseconds / 1e9
 
         if dt <= 0:
-            self.get_logger().warn("dt is neg. or zero, skipping redundancy check.")
+            self.get_logger().warn(
+                "dt is neg. or zero, skipping redundancy check.",
+            )
             return
 
         try:
@@ -128,7 +135,8 @@ class RedundancyCheckNode(rclpy.node.Node):
             or diff_z > self.diff_threshold
         ):
             self.get_logger().warn(
-                f"Redundancy check failed: Differences - X: {diff_x}, Y: {diff_y}, Z: {diff_z}",
+                f"Redundancy check failed: Differences - "
+                f"X: {diff_x}, Y: {diff_y}, Z: {diff_z}",
             )
 
         self.previous_dvl_time = current_time
@@ -136,6 +144,7 @@ class RedundancyCheckNode(rclpy.node.Node):
 
 
 def main(args=None):
+    """Run the redundancy check node."""
     rclpy.init(args=args)
     node = RedundancyCheckNode()
     rclpy.spin(node)
