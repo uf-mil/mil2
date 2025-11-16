@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     auto ctx = std::make_shared<Context>();
     ctx->node = node;
 
-    node->declare_parameter<std::string>("mission", "SonarFollowerTest");
+    node->declare_parameter<std::string>("mission", "Behold");
     std::string mission_to_run = node->get_parameter("mission").as_string();
 
     // Topics to subscribe/publish to
