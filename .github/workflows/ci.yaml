@@ -48,6 +48,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           submodules: recursive
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v5
@@ -116,6 +117,7 @@ jobs:
           done < <(
             git diff --name-only origin/main \
               --ignore-submodules \
+              --diff-filter=ACMRT \
               -- "*.cpp" "*.h" "*.hpp"
           )
           cd "$GITHUB_WORKSPACE"

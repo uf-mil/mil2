@@ -162,20 +162,24 @@ class YoloNode(LifecycleNode):
     def on_deactivate(self, state: LifecycleState) -> TransitionCallbackReturn:
         self.get_logger().info(f"[{self.get_name()}] Deactivating...")
 
-        del self.yolo
-        if "cuda" in self.device:
-            self.get_logger().info("Clearing CUDA cache")
-            torch.cuda.empty_cache()
+        if getattr(self, "_enable_srv", None) is not None:
+            self.destroy_service(self._enable_srv)
+            self._enable_srv = None
 
-        self.destroy_service(self._enable_srv)
-        self._enable_srv = None
-
-        if isinstance(self.yolo, YOLOWorld):
+        if (
+            isinstance(self.yolo, YOLOWorld)
+            and getattr(self, "_enable_srv", None) is not None
+        ):
             self.destroy_service(self._set_classes_srv)
             self._set_classes_srv = None
 
         self.destroy_subscription(self._sub)
         self._sub = None
+
+        del self.yolo
+        if "cuda" in self.device:
+            self.get_logger().info("Clearing CUDA cache")
+            torch.cuda.empty_cache()
 
         super().on_deactivate(state)
         self.get_logger().info(f"[{self.get_name()}] Deactivated")

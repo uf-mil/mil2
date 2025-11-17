@@ -92,6 +92,8 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-added-large-files
+        exclude: |
+          (?x)^(src/subjugator/simulation/subjugator_description/models/.*)
       - id: check-case-conflict
       - id: check-merge-conflict
         exclude_types: [markdown, rst]

@@ -73,7 +73,7 @@
     <!-- Sub -->
     <include>
       <uri>package:://subjugator_description/urdf/sub9.urdf</uri>
-      <pose>-1 20 -0.3 0 0 0</pose>
+      <pose>2 6 -0.3 0 0 1</pose>
     </include>
 
     <!-- NED frame -->

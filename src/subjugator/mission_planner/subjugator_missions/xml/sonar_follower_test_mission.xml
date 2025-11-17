@@ -1,0 +1,10 @@
+<root main_tree_to_execute="SonarFollowerTest">
+    <BehaviorTree ID="SonarFollowerTest">
+        <SonarFollower name="sonar_follower" ctx="{ctx}" sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
+            <SubTree ID="RelativeMove" _autoremap="true"
+                x="{sonar_x}" y="{sonar_y}" z="0.0"
+                pos_tol="0.20" ori_tol_deg="12.0" msec="25000"
+                ctx="{ctx}"/>
+        </SonarFollower>
+    </BehaviorTree>
+</root>
