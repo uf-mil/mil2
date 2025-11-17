@@ -10,7 +10,6 @@ Panels:
         - /Image1
         - /TF1/Frames1
         - /Image3
-        - /Image3/Status1
         - /Image3/Topic1
       Splitter Ratio: 0.5
     Tree Height: 269
@@ -129,6 +128,10 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
         Link Tree Style: Links in Alphabetic Order
+        asym_drag:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         base_link:
           Alpha: 1
           Show Axes: false
@@ -231,8 +234,6 @@ Visualization Manager:
           Value: true
         imu_link:
           Value: true
-        odom:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -268,8 +269,6 @@ Visualization Manager:
             {}
           imu_link:
             {}
-        odom:
-          {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Image
@@ -284,7 +283,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /yolo/image_annotated
+        Value: /yolo/dbg_image
       Value: true
   Enabled: true
   Global Options:
