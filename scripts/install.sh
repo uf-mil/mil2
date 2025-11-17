@@ -146,7 +146,7 @@ $(hash_header)$(color "$Res")
 EOF
 
 # Ensure that locales are set up correctly
-sudo apt update && sudo apt install locales
+sudo apt update && sudo apt install -y locales
 sudo locale-gen en_US en_US.UTF-8
 sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 export LANG=en_US.UTF-8
@@ -246,6 +246,7 @@ sudo apt-get install -y python3-rosdep
 sudo rm -rf /etc/ros/rosdep/sources.list.d/* # Delete this file first - if not deleted, error could be thrown
 sudo rosdep init
 sudo rosdep update
+sudo rosdep install --from-paths src --ignore-src -r -y
 
 # If this script is not ~/mil2/scripts/install.sh, throw an error to prevent members
 # from installing the repo in the wrong location. Setting ALLOW_NONSTANDARD_DIR=1

@@ -92,6 +92,8 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-added-large-files
+        exclude: |
+          (?x)^(src/subjugator/simulation/subjugator_description/models/.*)
       - id: check-case-conflict
       - id: check-merge-conflict
         exclude_types: [markdown, rst]
@@ -105,3 +107,12 @@ repos:
       - id: no-commit-to-branch
         args:
           - --branch=master
+  - repo: local
+    hooks:
+      - id: prettier-world
+        name: prettier world
+        description: Apply Prettier with plugin-xml to gazebo world files
+        entry: prettier --write --parser=xml --xml-whitespace-sensitivity=ignore
+        language: node
+        files: .world$
+        additional_dependencies: [prettier@2.8.7, "@prettier/plugin-xml@2.2.0"]

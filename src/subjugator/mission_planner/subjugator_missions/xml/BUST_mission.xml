@@ -1,0 +1,38 @@
+<root BTCPP_format="4" main_tree_to_execute="BUSTMission">
+  <BehaviorTree ID="BUSTMission">
+    <Sequence>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="0.0" z="-0.2"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+               ctx="{ctx}"/>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="0.0" z="0.0"
+               yaw_deg="180.0"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+               ctx="{ctx}"/>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="-1.5" y="0.0" z="0.0"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+               ctx="{ctx}"/>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="-1.5" z="0.0"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+               ctx="{ctx}"/>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="1.5" y="0.0" z="0.0"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+               ctx="{ctx}"/>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="1.5" z="0.0"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+               ctx="{ctx}"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

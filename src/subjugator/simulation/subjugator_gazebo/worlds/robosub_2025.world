@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" ?>
 <sdf version="1.9">
   <world name="robosub_2024">
     <!-- Scene-->
@@ -17,14 +17,30 @@
     </physics>
 
     <!-- Plugins -->
-    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
-    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
-    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
-    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors"/>
-    <plugin filename="gz-sim-dvl-system" name="gz::sim::systems::DopplerVelocityLogSystem"/>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics" />
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands"
+    />
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster"
+    />
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors" />
+    <plugin
+      filename="gz-sim-dvl-system"
+      name="gz::sim::systems::DopplerVelocityLogSystem"
+    />
     <plugin filename="Hydrophone" name="hydrophone::Hydrophone">
       <topic>${name}</topic>
     </plugin>
+
+    <!-- Buoyancy Plugin -->
+    <!-- To alter a objects's buoyancy do one or both of the following:
+    1. Change the objects's inertia.
+    2. Change the `uniform_fluid_density` in the `buoyancy-system` plugin.
+    Note: Graded Buoyancy does not work with collision objects other than box and sphere!
+    -->
     <plugin filename="gz-sim-buoyancy-system" name="gz::sim::systems::Buoyancy">
       <graded_buoyancy>
         <default_density>1000</default_density>
@@ -57,12 +73,14 @@
     <!-- Sub -->
     <include>
       <uri>package:://subjugator_description/urdf/sub9.urdf</uri>
-      <pose>-1 20 -0.3 0 0 0</pose>
+      <pose>2 6 -0.3 0 0 1</pose>
     </include>
 
     <!-- NED frame -->
     <include>
-      <uri>https://fuel.gazebosim.org/1.0/hmoyen/models/North East Down frame</uri>
+      <uri>
+        https://fuel.gazebosim.org/1.0/hmoyen/models/North East Down frame
+      </uri>
       <pose>0 0 0 0 0 0</pose>
     </include>
 
@@ -71,7 +89,9 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <box><size>25 52 0.02</size></box>
+            <box>
+              <size>25 52 0.02</size>
+            </box>
           </geometry>
           <transparency>0.8</transparency>
           <cast_shadows>0</cast_shadows>
@@ -95,14 +115,18 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>package:://subjugator_description/models/RobotX_2024/woollett_pool_2024/WoollettPool.dae</uri>
+              <uri>
+                package:://subjugator_description/models/RobotX_2024/woollett_pool_2024/WoollettPool.dae
+              </uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>package:://subjugator_description/models/RobotX_2024/woollett_pool_2024/WoollettPool.dae</uri>
+              <uri>
+                package:://subjugator_description/models/RobotX_2024/woollett_pool_2024/WoollettPool.dae
+              </uri>
             </mesh>
           </geometry>
         </collision>
@@ -111,8 +135,12 @@
           <pose>0 0 0 0 0 0</pose>
           <mass>1</mass>
           <inertia>
-            <ixx>1</ixx><ixy>0</ixy><ixz>0</ixz>
-            <iyy>1</iyy><iyz>0</iyz><izz>1</izz>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
           </inertia>
         </inertial>
         <enable_wind>false</enable_wind>
@@ -128,14 +156,18 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
+              <uri>
+                package:://subjugator_description/models/startgate_2025/startgate.dae
+              </uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>package:://subjugator_description/models/startgate_2025/startgate.dae</uri>
+              <uri>
+                package:://subjugator_description/models/startgate_2025/startgate.dae
+              </uri>
             </mesh>
           </geometry>
         </collision>
@@ -144,8 +176,12 @@
           <pose>0 0 0 0 0 0</pose>
           <mass>1</mass>
           <inertia>
-            <ixx>1</ixx><ixy>0</ixy><ixz>0</ixz>
-            <iyy>1</iyy><iyz>0</iyz><izz>1</izz>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
           </inertia>
         </inertial>
         <enable_wind>false</enable_wind>
@@ -161,14 +197,18 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>package:://subjugator_description/models/RobotX_2024/pathmarker_2024/pathmarker.dae</uri>
+              <uri>
+                package:://subjugator_description/models/RobotX_2024/pathmarker_2024/pathmarker.dae
+              </uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>package:://subjugator_description/models/RobotX_2024/pathmarker_2024/pathmarker.dae</uri>
+              <uri>
+                package:://subjugator_description/models/RobotX_2024/pathmarker_2024/pathmarker.dae
+              </uri>
             </mesh>
           </geometry>
         </collision>
@@ -177,8 +217,12 @@
           <pose>0 0 0 0 0 0</pose>
           <mass>1</mass>
           <inertia>
-            <ixx>1</ixx><ixy>0</ixy><ixz>0</ixz>
-            <iyy>1</iyy><iyz>0</iyz><izz>1</izz>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
           </inertia>
         </inertial>
         <enable_wind>false</enable_wind>
@@ -193,12 +237,36 @@
     <!-- Row 1 -->
     <model name='RedPole1'>
       <link name='link'>
-        <visual name='visual'><geometry><mesh><uri>package:://subjugator_description/models/red_pole/red_pole_sub9.dae</uri></mesh></geometry></visual>
-        <collision name='collision'><geometry><mesh><uri>package:://subjugator_description/models/red_pole/red_pole_sub9.dae</uri></mesh></geometry></collision>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/red_pole/red_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/red_pole/red_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <pose>0 0 0 0 0 0</pose><mass>1</mass>
-          <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
         </inertial>
       </link>
       <pose>6.39226 14.8402724 0 0 0 2.5584073</pose>
@@ -207,12 +275,36 @@
 
     <model name='LeftWhitePole'>
       <link name='link'>
-        <visual name='visual'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></visual>
-        <collision name='collision'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></collision>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <pose>0 0 0 0 0 0</pose><mass>1</mass>
-          <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
         </inertial>
       </link>
       <pose>7.7689738 12.7534905 0 0 0 2.5584073</pose>
@@ -221,12 +313,36 @@
 
     <model name='RightWhitePole'>
       <link name='link'>
-        <visual name='visual'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></visual>
-        <collision name='collision'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></collision>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <pose>0 0 0 0 0 0</pose><mass>1</mass>
-          <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
         </inertial>
       </link>
       <pose>5.0155461 16.9270544 0 0 0 2.5584073</pose>
@@ -236,12 +352,36 @@
     <!-- Row 2 -->
     <model name='RedPole2'>
       <link name='link'>
-        <visual name='visual'><geometry><mesh><uri>package:://subjugator_description/models/red_pole/red_pole_sub9.dae</uri></mesh></geometry></visual>
-        <collision name='collision'><geometry><mesh><uri>package:://subjugator_description/models/red_pole/red_pole_sub9.dae</uri></mesh></geometry></collision>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/red_pole/red_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/red_pole/red_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <pose>0 0 0 0 0 0</pose><mass>1</mass>
-          <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
         </inertial>
       </link>
       <pose>3.5881216 14.1882158 0 0 0 2.5584073</pose>
@@ -250,12 +390,36 @@
 
     <model name='LeftWhitePole2'>
       <link name='link'>
-        <visual name='visual'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></visual>
-        <collision name='collision'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></collision>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <pose>0 0 0 0 0 0</pose><mass>1</mass>
-          <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
         </inertial>
       </link>
       <pose>4.9648355 12.1014338 0 0 0 2.5584073</pose>
@@ -264,12 +428,36 @@
 
     <model name='RightWhitePole2'>
       <link name='link'>
-        <visual name='visual'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></visual>
-        <collision name='collision'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></collision>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <pose>0 0 0 0 0 0</pose><mass>1</mass>
-          <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
         </inertial>
       </link>
       <pose>2.2114078 16.2749978 0 0 0 2.5584073</pose>
@@ -279,12 +467,36 @@
     <!-- Row 3 -->
     <model name='RedPole3'>
       <link name='link'>
-        <visual name='visual'><geometry><mesh><uri>package:://subjugator_description/models/red_pole/red_pole_sub9.dae</uri></mesh></geometry></visual>
-        <collision name='collision'><geometry><mesh><uri>package:://subjugator_description/models/red_pole/red_pole_sub9.dae</uri></mesh></geometry></collision>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/red_pole/red_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/red_pole/red_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <pose>0 0 0 0 0 0</pose><mass>1</mass>
-          <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
         </inertial>
       </link>
       <pose>1.3839833 11.5361592 0 0 0 2.5584073</pose>
@@ -293,12 +505,36 @@
 
     <model name='LeftWhitePole3'>
       <link name='link'>
-        <visual name='visual'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></visual>
-        <collision name='collision'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></collision>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <pose>0 0 0 0 0 0</pose><mass>1</mass>
-          <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
         </inertial>
       </link>
       <pose>2.7606971 9.4493772 0 0 0 2.5584073</pose>
@@ -307,12 +543,36 @@
 
     <model name='RightWhitePole3'>
       <link name='link'>
-        <visual name='visual'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></visual>
-        <collision name='collision'><geometry><mesh><uri>package:://subjugator_description/models/white_pole/white_pole_sub9.dae</uri></mesh></geometry></collision>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/white_pole/white_pole_sub9.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <pose>0 0 0 0 0 0</pose><mass>1</mass>
-          <inertia><ixx>1</ixx><ixy>0</ixy><ixz>0</ixz><iyy>1</iyy><iyz>0</iyz><izz>1</izz></inertia>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
         </inertial>
       </link>
       <pose>0.0072694 13.6229411 0 0 0 2.5584073</pose>
@@ -325,14 +585,18 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>package:://subjugator_description/models/RobotX_2024/pathmarker_2024/pathmarker.dae</uri>
+              <uri>
+                package:://subjugator_description/models/RobotX_2024/pathmarker_2024/pathmarker.dae
+              </uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>package:://subjugator_description/models/RobotX_2024/pathmarker_2024/pathmarker.dae</uri>
+              <uri>
+                package:://subjugator_description/models/RobotX_2024/pathmarker_2024/pathmarker.dae
+              </uri>
             </mesh>
           </geometry>
         </collision>
@@ -341,8 +605,12 @@
           <pose>0 0 0 0 0 0</pose>
           <mass>1</mass>
           <inertia>
-            <ixx>1</ixx><ixy>0</ixy><ixz>0</ixz>
-            <iyy>1</iyy><iyz>0</iyz><izz>1</izz>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
           </inertia>
         </inertial>
       </link>
@@ -351,38 +619,41 @@
       <self_collide>false</self_collide>
     </model>
 
-
     <!-- Bin -->
     <model name='Bin_A'>
       <link name='link'>
-          <visual name='visual'>
+        <visual name='visual'>
           <geometry>
-              <mesh>
-              <uri>package:://subjugator_description/models/RobotX_2025/bin_2025/bin_2025.dae</uri>
-              </mesh>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/RobotX_2025/bin_2025/bin_2025.dae
+              </uri>
+            </mesh>
           </geometry>
-          </visual>
-          <collision name='collision'>
+        </visual>
+        <collision name='collision'>
           <geometry>
-              <mesh>
-              <uri>package:://subjugator_description/models/RobotX_2025/bin_2025/bin_2025.dae</uri>
-              </mesh>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/RobotX_2025/bin_2025/bin_2025.dae
+              </uri>
+            </mesh>
           </geometry>
-          </collision>
-          <pose>0 0 0 0 0 0</pose>
-          <inertial>
+        </collision>
+        <pose>0 0 0 0 0 0</pose>
+        <inertial>
           <pose>0 0 0 0 0 0</pose>
           <mass>1</mass>
           <inertia>
-              <ixx>1</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>1</iyy>
-              <iyz>0</iyz>
-              <izz>1</izz>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
           </inertia>
-          </inertial>
-          <enable_wind>false</enable_wind>
+        </inertial>
+        <enable_wind>false</enable_wind>
       </link>
       <pose>7.19226 20.8402724 -1.4 0 0 0</pose>
       <static>true</static>
@@ -391,34 +662,38 @@
 
     <model name='Torpedo_Board'>
       <link name='link'>
-          <visual name='visual'>
+        <visual name='visual'>
           <geometry>
-              <mesh>
-              <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
-              </mesh>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae
+              </uri>
+            </mesh>
           </geometry>
-          </visual>
-          <collision name='collision'>
+        </visual>
+        <collision name='collision'>
           <geometry>
-              <mesh>
-              <uri>package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae</uri>
-              </mesh>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/mapping_torpedoes_2025/mapping_torpedoes.dae
+              </uri>
+            </mesh>
           </geometry>
-          </collision>
-          <pose>0 0 0 0 0 0</pose>
-          <inertial>
+        </collision>
+        <pose>0 0 0 0 0 0</pose>
+        <inertial>
           <pose>0 0 0 0 0 0</pose>
           <mass>1</mass>
           <inertia>
-              <ixx>1</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>1</iyy>
-              <iyz>0</iyz>
-              <izz>1</izz>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
           </inertia>
-          </inertial>
-          <enable_wind>false</enable_wind>
+        </inertial>
+        <enable_wind>false</enable_wind>
       </link>
       <pose>-1.19226 21.8402724 -1.0 0 0 4.14</pose>
       <static>true</static>
