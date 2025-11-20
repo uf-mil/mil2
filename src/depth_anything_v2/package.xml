@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>depth_anything_v2</name>
+  <version>0.0.1</version>
+  <description>ROS2 node for DepthAnything V2 depth estimation</description>
+
+  <maintainer email="your_email@example.com">your_name</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Runtime dependencies -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+
+  <!-- Build dependencies -->
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
