@@ -137,7 +137,7 @@
   <xacro:asym_drag_plate parent="base_link" name="asym_drag" pose_x="0.8" pose_y="0" pose_z="0" mass="0.001" yV="0" yVabsV="0"/>
 
   <!-- Gripper -->
-  <xacro:mil_gripper name="mil_gripper" parent="base_link" xyz="0.375 0 -0.225" rpy="0 0 0"/>
+  <xacro:gripper name="gripper" parent="base_link" xyz="0.375 0 -0.225" rpy="0 0 0"/>
 
   <!-- Thrusters -->
   <!-- Front/Back Left/Right Vertical/Horizontal -->

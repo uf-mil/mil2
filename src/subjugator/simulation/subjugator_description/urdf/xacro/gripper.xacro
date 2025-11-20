@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:macro name="mil_gripper" params="name parent xyz rpy">
+  <xacro:macro name="gripper" params="name parent xyz rpy">
     <!-- Gripper Base Link -->
     <link name="${name}_link">
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -24,14 +24,14 @@
     </link>
 
     <!-- Left Arm Link  -->
-    <link name="${name}_armLeft_link">
+    <link name="${name}_leftArm_link">
       <inertial>
         <origin xyz="0 0.025 0" rpy="0 0 0"/>
         <mass value="0.1"/>
         <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
       <!-- Left Arm Visual Link -->
-      <visual name="${name}_armLeft_visual">
+      <visual name="${name}_leftArm_visual">
         <origin xyz="0 0.025 -0.3" rpy="1.57 0 -1.57"/>
         <geometry>
           <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
@@ -46,23 +46,23 @@
       </collision> -->
     </link>
     <!-- Left Arm Joint -->
-    <joint name="${name}_armLeft_joint" type="revolute">
+    <joint name="${name}_leftArm_joint" type="revolute">
       <origin xyz="0 0.025 0" rpy="0 0 0"/>
       <parent link="${name}_link"/>
-      <child link="${name}_armLeft_link"/>
+      <child link="${name}_leftArm_link"/>
       <axis xyz="0 1 0"/>
       <limit effort="1.0" velocity="1.0" lower="0.0" upper="0.5"/>
     </joint>
 
     <!-- Right Arm Link -->
-    <link name="${name}_armRight_link">
+    <link name="${name}_rightArm_link">
       <inertial>
         <origin xyz="0 -0.025 0" rpy="0 0 0"/>
         <mass value="0.1"/>
         <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
       <!-- Right Arm Visual Link -->
-      <visual name="${name}_armRight_visual">
+      <visual name="${name}_rightArm_visual">
         <origin xyz="0 -0.025 -0.3" rpy="1.57 0 1.57"/>
         <geometry>
           <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
@@ -77,10 +77,10 @@
       </collision> -->
     </link>
     <!-- Right Arm Joint -->
-    <joint name="${name}_armRight_joint" type="revolute">
+    <joint name="${name}_rightArm_joint" type="revolute">
       <origin xyz="0 -0.025 0" rpy="0 0 0"/>
       <parent link="${name}_link"/>
-      <child link="${name}_armRight_link"/>
+      <child link="${name}_rightArm_link"/>
       <axis xyz="0 1 0"/>
       <limit effort="1.0" velocity="1.0" lower="0.0" upper="0.5"/>
     </joint>
