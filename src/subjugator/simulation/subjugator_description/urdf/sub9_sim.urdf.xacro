@@ -10,6 +10,7 @@
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/thruster.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/depth.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/uneven_yaw.xacro"/>
+  <xacro:include filename="$(find subjugator_description)/urdf/xacro/gripper.xacro"/>
 
   <!-- Base Link of the Sub -->
   <link name="base_link">
@@ -134,6 +135,9 @@
 
   <!--Uneven Yaw Object-->
   <xacro:asym_drag_plate parent="base_link" name="asym_drag" pose_x="0.8" pose_y="0" pose_z="0" mass="0.001" yV="0" yVabsV="0"/>
+
+  <!-- Gripper -->
+  <xacro:mil_gripper name="mil_gripper" parent="base_link" xyz="0.375 0 -0.225" rpy="0 0 0"/>
 
   <!-- Thrusters -->
   <!-- Front/Back Left/Right Vertical/Horizontal -->
