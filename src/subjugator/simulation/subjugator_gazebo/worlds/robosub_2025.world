@@ -191,56 +191,6 @@
       <self_collide>false</self_collide>
     </model>
 
-    <!-- Gripper Base (in World for Testing, will be added to Sub9) -->
-    <model name='Gripper'>
-      <link name='link'>
-        <visual name='GripperBase'>
-          <geometry>
-            <mesh>
-              <uri>
-                package:://subjugator_description/models/gripper_2025/gripper_base.dae
-              </uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <!-- <collision name='collision'>
-          <geometry>
-            <mesh>
-              <uri>
-                package:://subjugator_description/models/gripper_2025/gripper_arm.dae
-              </uri>
-            </mesh>
-          </geometry>
-        </collision> -->
-        <visual name='GripperArm'>
-          <geometry>
-            <mesh>
-              <uri>
-                package:://subjugator_description/models/gripper_2025/gripper_arm.dae
-              </uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <pose>0 0 0 0 0 0</pose>
-        <inertial>
-          <pose>0 0 0 0 0 0</pose>
-          <mass>1</mass>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <enable_wind>false</enable_wind>
-      </link>
-      <pose>-3.25 5.0 -0.4 0 0 0.5</pose>
-      <static>false</static>
-      <self_collide>false</self_collide>
-    </model>
-
     <!-- Path Marker (unchanged) -->
     <model name='PathMarker_A1'>
       <link name='link'>

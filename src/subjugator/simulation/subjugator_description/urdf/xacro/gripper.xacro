@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="mil_gripper" params="name parent xyz rpy">
+    <!-- Visuals and inertial for the gripper base -->
+    <link name="${name}_link">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="1"/>
+        <inertia ixx="0.01" iyy="0.01" izz="0.01" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+
+      <visual name="${name}_base_visual">
+        <geometry>
+          <mesh filename="package://subjugator_description/models/gripper_2025/gripper_base.dae"/>
+        </geometry>
+      </visual>
+
+      <visual name="${name}_arm_visual">
+        <geometry>
+          <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
+        </geometry>
+      </visual>
+
+      <!-- Collision will be added here if needed -->
+    </link>
+
+    <!-- Fixed joint attaching gripper to parent link (pose provided by xyz/rpy params) -->
+    <joint name="${name}_joint" type="fixed">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+    </joint>
+
+    <!-- Ensure Gazebo does not lump away the fixed joint when spawning -->
+    <gazebo reference="${name}_joint">
+      <disableFixedJointLumping>true</disableFixedJointLumping>
+      <preserveFixedJoint>true</preserveFixedJoint>
+    </gazebo>
+  </xacro:macro>
+</robot>
