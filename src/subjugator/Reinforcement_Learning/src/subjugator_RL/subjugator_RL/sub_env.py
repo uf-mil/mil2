@@ -506,7 +506,6 @@ class SubEnv(gym.Env):
         self.random_pt = self.generate_random_pt()
         if self.stepNum % 50 == 0:
             print(f"Generated target: {self.random_pt}")
-        self.previousDistance = 0
         self.previousObservation = None
 
         if not success:
@@ -517,6 +516,10 @@ class SubEnv(gym.Env):
             pass
         observation = self._get_obs()
         info = self._get_info()
+
+        # Put reset for previousDistance here to avoid progress penalty on first step
+        self.previousDistance = np.linalg.norm(observation["object_distance"])
+        self.previousObservation = observation
 
         return observation, info
 
