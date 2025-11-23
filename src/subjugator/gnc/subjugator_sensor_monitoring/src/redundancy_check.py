@@ -51,17 +51,11 @@ class RedundancyCheckNode(rclpy.node.Node):
     def dvl_callback(self, msg):
         """Handle incoming DVL messages."""
         self.dvl_data = msg
-        # Only checking when DVL received new data
+
         self.check_redundancy()
 
     def check_redundancy(self):
         """Check redundancy between DVL and IMU data."""
-        # imu_transform frame id: imu_link
-        # dvl transfor frame id: odom
-        # No direct redundancy check.
-        # DVL = Linear x,y,z velocities
-        # IMU - Roll, Pitch, Yaw rates, Angular Velocity, Liner Accel x,y,z
-        # Differentiate DVL velocity --> compare against IMU linear accel
 
         # Main redundancy check logic:
         if self.imu_data is None or self.dvl_data is None:
