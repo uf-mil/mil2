@@ -56,7 +56,6 @@ class RedundancyCheckNode(rclpy.node.Node):
 
     def check_redundancy(self):
         """Check redundancy between DVL and IMU data."""
-
         # Main redundancy check logic:
         if self.imu_data is None or self.dvl_data is None:
             return
