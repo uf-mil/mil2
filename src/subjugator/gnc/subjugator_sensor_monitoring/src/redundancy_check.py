@@ -2,6 +2,7 @@
 """Redundancy check node for comparing DVL and IMU sensor data."""
 import rclpy
 import rclpy.node
+import tf2_geometry_msgs  # noqa: F401
 from geometry_msgs.msg import Vector3Stamped
 from nav_msgs.msg import Odometry
 from rclpy.duration import Duration
