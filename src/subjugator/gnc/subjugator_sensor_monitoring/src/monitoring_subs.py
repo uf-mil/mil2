@@ -4,17 +4,15 @@ import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
+from subjugator_msgs.msg import SensorSpike
 
 
 class MonitoringNode(Node):
     def __init__(self):
         super().__init__("monitoring_node")
         self.data = ""
-        """ keeping this here for now, will replace with correct message type
-
-        self.pub_dvl_ = self.create_publisher(Odometry, "monitoring_dvl", 10)
-        self.pub_imu_ = self.create_publisher(Imu, "monitoring_imu", 10)
-        """
+        self.pub_dvl_ = self.create_publisher(SensorSpike, "monitoring_dvl", 10)
+        self.pub_imu_ = self.create_publisher(SensorSpike, "monitoring_imu", 10)
 
         self.create_subscription(Odometry, "dvl/odom", self.dvl_odom_callback, 10)
         self.create_subscription(Imu, "imu/data", self.imu_data_callback, 10)
@@ -45,8 +43,16 @@ class MonitoringNode(Node):
                 setattr(self, spike_state_attr, False)
             else:
                 if not getattr(self, spike_state_attr):
-                    self.get_logger().info(f"Spike Detected at {axis_name}: {value}")
+                    # publish a SensorSpike message with details about the detected spike
+                    msg = SensorSpike()
+                    msg.header.stamp = self.get_clock().now().to_msg()
+                    msg.header.frame_id = "imu"
+                    msg.spike_detected = True
+                    msg.sensor_type = axis_name
+                    msg.measured_value = float(value)
+                    self.pub_imu_.publish(msg)
                     setattr(self, spike_state_attr, True)
+                    self.get_logger().info("spike detected")
 
     def dvl_odom_callback(self, dmsg: Odometry):
         """keeping this here for now, will replace later
