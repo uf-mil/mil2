@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rclpy
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from subjugator_msgs.msg import SensorSpike, SensorSpikeArray
@@ -13,7 +14,7 @@ class MonitoringNode(Node):
         self.pub_spike = self.create_publisher(SensorSpikeArray, "spike_monitoring", 10)
         self.array_msg = SensorSpikeArray()
 
-        # self.create_subscription(Odometry, "dvl/odom", self.dvl_odom_callback, 10)
+        self.create_subscription(Odometry, "dvl/odom", self.dvl_odom_callback, 10)
         self.create_subscription(Imu, "imu/data", self.imu_data_callback, 10)
 
         self.imu_accelerationx_array = []
@@ -60,7 +61,7 @@ class MonitoringNode(Node):
                     self.array_msg.sensors_status.append(msg)
                     setattr(self, spike_state_attr, True)
 
-    """def process_dvl(self, value, array, spike_state_attr, axis_name):
+    def process_dvl(self, value, array, spike_state_attr, axis_name):
         if len(array) <= 20:
             array.append(value)
         else:
@@ -84,9 +85,8 @@ class MonitoringNode(Node):
                     msg.spike_detected = True
                     msg.sensor_type = axis_name
                     msg.measured_value = float(value)
-                    self.array_msg.append(msg)
+                    self.array_msg.sensors_status.append(msg)
                     setattr(self, spike_state_attr, True)
-
 
     def dvl_odom_callback(self, dmsg: Odometry):
         # Process x-velocity
@@ -114,7 +114,6 @@ class MonitoringNode(Node):
         )
 
         self.pub_spike.publish(self.array_msg)
-    """
 
     def imu_data_callback(self, imsg: Imu):
         # Process x-axis
