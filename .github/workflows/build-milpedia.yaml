@@ -3,11 +3,13 @@ name: Build MILpedia image
 
 on:
   push:
-    # paths:
-    #   - 'infra/services/milpedia'
-    #   - 'branding/mil_white.svg'
-    #   - '.github/workflows/build-milpedia.yaml'
+    paths:
+      - 'infra/services/milpedia'
+      - 'branding/mil_white.svg'
+      - '.github/workflows/build-milpedia.yaml'
   workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *' # Daily at 4:00 AM UTC
 
 # Cancels this run if a new one referring to the same object and same workflow
 # is requested
