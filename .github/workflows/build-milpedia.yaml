@@ -57,3 +57,4 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: ghcr.io/uf-mil/milpedia:${{ steps.ref_name.outputs.ref_name }}
+          file: infra/services/milpedia/Dockerfile
