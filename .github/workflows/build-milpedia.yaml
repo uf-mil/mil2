@@ -36,9 +36,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Generates a useful and pretty ref_name:
+      #    * 'latest' for pushes to main
+      #    * 'branch-<branch_name>-<sha>' for pushes to other branches (with
+      #       slashes substituted)
+      - name: Generate ref name
+        id: ref_name
+        run: |
+          if [ "${GITHUB_REF##refs/heads/}" = "main" ]; then
+            echo "ref_name=latest" >> "$GITHUB_OUTPUT"
+          else
+            branch_name=$(echo "${GITHUB_REF##refs/heads/}" | tr '/' '-')
+            echo "ref_name=branch-${branch_name}-${GITHUB_SHA::7}" \
+              >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push MILpedia image
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64, linux/arm64
           push: true
-          tags: ghcr.io/uf-mil/milpedia:${{ github.ref_name }}-${{ github.sha }}
+          tags: ghcr.io/uf-mil/milpedia:${{ steps.ref_name.outputs.ref_name }}
