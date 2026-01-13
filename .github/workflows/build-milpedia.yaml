@@ -1,0 +1,42 @@
+---
+name: Build MILpedia image
+
+on:
+  push:
+    paths:
+      - 'infra/services/milpedia'
+      - 'branding/mil_white.svg'
+
+# Cancels this run if a new one referring to the same object and same workflow
+# is requested
+concurrency:
+  group: >
+    ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-milpedia:
+    name: Build MILpedia Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Login into ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push MILpedia image
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64, linux/arm64
+          push: true
+          tags: ghcr.io/uf-mil/milpedia:${{ github.ref_name }}-${{ github.sha }}
