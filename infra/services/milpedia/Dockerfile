@@ -29,7 +29,7 @@ RUN git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-Citoid
     git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-TemplateStyles /var/www/html/extensions/TemplateStyles -b REL1_43
 
 # Install vim (for easier debugging) and wget
-RUN apt-get update && apt-get install -y vim=2:9.0.1378-2+deb12u2 wget=1.25.0-2ubuntu3 --no-install-recommends && \
+RUN apt-get update && apt-get install -y vim=2:9.0.1378-2+deb12u2 wget=1.21.3-1+deb12u1 --no-install-recommends && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install composer
