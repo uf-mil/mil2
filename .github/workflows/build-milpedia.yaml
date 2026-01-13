@@ -3,10 +3,10 @@ name: Build MILpedia image
 
 on:
   push:
-    paths:
-      - 'infra/services/milpedia'
-      - 'branding/mil_white.svg'
-      - '.github/workflows/build-milpedia.yaml'
+    # paths:
+    #   - 'infra/services/milpedia'
+    #   - 'branding/mil_white.svg'
+    #   - '.github/workflows/build-milpedia.yaml'
   workflow_dispatch:
 
 # Cancels this run if a new one referring to the same object and same workflow
