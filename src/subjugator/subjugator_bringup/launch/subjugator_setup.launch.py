@@ -143,6 +143,29 @@ def generate_launch_description():
         output="both",
     )
 
+    bagger = Node(
+        package="online_bagger",
+        executable="online_bagger_server_node",
+        parameters=[
+            {
+                # add topics to bag here
+                "topics": [
+                    "/imu/data",
+                    "/dvl/odom",
+                    "/thruster/BLH",
+                    "/thruster/BLV",
+                    "/thruster/BRH",
+                    "/thruster/BRV",
+                    "/thruster/FLH",
+                    "/thruster/FLV",
+                    "/thruster/FRH",
+                    "/thruster/FRV",
+                ],
+            },
+        ],
+        output="screen",
+    )
+
     # wrench_tuner = IncludeLaunchDescription(
     # PythonLaunchDescriptionSource(
     # os.path.join(
@@ -166,5 +189,6 @@ def generate_launch_description():
             controller,
             path_planner,
             trajectory_planner,
+            bagger,
         ],
     )

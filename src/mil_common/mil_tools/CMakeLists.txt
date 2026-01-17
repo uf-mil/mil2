@@ -20,6 +20,7 @@ find_package(backward_ros REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(ftxui REQUIRED)
 
 set(SOURCE_FILES src/geometry/Rotation.cpp src/fs/path.cpp src/os.cpp
                  src/os/FileDescriptor.cpp src/string.cpp)
@@ -29,8 +30,12 @@ target_include_directories(
                          $<INSTALL_INTERFACE:include> ${EIGEN3_INCLUDE_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${AU_LIB}>
                                                   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(${PROJECT_NAME} rclcpp Eigen3 tf2_geometry_msgs)
-ament_export_dependencies(rclcpp Eigen3 tf2_geometry_msgs)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC ftxui::screen ftxui::dom
+                                             ftxui::component)
+ament_target_dependencies(${PROJECT_NAME} PUBLIC rclcpp Eigen3
+                          tf2_geometry_msgs)
+ament_export_dependencies(rclcpp Eigen3 tf2_geometry_msgs ftxui)
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_include_directories(include)
 include_directories(include)
