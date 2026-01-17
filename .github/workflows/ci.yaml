@@ -92,12 +92,27 @@ jobs:
     runs-on:
       group: mala-lab-noble
     steps:
+      - name: Configure catkin workspace folder structure
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE"/catkin_ws/src
+          sudo apt reinstall python3-pip
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           submodules: recursive
+      - name: Setup ROS2 Jazzy
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+      - name: Install pip dependencies
+        run: |
+          python3 -m pip config set global.break-system-packages true
+          pip3 install -r requirements.txt
       - name: Install system dependencies and build
         run: |
+          # Needed for /etc/update-manager/release-upgrades
+          sudo apt-get install -y ubuntu-release-upgrader-core
           rm -rf build install log
           export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
           ALLOW_NONSTANDARD_DIR=1 ./scripts/install.sh
