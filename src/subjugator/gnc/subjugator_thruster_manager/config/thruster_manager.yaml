@@ -12,4 +12,4 @@
       rz: [0.2695308,     -0.2695308,     0.337687697,  -0.337687697,   0.0,      0.0,      0.0,      0.0     ] # yaw
     thruster_cap: 1.0
     max_force_pos: 51.5
-    max_force_neg: 40.2
+    max_force_neg: 39.9
