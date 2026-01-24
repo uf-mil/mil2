@@ -23,6 +23,8 @@ class ThrusterManager : public rclcpp::Node
     double max_force_pos_;
     double max_force_neg_;
 
+    Eigen::VectorXd tam_complete_orthogonal_decomposition_pseudo_inverse_;
+
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr thrust_publisher_;
 

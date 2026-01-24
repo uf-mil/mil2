@@ -41,6 +41,8 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
                                          "with "
                                          "ros2 launch, and that config values are set.");
     }
+    // precompute the tam tam_complete_orthogonal_decomposition_pseudo_inverse_
+    tam_complete_orthogonal_decomposition_pseudo_inverse_ = tam_.completeOrthogonalDecomposition().pseudoInverse();
 
     wrench_subscription_ = this->create_subscription<geometry_msgs::msg::Wrench>(
         "cmd_wrench", 1,
@@ -63,7 +65,7 @@ void ThrusterManager::wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg)
 // Compute and publish thruster efforts
 void ThrusterManager::timer_callback()
 {
-    Eigen::VectorXd thrust_values(tam_.completeOrthogonalDecomposition().pseudoInverse() * reference_wrench_);
+    Eigen::VectorXd thrust_values(tam_complete_orthogonal_decomposition_pseudo_inverse_ * reference_wrench_);
 
     // check that the allocated thrust is not over the thruster cap (typically 1.0), and if it is, rescale all thrusters
     double biggest_thrust = 0;
