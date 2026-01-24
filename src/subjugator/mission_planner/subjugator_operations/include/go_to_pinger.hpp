@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 #include "context.hpp"
 #include "mil_msgs/msg/processed_ping.hpp"
@@ -78,6 +79,10 @@ class PingChecker
         auto x2 = p2.origin_direction_body.x;
         auto y2 = p2.origin_direction_body.y;
 
+        auto our_z1 = p1.origin_direction_body.z;
+        auto our_z2 = p2.origin_direction_body.z;
+        return std::abs(our_z1) > 0.9 && std::abs(our_z2) > 0.9;
+
         // normalize them
         auto mag1 = std::sqrt(x1 * x1 + y1 * y1);
         auto mag2 = std::sqrt(x2 * x2 + y2 * y2);
@@ -147,11 +152,17 @@ class SonarFollower : public BT::DecoratorNode
     // each ping we will move and check if done
     void topic_cb(mil_msgs::msg::ProcessedPing const& msg)
     {
+        if (current_status_ != BT::NodeStatus::RUNNING)
+        {
+            return;
+        }
+
         // check ping
         bool passed_the_pinger = pc.new_ping(msg);
         if (passed_the_pinger)
         {
             current_status_ = BT::NodeStatus::SUCCESS;
+            pc.reset();
             return;
         }
 
@@ -174,8 +185,8 @@ class SonarFollower : public BT::DecoratorNode
         auto w = std::cos(angle_rad / 2);
 
         // set outputs
-        setOutput("sonar_x", x);
-        setOutput("sonar_y", y);
+        setOutput("sonar_x", x * 0.5);
+        setOutput("sonar_y", y * 0.5);
         setOutput("sonar_z", z);
         setOutput("sonar_w", w);
 
