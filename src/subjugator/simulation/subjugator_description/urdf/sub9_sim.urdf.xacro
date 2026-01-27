@@ -101,6 +101,7 @@
     <plugin filename="ThrusterBridge" name="thrusterBridge::ThrusterBridge"/>
 
     <plugin filename="MarbleDropper" name="marble_dropper::MarbleDropper"/>
+    <plugin filename="GripperControl" name="gripper_control::GripperControl"/>
   </gazebo>
 
   <link name="localization_center">
