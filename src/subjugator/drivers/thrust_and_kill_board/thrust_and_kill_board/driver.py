@@ -28,6 +28,7 @@ from thrust_and_kill_board.packets import (
 DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E4623C80DF43092D-if00"  # v2
 DEFAULT_BAUDRATE = 115200
 
+
 def msg_to_string(msg):
     """Convert a message to a string to print."""
     return " ".join(f"{byte:02x}" for byte in msg)
