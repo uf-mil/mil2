@@ -49,6 +49,7 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
         e           : roll left  (-torque x)
         r           : roll right (+torque x)
         m           : Spawn marble
+        u           : Move gripper
         q           : Quit
     )");
 }

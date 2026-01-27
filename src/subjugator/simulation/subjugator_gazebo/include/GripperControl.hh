@@ -13,6 +13,7 @@
 #include <gz/sim/EventManager.hh>
 #include <gz/sim/System.hh>
 #include <gz/sim/components/Name.hh>
+#include <gz/sim/components/World.hh>
 #include <gz/transport/Node.hh>
 #include <sdf/Element.hh>
 #include <std_msgs/msg/string.hpp>
@@ -33,6 +34,9 @@ class GripperControl : public gz::sim::System, public gz::sim::ISystemConfigure,
     // PostUpdate - called each simulation step
     void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
 
+    // Keypress callback
+    void KeypressCallback(std_msgs::msg::String::SharedPtr const msg);
+
   private:
     // ROS2 Node and subscription
     rclcpp::Node::SharedPtr node_;
@@ -51,8 +55,8 @@ class GripperControl : public gz::sim::System, public gz::sim::ISystemConfigure,
     std::string model_name_{ "" };
     std::string topic_name_{ "" };
 
-    // Callback for keypress
-    void KeypressCallback(std_msgs::msg::String::SharedPtr msg);
+    // World name (for nicer logging)
+    std::string world_name_{ "unknown" };
 };
 
 }  // namespace gripper_control
