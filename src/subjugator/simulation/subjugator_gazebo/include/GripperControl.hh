@@ -11,7 +11,9 @@
 #include <gz/plugin/Register.hh>
 #include <gz/sim/EntityComponentManager.hh>
 #include <gz/sim/EventManager.hh>
+#include <gz/sim/Joint.hh>
 #include <gz/sim/System.hh>
+#include <gz/sim/components/JointPosition.hh>
 #include <gz/sim/components/Name.hh>
 #include <gz/sim/components/World.hh>
 #include <gz/transport/Node.hh>
@@ -21,7 +23,10 @@
 namespace gripper_control
 {
 
-class GripperControl : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
+class GripperControl : public gz::sim::System,
+                       public gz::sim::ISystemConfigure,
+                       public gz::sim::ISystemPreUpdate,
+                       public gz::sim::ISystemPostUpdate
 {
   public:
     GripperControl();
@@ -31,7 +36,10 @@ class GripperControl : public gz::sim::System, public gz::sim::ISystemConfigure,
     void Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf::Element const> const &sdf,
                    gz::sim::EntityComponentManager &ecm, gz::sim::EventManager &eventMgr) override;
 
-    // PostUpdate - called each simulation step
+    // PreUpdate - called each simulation step (read-write access)
+    void PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &_ecm) override;
+
+    // PostUpdate - called each simulation step (read-only access)
     void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
 
     // Keypress callback
@@ -42,18 +50,28 @@ class GripperControl : public gz::sim::System, public gz::sim::ISystemConfigure,
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr key_sub_;
 
-    // Gazebo transport node + publisher
+    // Gazebo transport node + publishers for left and right joints
     gz::transport::Node gz_node_;
-    gz::transport::Node::Publisher gz_pub_;
+    gz::transport::Node::Publisher gz_pub_left_;
+    gz::transport::Node::Publisher gz_pub_right_;
 
     // State & settings
     bool u_pressed_{ false };
     bool gripper_open_{ false };
-    double open_pos_{ 0.5 };    // radians (default)
+    double open_pos_{ 1 };      // radians (default)
     double closed_pos_{ 0.0 };  // radians (default)
-    std::string joint_name_{ "gripper_joint" };
+    // Base joint name (optional); specific left/right names computed from this if provided
+    std::string joint_name_{ "gripper" };
+    std::string left_joint_name_{ "gripper_leftArm_joint" };
+    std::string right_joint_name_{ "gripper_rightArm_joint" };
+    // std::string left_topic_{ "" };
+    // std::string right_topic_{ "" };
     std::string model_name_{ "" };
-    std::string topic_name_{ "" };
+    // std::string topic_name_{ "" };
+
+    // Cached joint entities for direct control
+    gz::sim::Entity left_joint_entity_{ gz::sim::kNullEntity };
+    gz::sim::Entity right_joint_entity_{ gz::sim::kNullEntity };
 
     // World name (for nicer logging)
     std::string world_name_{ "unknown" };
