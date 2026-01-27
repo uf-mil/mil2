@@ -51,17 +51,24 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
             gzerr << "[GripperControl] Failed to get model name from SDF attribute 'name': " << e.what() << std::endl;
         }
     }
-    else
-    {
-        gzerr << "[GripperControl] WARNING: Could not determine model name; plugin topic may be invalid." << std::endl;
-    }
 
     // Parse SDF parameters for joint name and positions (if provided)
     if (sdf)
     {
+        std::cout << "[GripperControl] Parsing SDF parameters ..." << std::endl;
+
         if (sdf->HasElement("joint_name"))
         {
             this->joint_name_ = sdf->Get<std::string>("joint_name");
+        }
+        // Optional explicit left/right joint names
+        if (sdf->HasElement("left_joint_name"))
+        {
+            this->left_joint_name_ = sdf->Get<std::string>("left_joint_name");
+        }
+        if (sdf->HasElement("right_joint_name"))
+        {
+            this->right_joint_name_ = sdf->Get<std::string>("right_joint_name");
         }
         if (sdf->HasElement("open_pos"))
         {
@@ -74,33 +81,58 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
     }
 
     // Determine world name (for logging) by iterating Worlds
-    ecm.Each<gz::sim::components::World, gz::sim::components::Name>(
-        [&](gz::sim::Entity const & /*ent*/, gz::sim::components::World const *,
-            gz::sim::components::Name const *name) -> bool
-        {
-            this->world_name_ = name->Data();
-            return false;  // stop after first world found
-        });
+    // ecm.Each<gz::sim::components::World, gz::sim::components::Name>(
+    //     [&](gz::sim::Entity const & /*ent*/, gz::sim::components::World const *,
+    //         gz::sim::components::Name const *name) -> bool
+    //     {
+    //         this->world_name_ = name->Data();
+    //         return false;  // stop after first world found
+    //     });
 
-    std::cout << "[GripperControl] World Name: " << this->world_name_ << std::endl;
+    // std::cout << "[GripperControl] World Name: " << this->world_name_ << std::endl;
 
     // Build Gazebo joint command topic and advertise
     if (!this->model_name_.empty())
     {
         // topic pattern: /model/<model_name>/joint/<joint_name>/cmd_pos
-        this->topic_name_ = "/model/" + this->model_name_ + "/joint/" + this->joint_name_ + "/cmd_pos";
-        std::cout << "[GripperControl] Advertising gz topic: " << this->topic_name_ << std::endl;
-        this->gz_pub_ = this->gz_node_.Advertise<gz::msgs::Double>(this->topic_name_);
-        // Small sanity log if advertise failed to produce a valid publisher (depends on gz implementation)
-        if (!this->gz_pub_)  // operator bool available in some Gazebo versions
+        // Compute left/right topic names and advertise both
+        std::string left_topic = "/model/" + this->model_name_ + "/joint/" + this->left_joint_name_ + "/cmd_pos";
+        std::string right_topic = "/model/" + this->model_name_ + "/joint/" + this->right_joint_name_ + "/cmd_pos";
+
+        std::cout << "[GripperControl] Advertising gz topics: " << left_topic << " , " << right_topic << std::endl;
+        this->gz_pub_left_ = this->gz_node_.Advertise<gz::msgs::Double>(left_topic);
+        this->gz_pub_right_ = this->gz_node_.Advertise<gz::msgs::Double>(right_topic);
+
+        if (!this->gz_pub_left_)
         {
-            gzerr << "[GripperControl] Failed to create gz publisher for topic: " << this->topic_name_ << std::endl;
+            gzerr << "[GripperControl] Failed to create gz publisher for topic: " << left_topic << std::endl;
+        }
+        if (!this->gz_pub_right_)
+        {
+            gzerr << "[GripperControl] Failed to create gz publisher for topic: " << right_topic << std::endl;
         }
     }
     else
     {
         gzerr << "[GripperControl] Topic name left empty because model name is unknown." << std::endl;
     }
+
+    // Find joint entities by name so we can directly set joint positions
+    ecm.Each<gz::sim::components::Name>(
+        [&](gz::sim::Entity const &_ent, gz::sim::components::Name const *_name) -> bool
+        {
+            if (_name && _name->Data() == this->left_joint_name_)
+            {
+                this->left_joint_entity_ = _ent;
+                std::cout << "[GripperControl] Found left joint entity: " << this->left_joint_name_ << std::endl;
+            }
+            if (_name && _name->Data() == this->right_joint_name_)
+            {
+                this->right_joint_entity_ = _ent;
+                std::cout << "[GripperControl] Found right joint entity: " << this->right_joint_name_ << std::endl;
+            }
+            return true;  // continue iterating
+        });
 }
 
 void GripperControl::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
@@ -117,39 +149,64 @@ void GripperControl::KeypressCallback(std_msgs::msg::String::SharedPtr const msg
     }
 }
 
-void GripperControl::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const & /*ecm*/)
+void GripperControl::PreUpdate(gz::sim::UpdateInfo const & /*info*/, gz::sim::EntityComponentManager &_ecm)
+{
+    // If a 'u' press was detected (set in ROS callback), toggle and apply immediately
+    if (this->u_pressed_)
+    {
+        this->gripper_open_ = !this->gripper_open_;
+        double cmd = this->gripper_open_ ? this->open_pos_ : this->closed_pos_;
+
+        std::vector<double> posData{ cmd };
+
+        bool did_direct = false;
+        if (this->left_joint_entity_ != gz::sim::kNullEntity)
+        {
+            gz::sim::Joint left(this->left_joint_entity_);
+            left.ResetPosition(_ecm, posData);
+            did_direct = true;
+        }
+        if (this->right_joint_entity_ != gz::sim::kNullEntity)
+        {
+            gz::sim::Joint right(this->right_joint_entity_);
+            right.ResetPosition(_ecm, posData);
+            did_direct = true;
+        }
+
+        if (!did_direct)
+        {
+            // Fallback to topic publishing if direct control not available
+            gz::msgs::Double msg;
+            msg.set_data(cmd);
+            if (this->gz_pub_left_)
+                this->gz_pub_left_.Publish(msg);
+            if (this->gz_pub_right_)
+                this->gz_pub_right_.Publish(msg);
+            std::cout << "[GripperControl] Published cmd_pos = " << cmd << " to left/right gripper topics (fallback)"
+                      << std::endl;
+        }
+        else
+        {
+            std::cout << "[GripperControl] Set joint positions directly (gripper_open="
+                      << (this->gripper_open_ ? "true" : "false") << ")" << std::endl;
+        }
+
+        this->u_pressed_ = false;
+    }
+}
+
+void GripperControl::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm)
 {
     if (info.paused)
         return;
 
     // Let ROS2 handle incoming messages for this node
     rclcpp::spin_some(this->node_);
-
-    // If a 'u' press was detected, toggle and publish the new joint command
-    if (this->u_pressed_)
-    {
-        this->gripper_open_ = !this->gripper_open_;
-        double cmd = this->gripper_open_ ? this->open_pos_ : this->closed_pos_;
-
-        if (!this->topic_name_.empty())
-        {
-            gz::msgs::Double msg;
-            msg.set_data(cmd);
-            this->gz_pub_.Publish(msg);
-            std::cout << "[GripperControl] Published cmd_pos = " << cmd << " to " << this->topic_name_
-                      << " (gripper_open=" << (this->gripper_open_ ? "true" : "false") << ")" << std::endl;
-        }
-        else
-        {
-            gzerr << "[GripperControl] Cannot publish - topic name empty." << std::endl;
-        }
-
-        // Reset one-shot flag
-        this->u_pressed_ = false;
-    }
+    (void)ecm;  // PostUpdate is read-only; active control happens in PreUpdate
 }
 
 }  // namespace gripper_control
 
-// Register plugin for Gazebo
-GZ_ADD_PLUGIN(gripper_control::GripperControl, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)
+// Register plugin for Gazebo (include PreUpdate interface so PreUpdate() is called)
+GZ_ADD_PLUGIN(gripper_control::GripperControl, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPreUpdate,
+              gz::sim::ISystemPostUpdate)
