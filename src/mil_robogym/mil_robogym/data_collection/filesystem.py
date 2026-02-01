@@ -40,6 +40,10 @@ def create_project_folder(
 
     folder_name = to_lower_snake_case(project["project_name"])
     project_dir = projects_dir / folder_name
+
+    if project_dir.exists():
+        raise FileExistsError(f"Project folder already exists: {project_dir}")
+
     project_dir.mkdir(parents=True, exist_ok=True)
 
     config_path = project_dir / "config.yaml"
