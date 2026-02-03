@@ -22,6 +22,8 @@ setup(
         ],
     },
     entry_points={
-        "console_scripts": [],
+        "console_scripts": [
+            "test=mil_robogym.translate_gazebo_props:main"
+        ],
     },
 )
