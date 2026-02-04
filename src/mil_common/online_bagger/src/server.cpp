@@ -295,7 +295,7 @@ class Server : public rclcpp::Node
         if (result->success)
         {
             goal_handle->succeed(result);
-            RCLCPP_INFO(get_logger(), "Successfully bag to %s", result->status.c_str());
+            RCLCPP_INFO(get_logger(), "Successfully bagged to %s", result->status.c_str());
         }
         else
         {

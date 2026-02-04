@@ -1,5 +1,5 @@
-# Onling bagger client call this service to obtain a list of topics to be baggered
-# The topics will be display on client ui
+# Online bagger client calls this service to obtain a list of topics to be bagged
+# The topics will be displayed on client ui
 
 ---
 string[] topics # Contains all topic names to bag in the online bagger server.

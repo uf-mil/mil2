@@ -128,7 +128,7 @@ class Tui
                     [this, future]
                     {
                         auto& result = future.get();
-                        std::string message = result.first ? "Succuessfully save bag file to " + result.second :
+                        std::string message = result.first ? "Successfully saved bag file to " + result.second :
                                                              "Failed to bag topics: " + result.second;
                         show_message("Bag Result", message);
                     });
@@ -366,7 +366,7 @@ int main(int argc, char** argv)
             bag_options.on_finish = [&](Client::BagFuture future)
             {
                 auto& result = future.get();
-                std::string message = result.first ? "Succuessfully save bag file to " + result.second :
+                std::string message = result.first ? "Successfully saved bag file to " + result.second :
                                                      "Failed to bag topics: " + result.second;
                 std::cout << '\n' << message << ".\n";
                 rclcpp::shutdown();
