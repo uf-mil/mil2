@@ -1,2 +1,5 @@
+import mil_robogym.ui.ui
+
+
 def main():
-    print("Hello, world!")
+    mil_robogym.ui.ui.main()
