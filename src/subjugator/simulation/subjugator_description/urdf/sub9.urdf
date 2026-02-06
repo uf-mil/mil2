@@ -472,7 +472,16 @@
         <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
       </geometry>
     </visual>
-    <!-- Left arm collision removed to avoid crossing/overlap issues during motion -->
+    <!-- Left fingertip collision: small rectangular box for reliable contact -->
+    <collision name="leftArm_collision">
+      <!-- positioned near the visual fingertip; adjust if needed -->
+      <origin rpy="0 0 0" xyz="0 0.045 0"/>
+      <geometry>
+        <box>
+          <size>0.1 0.1 0.1</size>
+        </box>
+      </geometry>
+    </collision>
   </link>
   <!-- Left Arm Joint -->
   <joint name="gripper_leftArm_joint" type="revolute">
@@ -496,7 +505,16 @@
         <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
       </geometry>
     </visual>
-    <!-- Right arm collision removed to avoid crossing/overlap issues during motion -->
+    <!-- Right fingertip collision: small rectangular box for reliable contact -->
+    <collision name="rightArm_collision">
+      <!-- positioned near the visual fingertip; adjust if needed -->
+      <origin rpy="0 0 0" xyz="0 -0.045 0"/>
+      <geometry>
+        <box>
+          <size>0.1 0.1 0.1</size>
+        </box>
+      </geometry>
+    </collision>
   </link>
   <!-- Right Arm Joint -->
   <joint name="gripper_rightArm_joint" type="revolute">
