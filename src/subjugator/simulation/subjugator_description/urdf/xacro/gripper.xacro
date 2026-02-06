@@ -39,13 +39,22 @@
       </visual>
       <!-- Left fingertip collision: small rectangular box for reliable contact -->
       <collision name="leftArm_collision">
-        <!-- positioned near the visual fingertip; adjust if needed -->
-        <origin xyz="0 0.045 0" rpy="0 0 0"/>
+        <!-- positioned to align with the visual finger tip (z ~ -0.3) -->
+        <origin xyz="0 0.045 -0.32" rpy="0 0 0"/>
         <geometry>
           <box>
-            <size>0.1 0.1 0.1</size>
+            <size>0.02 0.04 0.06</size>
           </box>
         </geometry>
+        <!-- simple friction hint (Gazebo/ODE) -->
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+        </surface>
       </collision>
     </link>
 
@@ -76,13 +85,22 @@
 
       <!-- Right fingertip collision: small rectangular box for reliable contact -->
       <collision name="rightArm_collision">
-        <!-- positioned near the visual fingertip; adjust if needed -->
-        <origin xyz="0 -0.045 0" rpy="0 0 0"/>
+        <!-- positioned to align with the visual finger tip (z ~ -0.3) -->
+        <origin xyz="0 -0.045 -0.32" rpy="0 0 0"/>
         <geometry>
           <box>
-            <size>0.1 0.1 0.1</size>
+            <size>0.02 0.04 0.06</size>
           </box>
         </geometry>
+        <!-- simple friction hint (Gazebo/ODE) -->
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+        </surface>
       </collision>
     </link>
 
