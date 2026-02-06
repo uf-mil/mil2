@@ -1,5 +1,7 @@
 #include "GripperControl.hh"
 
+#include <cmath>
+
 #include <gz/common/Console.hh>
 #include <gz/plugin/Register.hh>
 
@@ -39,17 +41,10 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
         this->model_name_ = nameComp->Data();
         std::cout << "[GripperControl] Got model name from Entity: " << this->model_name_ << std::endl;
     }
-    else if (sdf && sdf->HasAttribute("name"))
+    else
     {
-        try
-        {
-            this->model_name_ = sdf->Get<std::string>("name");
-            std::cout << "[GripperControl] Got model name from SDF: " << this->model_name_ << std::endl;
-        }
-        catch (std::exception const &e)
-        {
-            gzerr << "[GripperControl] Failed to get model name from SDF attribute 'name': " << e.what() << std::endl;
-        }
+        gzerr << "[GripperControl] Failed to get model name from Entity. Ensure the model has a Name component."
+              << std::endl;
     }
 
     // Parse SDF parameters for joint name and positions (if provided)
@@ -57,64 +52,17 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
     {
         std::cout << "[GripperControl] Parsing SDF parameters ..." << std::endl;
 
-        if (sdf->HasElement("joint_name"))
-        {
-            this->joint_name_ = sdf->Get<std::string>("joint_name");
-        }
         // Optional explicit left/right joint names
         if (sdf->HasElement("left_joint_name"))
         {
             this->left_joint_name_ = sdf->Get<std::string>("left_joint_name");
+            std::cout << "Left Joint Name acquired" << std::endl;
         }
         if (sdf->HasElement("right_joint_name"))
         {
             this->right_joint_name_ = sdf->Get<std::string>("right_joint_name");
+            std::cout << "Right Joint Name acquired" << std::endl;
         }
-        if (sdf->HasElement("open_pos"))
-        {
-            this->open_pos_ = sdf->Get<double>("open_pos");
-        }
-        if (sdf->HasElement("closed_pos"))
-        {
-            this->closed_pos_ = sdf->Get<double>("closed_pos");
-        }
-    }
-
-    // Determine world name (for logging) by iterating Worlds
-    // ecm.Each<gz::sim::components::World, gz::sim::components::Name>(
-    //     [&](gz::sim::Entity const & /*ent*/, gz::sim::components::World const *,
-    //         gz::sim::components::Name const *name) -> bool
-    //     {
-    //         this->world_name_ = name->Data();
-    //         return false;  // stop after first world found
-    //     });
-
-    // std::cout << "[GripperControl] World Name: " << this->world_name_ << std::endl;
-
-    // Build Gazebo joint command topic and advertise
-    if (!this->model_name_.empty())
-    {
-        // topic pattern: /model/<model_name>/joint/<joint_name>/cmd_pos
-        // Compute left/right topic names and advertise both
-        std::string left_topic = "/model/" + this->model_name_ + "/joint/" + this->left_joint_name_ + "/cmd_pos";
-        std::string right_topic = "/model/" + this->model_name_ + "/joint/" + this->right_joint_name_ + "/cmd_pos";
-
-        std::cout << "[GripperControl] Advertising gz topics: " << left_topic << " , " << right_topic << std::endl;
-        this->gz_pub_left_ = this->gz_node_.Advertise<gz::msgs::Double>(left_topic);
-        this->gz_pub_right_ = this->gz_node_.Advertise<gz::msgs::Double>(right_topic);
-
-        if (!this->gz_pub_left_)
-        {
-            gzerr << "[GripperControl] Failed to create gz publisher for topic: " << left_topic << std::endl;
-        }
-        if (!this->gz_pub_right_)
-        {
-            gzerr << "[GripperControl] Failed to create gz publisher for topic: " << right_topic << std::endl;
-        }
-    }
-    else
-    {
-        gzerr << "[GripperControl] Topic name left empty because model name is unknown." << std::endl;
     }
 
     // Find joint entities by name so we can directly set joint positions
@@ -125,11 +73,31 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
             {
                 this->left_joint_entity_ = _ent;
                 std::cout << "[GripperControl] Found left joint entity: " << this->left_joint_name_ << std::endl;
+
+                // Try to initialize current position from component if available
+                auto posComp = ecm.Component<gz::sim::components::JointPosition>(this->left_joint_entity_);
+                if (posComp && !posComp->Data().empty())
+                {
+                    this->left_current_pos_ = posComp->Data()[0];
+                    this->left_target_pos_ = this->left_current_pos_;
+                    this->left_pos_initialized_ = true;
+                    std::cout << "[GripperControl] Left joint initial pos: " << this->left_current_pos_ << std::endl;
+                }
             }
             if (_name && _name->Data() == this->right_joint_name_)
             {
                 this->right_joint_entity_ = _ent;
                 std::cout << "[GripperControl] Found right joint entity: " << this->right_joint_name_ << std::endl;
+
+                // Try to initialize current position from component if available
+                auto posCompR = ecm.Component<gz::sim::components::JointPosition>(this->right_joint_entity_);
+                if (posCompR && !posCompR->Data().empty())
+                {
+                    this->right_current_pos_ = posCompR->Data()[0];
+                    this->right_target_pos_ = this->right_current_pos_;
+                    this->right_pos_initialized_ = true;
+                    std::cout << "[GripperControl] Right joint initial pos: " << this->right_current_pos_ << std::endl;
+                }
             }
             return true;  // continue iterating
         });
@@ -137,6 +105,7 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
 
 void GripperControl::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
 {
+    // If message is empty or invalid, ignore
     if (!msg)
         return;
 
@@ -149,49 +118,64 @@ void GripperControl::KeypressCallback(std_msgs::msg::String::SharedPtr const msg
     }
 }
 
-void GripperControl::PreUpdate(gz::sim::UpdateInfo const & /*info*/, gz::sim::EntityComponentManager &_ecm)
+void GripperControl::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &_ecm)
 {
     // If a 'u' press was detected (set in ROS callback), toggle and apply immediately
     if (this->u_pressed_)
     {
+        // Set targets; actual motion will be smoothed over subsequent PreUpdate calls
         this->gripper_open_ = !this->gripper_open_;
-        double cmd = this->gripper_open_ ? this->open_pos_ : this->closed_pos_;
-
-        std::vector<double> posData{ cmd };
-
-        bool did_direct = false;
-        if (this->left_joint_entity_ != gz::sim::kNullEntity)
-        {
-            gz::sim::Joint left(this->left_joint_entity_);
-            left.ResetPosition(_ecm, posData);
-            did_direct = true;
-        }
-        if (this->right_joint_entity_ != gz::sim::kNullEntity)
-        {
-            gz::sim::Joint right(this->right_joint_entity_);
-            right.ResetPosition(_ecm, posData);
-            did_direct = true;
-        }
-
-        if (!did_direct)
-        {
-            // Fallback to topic publishing if direct control not available
-            gz::msgs::Double msg;
-            msg.set_data(cmd);
-            if (this->gz_pub_left_)
-                this->gz_pub_left_.Publish(msg);
-            if (this->gz_pub_right_)
-                this->gz_pub_right_.Publish(msg);
-            std::cout << "[GripperControl] Published cmd_pos = " << cmd << " to left/right gripper topics (fallback)"
-                      << std::endl;
-        }
-        else
-        {
-            std::cout << "[GripperControl] Set joint positions directly (gripper_open="
-                      << (this->gripper_open_ ? "true" : "false") << ")" << std::endl;
-        }
-
+        double tgt = this->gripper_open_ ? this->open_pos_ : this->closed_pos_;
+        this->left_target_pos_ = tgt;
+        this->right_target_pos_ = tgt;
         this->u_pressed_ = false;
+    }
+
+    // Perform smoothing toward targets each PreUpdate (exponential smoothing)
+    double const eps = 1e-6;
+    if (this->left_joint_entity_ != gz::sim::kNullEntity)
+    {
+        // ensure initialized
+        if (!this->left_pos_initialized_)
+        {
+            auto posComp = _ecm.Component<gz::sim::components::JointPosition>(this->left_joint_entity_);
+            if (posComp && !posComp->Data().empty())
+            {
+                this->left_current_pos_ = posComp->Data()[0];
+            }
+            this->left_target_pos_ = this->left_current_pos_;
+            this->left_pos_initialized_ = true;
+        }
+
+        double delta = (this->left_target_pos_ - this->left_current_pos_) * this->smoothing_alpha_;
+        this->left_current_pos_ += delta;
+        if (std::fabs(this->left_target_pos_ - this->left_current_pos_) < 1e-4)
+            this->left_current_pos_ = this->left_target_pos_;
+
+        gz::sim::Joint left(this->left_joint_entity_);
+        left.ResetPosition(_ecm, std::vector<double>{ this->left_current_pos_ });
+    }
+
+    if (this->right_joint_entity_ != gz::sim::kNullEntity)
+    {
+        if (!this->right_pos_initialized_)
+        {
+            auto posComp = _ecm.Component<gz::sim::components::JointPosition>(this->right_joint_entity_);
+            if (posComp && !posComp->Data().empty())
+            {
+                this->right_current_pos_ = posComp->Data()[0];
+            }
+            this->right_target_pos_ = this->right_current_pos_;
+            this->right_pos_initialized_ = true;
+        }
+
+        double delta = (this->right_target_pos_ - this->right_current_pos_) * this->smoothing_alpha_;
+        this->right_current_pos_ += delta;
+        if (std::fabs(this->right_target_pos_ - this->right_current_pos_) < 1e-4)
+            this->right_current_pos_ = this->right_target_pos_;
+
+        gz::sim::Joint right(this->right_joint_entity_);
+        right.ResetPosition(_ecm, std::vector<double>{ this->right_current_pos_ });
     }
 }
 

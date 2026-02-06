@@ -58,7 +58,7 @@ class GripperControl : public gz::sim::System,
     // State & settings
     bool u_pressed_{ false };
     bool gripper_open_{ false };
-    double open_pos_{ 1 };      // radians (default)
+    double open_pos_{ 0.79 };   // radians (default)
     double closed_pos_{ 0.0 };  // radians (default)
     // Base joint name (optional); specific left/right names computed from this if provided
     std::string joint_name_{ "gripper" };
@@ -72,6 +72,15 @@ class GripperControl : public gz::sim::System,
     // Cached joint entities for direct control
     gz::sim::Entity left_joint_entity_{ gz::sim::kNullEntity };
     gz::sim::Entity right_joint_entity_{ gz::sim::kNullEntity };
+
+    // Smooth motion state: targets and current positions
+    double left_target_pos_{ 0.0 };
+    double right_target_pos_{ 0.0 };
+    double left_current_pos_{ 0.0 };
+    double right_current_pos_{ 0.0 };
+    double smoothing_alpha_{ 0.2 };  // fractional step toward target each PreUpdate
+    bool left_pos_initialized_{ false };
+    bool right_pos_initialized_{ false };
 
     // World name (for nicer logging)
     std::string world_name_{ "unknown" };
