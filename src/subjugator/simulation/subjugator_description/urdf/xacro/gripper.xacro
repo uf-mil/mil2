@@ -30,7 +30,6 @@
         <mass value="0.1"/>
         <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
-
       <!-- Left Arm Visual Link -->
       <visual name="${name}_leftArm_visual">
         <origin xyz="0 0.025 -0.3" rpy="1.57 0 -1.57"/>
@@ -38,8 +37,16 @@
           <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
         </geometry>
       </visual>
-
-      <!-- Left arm collision removed to avoid crossing/overlap issues during motion -->
+      <!-- Left fingertip collision: small rectangular box for reliable contact -->
+      <collision name="leftArm_collision">
+        <!-- positioned near the visual fingertip; adjust if needed -->
+        <origin xyz="0 0.045 0" rpy="0 0 0"/>
+        <geometry>
+          <box>
+            <size>0.1 0.1 0.1</size>
+          </box>
+        </geometry>
+      </collision>
     </link>
 
     <!-- Left Arm Joint -->
@@ -67,7 +74,16 @@
         </geometry>
       </visual>
 
-      <!-- Right arm collision removed to avoid crossing/overlap issues during motion -->
+      <!-- Right fingertip collision: small rectangular box for reliable contact -->
+      <collision name="rightArm_collision">
+        <!-- positioned near the visual fingertip; adjust if needed -->
+        <origin xyz="0 -0.045 0" rpy="0 0 0"/>
+        <geometry>
+          <box>
+            <size>0.1 0.1 0.1</size>
+          </box>
+        </geometry>
+      </collision>
     </link>
 
     <!-- Right Arm Joint -->

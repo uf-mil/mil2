@@ -186,7 +186,7 @@ void GripperControl::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::Entity
 
     // Let ROS2 handle incoming messages for this node
     rclcpp::spin_some(this->node_);
-    (void)ecm;  // PostUpdate is read-only; active control happens in PreUpdate
+    (void)ecm;
 }
 
 }  // namespace gripper_control
