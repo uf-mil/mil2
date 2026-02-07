@@ -1,5 +1,6 @@
 #include "subjugator_thruster_manager/thruster_manager.h"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -11,6 +12,7 @@
 #include "geometry_msgs/msg/wrench.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
+#include "subjugator_thruster_manager/lut.h"
 
 // Construct node class
 ThrusterManager::ThrusterManager() : Node("thruster_manager")
@@ -64,29 +66,25 @@ void ThrusterManager::wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg)
 void ThrusterManager::timer_callback()
 {
     Eigen::VectorXd thrust_values(tam_.completeOrthogonalDecomposition().pseudoInverse() * reference_wrench_);
+    double const min_thrust_newtons = thrust_lut[0];
+    double const max_thrust_newtons = thrust_lut[thrust_lut.size() - 1];
 
-    // check that the allocated thrust is not over the thruster cap (typically 1.0), and if it is, rescale all thrusters
+    // scale newtons down so that this is possible
     double biggest_thrust = 0;
-    bool over_thruster_cap = false;
     for (int i = 0; i < thrust_values.size(); i++)
     {
-        // scale desired force to percent effort for thruster board compatibility
-        // Note that thrusters produce different force if spinning forward (max_force_pos_) vs spinning backwards
-        thrust_values[i] =
-            (thrust_values[i] > 0) ? thrust_values[i] / max_force_pos_ : thrust_values[i] / max_force_neg_;
-        // determine largest thrust magnitude
-        if (std::abs(thrust_values[i]) > biggest_thrust)
-        {
-            biggest_thrust = std::abs(thrust_values[i]);
-            if (biggest_thrust > thruster_cap_)
-            {
-                over_thruster_cap = true;
-            }
-        }
+        auto thrust_mag = std::abs(thrust_values[i]);
+        biggest_thrust = std::max(biggest_thrust, thrust_mag);
     }
+    bool over_thruster_cap = biggest_thrust > max_force_neg_;  // cap all the time
     if (over_thruster_cap)
     {
-        thrust_values = thrust_values * (thruster_cap_ / biggest_thrust);
+        thrust_values = thrust_values * (max_force_neg_ / biggest_thrust);
+    }
+    for (int i = 0; i < thrust_values.size(); i++)
+    {
+        double const max_newtons = thrust_values[i] > 0 ? max_thrust_newtons : min_thrust_newtons;
+        thrust_values[i] = std::abs(thrust_values[i]) / max_newtons;
     }
 
     auto msg = subjugator_msgs::msg::ThrusterEfforts();
