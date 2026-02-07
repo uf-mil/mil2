@@ -60,14 +60,12 @@ class GripperControl : public gz::sim::System,
     bool gripper_open_{ false };
     double open_pos_{ 0.79 };   // radians (default)
     double closed_pos_{ 0.0 };  // radians (default)
-    // Base joint name (optional); specific left/right names computed from this if provided
+
+    // Joint names; specific left/right names computed from this if provided
     std::string joint_name_{ "gripper" };
     std::string left_joint_name_{ "gripper_leftArm_joint" };
     std::string right_joint_name_{ "gripper_rightArm_joint" };
-    // std::string left_topic_{ "" };
-    // std::string right_topic_{ "" };
     std::string model_name_{ "" };
-    // std::string topic_name_{ "" };
 
     // Cached joint entities for direct control
     gz::sim::Entity left_joint_entity_{ gz::sim::kNullEntity };
