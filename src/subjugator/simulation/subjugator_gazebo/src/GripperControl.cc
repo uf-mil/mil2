@@ -52,16 +52,16 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
     {
         std::cout << "[GripperControl] Parsing SDF parameters ..." << std::endl;
 
-        // Optional explicit left/right joint names
+        // Grab Joint names from SDF
         if (sdf->HasElement("left_joint_name"))
         {
             this->left_joint_name_ = sdf->Get<std::string>("left_joint_name");
-            std::cout << "Left Joint Name acquired" << std::endl;
+            std::cout << "[GripperControl] Left Joint Name acquired" << std::endl;
         }
         if (sdf->HasElement("right_joint_name"))
         {
             this->right_joint_name_ = sdf->Get<std::string>("right_joint_name");
-            std::cout << "Right Joint Name acquired" << std::endl;
+            std::cout << "[GripperControl] Right Joint Name acquired" << std::endl;
         }
     }
 

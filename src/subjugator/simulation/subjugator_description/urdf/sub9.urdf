@@ -474,12 +474,9 @@
     </visual>
     <!-- Left fingertip collision: small rectangular box for reliable contact -->
     <collision name="leftArm_collision">
-      <!-- positioned near the visual fingertip; adjust if needed -->
-      <origin rpy="0 0 0" xyz="0 0.045 0"/>
+      <origin rpy="0 0 0" xyz="0 -0.025 -0.3"/>
       <geometry>
-        <box>
-          <size>0.1 0.1 0.1</size>
-        </box>
+        <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae" scale="1.1 1.1 1.1"/>
       </geometry>
     </collision>
   </link>
@@ -507,12 +504,9 @@
     </visual>
     <!-- Right fingertip collision: small rectangular box for reliable contact -->
     <collision name="rightArm_collision">
-      <!-- positioned near the visual fingertip; adjust if needed -->
-      <origin rpy="0 0 0" xyz="0 -0.045 0"/>
+      <origin rpy="0 0 0" xyz="0 -0.025 -0.3"/>
       <geometry>
-        <box>
-          <size>0.1 0.1 0.1</size>
-        </box>
+        <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae" scale="1.1 1.1 1.1"/>
       </geometry>
     </collision>
   </link>
@@ -533,6 +527,27 @@
   <gazebo reference="gripper_joint">
     <disableFixedJointLumping>true</disableFixedJointLumping>
     <preserveFixedJoint>true</preserveFixedJoint>
+  </gazebo>
+  <!-- Gazebo-specific friction for fingertip collisions -->
+  <gazebo reference="gripper_leftArm_link">
+    <surface>
+      <friction>
+        <ode>
+          <mu>1.5</mu>
+          <mu2>1.5</mu2>
+        </ode>
+      </friction>
+    </surface>
+  </gazebo>
+  <gazebo reference="gripper_rightArm_link">
+    <surface>
+      <friction>
+        <ode>
+          <mu>1.5</mu>
+          <mu2>1.5</mu2>
+        </ode>
+      </friction>
+    </surface>
   </gazebo>
   <!-- Link for base of thruster (this is for TF) -->
   <link name="FLV_link">
