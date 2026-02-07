@@ -1,3 +1,6 @@
+### this whole file sorta only exists for debugging and the only function intented to be used by other files is
+### newtons_from_duty
+
 def binary_search(target, effort_to_pwm_lut):
     low = 0
     high = len(effort_to_pwm_lut) - 1
@@ -247,10 +250,25 @@ effort_to_pwm_lut = [
     5.22,
     5.25 ]
 
-while True:
-    effort = float(input())
+def newtons_from_duty(duty: float):
+    effort = duty
     duty = thruster_effort_to_duty(effort, effort_to_pwm_lut)
-    index = (duty-1100)/4
-    print("duty ", duty)
-    print("index ", index)
-    print("actual ", effort_to_pwm_lut[int(index)])
+    index = (duty-1100)//4
+
+    KgF = effort_to_pwm_lut[index]
+    newtons = KgF * 9.80665 # 1N = 9.80665 KgF
+    return newtons
+
+    # print("duty ", duty)
+    # print("index ", index)
+    # print("actual ", effort_to_pwm_lut[int(index)])
+
+if __name__ == "__main__":
+    print("put some number in like 0.5 (range: -1:1)")
+    while True:
+        effort = float(input())
+        duty = thruster_effort_to_duty(effort, effort_to_pwm_lut)
+        index = (duty-1100)/4
+        print("duty ", duty)
+        print("index ", index)
+        print("actual ", effort_to_pwm_lut[int(index)])

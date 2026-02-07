@@ -2,7 +2,7 @@ import rclpy
 from geometry_msgs.msg import Wrench
 from rclpy.node import Node
 from subjugator_msgs.msg import ThrusterEfforts
-
+from view_thrust.lut import newtons_from_duty
 
 class ViewThrust(Node):
     def __init__(self):
@@ -76,6 +76,7 @@ class ViewThrust(Node):
         self.get_logger().info("\n")
 
         headers = (
+            "unit",
             "FLH",
             "FLV",
             "FRH",
@@ -83,10 +84,11 @@ class ViewThrust(Node):
             "BLH",
             "BLV",
             "BRH",
-            "BRV",
+            "BRV"
         )
         rows = [
             (
+                "duty%",
                 str(round(self.last_effort.thrust_flh, 3)),
                 str(round(self.last_effort.thrust_flv, 3)),
                 str(round(self.last_effort.thrust_frh, 3)),
@@ -96,8 +98,20 @@ class ViewThrust(Node):
                 str(round(self.last_effort.thrust_brh, 3)),
                 str(round(self.last_effort.thrust_brv, 3)),
             ),
+            (
+                "Newtons",
+                str(round(newtons_from_duty(self.last_effort.thrust_flh),2)),
+                str(round(newtons_from_duty(self.last_effort.thrust_flv),2)),
+                str(round(newtons_from_duty(self.last_effort.thrust_frh),2)),
+                str(round(newtons_from_duty(self.last_effort.thrust_frv),2)),
+                str(round(newtons_from_duty(self.last_effort.thrust_blh),2)),
+                str(round(newtons_from_duty(self.last_effort.thrust_blv),2)),
+                str(round(newtons_from_duty(self.last_effort.thrust_brh),2)),
+                str(round(newtons_from_duty(self.last_effort.thrust_brv),2)),
+            ),
         ]
         self.print_table(headers, rows)
+        self.get_logger().info("---------------------------------------------------")
 
     def print_table(
         self,
