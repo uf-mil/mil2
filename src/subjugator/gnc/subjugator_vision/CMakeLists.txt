@@ -14,7 +14,6 @@ find_package(mil_msgs REQUIRED) # message header path
 install(PROGRAMS src/swap_yolo_model.py src/save/save_down_images.py
                  src/save/save_front_images.py DESTINATION lib/${PROJECT_NAME})
 
-# install the YOLO .pt files so they end up beside the node
-install(DIRECTORY models/ DESTINATION lib/${PROJECT_NAME}/models)
+install(DIRECTORY models/ DESTINATION share/${PROJECT_NAME}/models)
 
 ament_package()
