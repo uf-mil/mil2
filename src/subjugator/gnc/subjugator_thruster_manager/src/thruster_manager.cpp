@@ -63,17 +63,37 @@ void ThrusterManager::wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg)
 // Compute and publish thruster efforts
 void ThrusterManager::timer_callback()
 {
-    Eigen::VectorXd thrust_values(tam_.completeOrthogonalDecomposition().pseudoInverse() * reference_wrench_);
+    // First calculate the raw thrust values using the original TAM
+    Eigen::VectorXd raw_thrust_values = tam_.completeOrthogonalDecomposition().pseudoInverse() * reference_wrench_;
 
-    // check that the allocated thrust is not over the thruster cap (typically 1.0), and if it is, rescale all thrusters
+    // Apply a correction based on direction of thrust
+    // We'll scale down positive thrusts to match negative thrusts' relative weakness
+    double force_ratio = max_force_neg_ / max_force_pos_;  // This will be < 1.0
+
+    // Apply the scaling for positive values only
+    for (int i = 0; i < raw_thrust_values.size(); i++)
+    {
+        if (raw_thrust_values[i] > 0)
+        {
+            raw_thrust_values[i] *= force_ratio;  // Scale down positive thrusts
+        }
+    }
+
+    // Recalculate the resulting wrench with the modified thrust values
+    Eigen::VectorXd achieved_wrench = tam_ * raw_thrust_values;
+
+    // Calculate new thrust values needed to achieve this "scaled down" wrench
+    Eigen::VectorXd thrust_values = tam_.completeOrthogonalDecomposition().pseudoInverse() * achieved_wrench;
+
+    // Continue with your normal normalization and capping
     double biggest_thrust = 0;
     bool over_thruster_cap = false;
     for (int i = 0; i < thrust_values.size(); i++)
     {
         // scale desired force to percent effort for thruster board compatibility
-        // Note that thrusters produce different force if spinning forward (max_force_pos_) vs spinning backwards
         thrust_values[i] =
             (thrust_values[i] > 0) ? thrust_values[i] / max_force_pos_ : thrust_values[i] / max_force_neg_;
+
         // determine largest thrust magnitude
         if (std::abs(thrust_values[i]) > biggest_thrust)
         {
@@ -84,11 +104,13 @@ void ThrusterManager::timer_callback()
             }
         }
     }
+
     if (over_thruster_cap)
     {
         thrust_values = thrust_values * (thruster_cap_ / biggest_thrust);
     }
 
+    // Publish as usual
     auto msg = subjugator_msgs::msg::ThrusterEfforts();
     msg.thrust_frh = thrust_values[0];
     msg.thrust_flh = thrust_values[1];
@@ -98,7 +120,6 @@ void ThrusterManager::timer_callback()
     msg.thrust_flv = thrust_values[5];
     msg.thrust_brv = thrust_values[6];
     msg.thrust_blv = thrust_values[7];
-
     this->thrust_publisher_->publish(msg);
 }
 
