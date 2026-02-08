@@ -7,7 +7,21 @@ from .project_row import ProjectRow
 
 
 class StartPage(tk.Frame):
+    """
+    Start page of the MIL RoboGYM application.
+
+    This page lists all available RoboGym projects and provides
+    navigation to open an existing project or create a new one.
+    """
+
     def __init__(self, parent, controller=None):
+        """
+        Initialize the start page UI.
+
+        :param parent: Parent Tkinter widget.
+        :param controller: Application controller used for page navigation.
+        """
+
         super().__init__(parent, bg="#DADADA")
         self.controller = controller
 
@@ -91,7 +105,15 @@ class StartPage(tk.Frame):
         create_btn.grid(row=0, column=0, sticky="ew")
 
     def _on_project(self, project):
+        """
+        Handle selection of an existing project. Navigates to the project page and sets the active project context.
+
+        :param project: Project configuration dictionary.
+        """
         self.controller.show_page("project", project=project)
 
     def _on_create_project(self):
+        """
+        Navigate to the project creation page.
+        """
         self.controller.show_page("create_project")
