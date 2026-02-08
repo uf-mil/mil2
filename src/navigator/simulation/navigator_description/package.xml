@@ -8,6 +8,10 @@
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>vrx_gazebo</depend>
+  <depend>vrx_gz</depend>
+  <depend>wamv_description</depend>
+  <depend>wamv_gazebo</depend>
 
   <test_depend>ament_lint_auto</test_depend>
 
