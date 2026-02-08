@@ -20,7 +20,7 @@ def generate_launch_description():
                 launch_arguments={
                     "model": LaunchConfiguration(
                         "model",
-                        default="/home/carlos/mil2/src/subjugator/gnc/subjugator_vision/models/start_gate_sim.pt",
+                        default="/home/carlos-chavez/mil2/src/subjugator/gnc/subjugator_vision/models/start_gate_sim.pt",
                     ),
                     "input_image_topic": LaunchConfiguration(
                         "input_image_topic", default="/front_cam/image_raw"

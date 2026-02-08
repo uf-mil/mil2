@@ -1,0 +1,17 @@
+<root BTCPP_format="4" main_tree_to_execute="HoneBearingTestMission">
+  <BehaviorTree ID="HoneBearingTestMission">
+    <Sequence>
+      <SubTree ID="HoneBearingMove" _autoremap="true"
+               label="shark"
+               min_conf="0.30"
+               offset_deg="0.0"
+               fov_deg="110.0"
+               method="atan"
+               tol_deg="2.0"
+               pos_tol="0.25"
+               ori_tol_deg="4.0"
+               msec="6000"
+               ctx="{ctx}" />
+    </Sequence>
+  </BehaviorTree>
+</root>
