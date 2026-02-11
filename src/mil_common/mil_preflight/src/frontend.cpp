@@ -1,17 +1,125 @@
 
-#include "mil_preflight/ui.h"
+#include "mil_preflight/frontend.h"
 
-int main(int argc, char* argv[])
+#include <boost/function.hpp>
+
+namespace mil_preflight
 {
-    if (argc <= 1)
+
+Frontend::Frontend()
+  : work_guard_(boost::asio::make_work_guard(work_context_))
+  , work_thread_([this] { work_context_.run(); })
+  , backend_(boost::process::child(bin_path_.string(),
+                                   boost::process::std_in<child_in_, boost::process::std_out> child_out_,
+                                   boost::process::std_err > child_err_))
+{
+}
+
+Frontend::~Frontend()
+{
+    work_guard_.reset();
+    work_context_.stop();
+    work_thread_.join();
+
+    if (backend_.running())
+        child_in_ << EOT << std::endl;
+
+    backend_.join();
+}
+
+void Frontend::runJob(std::shared_ptr<Job> job)
+{
+    std::shared_ptr<Test> test = job->nextTest();
+
+    while (test != nullptr)
     {
-        std::cout << "Usage: mil_preflight <ui> [ui_parameters...]" << std::endl;
-        return -1;
+        runTest(test);
+        test = job->nextTest();
     }
 
-    std::shared_ptr<mil_preflight::UIBase> ui = mil_preflight::UIBase::create(argv[1]);
-
-    ui->initialize(argc - 1, &argv[1]);
-
-    return ui->spin();
+    job->onFinish();
 }
+
+void Frontend::runJobAsync(std::shared_ptr<Job> job)
+{
+    work_context_.post([=] { runJob(job); });
+}
+
+void Frontend::runTest(std::shared_ptr<Test> test)
+{
+    std::shared_ptr<Action> action = test->nextAction();
+
+    child_in_ << test->getName() << std::endl << test->getPlugin() << std::endl << GS << std::endl;
+
+    while (action != nullptr)
+    {
+        runAction(action);
+        action = test->nextAction();
+    }
+
+    child_in_ << EOT << std::endl;
+
+    test->onFinish();
+}
+
+void Frontend::runAction(std::shared_ptr<Action> action)
+{
+    action->onStart();
+
+    std::string line;
+    bool success = false;
+    action->stdouts.clear();
+    action->stderrs.clear();
+
+    child_in_ << action->getName() << std::endl;
+    for (std::string const& parameter : action->getParameters())
+    {
+        child_in_ << parameter << std::endl;
+    }
+    child_in_ << GS << std::endl;
+
+    while (std::getline(child_out_, line))
+    {
+        if (line[0] == ACK)
+        {
+            success = true;
+            break;
+        }
+        else if (line[0] == NCK)
+        {
+            break;
+        }
+        else if (line[0] == BEL)
+        {
+            std::string question;
+            std::vector<std::string> options;
+            std::getline(child_out_, question, GS);
+            while (std::getline(child_out_, line, GS))
+            {
+                if (line[0] == EOT)
+                    break;
+                options.push_back(std::move(line));
+            }
+            std::shared_future<int> feedback = action->onQuestion(std::move(question), std::move(options));
+            child_in_ << feedback.get() << std::endl;
+        }
+        else
+        {
+            action->stdouts.push_back(std::move(line));
+        }
+    }
+
+    std::string summery;
+    std::getline(child_out_, summery);
+
+    while (std::getline(child_err_, line))
+    {
+        if (line[0] == EOT)
+            break;
+        action->stderrs.push_back(std::move(line));
+    }
+
+    action->onFinish(success, std::move(summery));
+}
+
+}  // namespace mil_preflight

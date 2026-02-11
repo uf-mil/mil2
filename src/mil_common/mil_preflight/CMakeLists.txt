@@ -8,52 +8,41 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(subjugator_msgs REQUIRED)
 find_package(Boost REQUIRED COMPONENTS thread chrono filesystem system)
 find_package(ftxui REQUIRED)
+find_package(pluginlib REQUIRED)
 
-add_executable(${PROJECT_NAME} src/frontend.cpp)
+add_library(${PROJECT_NAME}_lib SHARED src/frontend.cpp)
+add_executable(${PROJECT_NAME} src/mil_preflight.cpp src/tui.cpp)
 include_directories(include ${ftxui_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
 
-target_link_libraries(${PROJECT_NAME} Boost::system Boost::filesystem)
+target_link_libraries(
+  ${PROJECT_NAME}
+  ${PROJECT_NAME}_lib
+  Boost::system
+  Boost::filesystem
+  ftxui::screen
+  ftxui::dom
+  ftxui::component)
 
 add_executable(mil_preflight_backend src/backend.cpp)
 
-ament_target_dependencies(mil_preflight_backend rclcpp std_msgs Boost)
+ament_target_dependencies(mil_preflight_backend rclcpp Boost pluginlib)
 
 install(TARGETS ${PROJECT_NAME} mil_preflight_backend
         DESTINATION bin # Install to install/bin/
 )
 
-install(FILES cfg/config.json DESTINATION bin)
+install(
+  DIRECTORY cfg/
+  DESTINATION bin
+  FILES_MATCHING
+  PATTERN "*")
 
-add_library(ftx_ui SHARED src/uis/ftxui/ui.cpp src/uis/ftxui/widgets.cpp)
+install(DIRECTORY include/ DESTINATION include)
 
-target_link_libraries(
-  ftx_ui
-  PRIVATE ftxui::screen
-  PRIVATE ftxui::dom
-  PRIVATE ftxui::component Boost::thread Boost::chrono Boost::filesystem
-          Boost::system)
+ament_export_include_directories(include)
 
-add_library(topic_plugin SHARED src/plugins/topic_plugin.cpp)
-
-ament_target_dependencies(topic_plugin rclcpp Boost)
-
-add_library(setup_plugin SHARED src/plugins/setup_plugin.cpp)
-
-ament_target_dependencies(setup_plugin rclcpp Boost)
-
-add_library(node_plugin SHARED src/plugins/node_plugin.cpp)
-
-ament_target_dependencies(node_plugin rclcpp Boost)
-
-add_library(actuator_plugin SHARED src/plugins/actuator_plugin.cpp)
-
-ament_target_dependencies(actuator_plugin rclcpp subjugator_msgs Boost)
-
-install(TARGETS topic_plugin setup_plugin node_plugin actuator_plugin ftx_ui
-        LIBRARY DESTINATION lib)
+install(TARGETS ${PROJECT_NAME}_lib LIBRARY DESTINATION lib)
 
 ament_package()
