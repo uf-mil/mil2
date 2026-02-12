@@ -20,6 +20,8 @@ if(BUILD_TESTING)
   # to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+  find_package(subjugator_msgs REQUIRED)
+  install(PROGRAMS src/monitoring_subs.py DESTINATION lib/${PROJECT_NAME})
 endif()
 
 ament_package()
