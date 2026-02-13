@@ -58,7 +58,7 @@ class GripperControl : public gz::sim::System,
     // State & settings
     bool u_pressed_{ false };
     bool gripper_open_{ false };
-    double open_pos_{ 0.79 };   // radians (default)
+    double open_pos_{ 0.85 };   // radians (default)
     double closed_pos_{ 0.0 };  // radians (default)
 
     // Joint names; specific left/right names computed from this if provided

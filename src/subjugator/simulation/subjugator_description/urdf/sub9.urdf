@@ -442,7 +442,7 @@
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="1.0"/>
+      <mass value="0.01"/>
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
     </inertial>
     <!-- Visual for base -->
@@ -461,20 +461,20 @@
   <!-- Left Arm Link  -->
   <link name="gripper_leftArm_link">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0.025 0"/>
+      <origin rpy="0 0 0" xyz="0 0.03 -0.025"/>
       <mass value="0.1"/>
       <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
     </inertial>
     <!-- Left Arm Visual Link -->
     <visual name="gripper_leftArm_visual">
-      <origin rpy="1.57 0 -1.57" xyz="0 0.025 -0.3"/>
+      <origin rpy="1.57 0 -1.57" xyz="0 0.03 -0.025"/>
       <geometry>
         <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
       </geometry>
     </visual>
     <!-- Left fingertip collision: small rectangular box for reliable contact -->
     <collision name="leftArm_collision">
-      <origin rpy="0 0 0" xyz="0 -0.025 -0.3"/>
+      <origin rpy="0 0 0" xyz="0 0.03 -0.025"/>
       <geometry>
         <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae" scale="1.1 1.1 1.1"/>
       </geometry>
@@ -482,7 +482,7 @@
   </link>
   <!-- Left Arm Joint -->
   <joint name="gripper_leftArm_joint" type="revolute">
-    <origin rpy="0 0 0" xyz="0 0.025 0"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.1"/>
     <parent link="gripper_link"/>
     <child link="gripper_leftArm_link"/>
     <axis xyz="1 0 0"/>
@@ -491,20 +491,20 @@
   <!-- Right Arm Link -->
   <link name="gripper_rightArm_link">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 -0.025 0"/>
+      <origin rpy="0 0 0" xyz="0 -0.03 -0.025"/>
       <mass value="0.1"/>
       <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
     </inertial>
     <!-- Right Arm Visual Link -->
     <visual name="gripper_rightArm_visual">
-      <origin rpy="1.57 0 1.57" xyz="0 -0.025 -0.3"/>
+      <origin rpy="1.57 0 1.57" xyz="0 -0.03 -0.025"/>
       <geometry>
         <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
       </geometry>
     </visual>
     <!-- Right fingertip collision: small rectangular box for reliable contact -->
     <collision name="rightArm_collision">
-      <origin rpy="0 0 0" xyz="0 -0.025 -0.3"/>
+      <origin rpy="0 0 0" xyz="0 -0.03 -0.025"/>
       <geometry>
         <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae" scale="1.1 1.1 1.1"/>
       </geometry>
@@ -512,7 +512,7 @@
   </link>
   <!-- Right Arm Joint -->
   <joint name="gripper_rightArm_joint" type="revolute">
-    <origin rpy="0 0 0" xyz="0 -0.025 0"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.1"/>
     <parent link="gripper_link"/>
     <child link="gripper_rightArm_link"/>
     <axis xyz="-1 0 0"/>
