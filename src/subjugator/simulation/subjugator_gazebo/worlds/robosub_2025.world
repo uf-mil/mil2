@@ -17,8 +17,11 @@
     </physics>
 
     <!-- Plugins -->
-    <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
-  	<publish_nested_model_pose>true</publish_nested_model_pose>
+    <plugin
+      filename="gz-sim-pose-publisher-system"
+      name="gz::sim::systems::PosePublisher"
+    >
+      <publish_nested_model_pose>true</publish_nested_model_pose>
     </plugin>
 
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics" />
