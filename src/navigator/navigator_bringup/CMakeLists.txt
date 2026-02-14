@@ -10,7 +10,7 @@ find_package(navigator_description REQUIRED)
 find_package(navigator_gazebo REQUIRED)
 
 # Install project launch files
-install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
+install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
 # Install URDF files install(DIRECTORY urdf DESTINATION
 # share/${PROJECT_NAME}/urdf)

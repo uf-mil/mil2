@@ -4,7 +4,6 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    ExecuteProcess,
 )
 from launch.conditions import IfCondition
 from launch.substitutions import (
@@ -53,13 +52,6 @@ def generate_launch_description():
     robot_desc = ParameterValue(
         Command([FindExecutable(name="xacro"), " ", LaunchConfiguration("xacro_file")]),
         value_type=str,
-    )
-
-    # Write an on-disk URDF
-    urdf_out = os.path.join(pkg_project_description, "urdf", "navigator.urdf")
-    generate_urdf = ExecuteProcess(
-        cmd=["xacro", LaunchConfiguration("xacro_file"), "-o", urdf_out],
-        output="screen",
     )
 
     # # Convert URDF to SDF using Gazebo's gz tool
@@ -131,19 +123,21 @@ def generate_launch_description():
     #     ),
     # )
 
-    path_planner = Node(
-        package="navigator_path_planner",
-        executable="navigator_path_planner",
-        name="navigator_path_planner",
-        output="both",
-    )
+    # !!! Uncomment once navigator_path_planner is created !!!
+    # path_planner = Node(
+    #     package="navigator_path_planner",
+    #     executable="navigator_path_planner",
+    #     name="navigator_path_planner",
+    #     output="both",
+    # )
 
-    trajectory_planner = Node(
-        package="navigator_trajectory_planner",
-        executable="trajectory_planner",
-        name="navigator_trajectory_planner",
-        output="both",
-    )
+    # !!! Uncomment once navigator_trajectory_planner is created !!!
+    # trajectory_planner = Node(
+    #     package="navigator_trajectory_planner",
+    #     executable="trajectory_planner",
+    #     name="navigator_trajectory_planner",
+    #     output="both",
+    # )
 
     # wrench_tuner = IncludeLaunchDescription(
     # PythonLaunchDescriptionSource(
@@ -159,7 +153,6 @@ def generate_launch_description():
             gui_cmd,
             xacro_file_arg,
             use_sim_time_arg,
-            generate_urdf,
             robot_state_publisher_node,
             # joint_state_publisher_node,
             rviz,
@@ -167,7 +160,8 @@ def generate_launch_description():
             # thruster_manager,
             # localization,
             # controller,
-            path_planner,
-            trajectory_planner,
+            # !!! Uncomment once navigator_path_planner is created !!!
+            # path_planner,
+            # trajectory_planner,
         ],
     )
