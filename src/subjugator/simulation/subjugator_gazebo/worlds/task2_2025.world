@@ -50,6 +50,7 @@
           <density>1</density>
         </density_change>
       </graded_buoyancy>
+      <enable>sub9::base_link</enable>
     </plugin>
 
     <!-- Origin Placed in the middle of the woollet pool -->
