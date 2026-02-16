@@ -1,8 +1,18 @@
 from glob import glob
+from pathlib import Path
 
 from setuptools import find_packages, setup
 
 package_name = "mil_robogym"
+projects_root = Path("projects")
+
+project_data_files = []
+if projects_root.exists():
+    for path in projects_root.rglob("*"):
+        if path.is_file():
+            relative_parent = path.relative_to(projects_root).parent
+            install_dir = Path("share") / package_name / "projects" / relative_parent
+            project_data_files.append((str(install_dir), [str(path)]))
 
 setup(
     name=package_name,
@@ -12,7 +22,7 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name + "/launch", glob("launch/*.launch.py")),
-        ("share/" + package_name + "/projects", ["projects/.keep"]),
+        *project_data_files,
     ],
     install_requires=["setuptools"],
     zip_safe=True,
