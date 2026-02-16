@@ -84,15 +84,15 @@ Fetching latest apt packages...
 $(hash_header)
 EOF
 
+# Installation for virtual machines$
+# Installs the apt-add-repository command
+sudo apt-get install software-properties-common -y
+
 # Install neovim (to prevent cameron from going mad)
 sudo apt-add-repository ppa:neovim-ppa/stable -y
 
 # Update apt
 sudo apt update
-
-# Installation for virtual machines
-# Installs the apt-add-repository command
-sudo apt-get install software-properties-common -y
 
 # Installs keyboard config without prompting for input
 sudo DEBIAN_FRONTEND=noninteractive apt-get install keyboard-configuration -y # Weird bug
@@ -268,7 +268,8 @@ mil_user_install_dependencies() {
 		fzf \
 		aptitude \
 		lm-sensors \
-		libboost-all-dev
+		libboost-all-dev \
+		ros-jazzy-behaviortree-cpp
 }
 
 # Add line to user's bashrc which source the repo's setup files
