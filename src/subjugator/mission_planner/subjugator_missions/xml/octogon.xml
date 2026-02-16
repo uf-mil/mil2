@@ -1,0 +1,35 @@
+<!-- HOLD UNTIL PINGER AVAILABLE-->
+
+<!-- a sequence of actions should follow :
+    1. getting pinger data (if no data -> survey for data)
+    2. navigate using pinger data to move towards source using move commands
+    3. add to sub9_missions.xml when done
+
+    Based on sonar_follower_test_mission.xml
+-->
+<root main_tree_to_execute="NavToOctogonMission">
+    <BehaviorTree ID="NavToOctogonMission">
+        <!-- wait for pinger signal from the hydrophones topic-->
+        <Fallback name="FindPingerSignal"> <!--loop that looks for the pinger-->
+            <CheckPinger name="check_pinger" topic="/hydrophones/solved"/>
+            <!-- todo survey until pinger is found-->
+        </Fallback>
+        <!-- start going towards the pinger-->
+        <!-- its lowkey the same as the sonar_follower_test_mission.xml-->
+        <FollowSonar name="follow_sonar"
+            ctx = "{ctx}"
+            sonar_x = "{sonar_X}"
+            sonar_y = "{sonar_y}"
+            sonar_z = "{sonar_z}"
+            sonar_w = "{sonar_w}">
+            <SubTree ID="RelativeMove"
+                _autoremap="true"
+                x="{sonar_x}"
+                y="{sonar_y}"
+                z="0.0"
+                pos_tol="0.20"
+                ori_tol_deg="12.0"
+                msec="25000"
+                ctx="{ctx}"/>
+        </FollowSonar>
+<!-- try to fix the go to pinger hpp/cpp-->
