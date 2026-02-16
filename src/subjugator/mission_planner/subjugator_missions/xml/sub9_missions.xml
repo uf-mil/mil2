@@ -13,4 +13,5 @@
     <include path="topic_ticker_test_mission.xml"/>
     <include path="sonar_follower_test_mission.xml"/>
     <include path="yaw_style.xml"/>
+    <include path="look_for_image.xml"/>
 </root>

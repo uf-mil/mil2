@@ -1,30 +1,32 @@
 <root BTCPP_format="4" main_tree_to_execute="SurveyForImage">
     <BehaviorTree ID="SurveyForImage">
         <Sequence>
-            <Parallel success_threshold="1" failure_threshold="1">
+            <Parallel success_count="1" failure_count="1">
                 <!--the robot needs to rotate in place and take in image data at the same time-->
                 <!-- Rotate the robot -->
-                <Repeat num_attempts="-1">
-                <SubTree ID="RelativeMove"
-                    x="0.0"
-                    y="0.0"
-                    z="0.0"
-                    roll_deg="0.0"
-                    pitch_deg="0.0"
-                    yaw_deg="45.0"
-                    msec="5000"
-                    pos_tol="0.2"
-                    ori_tol_deg="10.0"
-                    ctx="{ctx}"/>
-                </Repeat>
-                <!--take in image--> <!--should be a continuous loop so -1 is the right num attempts?-->
                 <RetryUntilSuccessful num_attempts="-1">
-                    <Condition ID="DetectTarget"
-                        label="{target_image}"
-                        min_conf="0.40"
+                    <SubTree ID="RelativeMove"
+                        x="0.0"
+                        y="0.0"
+                        z="0.0"
+                        roll_deg="0.0"
+                        pitch_deg="0.0"
+                        yaw_deg="45.0"
+                        msec="5000"
+                        pos_tol="0.2"
+                        ori_tol_deg="10.0"
                         ctx="{ctx}"/>
-                    <!--im not really sure what the minimum confidence value should be but detect_target.cpp has 0.40-->
                 </RetryUntilSuccessful>
+                <!--take in image--> <!--should be a continuous loop so -1 is the right num attempts?-->
+                <Timeout msec="5000">
+                    <RetryUntilSuccessful num_attempts="-1">
+                            <Condition ID="DetectTarget"
+                                label="Shark"
+                                min_conf="0.35"
+                                ctx="{ctx}"/>
+                        <!--im not really sure what the minimum confidence value should be but detect_target.cpp has 0.40-->
+                    </RetryUntilSuccessful>
+                </Timeout>
             </Parallel>
         </Sequence>
     </BehaviorTree>
