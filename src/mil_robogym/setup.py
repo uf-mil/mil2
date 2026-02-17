@@ -28,6 +28,7 @@ setup(
     entry_points={
         "console_scripts": [
             "mil_robogym = mil_robogym.main:main",
+            "gz_pose_srv = mil_robogym.services.gz_pose:main",
         ],
     },
 )
