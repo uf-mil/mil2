@@ -222,7 +222,7 @@ fi
 sudo pip3 install -r requirements.txt
 
 # Install Python dependencies for GZ Transoport
-sudo apt install python3-gz-transport13
+sudo apt install python3-gz-transport13 --assume-yes
 
 cat <<EOF
 $(color "$Pur")
