@@ -14,7 +14,7 @@ BT::NodeStatus AnyPolesDetected::tick()
 {
     if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
         return BT::NodeStatus::FAILURE;
-    double min_conf = 0.30;
+    double min_conf = 0.31;
     (void)getInput("min_conf", min_conf);
 
     std::optional<yolo_msgs::msg::DetectionArray> arr;
