@@ -1,7 +1,7 @@
 import tkinter as tk
 
 from mil_robogym.data_collection.get_gazebo_topics import get_gazebo_topics
-from mil_robogym.ui.pages.create_project_page.scrollable_frame import ScrollableFrame
+from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 
 class CreateProjectPage(tk.Frame):
