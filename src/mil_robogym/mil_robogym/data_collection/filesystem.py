@@ -161,3 +161,47 @@ def create_agent_folder(
         ) from e
 
     return agent_dir
+
+
+def create_demo_folder(
+    project_dir: Path,
+    *,
+    demo_name: str,
+    sampling_rate: float,
+    start_position: tuple[float, float, float, float] | None = None,
+) -> Path:
+    """
+    Create a demo folder under <project_dir>/demos/ with a config.yaml.
+
+    Creates:
+        <project_dir>/demos/<lower_snake_demo_name>/config.yaml
+
+    If start_position is None, defaults to (0.0, 0.0, 0.0, 0.0).
+    Returns the created demo directory Path.
+    """
+    demos_dir = project_dir / "demos"
+    demos_dir.mkdir(parents=True, exist_ok=True)
+
+    folder_name = to_lower_snake_case(demo_name)
+    demo_dir = demos_dir / folder_name
+
+    if demo_dir.exists():
+        raise FileExistsError(f"Demo folder already exists: {demo_dir}")
+
+    demo_dir.mkdir(parents=True, exist_ok=False)
+
+    if start_position is None:
+        start_position = (0.0, 0.0, 0.0, 0.0)
+
+    config_path = demo_dir / "config.yaml"
+    cfg: dict[str, Any] = {
+        "robogym_demo": {
+            "demo_name": demo_name,
+            "start_position": list(start_position),
+            "sampling_rate": sampling_rate,
+        },
+    }
+    with config_path.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)
+
+    return demo_dir
