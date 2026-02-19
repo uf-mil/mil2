@@ -1,5 +1,6 @@
 import tkinter as tk
 
+from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.get_gazebo_topics import get_gazebo_topics
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
@@ -19,6 +20,8 @@ class CreateProjectPage(tk.Frame):
         """
         super().__init__(parent, bg="#DADADA")
         self.controller = controller
+
+        self.world_control_client = WorldControlClient()
 
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
@@ -390,6 +393,12 @@ class CreateProjectPage(tk.Frame):
 
         Current behavior is a placeholder that logs activation.
         """
+        # Play the simulation
+        self.world_control_client.play_simulation()
+
+        # Enable keyboard controls
+
+        # Display popups and wait for signal indicating both coordinates have been collected
         print("grab_from_sim_activation")
 
     def _on_cancel(self):
