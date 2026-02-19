@@ -1,7 +1,6 @@
 import tkinter as tk
 
 from mil_robogym.data_collection.get_gazebo_topics import get_gazebo_topics
-from mil_robogym.data_collection.get_gazebo_world_file import get_gazebo_world_file
 from mil_robogym.ui.pages.create_project_page.scrollable_frame import ScrollableFrame
 
 
@@ -24,15 +23,30 @@ class CreateProjectPage(tk.Frame):
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
 
-        title = tk.Label(
-            self,
-            text="MIL RoboGYM > Create Project",
+        title_row = tk.Frame(self, bg="#DADADA")
+        title_row.grid(row=0, column=0, columnspan=6, sticky="w", padx=14, pady=(14, 8))
+
+        home_title = tk.Label(
+            title_row,
+            text="MIL Robogym >",
             bg="#DADADA",
             fg="black",
             font=("Arial", 20, "bold"),
             anchor="w",
         )
-        title.grid(row=0, column=0, columnspan=6, sticky="nsew", padx=14, pady=(14, 8))
+        home_title.pack(side="left")
+        home_title.configure(cursor="hand2")
+        home_title.bind("<Button-1>", self._on_home_title_click)
+
+        page_title = tk.Label(
+            title_row,
+            text="Create Project",
+            bg="#DADADA",
+            fg="black",
+            font=("Arial", 20, "bold"),
+            anchor="w",
+        )
+        page_title.pack(side="left", padx=(6, 0))
 
         project_name_label = tk.Label(
             self,
@@ -75,7 +89,12 @@ class CreateProjectPage(tk.Frame):
             pady=5,
         )
         self.world_file_var = tk.StringVar(value=self._world_default)
-        tk.Entry(self, textvariable=self.world_file_var, font=("Arial", 15)).grid(
+        tk.Entry(
+            self,
+            textvariable=self.world_file_var,
+            font=("Arial", 15),
+            state=tk.DISABLED,
+        ).grid(
             row=2,
             column=1,
             columnspan=4,
@@ -100,7 +119,12 @@ class CreateProjectPage(tk.Frame):
             pady=5,
         )
         self.model_name_var = tk.StringVar(value="sub9")
-        tk.Entry(self, textvariable=self.model_name_var, font=("Arial", 15)).grid(
+        tk.Entry(
+            self,
+            textvariable=self.model_name_var,
+            font=("Arial", 15),
+            state=tk.DISABLED,
+        ).grid(
             row=3,
             column=1,
             columnspan=3,
@@ -337,19 +361,13 @@ class CreateProjectPage(tk.Frame):
 
     def _safe_get_world_file(self):
         """
-        Retrieve the active Gazebo world file with normalized error handling.
+        For now, this will return the subjugator bringup Gazebo world file.
+        This will be hardcoded until can be changed otherwise to include other world file
 
-        :raises RuntimeError: If world-file discovery fails for any supported
-            Gazebo/runtime error condition.
-        :return: Absolute or expanded path to the detected world file.
+        :return: Absolute or expanded path to the robosub_2025.world file
         :rtype: str
         """
-        try:
-            return get_gazebo_world_file()
-        except (RuntimeError, FileNotFoundError) as e:
-            raise RuntimeError(
-                "Getting gazebo world file path on create projects page failed",
-            ) from e
+        return "~/mil2/install/subjugator_gazebo/share/subjugator_gazebo/worlds/robosub_2025.world"
 
     def _toggle_random_spawn(self):
         """
@@ -380,6 +398,13 @@ class CreateProjectPage(tk.Frame):
 
         If a page controller was provided at initialization time, this invokes
         `controller.show_page("start")`.
+        """
+        if self.controller is not None:
+            self.controller.show_page("start")
+
+    def _on_home_title_click(self, _event):
+        """
+        Handle clicking the home breadcrumb label.
         """
         if self.controller is not None:
             self.controller.show_page("start")
