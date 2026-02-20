@@ -191,7 +191,7 @@
       <self_collide>false</self_collide>
     </model>
 
-    <!-- Cube (Gripper Testing) -->
+    <!-- Cube (Gripper Testing)
     <model name='Gripper Cube'>
       <link name='link'>
         <visual name='visual'>
@@ -232,7 +232,7 @@
       <pose>2.2 6.2 -1 0 0 0</pose>
       <static>false</static>
       <self_collide>false</self_collide>
-    </model>
+    </model> -->
 
     <!-- Path Marker (unchanged) -->
     <model name='PathMarker_A1'>
