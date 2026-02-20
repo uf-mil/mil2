@@ -31,22 +31,43 @@
         <mesh filename="package://subjugator_description/urdf/meshes/Sub9.dae"/>
       </geometry>
     </visual>
+
     <!-- Collision Data -->
     <collision name="buoyancy_collision_1">
       <!-- This collision is for calculating the buoyant forces-->
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0.0 0 0"/>
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.134532"/>
       </geometry>
     </collision>
+
+    <visual name="buoyancy_visual_1">
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.134532"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1 0.6 0 0.5"/>
+      </material>
+    </visual>
 
     <!-- Second buoyancy collision. Adds an additional buoyant object-->
     <collision name="buoyancy_collision_2">
       <origin rpy="0 0 0" xyz="0.708 0 0"/>
       <geometry>
-        <sphere radius="0.1695"/>
+        <sphere radius="0.134532"/>
       </geometry>
     </collision>
+
+    <visual name="buoyancy_visual_2">
+      <origin rpy="0 0 0" xyz="0.708 0 0"/>
+      <geometry>
+        <sphere radius="0.134532"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1 0.6 0 0.5"/>
+      </material>
+    </visual>
 
     <!-- The following are shell collisions. They dont contrubute to buoyancy-->
     <!-- and are for collisions -->
