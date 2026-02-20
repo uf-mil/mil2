@@ -32,9 +32,17 @@
       </geometry>
     </visual>
     <!-- Collision Data -->
-    <collision name="buoyancy_collision">
+    <collision name="buoyancy_collision_1">
       <!-- This collision is for calculating the buoyant forces-->
-      <origin rpy="0 0 0" xyz="0.354 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </collision>
+
+    <!-- Second buoyancy collision. Adds an additional buoyant object-->
+    <collision name="buoyancy_collision_2">
+      <origin rpy="0 0 0" xyz="0.708 0 0"/>
       <geometry>
         <sphere radius="0.1695"/>
       </geometry>
