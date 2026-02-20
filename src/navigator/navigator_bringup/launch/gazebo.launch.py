@@ -1,5 +1,7 @@
 import os
+from pathlib import Path
 
+import sdformat14 as sdf
 from ament_index_python.packages import (
     get_package_share_directory,
     get_package_share_path,
@@ -7,8 +9,8 @@ from ament_index_python.packages import (
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    ExecuteProcess,
     IncludeLaunchDescription,
+    OpaqueFunction,
     SetEnvironmentVariable,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -19,6 +21,65 @@ from launch.substitutions import (
     TextSubstitution,
 )
 from launch_ros.actions import Node
+from vrx_gz import bridges, payload_bridges
+
+
+# Bridge ROS topics and Gazebo messages for establishing communication
+def make_bridge(context, *args, **kwargs):
+    world_name = Path(LaunchConfiguration("world").perform(context)).stem
+    model_name = LaunchConfiguration("model_name").perform(context)
+
+    link = "wamv/base_link"
+
+    bridge_objs = [
+        bridges.clock(),
+        # bridges.pose(model_name),
+        # bridges.pose_static(model_name),
+        *payload_bridges.payload_bridges(
+            world_name,
+            model_name,
+            link,
+            "front_left_cam_sensor",
+            sdf.Sensortype.CAMERA,
+        ),
+        *payload_bridges.payload_bridges(
+            world_name,
+            model_name,
+            link,
+            "front_right_cam_sensor",
+            sdf.Sensortype.CAMERA,
+        ),
+        *payload_bridges.payload_bridges(
+            world_name,
+            model_name,
+            link,
+            "velodyne_sensor",
+            sdf.Sensortype.GPU_LIDAR,
+        ),
+        *payload_bridges.payload_bridges(
+            world_name,
+            model_name,
+            link,
+            "imu_sensor",
+            sdf.Sensortype.IMU,
+        ),
+    ]
+
+    bridge_args = [obj.argument() for obj in bridge_objs]
+
+    return [
+        Node(
+            package="ros_gz_bridge",
+            executable="parameter_bridge",
+            name="gz_bridge",
+            output="screen",
+            arguments=bridge_args,
+            # remappings=[
+            #     ("/pose", "/tf"),
+            #     ("/pose_static", "/tf_static")
+            # ],
+        ),
+    ]
 
 
 def generate_launch_description():
@@ -40,6 +101,11 @@ def generate_launch_description():
         ),
         description="Path to the robot xacro file",
     )
+    world_arg = DeclareLaunchArgument("world", default_value="robotx_2024.world")
+    model_name_arg = DeclareLaunchArgument("model_name", default_value="navigator")
+
+    model_name = LaunchConfiguration("model_name")
+    world = LaunchConfiguration("world")
 
     # Include model file path
     set_env = SetEnvironmentVariable(
@@ -57,7 +123,6 @@ def generate_launch_description():
     # pkg_controller = get_package_share_directory("navigator_controller")
 
     # Setup to launch the simulator and Gazebo world
-    gz_sim_world = DeclareLaunchArgument("world", default_value="robotx_2024.world")
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_ros_gz_sim, "launch", "gz_sim.launch.py"),
@@ -65,7 +130,7 @@ def generate_launch_description():
         launch_arguments={
             "gz_args": [
                 PathJoinSubstitution(
-                    [pkg_project_gazebo, "worlds", LaunchConfiguration("world")],
+                    [pkg_project_gazebo, "worlds", world],
                 ),
                 " --render-engine",
                 " ogre2",
@@ -77,13 +142,6 @@ def generate_launch_description():
     # Get controller to use sim values
     # sim_pid_yaml = os.path.join(pkg_controller, "config", "sim_pid_controller.yaml")
     # set_sim_params = SetLaunchConfiguration("param_file", sim_pid_yaml)
-
-    # Write an on-disk URDF
-    urdf_out = os.path.join(pkg_project_description, "urdf", "navigator.urdf")
-    generate_urdf = ExecuteProcess(
-        cmd=["xacro", LaunchConfiguration("xacro_file"), "-o", urdf_out],
-        output="screen",
-    )
 
     # Include the Subjugator_Setup Launch file
     navigator_setup = IncludeLaunchDescription(
@@ -97,59 +155,29 @@ def generate_launch_description():
         }.items(),
     )
 
-    # Bridge ROS topics and Gazebo messages for establishing communication
-    bridge = Node(
-        package="ros_gz_bridge",
-        executable="parameter_bridge",
-        parameters=[
-            {
-                "config_file": os.path.join(
-                    pkg_project_bringup,
-                    "config",
-                    "navigator_bridge.yaml",
-                ),
-                "qos_overrides./tf_static.publisher.durability": "transient_local",
-            },
-        ],
-        output="screen",
-    )
-
-    # Spawn the navigator
-    navigator_x = "0.0"
-    navigator_y = "0.0"
-    navigator_z = "0.0"
-    navigator_yaw = "0.0"
-    spawn_navigator = Node(
-        package="ros_gz_sim",
-        executable="create",
-        arguments=[
-            "-name",
-            "navigator",
-            "-file",
-            urdf_out,
-            "-x",
-            navigator_x,
-            "-y",
-            navigator_y,
-            "-z",
-            navigator_z,
-            "-Y",
-            navigator_yaw,
-        ],
-        output="screen",
+    spawn_navigator = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [pkg_project_gazebo, "launch", "spawn_navigator.launch.py"],
+            ),
+        ),
+        launch_arguments={
+            "xacro_file": LaunchConfiguration("xacro_file"),
+            "model_name": model_name,
+        }.items(),
     )
 
     return LaunchDescription(
         [
             xacro_file_arg,
+            world_arg,
+            model_name_arg,
             set_env,
-            gz_sim_world,
             gz_sim,
             # !!! Uncomment once navigator_controller is created !!!
             # set_sim_params,
             navigator_setup,
-            bridge,
-            generate_urdf,
             spawn_navigator,
+            OpaqueFunction(function=make_bridge),
         ],
     )

@@ -3,19 +3,8 @@
   <xacro:macro name="mil_gazebo_thruster_config" params="name enable_angle:=true">
     <thruster>
       <!-- Required Parameters -->
-      <linkName>${name}_propeller_link</linkName>
       <joint_name>${name}_engine_propeller_joint</joint_name>
-      <engineJointName>${name}_chasis_engine_joint</engineJointName>
-      <cmdTopic>${thruster_namespace}${name}_thrust_cmd</cmdTopic>
-      <angleTopic>${thruster_namespace}${name}_thrust_angle</angleTopic>
-      <enableAngle>${enable_angle}</enableAngle>
-
-      <!-- Optional Parameters -->
-      <mappingType>1</mappingType>
-      <maxCmd>1.0</maxCmd>
-      <maxForceFwd>250.0</maxForceFwd>
-      <maxForceRev>-100.0</maxForceRev>
-      <maxAngle>${pi/2}</maxAngle>
+      <topic>${thruster_namespace}${name}_thrust_cmd</topic>
     </thruster>
   </xacro:macro>
 </plugin>
