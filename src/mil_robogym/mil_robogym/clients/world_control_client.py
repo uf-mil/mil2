@@ -33,8 +33,6 @@ class WorldControlClient:
             self.timeout,
         )
 
-        print(result, response)
-
     def pause_simulation(self):
         """
         Pauses the simulation.
@@ -51,5 +49,3 @@ class WorldControlClient:
             Boolean,
             self.timeout,
         )
-
-        print(result, response)
