@@ -6,7 +6,7 @@
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="1.0"/>
+        <mass value="0.01"/>
         <inertia ixx="0.01" iyy="0.01" izz="0.01" ixy="0" ixz="0" iyz="0"/>
       </inertial>
       <!-- Visual for base -->
@@ -26,62 +26,64 @@
     <!-- Left Arm Link  -->
     <link name="${name}_leftArm_link">
       <inertial>
-        <origin xyz="0 0.025 0" rpy="0 0 0"/>
+        <origin xyz="0 0.03 -0.025" rpy="0 0 0"/>
         <mass value="0.1"/>
         <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
       <!-- Left Arm Visual Link -->
       <visual name="${name}_leftArm_visual">
-        <origin xyz="0 0.025 -0.3" rpy="1.57 0 -1.57"/>
+        <origin xyz="0 0.03 -0.025" rpy="1.57 0 -1.57"/>
         <geometry>
           <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
         </geometry>
       </visual>
-      <!-- Left Arm Collision -->
-      <!-- <collision>
-        <origin xyz="0 0.025 -0.3" rpy="1.57 0 -1.57"/>
+      <!-- Left fingertip collision: small rectangular box for reliable contact -->
+      <collision name="leftArm_collision">
+        <origin xyz="0 0.03 -0.025" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
+          <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae" scale="1.1 1.1 1.1"/>
         </geometry>
-      </collision> -->
+      </collision>
     </link>
+
     <!-- Left Arm Joint -->
     <joint name="${name}_leftArm_joint" type="revolute">
-      <origin xyz="0 0.025 0" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.1" rpy="0 0 0"/>
       <parent link="${name}_link"/>
       <child link="${name}_leftArm_link"/>
-      <axis xyz="0 1 0"/>
+      <axis xyz="1 0 0"/>
       <limit effort="1.0" velocity="1.0" lower="0.0" upper="0.5"/>
     </joint>
 
     <!-- Right Arm Link -->
     <link name="${name}_rightArm_link">
       <inertial>
-        <origin xyz="0 -0.025 0" rpy="0 0 0"/>
+        <origin xyz="0 -0.03 -0.025" rpy="0 0 0"/>
         <mass value="0.1"/>
         <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
       </inertial>
       <!-- Right Arm Visual Link -->
       <visual name="${name}_rightArm_visual">
-        <origin xyz="0 -0.025 -0.3" rpy="1.57 0 1.57"/>
+        <origin xyz="0 -0.03 -0.025" rpy="1.57 0 1.57"/>
         <geometry>
           <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
         </geometry>
       </visual>
-      <!-- Right Arm Collision -->
-      <!-- <collision>
-        <origin xyz="0 -0.025 -0.3" rpy="1.57 0 1.57"/>
+      <!-- Right fingertip collision: small rectangular box for reliable contact -->
+      <collision name="rightArm_collision">
+        <origin xyz="0 -0.03 -0.025" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae"/>
+          <mesh filename="package://subjugator_description/models/gripper_2025/gripper_arm.dae" scale="1.1 1.1 1.1"/>
         </geometry>
-      </collision> -->
+      </collision>
     </link>
+
     <!-- Right Arm Joint -->
     <joint name="${name}_rightArm_joint" type="revolute">
-      <origin xyz="0 -0.025 0" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.1" rpy="0 0 0"/>
       <parent link="${name}_link"/>
       <child link="${name}_rightArm_link"/>
-      <axis xyz="0 1 0"/>
+      <axis xyz="-1 0 0"/>
       <limit effort="1.0" velocity="1.0" lower="0.0" upper="0.5"/>
     </joint>
 
@@ -95,6 +97,29 @@
     <gazebo reference="${name}_joint">
       <disableFixedJointLumping>true</disableFixedJointLumping>
       <preserveFixedJoint>true</preserveFixedJoint>
+    </gazebo>
+
+    <!-- Gazebo-specific friction for fingertip collisions -->
+    <gazebo reference="${name}_leftArm_link">
+      <surface>
+        <friction>
+          <ode>
+            <mu>1.5</mu>
+            <mu2>1.5</mu2>
+          </ode>
+        </friction>
+      </surface>
+    </gazebo>
+
+    <gazebo reference="${name}_rightArm_link">
+      <surface>
+        <friction>
+          <ode>
+            <mu>1.5</mu>
+            <mu2>1.5</mu2>
+          </ode>
+        </friction>
+      </surface>
     </gazebo>
   </xacro:macro>
 </robot>

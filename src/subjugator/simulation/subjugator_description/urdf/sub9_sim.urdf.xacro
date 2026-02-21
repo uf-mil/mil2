@@ -102,6 +102,11 @@
     <plugin filename="ThrusterBridge" name="thrusterBridge::ThrusterBridge"/>
 
     <plugin filename="MarbleDropper" name="marble_dropper::MarbleDropper"/>
+
+    <plugin filename="GripperControl" name="gripper_control::GripperControl">
+      <left_joint_name>gripper_leftArm_joint</left_joint_name>
+      <right_joint_name>gripper_rightArm_joint</right_joint_name>
+    </plugin>
   </gazebo>
 
   <link name="localization_center">
