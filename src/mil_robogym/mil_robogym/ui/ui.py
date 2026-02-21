@@ -21,11 +21,15 @@ class RoboGymApp(tk.Tk):
 
         self.title("MIL RoboGYM")
         self.configure(bg="#DADADA")
-        self.geometry("560x360")
-        self.minsize(460, 300)
+
+        self.geometry("950x540")
+        self.minsize(950, 540)
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
 
         self.container: tk.Frame = tk.Frame(self, bg="#DADADA")
-        self.container.pack(fill="both", expand=True)
+        self.container.grid(row=0, column=0, sticky="nsew")
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
