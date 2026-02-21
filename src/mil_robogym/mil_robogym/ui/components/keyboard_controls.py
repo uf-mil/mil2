@@ -1,7 +1,5 @@
 import tkinter as tk
 
-import rclpy
-
 from mil_robogym.nodes.teleop import TeleopNode
 
 PUBLISH_RATE = 0.1  # seconds (10 Hz)
@@ -75,18 +73,21 @@ class KeyButton(tk.Label):
 
 
 class TeleopGUI:
-    def __init__(self, root):
+    def __init__(self, root, on_close_callback):
 
-        rclpy.init()
+        self.on_close_callback = on_close_callback
+
         self.node = TeleopNode()
 
         self.root = tk.Toplevel(root)
+        self.root.withdraw()
         self.root.title("Subjugator Teleop")
-        self.root.geometry("420x320")
+        self.root.geometry("460x460")
         self.root.configure(bg="#222")
 
         self.root.bind("<KeyPress>", self.key_press)
         self.root.bind("<KeyRelease>", self.key_release)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.focus_set()
 
         self.buttons = {}
@@ -99,13 +100,16 @@ class TeleopGUI:
         frame.pack(pady=20)
 
         layout = [
-            [("w", "+X Force")],
-            [("a", "+Y Force"), ("s", "-X Force"), ("d", "-Y Force")],
+            [("w", "+X Force"), ("e", "Roll Left"), ("r", "Roll Right")],
+            [
+                ("a", "+Y Force"),
+                ("s", "-X Force"),
+                ("d", "-Y Force"),
+                ("m", "Spawn Marble"),
+            ],
             [("z", "-Z Force"), ("x", "+Z Force")],
-            [("Up", "Pitch Up"), ("Down", "Pitch Down")],
-            [("Left", "Yaw Left"), ("Right", "Yaw Right")],
-            [("e", "Roll Left"), ("r", "Roll Right")],
-            [("m", "Spawn Marble")],
+            [("Up", "Pitch Up")],
+            [("Left", "Yaw Left"), ("Down", "Pitch Down"), ("Right", "Yaw Right")],
         ]
 
         for row in layout:
@@ -142,23 +146,14 @@ class TeleopGUI:
         self.node.publish()
         self.root.after(int(PUBLISH_RATE * 1000), self.update_loop)
 
-    def run(self):
-        self.root.mainloop()
+    def show(self):
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
 
-    def shutdown(self):
-        print("Shutting down teleop GUI...")
+    def hide(self):
+        self.root.withdraw()
 
-        # Clear all active keys so no forces remain
-        self.node.active_keys.clear()
-
-        # Publish a zero wrench once to stop motion
-        self.node.force = [0.0, 0.0, 0.0]
-        self.node.torque = [0.0, 0.0, 0.0]
-        self.node.publish()
-
-        # Stop Tkinter loop
-        self.root.quit()
-        self.root.destroy()
-
-        # Shutdown ROS cleanly
-        rclpy.shutdown()
+    def _on_close(self):
+        self.hide()
+        self.on_close_callback()

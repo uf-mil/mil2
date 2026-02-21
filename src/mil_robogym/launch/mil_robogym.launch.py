@@ -32,11 +32,5 @@ def generate_launch_description():
                 name="gz_pose_srv",
                 output="screen",
             ),
-            Node(
-                package="mil_robogym",
-                executable="keyboard_control_srv",
-                name="keyboard_control_srv",
-                output="screen",
-            ),
         ],
     )
