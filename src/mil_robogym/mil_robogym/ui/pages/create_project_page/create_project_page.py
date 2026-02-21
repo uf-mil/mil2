@@ -1,8 +1,8 @@
 import tkinter as tk
 
-from mil_robogym.clients.keyboard_control_client import KeyboardControlClient
 from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.get_gazebo_topics import get_gazebo_topics
+from mil_robogym.ui.components.keyboard_controls import TeleopGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 
@@ -23,7 +23,8 @@ class CreateProjectPage(tk.Frame):
         self.controller = controller
 
         self.world_control_client = WorldControlClient()
-        self.keyboard_control_client = KeyboardControlClient()
+
+        self.keyboard_controls_gui = TeleopGUI(parent)
 
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
@@ -399,7 +400,7 @@ class CreateProjectPage(tk.Frame):
         self.world_control_client.play_simulation()
 
         # Run keyboard controls
-        self.keyboard_control_client.toggle_keyboard_controls(enable=True)
+        self.keyboard_controls_gui.run()
 
         # Display popups and wait for signal indicating both coordinates have been collected
 
