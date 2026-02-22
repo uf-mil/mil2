@@ -4,8 +4,8 @@ from typing import Any, Type
 from mil_robogym.ui.pages.create_project_page.create_project_page import (
     CreateProjectPage,
 )
-from mil_robogym.ui.pages.project_page.project_page import ProjectPage
 from mil_robogym.ui.pages.start_page.start_page import StartPage
+from mil_robogym.ui.pages.view_project_page.view_project_page import ViewProjectPage
 
 
 class RoboGymApp(tk.Tk):
@@ -36,7 +36,7 @@ class RoboGymApp(tk.Tk):
         self.pages: dict[str, tk.Frame] = {}
         self._register_page("start", StartPage)
         self._register_page("create_project", CreateProjectPage)
-        self._register_page("project", ProjectPage)
+        self._register_page("view_project", ViewProjectPage)
 
         self.show_page("start")
 

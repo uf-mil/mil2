@@ -26,13 +26,13 @@ class StartPage(tk.Frame):
         self.controller = controller
 
         # Fonts
-        title_font = font.Font(family="Arial", size=18, weight="bold")
-        row_font = font.Font(family="Arial", size=11)
-        button_font = font.Font(family="Arial", size=11)
+        title_font = font.Font(family="Arial", size=20, weight="bold")
+        row_font = font.Font(family="Arial", size=15)
+        button_font = font.Font(family="Arial", size=16)
 
         # Main layout container
         container = tk.Frame(self, bg="#DADADA")
-        container.pack(fill="both", expand=True, padx=12, pady=10)
+        container.pack(fill="both", expand=True, padx=14, pady=14)
 
         container.grid_rowconfigure(0, weight=0)  # title
         container.grid_rowconfigure(1, weight=1)  # list area
@@ -48,7 +48,7 @@ class StartPage(tk.Frame):
             font=title_font,
             anchor="w",
         )
-        title.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        title.grid(row=0, column=0, sticky="ew", pady=(0, 8))
 
         # List area
         list_area = tk.Frame(container, bg="#DADADA")
@@ -86,7 +86,7 @@ class StartPage(tk.Frame):
 
         # Bottom button (Create Project +)
         bottom = tk.Frame(container, bg="#DADADA")
-        bottom.grid(row=2, column=0, sticky="ew", pady=(12, 0))
+        bottom.grid(row=2, column=0, sticky="ew", pady=(8, 0))
         bottom.grid_columnconfigure(0, weight=1)
 
         create_btn = tk.Button(
@@ -98,19 +98,19 @@ class StartPage(tk.Frame):
             bg="#E6E6E6",
             activebackground="#DCDCDC",
             fg="black",
-            padx=12,
-            pady=10,
+            padx=10,
+            pady=6,
             command=self._on_create_project,
         )
-        create_btn.grid(row=0, column=0, sticky="ew")
+        create_btn.grid(row=0, column=0, sticky="ew", pady=(0, 0))
 
     def _on_project(self, project):
         """
-        Handle selection of an existing project. Navigates to the project page and sets the active project context.
+        Handle selection of an existing project. Navigates to the project view page and sets the active project context.
 
         :param project: Project configuration dictionary.
         """
-        self.controller.show_page("project", project=project)
+        self.controller.show_page("view_project", project=project)
 
     def _on_create_project(self):
         """

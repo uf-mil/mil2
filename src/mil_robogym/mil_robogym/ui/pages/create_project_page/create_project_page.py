@@ -275,12 +275,8 @@ class CreateProjectPage(tk.Frame):
             pady=(6, 2),
         )
 
-        self.input_topic_var = tk.StringVar(
-            value=self._topics[0] if self._topics else "",
-        )
-        self.output_topic_var = tk.StringVar(
-            value=self._topics[0] if self._topics else "",
-        )
+        self.input_topic_vars = {}
+        self.output_topic_vars = {}
 
         outer = tk.Frame(self, bg="#DADADA")
         outer.grid(row=7, column=0, columnspan=6, sticky="nsew", padx=14, pady=(0, 8))
@@ -298,11 +294,12 @@ class CreateProjectPage(tk.Frame):
             self._topics = ["No topics found"]
 
         for topic in self._topics:
-            tk.Radiobutton(
+            input_var = tk.BooleanVar(value=False)
+            self.input_topic_vars[topic] = input_var
+            tk.Checkbutton(
                 input_topic_frame.content,
                 text=topic,
-                variable=self.input_topic_var,
-                value=topic,
+                variable=input_var,
                 bg="#DADADA",
                 fg="black",
                 activebackground="#DADADA",
@@ -311,11 +308,12 @@ class CreateProjectPage(tk.Frame):
                 highlightthickness=0,
             ).pack(anchor="w")
 
-            tk.Radiobutton(
+            output_var = tk.BooleanVar(value=False)
+            self.output_topic_vars[topic] = output_var
+            tk.Checkbutton(
                 output_topic_frame.content,
                 text=topic,
-                variable=self.output_topic_var,
-                value=topic,
+                variable=output_var,
                 bg="#DADADA",
                 fg="black",
                 activebackground="#DADADA",
@@ -465,4 +463,14 @@ class CreateProjectPage(tk.Frame):
 
         Current behavior is a placeholder that logs activation.
         """
+        selected_input_topics = [
+            topic for topic, selected in self.input_topic_vars.items() if selected.get()
+        ]
+        selected_output_topics = [
+            topic
+            for topic, selected in self.output_topic_vars.items()
+            if selected.get()
+        ]
+        print(f"selected_input_topics={selected_input_topics}")
+        print(f"selected_output_topics={selected_output_topics}")
         print("create_project_activation")
