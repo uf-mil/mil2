@@ -4,8 +4,6 @@ import logging
 import re
 from typing import TypedDict
 
-LOGGER = logging.getLogger(__name__)
-
 
 class TopicWarning(TypedDict):
     topic: str
@@ -130,6 +128,7 @@ def warn_for_unhelpful_topics(
             continue
         normalized = topic.strip().lower()
         tokens = _tokenize(normalized)
+        safe_matches = _matching_keywords(normalized, tokens, SAFE_KEYWORDS)
 
         # Always-warn exact topic names (ignores leading slash).
         if normalized.lstrip("/") in ALWAYS_WARN:
@@ -141,17 +140,16 @@ def warn_for_unhelpful_topics(
             }
             warnings.append(warning)
             if log:
-                LOGGER.warning("Topic warning: %s", warning)
-            continue
-
-        # Suppress warnings when a known "safe" keyword is present.
-        if _matching_keywords(normalized, tokens, SAFE_KEYWORDS):
+                logging.warning("Topic warning: %s", warning)
             continue
 
         for category in WARN_ORDER:
             keywords = WARN_RULES[category]
             matches = _matching_keywords(normalized, tokens, keywords)
             if matches:
+                # Safe keywords intentionally suppress only raw sensor streams.
+                if category == "raw_sensor_stream" and safe_matches:
+                    break
                 warning = {
                     "topic": topic,
                     "reason": category,
@@ -160,7 +158,7 @@ def warn_for_unhelpful_topics(
                 }
                 warnings.append(warning)
                 if log:
-                    LOGGER.warning("Topic warning: %s", warning)
+                    logging.warning("Topic warning: %s", warning)
                 break
 
     return warnings
