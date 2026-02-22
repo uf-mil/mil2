@@ -32,6 +32,7 @@ class CreateProjectPage(tk.Frame):
         self.gz_pose_client = ModelPoseClient()
 
         self.keyboard_controls_gui = None
+        self.popup = None
 
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
@@ -412,6 +413,12 @@ class CreateProjectPage(tk.Frame):
         self.keyboard_controls_gui.show()
 
         # Display popups and wait for signal indicating both coordinates have been collected
+        if self.popup and self.popup.win.winfo_exists():
+            self.popup.win.lift()
+            self.popup.win.focus_force()
+            self.keyboard_controls_gui.show()
+            return
+
         self.popup = GrabCoordinatesPopup(
             self,
             self.gz_pose_client.send_request,
@@ -433,6 +440,7 @@ class CreateProjectPage(tk.Frame):
 
         self.keyboard_controls_gui.hide()
         self.world_control_client.pause_simulation()
+        self.popup = None
 
     def _on_close_of_keyboard_controls(self):
         """
