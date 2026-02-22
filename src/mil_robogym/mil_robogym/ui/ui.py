@@ -68,7 +68,7 @@ class RoboGymApp(tk.Tk):
         """
         page = self.pages.get(name)
         if page is not None:
-            if kwargs and hasattr(page, "set_context"):
+            if hasattr(page, "set_context"):
                 page.set_context(**kwargs)
             page.tkraise()
 

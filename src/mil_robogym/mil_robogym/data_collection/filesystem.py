@@ -81,8 +81,8 @@ def create_project_folder(
             "random_spawn_space": {
                 "enabled": project["random_spawn_space"]["enabled"],
                 # store as yaml list for portability
-                "coord_1": list(project["random_spawn_space"]["coord1_4d"]),
-                "coord_2": list(project["random_spawn_space"]["coord2_4d"]),
+                "coord1_4d": list(project["random_spawn_space"]["coord1_4d"]),
+                "coord2_4d": list(project["random_spawn_space"]["coord2_4d"]),
             },
             "input_topics": list(project["input_topics"]),
             "output_topics": list(project["output_topics"]),

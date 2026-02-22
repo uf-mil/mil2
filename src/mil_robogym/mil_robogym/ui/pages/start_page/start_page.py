@@ -24,10 +24,10 @@ class StartPage(tk.Frame):
 
         super().__init__(parent, bg="#DADADA")
         self.controller = controller
+        self._row_font = font.Font(family="Arial", size=15)
 
         # Fonts
         title_font = font.Font(family="Arial", size=20, weight="bold")
-        row_font = font.Font(family="Arial", size=15)
         button_font = font.Font(family="Arial", size=16)
 
         # Main layout container
@@ -51,38 +51,10 @@ class StartPage(tk.Frame):
         title.grid(row=0, column=0, sticky="ew", pady=(0, 8))
 
         # List area
-        list_area = tk.Frame(container, bg="#DADADA")
-        list_area.grid(row=1, column=0, sticky="nsew")
-        list_area.grid_columnconfigure(0, weight=1)
-
-        projects = get_all_project_config()
-
-        if not projects:
-            empty = tk.Label(
-                list_area,
-                text="No projects found.",
-                bg="#DADADA",
-                fg="#444444",
-                anchor="w",
-            )
-            empty.grid(row=0, column=0, sticky="w", pady=4)
-        else:
-            for i, project in enumerate(projects):
-                name = project["robogym_project"]["name"]
-                demos = project["num_demos"]
-
-                row = ProjectRow(
-                    list_area,
-                    name,
-                    f"{demos} demonstrations",
-                    command=lambda p=project: self._on_project(p),
-                )
-                for child in row.winfo_children():
-                    for grandchild in child.winfo_children():
-                        if isinstance(grandchild, tk.Label):
-                            grandchild.configure(font=row_font)
-
-                row.grid(row=i, column=0, sticky="ew", pady=4)
+        self.list_area = tk.Frame(container, bg="#DADADA")
+        self.list_area.grid(row=1, column=0, sticky="nsew")
+        self.list_area.grid_columnconfigure(0, weight=1)
+        self._render_projects()
 
         # Bottom button (Create Project +)
         bottom = tk.Frame(container, bg="#DADADA")
@@ -118,3 +90,48 @@ class StartPage(tk.Frame):
         Navigate to the project creation page.
         """
         self.controller.show_page("create_project")
+
+    def set_context(self, **_kwargs):
+        """
+        Refresh projects whenever this page is shown.
+        """
+        self._render_projects()
+
+    def _render_projects(self):
+        for child in self.list_area.winfo_children():
+            child.destroy()
+
+        projects = get_all_project_config()
+        valid_projects = [
+            project
+            for project in projects
+            if project.get("robogym_project", {}).get("name", "")
+        ]
+
+        if not valid_projects:
+            empty = tk.Label(
+                self.list_area,
+                text="No projects found.",
+                bg="#DADADA",
+                fg="#444444",
+                anchor="w",
+            )
+            empty.grid(row=0, column=0, sticky="w", pady=4)
+            return
+
+        for i, project in enumerate(valid_projects):
+            name = project["robogym_project"]["name"]
+            demos = project["num_demos"]
+
+            row = ProjectRow(
+                self.list_area,
+                name,
+                f"{demos} demonstrations",
+                command=lambda p=project: self._on_project(p),
+            )
+            for child in row.winfo_children():
+                for grandchild in child.winfo_children():
+                    if isinstance(grandchild, tk.Label):
+                        grandchild.configure(font=self._row_font)
+
+            row.grid(row=i, column=0, sticky="ew", pady=4)

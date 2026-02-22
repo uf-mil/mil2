@@ -2,6 +2,10 @@ import tkinter as tk
 
 from mil_robogym.clients.model_pose_client import ModelPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
+from mil_robogym.data_collection.filesystem import (
+    create_demo_folder,
+    create_project_folder,
+)
 from mil_robogym.data_collection.get_gazebo_topics import get_gazebo_topics
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls import TeleopGUI
@@ -230,7 +234,7 @@ class CreateProjectPage(tk.Frame):
             ipady=3,
         )
 
-        tk.Button(
+        self.grab_from_sim_button = tk.Button(
             self,
             text="Grab from Sim",
             command=self._on_grab_from_sim,
@@ -242,7 +246,16 @@ class CreateProjectPage(tk.Frame):
             font=("Arial", 14),
             padx=10,
             pady=4,
-        ).grid(row=5, column=5, sticky="nsew", padx=(0, 14), pady=4)
+            state="disabled",
+            disabledforeground="#666666",
+        )
+        self.grab_from_sim_button.grid(
+            row=5,
+            column=5,
+            sticky="nsew",
+            padx=(0, 14),
+            pady=4,
+        )
 
         tk.Label(
             self,
@@ -277,6 +290,8 @@ class CreateProjectPage(tk.Frame):
 
         self.input_topic_vars = {}
         self.output_topic_vars = {}
+        self.input_topic_buttons = {}
+        self.output_topic_buttons = {}
 
         outer = tk.Frame(self, bg="#DADADA")
         outer.grid(row=7, column=0, columnspan=6, sticky="nsew", padx=14, pady=(0, 8))
@@ -284,43 +299,19 @@ class CreateProjectPage(tk.Frame):
         outer.grid_columnconfigure(1, weight=1)
         outer.grid_rowconfigure(0, weight=1)
 
-        input_topic_frame = ScrollableFrame(outer, bg="#DADADA")
-        input_topic_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self.input_topic_frame = ScrollableFrame(outer, bg="#DADADA")
+        self.input_topic_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
-        output_topic_frame = ScrollableFrame(outer, bg="#DADADA")
-        output_topic_frame.grid(row=0, column=1, sticky="nsew")
+        self.output_topic_frame = ScrollableFrame(outer, bg="#DADADA")
+        self.output_topic_frame.grid(row=0, column=1, sticky="nsew")
 
         if not self._topics:
             self._topics = ["No topics found"]
 
-        for topic in self._topics:
-            input_var = tk.BooleanVar(value=False)
-            self.input_topic_vars[topic] = input_var
-            tk.Checkbutton(
-                input_topic_frame.content,
-                text=topic,
-                variable=input_var,
-                bg="#DADADA",
-                fg="black",
-                activebackground="#DADADA",
-                font=("Arial", 14),
-                anchor="w",
-                highlightthickness=0,
-            ).pack(anchor="w")
-
-            output_var = tk.BooleanVar(value=False)
-            self.output_topic_vars[topic] = output_var
-            tk.Checkbutton(
-                output_topic_frame.content,
-                text=topic,
-                variable=output_var,
-                bg="#DADADA",
-                fg="black",
-                activebackground="#DADADA",
-                font=("Arial", 14),
-                anchor="w",
-                highlightthickness=0,
-            ).pack(anchor="w")
+        self.input_topic_order = list(self._topics)
+        self.output_topic_order = list(self._topics)
+        self._build_topic_checkboxes(list_type="input")
+        self._build_topic_checkboxes(list_type="output")
 
         tk.Button(
             self,
@@ -336,7 +327,7 @@ class CreateProjectPage(tk.Frame):
             pady=6,
         ).grid(row=8, column=0, columnspan=3, sticky="nsew", padx=(14, 8), pady=(8, 14))
 
-        tk.Button(
+        self.create_project_button = tk.Button(
             self,
             text="Create Project",
             command=self._on_create_project,
@@ -348,7 +339,15 @@ class CreateProjectPage(tk.Frame):
             font=("Arial", 16),
             padx=10,
             pady=6,
-        ).grid(row=8, column=3, columnspan=3, sticky="nsew", padx=(8, 14), pady=(8, 14))
+        )
+        self.create_project_button.grid(
+            row=8,
+            column=3,
+            columnspan=3,
+            sticky="nsew",
+            padx=(8, 14),
+            pady=(8, 14),
+        )
 
         for col in range(6):
             self.grid_columnconfigure(col, weight=1, uniform="half")
@@ -394,6 +393,65 @@ class CreateProjectPage(tk.Frame):
         self.coord2_entry.configure(state=state)
         self.coord1_label.configure(fg=label_color)
         self.coord2_label.configure(fg=label_color)
+        self.grab_from_sim_button.configure(
+            state=state,
+            fg="black" if enabled else "#666666",
+        )
+
+    def _build_topic_checkboxes(self, list_type):
+        """
+        Build topic checkboxes for either input or output topics.
+        """
+        if list_type == "input":
+            frame = self.input_topic_frame.content
+            topic_order = self.input_topic_order
+            topic_vars = self.input_topic_vars
+            topic_buttons = self.input_topic_buttons
+        else:
+            frame = self.output_topic_frame.content
+            topic_order = self.output_topic_order
+            topic_vars = self.output_topic_vars
+            topic_buttons = self.output_topic_buttons
+
+        for topic in topic_order:
+            topic_var = topic_vars.get(topic, tk.BooleanVar(value=False))
+            topic_vars[topic] = topic_var
+            topic_button = tk.Checkbutton(
+                frame,
+                text=topic,
+                variable=topic_var,
+                command=lambda t=topic, lt=list_type: self._on_topic_clicked(t, lt),
+                bg="#DADADA",
+                fg="black",
+                activebackground="#DADADA",
+                font=("Arial", 14),
+                anchor="w",
+                highlightthickness=0,
+            )
+            topic_button.pack(anchor="w")
+            topic_buttons[topic] = topic_button
+
+    def _on_topic_clicked(self, topic, list_type):
+        """
+        Move the clicked topic to the top of only its own topic list.
+        """
+        if list_type == "input":
+            topic_order = self.input_topic_order
+            topic_buttons = self.input_topic_buttons
+        else:
+            topic_order = self.output_topic_order
+            topic_buttons = self.output_topic_buttons
+
+        if topic not in topic_order:
+            return
+
+        topic_order.remove(topic)
+        topic_order.insert(0, topic)
+
+        for ordered_topic in topic_order:
+            button = topic_buttons[ordered_topic]
+            button.pack_forget()
+            button.pack(anchor="w")
 
     def _on_grab_from_sim(self):
         """
@@ -460,17 +518,69 @@ class CreateProjectPage(tk.Frame):
     def _on_create_project(self):
         """
         Handle the "Create Project" action.
-
-        Current behavior is a placeholder that logs activation.
         """
+
+        def _is_filesystem_safe_name(name: str) -> bool:
+            if not name.strip():
+                return False
+            forbidden = set('/\\:*?"<>|')
+            return not any(ch in forbidden for ch in name)
+
+        def _parse_coord(value: str):
+            cleaned = value.strip().strip("()")
+            parts = [p.strip() for p in cleaned.split(",")]
+            if len(parts) != 4:
+                return None
+            try:
+                return tuple(float(p) for p in parts)
+            except ValueError:
+                return None
+
+        project_name = self.project_name_var.get().strip()
         selected_input_topics = [
-            topic for topic, selected in self.input_topic_vars.items() if selected.get()
+            topic
+            for topic in self.input_topic_order
+            if self.input_topic_vars[topic].get()
         ]
         selected_output_topics = [
             topic
-            for topic, selected in self.output_topic_vars.items()
-            if selected.get()
+            for topic in self.output_topic_order
+            if self.output_topic_vars[topic].get()
         ]
-        print(f"selected_input_topics={selected_input_topics}")
-        print(f"selected_output_topics={selected_output_topics}")
-        print("create_project_activation")
+        random_spawn_enabled = self.random_spawn_var.get()
+
+        coord1 = self.coordinate1 or _parse_coord(self.coord1_var.get())
+        coord2 = self.coordinate2 or _parse_coord(self.coord2_var.get())
+
+        has_invalid_name = not _is_filesystem_safe_name(project_name)
+        has_missing_topics = not selected_input_topics or not selected_output_topics
+        has_missing_coords = random_spawn_enabled and (coord1 is None or coord2 is None)
+
+        if has_invalid_name or has_missing_topics or has_missing_coords:
+            self.create_project_button.configure(text="✖ Create Project", fg="#C62828")
+            return
+
+        self.create_project_button.configure(text="Create Project", fg="black")
+
+        project_cfg = {
+            "project_name": project_name,
+            "world_file": self.world_file_var.get().strip(),
+            "model_name": self.model_name_var.get().strip(),
+            "random_spawn_space": {
+                "enabled": random_spawn_enabled,
+                "coord1_4d": coord1 or (0.0, 0.0, 0.0, 0.0),
+                "coord2_4d": coord2 or (0.0, 0.0, 0.0, 0.0),
+            },
+            "input_topics": selected_input_topics,
+            "output_topics": selected_output_topics,
+        }
+
+        try:
+            project_dir = create_project_folder(project_cfg)
+            create_demo_folder(project_dir, demo_name="Demo 1", sampling_rate=1.0)
+        except (FileExistsError, OSError, RuntimeError, ValueError, KeyError):
+            self.create_project_button.configure(text="✖ Create Project", fg="#C62828")
+            return
+
+        if self.controller is not None:
+            self.controller.show_page("start")
