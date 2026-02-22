@@ -101,6 +101,7 @@ class StartPage(tk.Frame):
             padx=10,
             pady=6,
             command=self._on_create_project,
+            cursor="hand2",
         )
         create_btn.grid(row=0, column=0, sticky="ew", pady=(0, 0))
 

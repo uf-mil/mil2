@@ -3,6 +3,7 @@ from __future__ import annotations
 import tkinter as tk
 from typing import Any, Mapping
 
+from mil_robogym.data_collection.get_all_demo_config import get_all_demo_config
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
 
 
@@ -26,6 +27,7 @@ class ViewProjectPage(tk.Frame):
 
         self._project_name = "Project"
         self._num_demos = 0
+        self._demo_names: list[str] = []
 
         self._title_row = tk.Frame(self, bg="#DADADA")
         self._title_row.grid(
@@ -76,6 +78,7 @@ class ViewProjectPage(tk.Frame):
             font=("Arial", 15),
             padx=16,
             pady=4,
+            cursor="hand2",
         ).grid(row=0, column=1, sticky="e")
 
         self._list_area = tk.Frame(self, bg="#DADADA")
@@ -103,6 +106,7 @@ class ViewProjectPage(tk.Frame):
             font=("Arial", 16),
             padx=10,
             pady=6,
+            cursor="hand2",
         ).grid(
             row=2,
             column=0,
@@ -124,6 +128,7 @@ class ViewProjectPage(tk.Frame):
             font=("Arial", 16),
             padx=10,
             pady=6,
+            cursor="hand2",
         ).grid(
             row=2,
             column=3,
@@ -153,6 +158,7 @@ class ViewProjectPage(tk.Frame):
         if project is None:
             self._project_name = "Project"
             self._num_demos = 0
+            self._demo_names = []
             self._page_title.configure(text=self._project_name)
             self._render_demo_rows()
             return
@@ -173,6 +179,9 @@ class ViewProjectPage(tk.Frame):
             )
             self._num_demos = int(loaded.get("num_demos", 0))
 
+        self._demo_names = self._safe_get_demo_names(self._project_name)
+        self._num_demos = len(self._demo_names)
+
         self._page_title.configure(text=self._project_name)
         self._render_demo_rows()
 
@@ -191,6 +200,25 @@ class ViewProjectPage(tk.Frame):
             if project.get("robogym_project", {}).get("name") == name:
                 return project
         return None
+
+    def _safe_get_demo_names(self, project_name: str) -> list[str]:
+        """
+        Load demo names for a project.
+
+        :param project_name: Display name of the project.
+        :return: Sorted list of raw demo names from demo config files.
+        """
+        if not project_name:
+            return []
+
+        try:
+            demos = get_all_demo_config(project_name)
+        except (FileNotFoundError, ValueError) as e:
+            raise RuntimeError(
+                f"Get all demo config for '{project_name}' failed.",
+            ) from e
+
+        return sorted(demos.keys())
 
     def _render_demo_rows(self) -> None:
         """
@@ -213,8 +241,7 @@ class ViewProjectPage(tk.Frame):
             ).grid(row=0, column=0, sticky="w", pady=4)
             return
 
-        for index in range(1, self._num_demos + 1):
-            demo_name = f"Demo {index}"
+        for index, demo_name in enumerate(self._demo_names):
             row = tk.Frame(
                 self._list_area,
                 bg="#ECECEC",
@@ -223,7 +250,7 @@ class ViewProjectPage(tk.Frame):
                 highlightthickness=0,
                 cursor="hand2",
             )
-            row.grid(row=index - 1, column=0, sticky="ew", pady=4)
+            row.grid(row=index, column=0, sticky="ew", pady=4)
             row.grid_columnconfigure(0, weight=1)
             row.grid_columnconfigure(1, weight=0)
 
