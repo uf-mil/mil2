@@ -335,4 +335,4 @@ class ViewProjectPage(tk.Frame):
 
         :param demo_name: Human-readable demo name, for example 'Demo 1'.
         """
-        print(f"on_demo_row_click: {demo_name}")
+        self.controller.show_page("view_demo")
