@@ -26,6 +26,8 @@ class ViewProjectPage(tk.Frame):
         super().__init__(parent, bg="#DADADA")
         self.controller = controller
 
+        self.create_demo_popup = None
+
         self._project_name = "Project"
         self._num_demos = 0
         self._demo_names: list[str] = []
@@ -312,12 +314,19 @@ class ViewProjectPage(tk.Frame):
 
     def _on_record_demo(self) -> None:
         """Handle Record Demo button action."""
-        if hasattr(self, "create_demo_popup") and self.create_demo_popup:
+
+        if self.create_demo_popup and self.create_demo_popup.win.winfo_exists():
+            self.create_demo_popup.win.lift()
+            self.create_demo_popup.win.focus_force()
             return
+
+        def remove_reference_to_popup():
+            self.create_demo_popup = None
 
         self.create_demo_popup = CreateDemoPopup(
             self,
-            on_cancel=lambda: setattr(self, "create_demo_popup", None),
+            on_create=remove_reference_to_popup,
+            on_cancel=remove_reference_to_popup,
         )
 
     def on_demo_row_click(self, demo_name: str) -> None:

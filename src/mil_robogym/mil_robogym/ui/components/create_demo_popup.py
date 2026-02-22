@@ -66,7 +66,7 @@ class CreateDemoPopup:
         cancel_btn = ttk.Button(button_frame, text="Cancel", command=self._cancel)
         cancel_btn.pack(side="left", padx=5)
 
-        create_btn = ttk.Button(button_frame, text="Create Demo", command=self._create)
+        create_btn = ttk.Button(button_frame, text="Create Demo", command=self._cancel)
         create_btn.pack(side="left", padx=5)
 
         # Handle window close (same as cancel)
