@@ -8,7 +8,12 @@ from mil_robogym.data_collection.filesystem import (
 )
 
 
-def test_create_project_folder(tmp_path: Path):
+def test_create_project_folder(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.get_package_share_directory",
+        lambda _pkg: str(tmp_path),
+    )
+
     proj = {
         "project_name": "Start Gate Agent",
         "world_file": "src/default/world/file",
@@ -22,7 +27,7 @@ def test_create_project_folder(tmp_path: Path):
         "output_topics": ["trajectory/4_deg"],
     }
 
-    project_dir = create_project_folder(proj, base_dir=tmp_path)
+    project_dir = create_project_folder(proj)
 
     assert project_dir.exists()
     assert project_dir.name == "start_gate_agent"
@@ -51,7 +56,12 @@ def test_to_lower_snake_case_already_snake():
     assert to_lower_snake_case("start_gate_agent") == "start_gate_agent"
 
 
-def test_create_project_folder_raises_if_exists(tmp_path):
+def test_create_project_folder_raises_if_exists(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.get_package_share_directory",
+        lambda _pkg: str(tmp_path),
+    )
+
     proj = {
         "project_name": "Start Gate Agent",
         "world_file": "src/default/world/file",
@@ -66,9 +76,9 @@ def test_create_project_folder_raises_if_exists(tmp_path):
     }
 
     # Create the folder first time
-    first = create_project_folder(proj, base_dir=tmp_path)
+    first = create_project_folder(proj)
     assert first.exists()
 
     # Second time should throw
     with pytest.raises(FileExistsError):
-        create_project_folder(proj, base_dir=tmp_path)
+        create_project_folder(proj)
