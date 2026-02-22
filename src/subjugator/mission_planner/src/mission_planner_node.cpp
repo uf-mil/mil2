@@ -18,6 +18,7 @@
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "track_largest_poles.hpp"
+#include "yaw_p_controller.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <count_when_ticked.hpp>
@@ -96,6 +97,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
     factory.registerNodeType<SonarFollower>("SonarFollower");
     factory.registerNodeType<YawStyle>("YawStyle");
+    factory.registerNodeType<YawPController>("YawPController");
 
     // Load all tree models from installed xml
     std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");

@@ -1,0 +1,37 @@
+<root BTCPP_format="4" main_tree_to_execute="HonePController">
+
+  <BehaviorTree ID="HonePController">
+    <Timeout msec="30000">
+      <!-- Succeed when controller succeeds & fail if movement fails -->
+      <Parallel success_count="1" failure_count="1">
+
+        <!-- Controller outputs yaw_cmd -->
+        <Action ID="YawPController"
+                label="shark"
+                min_conf="0.30"
+                kp="0.02"
+                tol_px="8.0"
+                hold_ticks="10"
+                max_cmd="10.0"
+                ctx="{ctx}"
+                centered="{centered}"
+                best_cx_px="{best_cx_px}"
+                best_conf="{best_conf}"
+                yaw_cmd="{yaw_cmd}"/>
+
+        <!-- Keep applying small relative yaw moves using the latest yaw_cmd -->
+        <Repeat num_cycles="-1">
+          <SubTree ID="RelativeMove" _autoremap="true"
+                   x="0.0" y="0.0" z="0.0"
+                   yaw_deg="{yaw_cmd}"
+                   pos_tol="0.20"
+                   ori_tol_deg="5.0"
+                   msec="3000"
+                   ctx="{ctx}"/>
+        </Repeat>
+
+      </Parallel>
+    </Timeout>
+  </BehaviorTree>
+
+</root>

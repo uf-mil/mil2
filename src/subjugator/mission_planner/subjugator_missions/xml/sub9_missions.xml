@@ -15,4 +15,5 @@
     <include path="yaw_style.xml"/>
     <include path="hone_bearing.xml"/>
     <include path="hone_bearing_test_mission.xml"/>
+    <include path="hone_p_controller.xml"/>
 </root>
