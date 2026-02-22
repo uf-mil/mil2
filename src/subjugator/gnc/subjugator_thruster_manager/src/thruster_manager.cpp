@@ -139,6 +139,12 @@ void ThrusterManager::timer_callback()
     // and finally desired pwm duty -> percentage [-1,1]
     for (int i = 0; i < thrust_values.size(); i++)
     {
+        if (std::abs(thrust_values[i]) < 1e-9)
+        {
+            thrust_values[i] = 0.0;
+            continue;
+        }
+
         int index = binarySearchClosest(thrust_lut, thrust_values[i]);
         double duty = 1100.0 + double(index) * 4.0;  // index will be [0:200] so result will be 1100 to 1900
 
