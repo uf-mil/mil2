@@ -2,6 +2,10 @@ import tkinter as tk
 
 from mil_robogym.clients.model_pose_client import ModelPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
+from mil_robogym.data_collection.filesystem import (
+    create_project_folder,
+)
+from mil_robogym.data_collection.get_all_project_config import get_all_project_config
 from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls import TeleopGUI
@@ -9,6 +13,7 @@ from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 
 class CreateProjectPage(tk.Frame):
+
     def __init__(self, parent, controller=None):
         """
         Build and lay out the "Create Project" page.
@@ -33,6 +38,8 @@ class CreateProjectPage(tk.Frame):
 
         self.keyboard_controls_gui = None
         self.popup = None
+        self._create_project_error_tip = None
+        self._create_project_error_tip_after_id = None
 
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
@@ -73,6 +80,10 @@ class CreateProjectPage(tk.Frame):
         project_name_label.grid(row=1, column=0, sticky="w", padx=(14, 8), pady=5)
 
         self.project_name_var = tk.StringVar()
+        self.project_name_var.trace_add(
+            "write",
+            lambda *_: self._update_create_project_button_state(),
+        )
         project_name_entry = tk.Entry(
             self,
             textvariable=self.project_name_var,
@@ -179,6 +190,10 @@ class CreateProjectPage(tk.Frame):
             pady=4,
         )
         self.coord1_var = tk.StringVar()
+        self.coord1_var.trace_add(
+            "write",
+            lambda *_: self._update_create_project_button_state(),
+        )
         self.coord1_entry = tk.Entry(
             self,
             textvariable=self.coord1_var,
@@ -213,6 +228,10 @@ class CreateProjectPage(tk.Frame):
             pady=4,
         )
         self.coord2_var = tk.StringVar()
+        self.coord2_var.trace_add(
+            "write",
+            lambda *_: self._update_create_project_button_state(),
+        )
         self.coord2_entry = tk.Entry(
             self,
             textvariable=self.coord2_var,
@@ -231,7 +250,7 @@ class CreateProjectPage(tk.Frame):
             ipady=3,
         )
 
-        tk.Button(
+        self.grab_from_sim_button = tk.Button(
             self,
             text="Grab from Sim",
             command=self._on_grab_from_sim,
@@ -243,7 +262,16 @@ class CreateProjectPage(tk.Frame):
             font=("Arial", 14),
             padx=10,
             pady=4,
-        ).grid(row=5, column=5, sticky="nsew", padx=(0, 14), pady=4)
+            state="disabled",
+            disabledforeground="#666666",
+        )
+        self.grab_from_sim_button.grid(
+            row=5,
+            column=5,
+            sticky="nsew",
+            padx=(0, 14),
+            pady=4,
+        )
 
         tk.Label(
             self,
@@ -278,6 +306,8 @@ class CreateProjectPage(tk.Frame):
 
         self.input_topic_vars = {}
         self.output_topic_vars = {}
+        self.input_topic_buttons = {}
+        self.output_topic_buttons = {}
 
         outer = tk.Frame(self, bg="#DADADA")
         outer.grid(row=7, column=0, columnspan=6, sticky="nsew", padx=14, pady=(0, 8))
@@ -285,43 +315,19 @@ class CreateProjectPage(tk.Frame):
         outer.grid_columnconfigure(1, weight=1)
         outer.grid_rowconfigure(0, weight=1)
 
-        input_topic_frame = ScrollableFrame(outer, bg="#DADADA")
-        input_topic_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self.input_topic_frame = ScrollableFrame(outer, bg="#DADADA")
+        self.input_topic_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
-        output_topic_frame = ScrollableFrame(outer, bg="#DADADA")
-        output_topic_frame.grid(row=0, column=1, sticky="nsew")
+        self.output_topic_frame = ScrollableFrame(outer, bg="#DADADA")
+        self.output_topic_frame.grid(row=0, column=1, sticky="nsew")
 
         if not self._topics:
             self._topics = ["No topics found"]
 
-        for topic in self._topics:
-            input_var = tk.BooleanVar(value=False)
-            self.input_topic_vars[topic] = input_var
-            tk.Checkbutton(
-                input_topic_frame.content,
-                text=topic,
-                variable=input_var,
-                bg="#DADADA",
-                fg="black",
-                activebackground="#DADADA",
-                font=("Arial", 14),
-                anchor="w",
-                highlightthickness=0,
-            ).pack(anchor="w")
-
-            output_var = tk.BooleanVar(value=False)
-            self.output_topic_vars[topic] = output_var
-            tk.Checkbutton(
-                output_topic_frame.content,
-                text=topic,
-                variable=output_var,
-                bg="#DADADA",
-                fg="black",
-                activebackground="#DADADA",
-                font=("Arial", 14),
-                anchor="w",
-                highlightthickness=0,
-            ).pack(anchor="w")
+        self.input_topic_order = list(self._topics)
+        self.output_topic_order = list(self._topics)
+        self._build_topic_checkboxes(list_type="input")
+        self._build_topic_checkboxes(list_type="output")
 
         tk.Button(
             self,
@@ -337,7 +343,7 @@ class CreateProjectPage(tk.Frame):
             pady=6,
         ).grid(row=8, column=0, columnspan=3, sticky="nsew", padx=(14, 8), pady=(8, 14))
 
-        tk.Button(
+        self.create_project_button = tk.Button(
             self,
             text="Create Project",
             command=self._on_create_project,
@@ -349,11 +355,20 @@ class CreateProjectPage(tk.Frame):
             font=("Arial", 16),
             padx=10,
             pady=6,
-        ).grid(row=8, column=3, columnspan=3, sticky="nsew", padx=(8, 14), pady=(8, 14))
+        )
+        self.create_project_button.grid(
+            row=8,
+            column=3,
+            columnspan=3,
+            sticky="nsew",
+            padx=(8, 14),
+            pady=(8, 14),
+        )
 
         for col in range(6):
             self.grid_columnconfigure(col, weight=1, uniform="half")
         self.grid_rowconfigure(7, weight=1)
+        self._update_create_project_button_state()
 
     def _safe_get_topics(self):
         """
@@ -395,6 +410,67 @@ class CreateProjectPage(tk.Frame):
         self.coord2_entry.configure(state=state)
         self.coord1_label.configure(fg=label_color)
         self.coord2_label.configure(fg=label_color)
+        self.grab_from_sim_button.configure(
+            state=state,
+            fg="black" if enabled else "#666666",
+        )
+        self._update_create_project_button_state()
+
+    def _build_topic_checkboxes(self, list_type):
+        """
+        Build topic checkboxes for either input or output topics.
+        """
+        if list_type == "input":
+            frame = self.input_topic_frame.content
+            topic_order = self.input_topic_order
+            topic_vars = self.input_topic_vars
+            topic_buttons = self.input_topic_buttons
+        else:
+            frame = self.output_topic_frame.content
+            topic_order = self.output_topic_order
+            topic_vars = self.output_topic_vars
+            topic_buttons = self.output_topic_buttons
+
+        for topic in topic_order:
+            topic_var = topic_vars.get(topic, tk.BooleanVar(value=False))
+            topic_vars[topic] = topic_var
+            topic_button = tk.Checkbutton(
+                frame,
+                text=topic,
+                variable=topic_var,
+                command=lambda t=topic, lt=list_type: self._on_topic_clicked(t, lt),
+                bg="#DADADA",
+                fg="black",
+                activebackground="#DADADA",
+                font=("Arial", 14),
+                anchor="w",
+                highlightthickness=0,
+            )
+            topic_button.pack(anchor="w")
+            topic_buttons[topic] = topic_button
+
+    def _on_topic_clicked(self, topic, list_type):
+        """
+        Move the clicked topic to the top of only its own topic list.
+        """
+        if list_type == "input":
+            topic_order = self.input_topic_order
+            topic_buttons = self.input_topic_buttons
+        else:
+            topic_order = self.output_topic_order
+            topic_buttons = self.output_topic_buttons
+
+        if topic not in topic_order:
+            return
+
+        topic_order.remove(topic)
+        topic_order.insert(0, topic)
+
+        for ordered_topic in topic_order:
+            button = topic_buttons[ordered_topic]
+            button.pack_forget()
+            button.pack(anchor="w")
+        self._update_create_project_button_state()
 
     def _on_grab_from_sim(self):
         """
@@ -441,6 +517,7 @@ class CreateProjectPage(tk.Frame):
         self.keyboard_controls_gui.hide()
         self.world_control_client.pause_simulation()
         self.popup = None
+        self._update_create_project_button_state()
 
     def _on_close_of_keyboard_controls(self):
         """
@@ -468,17 +545,156 @@ class CreateProjectPage(tk.Frame):
     def _on_create_project(self):
         """
         Handle the "Create Project" action.
-
-        Current behavior is a placeholder that logs activation.
         """
+        if not self._is_form_valid():
+            self._update_create_project_button_state()
+            return
+
+        self._update_create_project_button_state()
+
+        project_name = self.project_name_var.get().strip()
         selected_input_topics = [
-            topic for topic, selected in self.input_topic_vars.items() if selected.get()
+            topic
+            for topic in self.input_topic_order
+            if self.input_topic_vars[topic].get()
         ]
         selected_output_topics = [
             topic
-            for topic, selected in self.output_topic_vars.items()
-            if selected.get()
+            for topic in self.output_topic_order
+            if self.output_topic_vars[topic].get()
         ]
-        print(f"selected_input_topics={selected_input_topics}")
-        print(f"selected_output_topics={selected_output_topics}")
-        print("create_project_activation")
+        random_spawn_enabled = self.random_spawn_var.get()
+        coord1 = self.coordinate1 or self._parse_coord(self.coord1_var.get())
+        coord2 = self.coordinate2 or self._parse_coord(self.coord2_var.get())
+
+        project_cfg = {
+            "project_name": project_name,
+            "world_file": self.world_file_var.get().strip(),
+            "model_name": self.model_name_var.get().strip(),
+            "random_spawn_space": {
+                "enabled": random_spawn_enabled,
+                "coord1_4d": coord1 or (0.0, 0.0, 0.0, 0.0),
+                "coord2_4d": coord2 or (0.0, 0.0, 0.0, 0.0),
+            },
+            "input_topics": selected_input_topics,
+            "output_topics": selected_output_topics,
+        }
+
+        try:
+            create_project_folder(project_cfg)
+        except (FileExistsError, OSError, RuntimeError, ValueError, KeyError) as e:
+            self._set_create_project_button_enabled(False)
+            self._show_create_project_error_tooltip(str(e) or type(e).__name__)
+            return
+
+        if self.controller is not None:
+            project_payload = None
+            for project in get_all_project_config():
+                if project.get("robogym_project", {}).get("name") == project_name:
+                    project_payload = project
+                    break
+
+            if project_payload is None:
+                project_payload = {
+                    "robogym_project": {"name": project_name},
+                    "num_demos": 1,
+                }
+
+            self.controller.show_page("view_project", project=project_payload)
+
+    def _is_filesystem_safe_name(self, name: str) -> bool:
+        if not name.strip():
+            return False
+        forbidden = set('/\\:*?"<>|')
+        return not any(ch in forbidden for ch in name)
+
+    def _parse_coord(self, value: str):
+        cleaned = value.strip().strip("()")
+        parts = [p.strip() for p in cleaned.split(",")]
+        if len(parts) != 4:
+            return None
+        try:
+            return tuple(float(p) for p in parts)
+        except ValueError:
+            return None
+
+    def _is_form_valid(self) -> bool:
+        project_name = self.project_name_var.get().strip()
+        selected_input_topics = any(
+            self.input_topic_vars[topic].get() for topic in self.input_topic_order
+        )
+        selected_output_topics = any(
+            self.output_topic_vars[topic].get() for topic in self.output_topic_order
+        )
+        random_spawn_enabled = self.random_spawn_var.get()
+
+        coord1 = self.coordinate1 or self._parse_coord(self.coord1_var.get())
+        coord2 = self.coordinate2 or self._parse_coord(self.coord2_var.get())
+
+        has_valid_name = self._is_filesystem_safe_name(project_name)
+        has_valid_topics = selected_input_topics and selected_output_topics
+        has_valid_coords = (not random_spawn_enabled) or (
+            coord1 is not None and coord2 is not None
+        )
+        return has_valid_name and has_valid_topics and has_valid_coords
+
+    def _set_create_project_button_enabled(self, enabled: bool) -> None:
+        if enabled:
+            self.create_project_button.configure(
+                state=tk.NORMAL,
+                text="Create Project",
+                fg="black",
+                bg="#ECECEC",
+                activebackground="#DFDFDF",
+            )
+            self._hide_create_project_error_tooltip()
+            return
+
+        self.create_project_button.configure(
+            state=tk.DISABLED,
+            text="Create Project",
+            fg="#888888",
+            bg="#E0E0E0",
+            activebackground="#E0E0E0",
+            disabledforeground="#888888",
+        )
+        self._hide_create_project_error_tooltip()
+
+    def _update_create_project_button_state(self) -> None:
+        self._set_create_project_button_enabled(self._is_form_valid())
+
+    def _show_create_project_error_tooltip(self, message: str) -> None:
+        self._hide_create_project_error_tooltip()
+
+        tip = tk.Toplevel(self)
+        tip.wm_overrideredirect(True)
+        tip.attributes("-topmost", True)
+
+        x = self.create_project_button.winfo_rootx()
+        y = self.create_project_button.winfo_rooty() - 30
+        tip.geometry(f"+{x}+{y}")
+
+        tk.Label(
+            tip,
+            text=message,
+            bg="#2B2B2B",
+            fg="white",
+            font=("Arial", 10),
+            padx=8,
+            pady=4,
+        ).pack()
+
+        self._create_project_error_tip = tip
+        self._create_project_error_tip_after_id = self.after(
+            4000,
+            self._hide_create_project_error_tooltip,
+        )
+
+    def _hide_create_project_error_tooltip(self) -> None:
+        if self._create_project_error_tip_after_id is not None:
+            self.after_cancel(self._create_project_error_tip_after_id)
+            self._create_project_error_tip_after_id = None
+
+        if self._create_project_error_tip is not None:
+            self._create_project_error_tip.destroy()
+            self._create_project_error_tip = None
