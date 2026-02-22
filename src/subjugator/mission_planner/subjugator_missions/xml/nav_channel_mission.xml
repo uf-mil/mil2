@@ -144,7 +144,7 @@
                                 <Repeat num_cycles="2">
                                     <Fallback>
                                         <SubTree ID="RelativeMove" _autoremap="true"
-                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3000" ctx="{ctx}"/>
                                         <AlwaysSuccess/>
                                     </Fallback>
                                 </Repeat>
@@ -152,7 +152,7 @@
                                 <Repeat num_cycles="4">
                                     <Fallback>
                                         <SubTree ID="RelativeMove" _autoremap="true"
-                                            yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                                            yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3000" ctx="{ctx}"/>
                                         <AlwaysSuccess/>
                                     </Fallback>
                                 </Repeat>
@@ -160,7 +160,7 @@
                                 <Repeat num_cycles="2">
                                     <Fallback>
                                         <SubTree ID="RelativeMove" _autoremap="true"
-                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3000" ctx="{ctx}"/>
                                         <AlwaysSuccess/>
                                     </Fallback>
                                 </Repeat>

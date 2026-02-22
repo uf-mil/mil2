@@ -10,7 +10,7 @@
                tol_deg="2.0"
                pos_tol="0.25"
                ori_tol_deg="2.0"
-               msec="8000"
+               msec="10000"
                ctx="{ctx}" />
     </Sequence>
   </BehaviorTree>
