@@ -1,7 +1,12 @@
+import shutil
 import tkinter as tk
-from tkinter import font
+from tkinter import font, messagebox
 
-from mil_robogym.data_collection.get_all_project_config import get_all_project_config
+from mil_robogym.data_collection.filesystem import to_lower_snake_case
+from mil_robogym.data_collection.get_all_project_config import (
+    find_projects_dir,
+    get_all_project_config,
+)
 
 from .project_row import ProjectRow
 
@@ -91,6 +96,34 @@ class StartPage(tk.Frame):
         """
         self.controller.show_page("create_project")
 
+    def _on_delete_project(self, project: dict) -> None:
+        """
+        Delete a project folder after explicit confirmation.
+
+        :param project: Project configuration dictionary.
+        """
+        name = project.get("robogym_project", {}).get("name", "").strip()
+        if not name:
+            return
+
+        should_delete = messagebox.askyesno(
+            title="Delete Project",
+            message=(
+                f"Delete project '{name}'?\n"
+                "This will permanently remove all demos and agents in this project."
+            ),
+            icon="warning",
+        )
+        if not should_delete:
+            return
+
+        projects_dir = find_projects_dir()
+        project_dir = projects_dir / to_lower_snake_case(name)
+        if project_dir.exists():
+            shutil.rmtree(project_dir)
+
+        self._render_projects()
+
     def set_context(self, **_kwargs):
         """
         Refresh projects whenever this page is shown.
@@ -128,10 +161,12 @@ class StartPage(tk.Frame):
                 name,
                 f"{demos} demonstrations",
                 command=lambda p=project: self._on_project(p),
+                action_text="Delete",
+                action_command=lambda p=project: self._on_delete_project(p),
             )
             for child in row.winfo_children():
                 for grandchild in child.winfo_children():
-                    if isinstance(grandchild, tk.Label):
+                    if isinstance(grandchild, (tk.Label, tk.Button)):
                         grandchild.configure(font=self._row_font)
 
             row.grid(row=i, column=0, sticky="ew", pady=4)

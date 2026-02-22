@@ -71,6 +71,9 @@ def create_project_folder(
 
     project_dir.mkdir(parents=True, exist_ok=True)
 
+    demo_dir = project_dir / "demos"
+    demo_dir.mkdir(exist_ok=True)
+
     config_path = project_dir / "config.yaml"
 
     cfg: dict[str, Any] = {
