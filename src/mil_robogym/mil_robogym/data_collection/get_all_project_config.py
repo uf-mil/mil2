@@ -25,7 +25,7 @@ def count_demo_folders(demos_dir: Path) -> int:
         return 0
 
     if not demos_dir.is_dir():
-        raise ValueError("Demo directory path '{}' is not a directory.")
+        raise ValueError(f"Demo directory path '{demos_dir}' is not a directory.")
 
     return sum(
         1
