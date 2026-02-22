@@ -5,6 +5,7 @@ from typing import Any, Mapping
 
 from mil_robogym.data_collection.get_all_demo_config import get_all_demo_config
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
+from mil_robogym.ui.components.create_demo_popup import CreateDemoPopup
 
 
 class ViewProjectPage(tk.Frame):
@@ -311,7 +312,13 @@ class ViewProjectPage(tk.Frame):
 
     def _on_record_demo(self) -> None:
         """Handle Record Demo button action."""
-        print("record_demo_activation")
+        if hasattr(self, "create_demo_popup") and self.create_demo_popup:
+            return
+
+        self.create_demo_popup = CreateDemoPopup(
+            self,
+            on_cancel=lambda: setattr(self, "create_demo_popup", None),
+        )
 
     def on_demo_row_click(self, demo_name: str) -> None:
         """
