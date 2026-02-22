@@ -6,18 +6,19 @@ from mil_robogym.data_collection.filesystem import (
     create_demo_folder,
     create_project_folder,
 )
-from mil_robogym.data_collection.get_gazebo_topics import get_gazebo_topics
+from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls import TeleopGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 
 class CreateProjectPage(tk.Frame):
+
     def __init__(self, parent, controller=None):
         """
         Build and lay out the "Create Project" page.
 
-        Initializes the page state, fetches Gazebo-derived defaults, and creates
+        Initializes the page state, fetches ROS 2-derived defaults, and creates
         all widgets used to configure and submit a project definition.
 
         :param parent: Parent Tkinter widget that owns this frame.
@@ -36,6 +37,7 @@ class CreateProjectPage(tk.Frame):
         self.gz_pose_client = ModelPoseClient()
 
         self.keyboard_controls_gui = None
+        self.popup = None
 
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
@@ -355,18 +357,18 @@ class CreateProjectPage(tk.Frame):
 
     def _safe_get_topics(self):
         """
-        Retrieve available Gazebo topics with normalized error handling.
+        Retrieve available ROS 2 topics with normalized error handling.
 
         :raises RuntimeError: If topic discovery fails for any supported
-            Gazebo/runtime error condition.
+            ROS 2/runtime error condition.
         :return: List of discovered topic names.
         :rtype: list[str]
         """
         try:
-            return get_gazebo_topics()
+            return get_ros2_topics()
         except (RuntimeError, FileNotFoundError) as e:
             raise RuntimeError(
-                "Getting gazebo topics on create projects page failed",
+                "Getting ROS 2 topics on create projects page failed",
             ) from e
 
     def _safe_get_world_file(self):
@@ -470,6 +472,12 @@ class CreateProjectPage(tk.Frame):
         self.keyboard_controls_gui.show()
 
         # Display popups and wait for signal indicating both coordinates have been collected
+        if self.popup and self.popup.win.winfo_exists():
+            self.popup.win.lift()
+            self.popup.win.focus_force()
+            self.keyboard_controls_gui.show()
+            return
+
         self.popup = GrabCoordinatesPopup(
             self,
             self.gz_pose_client.send_request,
@@ -491,6 +499,7 @@ class CreateProjectPage(tk.Frame):
 
         self.keyboard_controls_gui.hide()
         self.world_control_client.pause_simulation()
+        self.popup = None
 
     def _on_close_of_keyboard_controls(self):
         """
