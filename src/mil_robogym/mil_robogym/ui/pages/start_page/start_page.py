@@ -1,7 +1,12 @@
+import shutil
 import tkinter as tk
-from tkinter import font
+from tkinter import font, messagebox
 
-from mil_robogym.data_collection.get_all_project_config import get_all_project_config
+from mil_robogym.data_collection.filesystem import to_lower_snake_case
+from mil_robogym.data_collection.get_all_project_config import (
+    find_projects_dir,
+    get_all_project_config,
+)
 
 from .project_row import ProjectRow
 
@@ -24,10 +29,10 @@ class StartPage(tk.Frame):
 
         super().__init__(parent, bg="#DADADA")
         self.controller = controller
+        self._row_font = font.Font(family="Arial", size=15)
 
         # Fonts
         title_font = font.Font(family="Arial", size=20, weight="bold")
-        row_font = font.Font(family="Arial", size=15)
         button_font = font.Font(family="Arial", size=16)
 
         # Main layout container
@@ -51,38 +56,10 @@ class StartPage(tk.Frame):
         title.grid(row=0, column=0, sticky="ew", pady=(0, 8))
 
         # List area
-        list_area = tk.Frame(container, bg="#DADADA")
-        list_area.grid(row=1, column=0, sticky="nsew")
-        list_area.grid_columnconfigure(0, weight=1)
-
-        projects = get_all_project_config()
-
-        if not projects:
-            empty = tk.Label(
-                list_area,
-                text="No projects found.",
-                bg="#DADADA",
-                fg="#444444",
-                anchor="w",
-            )
-            empty.grid(row=0, column=0, sticky="w", pady=4)
-        else:
-            for i, project in enumerate(projects):
-                name = project["robogym_project"]["name"]
-                demos = project["num_demos"]
-
-                row = ProjectRow(
-                    list_area,
-                    name,
-                    f"{demos} demonstrations",
-                    command=lambda p=project: self._on_project(p),
-                )
-                for child in row.winfo_children():
-                    for grandchild in child.winfo_children():
-                        if isinstance(grandchild, tk.Label):
-                            grandchild.configure(font=row_font)
-
-                row.grid(row=i, column=0, sticky="ew", pady=4)
+        self.list_area = tk.Frame(container, bg="#DADADA")
+        self.list_area.grid(row=1, column=0, sticky="nsew")
+        self.list_area.grid_columnconfigure(0, weight=1)
+        self._render_projects()
 
         # Bottom button (Create Project +)
         bottom = tk.Frame(container, bg="#DADADA")
@@ -118,3 +95,78 @@ class StartPage(tk.Frame):
         Navigate to the project creation page.
         """
         self.controller.show_page("create_project")
+
+    def _on_delete_project(self, project: dict) -> None:
+        """
+        Delete a project folder after explicit confirmation.
+
+        :param project: Project configuration dictionary.
+        """
+        name = project.get("robogym_project", {}).get("name", "").strip()
+        if not name:
+            return
+
+        should_delete = messagebox.askyesno(
+            title="Delete Project",
+            message=(
+                f"Delete project '{name}'?\n"
+                "This will permanently remove all demos and agents in this project."
+            ),
+            icon="warning",
+        )
+        if not should_delete:
+            return
+
+        projects_dir = find_projects_dir()
+        project_dir = projects_dir / to_lower_snake_case(name)
+        if project_dir.exists():
+            shutil.rmtree(project_dir)
+
+        self._render_projects()
+
+    def set_context(self, **_kwargs):
+        """
+        Refresh projects whenever this page is shown.
+        """
+        self._render_projects()
+
+    def _render_projects(self):
+        for child in self.list_area.winfo_children():
+            child.destroy()
+
+        projects = get_all_project_config()
+        valid_projects = [
+            project
+            for project in projects
+            if project.get("robogym_project", {}).get("name", "")
+        ]
+
+        if not valid_projects:
+            empty = tk.Label(
+                self.list_area,
+                text="No projects found.",
+                bg="#DADADA",
+                fg="#444444",
+                anchor="w",
+            )
+            empty.grid(row=0, column=0, sticky="w", pady=4)
+            return
+
+        for i, project in enumerate(valid_projects):
+            name = project["robogym_project"]["name"]
+            demos = project["num_demos"]
+
+            row = ProjectRow(
+                self.list_area,
+                name,
+                f"{demos} demonstrations",
+                command=lambda p=project: self._on_project(p),
+                action_text="Delete",
+                action_command=lambda p=project: self._on_delete_project(p),
+            )
+            for child in row.winfo_children():
+                for grandchild in child.winfo_children():
+                    if isinstance(grandchild, (tk.Label, tk.Button)):
+                        grandchild.configure(font=self._row_font)
+
+            row.grid(row=i, column=0, sticky="ew", pady=4)

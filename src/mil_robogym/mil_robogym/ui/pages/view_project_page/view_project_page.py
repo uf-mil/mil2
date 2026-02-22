@@ -166,10 +166,7 @@ class ViewProjectPage(tk.Frame):
             self._render_demo_rows()
             return
 
-        selected_name = project.get("robogym_project", {}).get("name") or project.get(
-            "name",
-            "",
-        )
+        selected_name = project.get("robogym_project", {}).get("name", "")
         loaded = self._safe_get_project_by_name(str(selected_name))
 
         if loaded is None:
