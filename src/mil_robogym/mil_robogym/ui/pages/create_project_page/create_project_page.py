@@ -2,7 +2,7 @@ import tkinter as tk
 
 from mil_robogym.clients.model_pose_client import ModelPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
-from mil_robogym.data_collection.get_gazebo_topics import get_gazebo_topics
+from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls import TeleopGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
@@ -13,7 +13,7 @@ class CreateProjectPage(tk.Frame):
         """
         Build and lay out the "Create Project" page.
 
-        Initializes the page state, fetches Gazebo-derived defaults, and creates
+        Initializes the page state, fetches ROS 2-derived defaults, and creates
         all widgets used to configure and submit a project definition.
 
         :param parent: Parent Tkinter widget that owns this frame.
@@ -357,18 +357,18 @@ class CreateProjectPage(tk.Frame):
 
     def _safe_get_topics(self):
         """
-        Retrieve available Gazebo topics with normalized error handling.
+        Retrieve available ROS 2 topics with normalized error handling.
 
         :raises RuntimeError: If topic discovery fails for any supported
-            Gazebo/runtime error condition.
+            ROS 2/runtime error condition.
         :return: List of discovered topic names.
         :rtype: list[str]
         """
         try:
-            return get_gazebo_topics()
+            return get_ros2_topics()
         except (RuntimeError, FileNotFoundError) as e:
             raise RuntimeError(
-                "Getting gazebo topics on create projects page failed",
+                "Getting ROS 2 topics on create projects page failed",
             ) from e
 
     def _safe_get_world_file(self):
