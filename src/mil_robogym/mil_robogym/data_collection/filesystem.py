@@ -7,8 +7,26 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from ament_index_python.packages import (
+    PackageNotFoundError,
+    get_package_share_directory,
+)
 
 from .types import RoboGymProject
+
+
+def _resolve_default_base_dir() -> Path:
+    """
+    Resolve the package share root for mil_robogym:
+        <install_prefix>/share/mil_robogym
+    """
+    try:
+        return Path(get_package_share_directory("mil_robogym"))
+    except PackageNotFoundError as e:
+        raise RuntimeError(
+            "mil_robogym package share directory could not be found. "
+            "Build and source the ROS 2 workspace first.",
+        ) from e
 
 
 def to_lower_snake_case(name: str) -> str:
@@ -32,17 +50,15 @@ def format_agent_timestamp(dt: datetime) -> str:
 
 def create_project_folder(
     project: RoboGymProject,
-    *,
-    base_dir: Path | None = None,
 ) -> Path:
     """
     Creates:
-        <base_dir>/projects/<lower_snake_project_name>/config.yaml
+        <share_dir>/projects/<lower_snake_project_name>/config.yaml
 
-    If base_dir is None, uses current working directory.
+    Uses the ROS 2 package share directory for 'mil_robogym' as the root.
     Returns the created project directory Path.
     """
-    root = base_dir or Path.cwd()
+    root = _resolve_default_base_dir()
 
     projects_dir = root / "projects"
     projects_dir.mkdir(parents=True, exist_ok=True)
