@@ -14,6 +14,44 @@
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 #include "subjugator_thruster_manager/lut.h"
 
+// chat made this but i passed dsa so it's ok
+int binarySearchClosest(std::array<double, 201> const &arr, double target)
+{
+    size_t n = arr.size();
+    if (n == 0)
+        return -1;
+
+    int left = 0, right = n - 1;
+
+    // Handle out-of-range cases early
+    if (target <= arr[0])
+        return 0;
+    if (target >= arr[n - 1])
+        return n - 1;
+
+    while (left <= right)
+    {
+        int mid = left + (right - left) / 2;
+
+        if (arr[mid] == target)
+            return mid;
+
+        if (arr[mid] < target)
+            left = mid + 1;
+        else
+            right = mid - 1;
+    }
+
+    // Now right < left
+    // right is the largest element < target
+    // left is the smallest element > target
+
+    if (abs(arr[left] - target) < abs(arr[right] - target))
+        return left;
+    else
+        return right;
+}
+
 // Construct node class
 ThrusterManager::ThrusterManager() : Node("thruster_manager")
 {
@@ -65,26 +103,52 @@ void ThrusterManager::wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg)
 // Compute and publish thruster efforts
 void ThrusterManager::timer_callback()
 {
+    // TODO only need to compute this once
     Eigen::VectorXd thrust_values(tam_.completeOrthogonalDecomposition().pseudoInverse() * reference_wrench_);
-    double const min_thrust_newtons = thrust_lut[0];
-    double const max_thrust_newtons = thrust_lut[thrust_lut.size() - 1];
 
-    // scale newtons down so that this is possible
+    RCLCPP_WARN(this->get_logger(), "---------------");
+    RCLCPP_WARN(this->get_logger(), "frh: %.3f", thrust_values[0]);
+    RCLCPP_WARN(this->get_logger(), "flh: %.3f", thrust_values[1]);
+    RCLCPP_WARN(this->get_logger(), "brh: %.3f", thrust_values[2]);
+    RCLCPP_WARN(this->get_logger(), "blh: %.3f", thrust_values[3]);
+    RCLCPP_WARN(this->get_logger(), "frv: %.3f", thrust_values[4]);
+    RCLCPP_WARN(this->get_logger(), "flv: %.3f", thrust_values[5]);
+    RCLCPP_WARN(this->get_logger(), "brv: %.3f", thrust_values[6]);
+    RCLCPP_WARN(this->get_logger(), "blv: %.3f", thrust_values[7]);
+    RCLCPP_WARN(this->get_logger(), "---------------");
+
+    // find thrust with max magnitude
     double biggest_thrust = 0;
     for (int i = 0; i < thrust_values.size(); i++)
     {
         auto thrust_mag = std::abs(thrust_values[i]);
         biggest_thrust = std::max(biggest_thrust, thrust_mag);
     }
+
+    // if that biggest_thrust is too big, scale the entire wrench down
+    // i.e keep the intention, but reduce the magnitude
     bool over_thruster_cap = biggest_thrust > max_force_neg_;  // cap all the time
-    if (over_thruster_cap)
+    if (over_thruster_cap)                                     // scale?
     {
         thrust_values = thrust_values * (max_force_neg_ / biggest_thrust);
     }
+
+    // binary search each thrust (units of force in newtons) to find its index in the lut
+    // we can then do:
+    // lut index -> desired pwm duty
+    // and finally desired pwm duty -> percentage [-1,1]
     for (int i = 0; i < thrust_values.size(); i++)
     {
-        double const max_newtons = thrust_values[i] > 0 ? max_thrust_newtons : min_thrust_newtons;
-        thrust_values[i] = std::abs(thrust_values[i]) / max_newtons;
+        int index = binarySearchClosest(thrust_lut, thrust_values[i]);
+        double duty = 1100.0 + double(index) * 4.0;  // index will be [0:200] so result will be 1100 to 1900
+
+        // what is the map function doing on the pico?
+        // see here:
+        // ((x--100)*(1900-1100)/(100--100)+1100)
+        // duty = 400(x+1) + 1100 (where x=[-1:1]
+        //
+        // so we just solve for x (we have duty
+        thrust_values[i] = (duty - 1100.0) / 400.0 - 1.0;
     }
 
     auto msg = subjugator_msgs::msg::ThrusterEfforts();
