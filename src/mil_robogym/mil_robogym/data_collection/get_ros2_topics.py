@@ -5,12 +5,11 @@ import subprocess
 
 def get_ros2_topics() -> list[str]:
     """
-    Get ROS 2 topics from the active ROS graph.
+    Get all topic names from the active ROS 2 graph.
 
-    :raises RuntimeError: If ROS 2 CLI is found but topic listing fails.
-    :raises FileNotFoundError: If ROS 2 CLI is not available.
-    :return: Topic names from `ros2 topic list`.
-    :rtype: list[str]
+    Uses `ros2 topic list` and returns non-empty lines as topic names.
+    Raises RuntimeError when the command exits unsuccessfully.
+    Raises FileNotFoundError when the ROS 2 CLI is unavailable.
     """
     command = ("ros2", "topic", "list")
     try:

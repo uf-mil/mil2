@@ -7,10 +7,15 @@ from .types import RoboGymProject
 
 
 def _canonical_topic_name(topic: str) -> str:
+    """Normalize a topic name by trimming whitespace and leading slashes."""
     return topic.strip().lstrip("/")
 
 
 def _default_message_as_dict(msg_type: str) -> object:
+    """
+    Build a default-initialized ROS 2 message for `msg_type` and convert it
+    into an ordered dictionary-compatible Python object.
+    """
     try:
         from rosidl_runtime_py.convert import message_to_ordereddict
         from rosidl_runtime_py.utilities import get_message
@@ -29,6 +34,13 @@ def _default_message_as_dict(msg_type: str) -> object:
 
 
 def _flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
+    """
+    Flatten nested dictionaries/lists into dot and bracket notation keys.
+
+    Examples:
+        pose.position.x
+        covariance[0]
+    """
     if isinstance(value, dict):
         if not value and prefix:
             out[prefix] = {}
@@ -60,15 +72,22 @@ def sample_input_topics(
     timeout_s: float = 2.0,
 ) -> dict[str, dict[str, object]]:
     """
-    Resolve message types for each input topic in a RoboGym project and flatten
-    default message values to key/value pairs.
+    Resolve each project input topic to a ROS 2 message type and return
+    flattened default values for that type.
 
-    :param project: RoboGym project definition containing input topics.
-    :param timeout_s: Timeout for each ``ros2 topic type`` call.
-    :raises ValueError: If ``timeout_s`` is not positive.
-    :raises RuntimeError: If topic discovery/type resolution fails.
-    :return: Mapping of topic name -> flattened default values for the topic type.
-    :rtype: dict[str, dict[str, object]]
+    Uses:
+        - `get_ros2_topics()` to verify each input topic is present
+        - `ros2 topic type <topic>` to resolve the topic message type
+        - ROS 2 message introspection to instantiate default message values
+
+    Returns:
+        A mapping from the original input topic string to flattened field/value
+        pairs, where nested dictionaries use dot notation and lists use index
+        notation.
+
+    Raises:
+        ValueError if `timeout_s` is not positive.
+        RuntimeError if topic discovery, type resolution, or introspection fails.
     """
     if timeout_s <= 0:
         raise ValueError("timeout_s must be positive.")
