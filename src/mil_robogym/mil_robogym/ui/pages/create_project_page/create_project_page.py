@@ -1,6 +1,10 @@
 import tkinter as tk
 
+from mil_robogym.clients.model_pose_client import ModelPoseClient
+from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.get_gazebo_topics import get_gazebo_topics
+from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
+from mil_robogym.ui.components.keyboard_controls import TeleopGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 
@@ -18,7 +22,16 @@ class CreateProjectPage(tk.Frame):
         :type controller: object | None
         """
         super().__init__(parent, bg="#DADADA")
+
+        self.coordinate1 = None
+        self.coordinate2 = None
+
         self.controller = controller
+
+        self.world_control_client = WorldControlClient()
+        self.gz_pose_client = ModelPoseClient()
+
+        self.keyboard_controls_gui = None
 
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
@@ -390,7 +403,44 @@ class CreateProjectPage(tk.Frame):
 
         Current behavior is a placeholder that logs activation.
         """
-        print("grab_from_sim_activation")
+        # Play the simulation
+        self.world_control_client.play_simulation()
+
+        # Run keyboard controls
+        self.keyboard_controls_gui = self.keyboard_controls_gui or TeleopGUI(
+            self,
+            self._on_close_of_keyboard_controls,
+        )
+        self.keyboard_controls_gui.show()
+
+        # Display popups and wait for signal indicating both coordinates have been collected
+        self.popup = GrabCoordinatesPopup(
+            self,
+            self.gz_pose_client.send_request,
+            self._display_collected_coords,
+        )
+
+    def _display_collected_coords(self, c1, c2):
+        """
+        Display the coordinates collected from simulation.
+        """
+        if c1 and c2:
+            self.coordinate1 = c1
+            self.coord1_entry.delete(0, tk.END)
+            self.coord1_entry.insert(0, f"{tuple(round(v, 1) for v in c1)}")
+
+            self.coordinate2 = c2
+            self.coord2_entry.delete(0, tk.END)
+            self.coord2_entry.insert(0, f"{tuple(round(v, 1) for v in c2)}")
+
+        self.keyboard_controls_gui.hide()
+        self.world_control_client.pause_simulation()
+
+    def _on_close_of_keyboard_controls(self):
+        """
+        Close "Grabbing Coordinates From Simulation" window.
+        """
+        self.popup.finish()
 
     def _on_cancel(self):
         """
