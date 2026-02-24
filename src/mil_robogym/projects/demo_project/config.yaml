@@ -1,0 +1,9 @@
+robogym_project:
+  name: "Demo Project"
+  world_file: "src/default/world/file"
+  random_spawn_space:
+    enabled: false
+    coord_1: (0, 0, 0, 0)
+    coord_2: (0, 0, 0, 0)
+  input_topics: ["imu/processed", "dvl/processed"]
+  output_topics: ["trajectory/4_deg"]
