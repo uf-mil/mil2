@@ -11,21 +11,12 @@ class ViewDemoPage(tk.Frame):
         super().__init__(parent, bg="#DADADA")
         self.controller = controller
 
-        # ------------------------------------------------------------------
-        # Demo metadata (you will update these dynamically later)
-        # ------------------------------------------------------------------
         self._project_name = "Start Gate Agent"
         self._demo_name = "Demo 1"
 
-        # ------------------------------------------------------------------
-        # Configure main layout
-        # ------------------------------------------------------------------
         self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # ==================================================================
-        # TITLE ROW
-        # ==================================================================
         self._title_row = tk.Frame(self, bg="#DADADA")
         self._title_row.grid(row=0, column=0, sticky="ew", padx=14, pady=(14, 8))
         self._title_row.grid_columnconfigure(0, weight=1)
@@ -61,13 +52,9 @@ class ViewDemoPage(tk.Frame):
         )
         self._demo_title.pack(side="left", padx=(6, 0))
 
-        # Edit Button (top-right)
         self._edit_btn = tk.Button(self._title_row, text="Edit", width=8)
         self._edit_btn.grid(row=0, column=1, sticky="e")
 
-        # ==================================================================
-        # SUBTITLE ROW
-        # ==================================================================
         self._subtitle = tk.Label(
             self,
             text="Sampling rate: 1 step / sec | World: src/default/world/file",
@@ -78,17 +65,11 @@ class ViewDemoPage(tk.Frame):
         )
         self._subtitle.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 8))
 
-        # ==================================================================
-        # MAIN CONTENT
-        # ==================================================================
         self._content = tk.Frame(self, bg="#DADADA")
         self._content.grid(row=2, column=0, sticky="nsew", padx=14)
         self._content.grid_rowconfigure(0, weight=1)
         self._content.grid_columnconfigure(1, weight=1)
 
-        # ------------------------------------------------------------------
-        # LEFT: STEPS PANEL
-        # ------------------------------------------------------------------
         self._steps_panel = tk.Frame(self._content, bg="#CFCFCF", width=260)
         self._steps_panel.grid(row=0, column=0, sticky="nsw", padx=(0, 10))
         self._steps_panel.grid_propagate(False)
@@ -124,9 +105,6 @@ class ViewDemoPage(tk.Frame):
             ),
         )
 
-        # ------------------------------------------------------------------
-        # RIGHT: COLLECTED DATA PANEL
-        # ------------------------------------------------------------------
         self._data_panel = tk.Frame(self._content, bg="#CFCFCF")
         self._data_panel.grid(row=0, column=1, sticky="nsew")
         self._data_panel.grid_rowconfigure(1, weight=1)
@@ -157,9 +135,6 @@ class ViewDemoPage(tk.Frame):
             fg="#555",
         ).place(relx=0.5, rely=0.5, anchor="center")
 
-        # ==================================================================
-        # BOTTOM CONTROLS
-        # ==================================================================
         self._controls = tk.Frame(self, bg="#CFCFCF", height=60)
         self._controls.grid(row=3, column=0, sticky="ew", padx=14, pady=(6, 14))
         self._controls.grid_propagate(False)
@@ -181,10 +156,6 @@ class ViewDemoPage(tk.Frame):
         self._add_step_widget("(6,7,8,0)  →  (6,7.5,8,0)")
         self._add_step_widget("(6,7,8,0)  →  (6,7.5,8,0)", highlight=True)
 
-    # ======================================================================
-    # PUBLIC HELPERS (you will call these from ROS callbacks)
-    # ======================================================================
-
     def _add_step_widget(self, text: str, highlight: bool = False) -> None:
         """Add a step entry to the left panel."""
         color = "#E6E6E6" if not highlight else "#CFE8FF"
@@ -202,10 +173,6 @@ class ViewDemoPage(tk.Frame):
         """Remove all steps."""
         for child in self._steps_frame.winfo_children():
             child.destroy()
-
-    # ======================================================================
-    # NAVIGATION CALLBACKS
-    # ======================================================================
 
     def _on_home_title_click(self, _event=None) -> None:
         if self.controller:
