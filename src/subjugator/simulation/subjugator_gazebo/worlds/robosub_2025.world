@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.9">
-  <world name="robosub_2024">
+  <world name="robosub_2025">
     <!-- Scene-->
     <scene>
       <ambient>0.4 0.4 0.4 1</ambient>
@@ -17,6 +17,13 @@
     </physics>
 
     <!-- Plugins -->
+    <plugin
+      filename="gz-sim-pose-publisher-system"
+      name="gz::sim::systems::PosePublisher"
+    >
+      <publish_nested_model_pose>true</publish_nested_model_pose>
+    </plugin>
+
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics" />
     <plugin
       filename="gz-sim-user-commands-system"
@@ -698,6 +705,156 @@
       <pose>-1.19226 21.8402724 -1.0 0 0 4.14</pose>
       <static>true</static>
       <self_collide>false</self_collide>
+    </model>
+
+    <model name='Octagon_2025'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/octagon_2025_V2.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/octagon_2025_V2.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-6.25 14 0.4 0 0 0</pose>
+    </model>
+
+    <model name='Task5_Table'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/table.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/table.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-7.25 14 -1.5 0 0 0</pose>
+    </model>
+
+    <model name='Pink_Bin'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/pink_bin.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/pink_bin.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-6.403 14.58 -1 0 0 0</pose>
+    </model>
+
+    <model name='Yellow_Bin'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/yellow_bin.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/yellow_bin.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-6.403 13.45 -1 0 0 0</pose>
+    </model>
+
+    <model name='Yellow_Cup'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/yellow_bottle.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/yellow_bottle.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-6.95 14 -0.847 0 1.57 0</pose>
+    </model>
+
+    <model name='Pink_Spoon'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/pink_spoon.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/RobotX_2025/Task5/pink_spoon.dae
+              </uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-6.945 14.0762 -0.98 0.785 1.748 0</pose>
     </model>
   </world>
 </sdf>
