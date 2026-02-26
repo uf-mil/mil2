@@ -216,7 +216,7 @@ class ViewProjectPage(tk.Frame):
             return []
 
         try:
-            self._demos = get_all_demo_config(project_name)
+            self._demos = dict(sorted(get_all_demo_config(project_name).items()))
         except (FileNotFoundError, ValueError) as e:
             raise RuntimeError(
                 f"Get all demo config for '{project_name}' failed.",
