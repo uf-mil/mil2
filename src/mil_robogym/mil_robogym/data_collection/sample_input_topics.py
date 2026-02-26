@@ -66,22 +66,21 @@ def _flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
         out["value"] = value
 
 
-def sample_input_topics(
-    project: RoboGymProject,
+def sample_topics(
+    topics: list[str],
     *,
     timeout_s: float = 2.0,
 ) -> dict[str, dict[str, object]]:
     """
-    Resolve each project input topic to a ROS 2 message type and return
-    flattened default values for that type.
+    Resolve each topic to a ROS 2 message type and return flattened defaults.
 
     Uses:
-        - `get_ros2_topics()` to verify each input topic is present
+        - `get_ros2_topics()` to verify each topic is present
         - `ros2 topic type <topic>` to resolve the topic message type
         - ROS 2 message introspection to instantiate default message values
 
     Returns:
-        A mapping from the original input topic string to flattened field/value
+        A mapping from the original topic string to flattened field/value
         pairs, where nested dictionaries use dot notation and lists use index
         notation.
 
@@ -92,15 +91,15 @@ def sample_input_topics(
     if timeout_s <= 0:
         raise ValueError("timeout_s must be positive.")
 
-    input_topics = list(project["input_topics"])
-    if not input_topics:
+    selected_topics = list(topics)
+    if not selected_topics:
         return {}
 
     try:
         available_topics = get_ros2_topics()
     except (RuntimeError, FileNotFoundError) as e:
         raise RuntimeError(
-            "Failed to list ROS 2 topics before sampling input topics.",
+            "Failed to list ROS 2 topics before sampling topics.",
         ) from e
 
     available_lookup = {
@@ -111,18 +110,18 @@ def sample_input_topics(
 
     missing_topics = [
         topic
-        for topic in input_topics
+        for topic in selected_topics
         if _canonical_topic_name(topic) not in available_lookup
     ]
     if missing_topics:
         raise RuntimeError(
-            "Could not sample input topics because these topics were not found "
+            "Could not sample topics because these topics were not found "
             f"in the ROS 2 graph: {missing_topics}",
         )
 
     sampled_topics: dict[str, dict[str, object]] = {}
-    for input_topic in input_topics:
-        resolved_topic = available_lookup[_canonical_topic_name(input_topic)]
+    for topic in selected_topics:
+        resolved_topic = available_lookup[_canonical_topic_name(topic)]
         command = ("ros2", "topic", "type", resolved_topic)
         try:
             result = subprocess.run(
@@ -161,6 +160,32 @@ def sample_input_topics(
         parsed = _default_message_as_dict(msg_type)
         flattened: dict[str, object] = {}
         _flatten_value(parsed, "", flattened)
-        sampled_topics[input_topic] = flattened
+        sampled_topics[topic] = flattened
 
     return sampled_topics
+
+
+def sample_input_topics(
+    project: RoboGymProject,
+    *,
+    timeout_s: float = 2.0,
+) -> dict[str, dict[str, object]]:
+    """
+    Resolve each project input topic to a ROS 2 message type and return
+    flattened default values for that type.
+
+    This is a project-shaped wrapper around `sample_topics`.
+
+    Uses:
+        - `sample_topics(project["input_topics"], timeout_s=...)`
+
+    Returns:
+        A mapping from the original input topic string to flattened field/value
+        pairs, where nested dictionaries use dot notation and lists use index
+        notation.
+
+    Raises:
+        ValueError if `timeout_s` is not positive.
+        RuntimeError if topic discovery, type resolution, or introspection fails.
+    """
+    return sample_topics(list(project["input_topics"]), timeout_s=timeout_s)
