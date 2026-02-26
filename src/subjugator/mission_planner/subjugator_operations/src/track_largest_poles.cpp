@@ -58,16 +58,6 @@ BT::PortsList TrackLargestPoles::providedPorts()
     ports.insert(BT::InputPort<bool>("reset_on_start", true, "Reset memorized best on start"));
     ports.insert(BT::InputPort<std::shared_ptr<Context>>("ctx", "Shared Context"));
 
-    // Legacy outputs (largest-by-area ever seen)
-    ports.insert(BT::OutputPort<double>("red_cx_px"));
-    ports.insert(BT::OutputPort<double>("red_cy_px"));
-    ports.insert(BT::OutputPort<double>("red_w_px"));
-    ports.insert(BT::OutputPort<double>("red_h_px"));
-    ports.insert(BT::OutputPort<double>("white_cx_px"));
-    ports.insert(BT::OutputPort<double>("white_cy_px"));
-    ports.insert(BT::OutputPort<double>("white_w_px"));
-    ports.insert(BT::OutputPort<double>("white_h_px"));
-
     // Best gap snapshot (absolute orientation + score + bearing at snapshot)
     ports.insert(BT::OutputPort<double>("best_qx"));
     ports.insert(BT::OutputPort<double>("best_qy"));
@@ -133,33 +123,6 @@ BT::NodeStatus TrackLargestPoles::onRunning()
     if (W == 0)
         return BT::NodeStatus::RUNNING;
 
-    // track single largest red/white by area (across time)
-    for (auto const& det : arr->detections)
-    {
-        if (det.score < min_conf)
-            continue;
-        double w = det.bbox.size.x;
-        double h = det.bbox.size.y;
-        double area = std::max(0.0, w) * std::max(0.0, h);
-
-        if (det.class_name == "red-pole" && area > best_red_area_)
-        {
-            best_red_area_ = area;
-            setOutput("red_cx_px", det.bbox.center.position.x);
-            setOutput("red_cy_px", det.bbox.center.position.y);
-            setOutput("red_w_px", w);
-            setOutput("red_h_px", h);
-        }
-        else if (det.class_name == "white-pole" && area > best_white_area_)
-        {
-            best_white_area_ = area;
-            setOutput("white_cx_px", det.bbox.center.position.x);
-            setOutput("white_cy_px", det.bbox.center.position.y);
-            setOutput("white_w_px", w);
-            setOutput("white_h_px", h);
-        }
-    }
-
     std::vector<yolo_msgs::msg::Detection const*> reds, whites;
     reds.reserve(arr->detections.size());
     whites.reserve(arr->detections.size());
@@ -176,8 +139,7 @@ BT::NodeStatus TrackLargestPoles::onRunning()
         return BT::NodeStatus::RUNNING;
 
     // Compute aread
-    auto area_of = [](yolo_msgs::msg::Detection const* d)
-    { return std::max(0.0, d->bbox.size.x) * std::max(0.0, d->bbox.size.y); };
+    auto area_of = [](yolo_msgs::msg::Detection const* d) { return d->bbox.size.x * d->bbox.size.y; };
 
     double const y_align_scale = 0.5 * std::max(1u, H);  // pixels
     double const center_weight = 0.5;                    // penalty for mid far from center
