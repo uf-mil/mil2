@@ -5,6 +5,7 @@ from mil_robogym.ui.pages.create_project_page.create_project_page import (
     CreateProjectPage,
 )
 from mil_robogym.ui.pages.start_page.start_page import StartPage
+from mil_robogym.ui.pages.view_demo_page.view_demo_page import ViewDemoPage
 from mil_robogym.ui.pages.view_project_page.view_project_page import ViewProjectPage
 
 
@@ -37,6 +38,7 @@ class RoboGymApp(tk.Tk):
         self._register_page("start", StartPage)
         self._register_page("create_project", CreateProjectPage)
         self._register_page("view_project", ViewProjectPage)
+        self._register_page("view_demo", ViewDemoPage)
 
         self.show_page("start")
 

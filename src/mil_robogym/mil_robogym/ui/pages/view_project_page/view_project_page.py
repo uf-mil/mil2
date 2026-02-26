@@ -28,8 +28,10 @@ class ViewProjectPage(tk.Frame):
 
         self.create_demo_popup = None
 
-        self._project_name = "Project"
+        self.project = None
+        self.project_name = "Project"
         self._num_demos = 0
+        self._demos = []
         self._demo_names: list[str] = []
 
         self._title_row = tk.Frame(self, bg="#DADADA")
@@ -61,7 +63,7 @@ class ViewProjectPage(tk.Frame):
 
         self._page_title = tk.Label(
             self._title_left,
-            text=self._project_name,
+            text=self.project_name,
             bg="#DADADA",
             fg="black",
             font=("Arial", 20, "bold"),
@@ -100,7 +102,7 @@ class ViewProjectPage(tk.Frame):
         tk.Button(
             self,
             text="Edit Project",
-            command=self._on_edit_project,
+            command=self._on_editproject,
             bg="#ECECEC",
             activebackground="#DFDFDF",
             fg="black",
@@ -158,11 +160,13 @@ class ViewProjectPage(tk.Frame):
 
         :param project: Selected project dictionary, usually passed from StartPage.
         """
+        self.project = project
+
         if project is None:
-            self._project_name = "Project"
+            self.project_name = "Project"
             self._num_demos = 0
             self._demo_names = []
-            self._page_title.configure(text=self._project_name)
+            self._page_title.configure(text=self.project_name)
             self._render_demo_rows()
             return
 
@@ -170,19 +174,19 @@ class ViewProjectPage(tk.Frame):
         loaded = self._safe_get_project_by_name(str(selected_name))
 
         if loaded is None:
-            self._project_name = str(selected_name) if selected_name else "Project"
+            self.project_name = str(selected_name) if selected_name else "Project"
             self._num_demos = int(project.get("num_demos", 0))
         else:
-            self._project_name = loaded.get("robogym_project", {}).get(
+            self.project_name = loaded.get("robogym_project", {}).get(
                 "name",
                 "Project",
             )
             self._num_demos = int(loaded.get("num_demos", 0))
 
-        self._demo_names = self._safe_get_demo_names(self._project_name)
+        self._demo_names = self._safe_get_demo_names(self.project_name)
         self._num_demos = len(self._demo_names)
 
-        self._page_title.configure(text=self._project_name)
+        self._page_title.configure(text=self.project_name)
         self._render_demo_rows()
 
     def _safe_get_project_by_name(self, name: str) -> dict[str, Any] | None:
@@ -197,7 +201,7 @@ class ViewProjectPage(tk.Frame):
 
         projects = get_all_project_config()
         for project in projects:
-            if project.get("robogym_project", {}).get("name") == name:
+            if project.get("robogymproject", {}).get("name") == name:
                 return project
         return None
 
@@ -212,13 +216,13 @@ class ViewProjectPage(tk.Frame):
             return []
 
         try:
-            demos = get_all_demo_config(project_name)
+            self._demos = dict(sorted(get_all_demo_config(project_name).items()))
         except (FileNotFoundError, ValueError) as e:
             raise RuntimeError(
                 f"Get all demo config for '{project_name}' failed.",
             ) from e
 
-        return sorted(demos.keys())
+        return self._demos.keys()
 
     def _render_demo_rows(self) -> None:
         """
@@ -241,7 +245,7 @@ class ViewProjectPage(tk.Frame):
             ).grid(row=0, column=0, sticky="w", pady=4)
             return
 
-        for index, demo_name in enumerate(self._demo_names):
+        for index, (demo_name, demo) in enumerate(self._demos.items()):
             row = tk.Frame(
                 self._list_area,
                 bg="#ECECEC",
@@ -280,8 +284,12 @@ class ViewProjectPage(tk.Frame):
             )
             right_label.grid(row=0, column=1, sticky="e")
 
-            def on_click(_event: tk.Event | None = None, name: str = demo_name) -> None:
-                self.on_demo_row_click(name)
+            def on_click(
+                _event: tk.Event | None = None,
+                name: str = demo_name,
+                demo: dict = demo,
+            ) -> None:
+                self._on_demo_row_click(name, demo)
 
             def on_enter(_event: tk.Event | None = None) -> None:
                 for widget in (row, left_label, right_label):
@@ -305,9 +313,9 @@ class ViewProjectPage(tk.Frame):
         """Handle Train/Test button action."""
         print("train_test_activation")
 
-    def _on_edit_project(self) -> None:
+    def _on_editproject(self) -> None:
         """Handle Edit Project button action."""
-        print("edit_project_page_activation")
+        print("editproject_page_activation")
 
     def _on_record_demo(self) -> None:
         """Handle Record Demo button action."""
@@ -322,14 +330,18 @@ class ViewProjectPage(tk.Frame):
 
         self.create_demo_popup = CreateDemoPopup(
             self,
-            on_create=remove_reference_to_popup,
             on_cancel=remove_reference_to_popup,
         )
 
-    def on_demo_row_click(self, demo_name: str) -> None:
+    def _on_demo_row_click(self, demo_name, demo) -> None:
         """
         Handle clicking a demo row.
 
         :param demo_name: Human-readable demo name, for example 'Demo 1'.
         """
-        print(f"on_demo_row_click: {demo_name}")
+        self.controller.show_page(
+            "view_demo",
+            project=self.project,
+            demo_name=demo_name,
+            demo=demo,
+        )

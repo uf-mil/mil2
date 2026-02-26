@@ -10,7 +10,7 @@ def test_create_demo_folder_creates_files(tmp_path: Path):
     project_dir = tmp_path / "projects" / "start_gate_agent"
     project_dir.mkdir(parents=True)
 
-    demo_dir = create_demo_folder(
+    demo_dir, _cfg = create_demo_folder(
         project_dir,
         demo_name="Demo 1",
         sampling_rate=1.0,

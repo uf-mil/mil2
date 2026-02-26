@@ -206,7 +206,7 @@ def create_demo_folder(
     demo_name: str,
     sampling_rate: float,
     start_position: tuple[float, float, float, float] | None = None,
-) -> Path:
+) -> (Path, dict[str, Any]):
     """
     Create a demo folder under <project_dir>/demos/ with a config.yaml.
 
@@ -241,4 +241,4 @@ def create_demo_folder(
     with config_path.open("w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
 
-    return demo_dir
+    return demo_dir, cfg
