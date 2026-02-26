@@ -18,3 +18,12 @@ class RoboGymProject(TypedDict):
     random_spawn_space: RandomSpawnSpace
     input_topics: list[str]
     output_topics: list[str]
+
+
+class RoboGymTensorSpec(TypedDict):
+    input_features: list[str]
+    output_features: list[str]
+    input_dim: int
+    output_dim: int
+    ignored_input_features: dict[str, list[str]]
+    ignored_output_features: dict[str, list[str]]
