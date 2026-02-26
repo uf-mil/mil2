@@ -1,5 +1,5 @@
 import tkinter as tk
-from typing import Any
+from typing import Any, Mapping
 
 
 class ViewDemoPage(tk.Frame):
@@ -11,6 +11,7 @@ class ViewDemoPage(tk.Frame):
         super().__init__(parent, bg="#DADADA")
         self.controller = controller
 
+        self._project = None
         self._project_name = "Start Gate Agent"
         self._demo_name = "Demo 1"
 
@@ -69,9 +70,11 @@ class ViewDemoPage(tk.Frame):
         self._content.grid(row=2, column=0, sticky="nsew", padx=14)
         self._content.grid_rowconfigure(0, weight=1)
         self._content.grid_columnconfigure(1, weight=1)
+        self._content.grid_columnconfigure(0, weight=0, minsize=260)
 
-        self._steps_panel = tk.Frame(self._content, bg="#CFCFCF", width=260)
+        self._steps_panel = tk.Frame(self._content, bg="#CFCFCF")
         self._steps_panel.grid(row=0, column=0, sticky="nsw", padx=(0, 10))
+        self._steps_panel.configure(width=260)
         self._steps_panel.grid_propagate(False)
 
         tk.Label(
@@ -88,7 +91,8 @@ class ViewDemoPage(tk.Frame):
             bg="#CFCFCF",
             highlightthickness=0,
         )
-        self._steps_canvas.pack(side="left", fill="both", expand=True)
+        self._steps_canvas.pack(side="left", fill="y", expand=False)
+        self._steps_canvas.configure(width=260)
 
         scrollbar = tk.Scrollbar(self._steps_panel, command=self._steps_canvas.yview)
         scrollbar.pack(side="right", fill="y")
@@ -151,10 +155,27 @@ class ViewDemoPage(tk.Frame):
         )
         tk.Button(btns, text="Rand. Pos.", state="disabled", width=12).pack(side="left")
 
-        # Example data
-        self._add_step_widget("Origin: (6, 7, 8, 0)")
-        self._add_step_widget("(6,7,8,0)  →  (6,7.5,8,0)")
-        self._add_step_widget("(6,7,8,0)  →  (6,7.5,8,0)", highlight=True)
+    def set_context(
+        self,
+        project: Mapping[str, Any] | None = None,
+        **_kwargs: Any,
+    ) -> None:
+        """
+        Set data for the demo.
+        """
+        self._project = project
+        self._demo_name = _kwargs.get("demo_name", "")
+        self._demo = _kwargs.get("demo", {}).get("robogym_demo", {})
+
+        if project:
+            self._project_name = project.get("robogym_project", {}).get("name", "")
+
+        self._project_title.configure(text=f"{self._project_name} >")
+        self._demo_title.configure(text=f"{self._demo_name}")
+        self._subtitle.configure(
+            text=f"Sampling rate: {self._demo['sampling_rate']} steps / sec | World: {self._project['robogym_project']['world_file']}",
+        )
+        self._add_step_widget(f"Origin: {self._demo['start_position']}")
 
     def _add_step_widget(self, text: str, highlight: bool = False) -> None:
         """Add a step entry to the left panel."""
@@ -176,8 +197,10 @@ class ViewDemoPage(tk.Frame):
 
     def _on_home_title_click(self, _event=None) -> None:
         if self.controller:
+            self.clear_steps()
             self.controller.show_page("start")
 
     def _on_project_title_click(self, _event=None) -> None:
         if self.controller:
-            self.controller.show_page("view_project")
+            self.clear_steps()
+            self.controller.show_page("view_project", project=self._project)
