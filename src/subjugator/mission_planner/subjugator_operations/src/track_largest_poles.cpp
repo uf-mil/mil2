@@ -25,7 +25,7 @@ static inline void normalize_quat(geometry_msgs::msg::Quaternion& q)
     q.w /= n;
 }
 
-// yaw delta around +Z in BODY frame (matches how your relative yaw is applied)
+// yaw delta around +Z in BODY frame
 static inline geometry_msgs::msg::Quaternion yaw_delta_quat(double yaw_deg)
 {
     double const r = (yaw_deg * M_PI / 180.0) * 0.5;
@@ -141,7 +141,7 @@ BT::NodeStatus TrackLargestPoles::onRunning()
     // Compute aread
     auto area_of = [](yolo_msgs::msg::Detection const* d) { return d->bbox.size.x * d->bbox.size.y; };
 
-    double const y_align_scale = 0.5 * std::max(1u, H);  // pixels
+    double const y_align_scale = 0.5 * std::max(1u, H);  // pixels, do not set to zero
     double const center_weight = 0.5;                    // penalty for mid far from center
 
     yolo_msgs::msg::Detection const* best_r = nullptr;
