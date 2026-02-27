@@ -7,8 +7,26 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from ament_index_python.packages import (
+    PackageNotFoundError,
+    get_package_share_directory,
+)
 
 from .types import RoboGymProject
+
+
+def _resolve_default_base_dir() -> Path:
+    """
+    Resolve the package share root for mil_robogym:
+        <install_prefix>/share/mil_robogym
+    """
+    try:
+        return Path(get_package_share_directory("mil_robogym"))
+    except PackageNotFoundError as e:
+        raise RuntimeError(
+            "mil_robogym package share directory could not be found. "
+            "Build and source the ROS 2 workspace first.",
+        ) from e
 
 
 def to_lower_snake_case(name: str) -> str:
@@ -32,17 +50,15 @@ def format_agent_timestamp(dt: datetime) -> str:
 
 def create_project_folder(
     project: RoboGymProject,
-    *,
-    base_dir: Path | None = None,
 ) -> Path:
     """
     Creates:
-        <base_dir>/projects/<lower_snake_project_name>/config.yaml
+        <share_dir>/projects/<lower_snake_project_name>/config.yaml
 
-    If base_dir is None, uses current working directory.
+    Uses the ROS 2 package share directory for 'mil_robogym' as the root.
     Returns the created project directory Path.
     """
-    root = base_dir or Path.cwd()
+    root = _resolve_default_base_dir()
 
     projects_dir = root / "projects"
     projects_dir.mkdir(parents=True, exist_ok=True)
@@ -55,6 +71,9 @@ def create_project_folder(
 
     project_dir.mkdir(parents=True, exist_ok=True)
 
+    demo_dir = project_dir / "demos"
+    demo_dir.mkdir(exist_ok=True)
+
     config_path = project_dir / "config.yaml"
 
     cfg: dict[str, Any] = {
@@ -65,13 +84,31 @@ def create_project_folder(
             "random_spawn_space": {
                 "enabled": project["random_spawn_space"]["enabled"],
                 # store as yaml list for portability
-                "coord_1": list(project["random_spawn_space"]["coord1_4d"]),
-                "coord_2": list(project["random_spawn_space"]["coord2_4d"]),
+                "coord1_4d": list(project["random_spawn_space"]["coord1_4d"]),
+                "coord2_4d": list(project["random_spawn_space"]["coord2_4d"]),
             },
             "input_topics": list(project["input_topics"]),
             "output_topics": list(project["output_topics"]),
         },
     }
+
+    tensor_spec = project.get("tensor_spec")
+    if tensor_spec is not None:
+        cfg["robogym_project"]["tensor_spec"] = {
+            "input_features": list(tensor_spec["input_features"]),
+            "output_features": list(tensor_spec["output_features"]),
+            "input_dim": int(tensor_spec["input_dim"]),
+            "output_dim": int(tensor_spec["output_dim"]),
+            "ignored_input_features": {
+                topic: list(fields)
+                for topic, fields in tensor_spec["ignored_input_features"].items()
+            },
+            "ignored_output_features": {
+                topic: list(fields)
+                for topic, fields in tensor_spec["ignored_output_features"].items()
+            },
+        }
+
     with config_path.open("w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
 
@@ -161,3 +198,47 @@ def create_agent_folder(
         ) from e
 
     return agent_dir
+
+
+def create_demo_folder(
+    project_dir: Path,
+    *,
+    demo_name: str,
+    sampling_rate: float,
+    start_position: tuple[float, float, float, float] | None = None,
+) -> (Path, dict[str, Any]):
+    """
+    Create a demo folder under <project_dir>/demos/ with a config.yaml.
+
+    Creates:
+        <project_dir>/demos/<lower_snake_demo_name>/config.yaml
+
+    If start_position is None, defaults to (0.0, 0.0, 0.0, 0.0).
+    Returns the created demo directory Path.
+    """
+    demos_dir = project_dir / "demos"
+    demos_dir.mkdir(parents=True, exist_ok=True)
+
+    folder_name = to_lower_snake_case(demo_name)
+    demo_dir = demos_dir / folder_name
+
+    if demo_dir.exists():
+        raise FileExistsError(f"Demo folder already exists: {demo_dir}")
+
+    demo_dir.mkdir(parents=True, exist_ok=False)
+
+    if start_position is None:
+        start_position = (0.0, 0.0, 0.0, 0.0)
+
+    config_path = demo_dir / "config.yaml"
+    cfg: dict[str, Any] = {
+        "robogym_demo": {
+            "demo_name": demo_name,
+            "start_position": list(start_position),
+            "sampling_rate": sampling_rate,
+        },
+    }
+    with config_path.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)
+
+    return demo_dir, cfg
