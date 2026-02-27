@@ -37,8 +37,9 @@ set(msg_files
     "msg/ObjectDetection.msg"
     "msg/ObjectDetections.msg")
 
-set(srv_files "srv/CameraToLidarTransform.srv" "srv/ObjectDBQuery.srv"
-              "srv/SetGeometry.srv" "srv/GetGZPose.srv")
+set(srv_files
+    "srv/CameraToLidarTransform.srv" "srv/ObjectDBQuery.srv"
+    "srv/SetGeometry.srv" "srv/GetGZPose.srv" "srv/ToggleKeyboardControls.srv")
 
 rosidl_generate_interfaces(
   ${PROJECT_NAME}
