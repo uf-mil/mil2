@@ -1,6 +1,8 @@
 #include "determine_channel_side.hpp"
 
 #include <algorithm>
+#include <mutex>
+#include <optional>
 
 #include <yolo_msgs/msg/detection_array.hpp>
 
@@ -16,9 +18,7 @@ BT::PortsList DetermineChannelSide::providedPorts()
     ports.insert(BT::InputPort<int>("consecutive_frames", 3, "Decision stability frames"));
     ports.insert(BT::InputPort<std::shared_ptr<Context>>("ctx", "Shared Context"));
 
-    ports.insert(BT::OutputPort<std::string>("channel_side"));  // "right" or "left"
-    ports.insert(BT::OutputPort<bool>("require_red_left"));     // true if right channel
-    ports.insert(BT::OutputPort<bool>("is_right"));             // same as above, convenience
+    ports.insert(BT::OutputPort<bool>("right_channel"));  // true if right channel
     return ports;
 }
 
@@ -88,17 +88,13 @@ BT::NodeStatus DetermineChannelSide::onRunning()
 
     if (right_count_ >= need_frames_)
     {
-        setOutput("channel_side", std::string("right"));
-        setOutput("require_red_left", true);
-        setOutput("is_right", true);
+        setOutput("right_channel", true);
         RCLCPP_INFO_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 800, "DetermineChannelSide: RIGHT channel");
         return BT::NodeStatus::SUCCESS;
     }
     if (left_count_ >= need_frames_)
     {
-        setOutput("channel_side", std::string("left"));
-        setOutput("require_red_left", false);
-        setOutput("is_right", false);
+        setOutput("right_channel", false);
         RCLCPP_INFO_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 800, "DetermineChannelSide: LEFT channel");
         return BT::NodeStatus::SUCCESS;
     }
