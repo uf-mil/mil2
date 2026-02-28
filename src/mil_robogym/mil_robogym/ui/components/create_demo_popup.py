@@ -1,16 +1,21 @@
 import tkinter as tk
 from tkinter import ttk
 
+from mil_robogym.data_collection.filesystem import (
+    create_demo_folder,
+    to_lower_snake_case,
+)
+from mil_robogym.data_collection.get_all_project_config import find_projects_dir
+
 
 class CreateDemoPopup:
-    def __init__(self, parent, on_create=None, on_cancel=None):
+    def __init__(self, parent, on_cancel=None):
         """
         parent     : root window
         on_create  : callback(name:str, sampling_rate:int)
         on_cancel  : callback()
         """
         self.parent = parent
-        self.on_create = on_create
         self.on_cancel = on_cancel
 
         self.win = tk.Toplevel(parent)
@@ -66,7 +71,7 @@ class CreateDemoPopup:
         cancel_btn = ttk.Button(button_frame, text="Cancel", command=self._cancel)
         cancel_btn.pack(side="left", padx=5)
 
-        create_btn = ttk.Button(button_frame, text="Create Demo", command=self._cancel)
+        create_btn = ttk.Button(button_frame, text="Create Demo", command=self._create)
         create_btn.pack(side="left", padx=5)
 
         # Handle window close (same as cancel)
@@ -83,10 +88,20 @@ class CreateDemoPopup:
 
         sampling_rate = int(rate_text) if rate_text else None
 
-        if self.on_create:
-            self.on_create(name, sampling_rate)
+        _path, cfg = create_demo_folder(
+            find_projects_dir() / to_lower_snake_case(self.parent.project_name),
+            demo_name=name,
+            sampling_rate=sampling_rate,
+        )
 
         self.win.destroy()
+
+        self.parent.controller.show_page(
+            "view_demo",
+            project=self.parent.project,
+            demo_name=name,
+            demo=cfg,
+        )
 
     def _cancel(self):
         """User cancelled."""

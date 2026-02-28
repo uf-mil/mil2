@@ -91,6 +91,24 @@ def create_project_folder(
             "output_topics": list(project["output_topics"]),
         },
     }
+
+    tensor_spec = project.get("tensor_spec")
+    if tensor_spec is not None:
+        cfg["robogym_project"]["tensor_spec"] = {
+            "input_features": list(tensor_spec["input_features"]),
+            "output_features": list(tensor_spec["output_features"]),
+            "input_dim": int(tensor_spec["input_dim"]),
+            "output_dim": int(tensor_spec["output_dim"]),
+            "ignored_input_features": {
+                topic: list(fields)
+                for topic, fields in tensor_spec["ignored_input_features"].items()
+            },
+            "ignored_output_features": {
+                topic: list(fields)
+                for topic, fields in tensor_spec["ignored_output_features"].items()
+            },
+        }
+
     with config_path.open("w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
 
@@ -188,7 +206,7 @@ def create_demo_folder(
     demo_name: str,
     sampling_rate: float,
     start_position: tuple[float, float, float, float] | None = None,
-) -> Path:
+) -> (Path, dict[str, Any]):
     """
     Create a demo folder under <project_dir>/demos/ with a config.yaml.
 
@@ -223,4 +241,4 @@ def create_demo_folder(
     with config_path.open("w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
 
-    return demo_dir
+    return demo_dir, cfg
