@@ -115,6 +115,77 @@ def create_project_folder(
     return project_dir
 
 
+def edit_project(
+    project: RoboGymProject,
+    *,
+    original_project_name: str | None = None,
+) -> Path:
+    """
+    Edit an existing project's config.yaml using a RoboGymProject payload.
+
+    Writes:
+        <share_dir>/projects/<lower_snake_project_name>/config.yaml
+
+    Returns the existing project directory Path.
+    """
+    root = _resolve_default_base_dir()
+    projects_dir = root / "projects"
+    current_name = original_project_name or project["project_name"]
+    current_folder_name = to_lower_snake_case(current_name)
+    project_dir = projects_dir / current_folder_name
+
+    if not project_dir.exists() or not project_dir.is_dir():
+        raise FileNotFoundError(f"Project folder does not exist: {project_dir}")
+
+    target_folder_name = to_lower_snake_case(project["project_name"])
+    target_project_dir = projects_dir / target_folder_name
+    if target_project_dir != project_dir:
+        if target_project_dir.exists():
+            raise FileExistsError(
+                f"Cannot rename project; target folder already exists: {target_project_dir}",
+            )
+        project_dir.rename(target_project_dir)
+        project_dir = target_project_dir
+
+    config_path = project_dir / "config.yaml"
+    cfg: dict[str, Any] = {
+        "robogym_project": {
+            "name": project["project_name"],
+            "world_file": project["world_file"],
+            "model_name": project["model_name"],
+            "random_spawn_space": {
+                "enabled": project["random_spawn_space"]["enabled"],
+                # store as yaml list for portability
+                "coord1_4d": list(project["random_spawn_space"]["coord1_4d"]),
+                "coord2_4d": list(project["random_spawn_space"]["coord2_4d"]),
+            },
+            "input_topics": list(project["input_topics"]),
+            "output_topics": list(project["output_topics"]),
+        },
+    }
+
+    tensor_spec = project.get("tensor_spec")
+    if tensor_spec is not None:
+        cfg["robogym_project"]["tensor_spec"] = {
+            "input_features": list(tensor_spec["input_features"]),
+            "output_features": list(tensor_spec["output_features"]),
+            "input_dim": int(tensor_spec["input_dim"]),
+            "output_dim": int(tensor_spec["output_dim"]),
+            "ignored_input_features": {
+                topic: list(fields)
+                for topic, fields in tensor_spec["ignored_input_features"].items()
+            },
+            "ignored_output_features": {
+                topic: list(fields)
+                for topic, fields in tensor_spec["ignored_output_features"].items()
+            },
+        }
+    with config_path.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)
+
+    return project_dir
+
+
 def create_agent_folder(
     project_dir: Path,
     *,

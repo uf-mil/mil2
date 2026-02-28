@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import tkinter as tk
+from tkinter import messagebox
 from typing import Any, Mapping
 
 from mil_robogym.clients.model_pose_client import ModelPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
+from mil_robogym.data_collection.filesystem import edit_project
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
+from mil_robogym.data_collection.types import RoboGymProject
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls import TeleopGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
@@ -37,6 +40,8 @@ class EditProjectPage(tk.Frame):
         self._world_default = self._safe_get_world_file()
 
         self._current_project_name = "Project"
+        self._original_project_name = "Project"
+        self._current_tensor_spec: Mapping[str, Any] | None = None
         self.input_topics_selected: list[str] = []
         self.output_topics_selected: list[str] = []
 
@@ -57,13 +62,25 @@ class EditProjectPage(tk.Frame):
 
         self.project_title = tk.Label(
             title_row,
-            text=f"{self._current_project_name} > Edit Project",
+            text=f"{self._current_project_name}",
             bg="#DADADA",
             fg="black",
             font=("Arial", 20, "bold"),
             anchor="w",
         )
         self.project_title.pack(side="left", padx=(6, 0))
+        self.project_title.configure(cursor="hand2")
+        self.project_title.bind("<Button-1>", self._on_project_title_click)
+
+        self.edit_project_title = tk.Label(
+            title_row,
+            text="> Edit Project",
+            bg="#DADADA",
+            fg="black",
+            font=("Arial", 20, "bold"),
+            anchor="w",
+        )
+        self.edit_project_title.pack(side="left", padx=(6, 0))
 
         project_name_label = tk.Label(
             self,
@@ -359,6 +376,8 @@ class EditProjectPage(tk.Frame):
             self.coord2_var.set("")
             self.coordinate1 = None
             self.coordinate2 = None
+            self._original_project_name = "Project"
+            self._current_tensor_spec = None
             self.input_topics_selected = []
             self.output_topics_selected = []
             self._render_topics(list_type="input", topics=self.input_topics_selected)
@@ -367,14 +386,18 @@ class EditProjectPage(tk.Frame):
             return
 
         details = project.get("robogym_project", {})
-        print("details", details)
 
         project_name = str(details.get("name", "Project"))
         self._set_project_title(project_name)
+        self._original_project_name = project_name
         self.project_name_var.set(project_name)
 
         self.world_file_var.set(str(details.get("world_file", self._world_default)))
         self.model_name_var.set(str(details.get("model_name", "sub9")))
+        tensor_spec = details.get("tensor_spec")
+        self._current_tensor_spec = (
+            tensor_spec if isinstance(tensor_spec, Mapping) else None
+        )
 
         random_spawn = details.get("random_spawn_space", {})
         enabled = bool(random_spawn.get("enabled", False))
@@ -410,9 +433,7 @@ class EditProjectPage(tk.Frame):
 
     def _set_project_title(self, project_name: str) -> None:
         self._current_project_name = project_name if project_name else "Project"
-        self.project_title.configure(
-            text=f"{self._current_project_name} > Edit Project",
-        )
+        self.project_title.configure(text=f"{self._current_project_name}")
 
     def _safe_get_world_file(self) -> str:
         return "~/mil2/install/subjugator_gazebo/share/subjugator_gazebo/worlds/robosub_2025.world"
@@ -497,14 +518,104 @@ class EditProjectPage(tk.Frame):
             self.popup.finish()
 
     def _on_cancel(self) -> None:
-        print("activation for button cancel")
+        should_exit = messagebox.askyesno(
+            title="Cancel",
+            message=(
+                "Are you sure you want to exit Edit Project? Your changes "
+                "will not be saved."
+            ),
+        )
+        if should_exit and self.controller is not None:
+            self.controller.show_page(
+                "view_project",
+                project={"robogym_project": {"name": self._current_project_name}},
+            )
 
     def _on_save_changes(self) -> None:
-        print("activation for button save changes")
+        should_save = messagebox.askyesno(
+            title="Save Changes",
+            message="Do you want to save changes to this project?",
+        )
+        if not should_save:
+            return
+
+        project_cfg = self._build_project_config_from_form()
+        if project_cfg is None:
+            return
+
+        try:
+            edit_project(
+                project_cfg,
+                original_project_name=self._original_project_name,
+            )
+        except (FileNotFoundError, FileExistsError, RuntimeError, ValueError) as e:
+            messagebox.showerror("Save Changes", f"Failed to save project:\n{e}")
+            return
+
+        saved_name = project_cfg["project_name"]
+        loaded_project = self._safe_get_project_by_name(saved_name)
+        if loaded_project is None:
+            loaded_project = {"robogym_project": {"name": saved_name}}
+
+        if self.controller is not None:
+            self.controller.show_page("view_project", project=loaded_project)
+
+    def _build_project_config_from_form(self) -> RoboGymProject | None:
+        project_name = self.project_name_var.get().strip()
+        if not project_name:
+            messagebox.showerror("Save Changes", "Project name cannot be empty.")
+            return None
+
+        random_enabled = bool(self.random_spawn_var.get())
+        if random_enabled:
+            coord1 = self._normalize_coord(self.coord1_var.get())
+            coord2 = self._normalize_coord(self.coord2_var.get())
+            if coord1 is None or coord2 is None:
+                messagebox.showerror(
+                    "Save Changes",
+                    "Random spawn is enabled, but one or both coordinates are invalid.",
+                )
+                return None
+        else:
+            coord1 = (
+                self.coordinate1
+                if self.coordinate1 is not None
+                else (0.0, 0.0, 0.0, 0.0)
+            )
+            coord2 = (
+                self.coordinate2
+                if self.coordinate2 is not None
+                else (0.0, 0.0, 0.0, 0.0)
+            )
+
+        project_cfg: RoboGymProject = {
+            "project_name": project_name,
+            "world_file": self.world_file_var.get().strip(),
+            "model_name": self.model_name_var.get().strip(),
+            "random_spawn_space": {
+                "enabled": random_enabled,
+                "coord1_4d": coord1,
+                "coord2_4d": coord2,
+            },
+            "input_topics": list(self.input_topics_selected),
+            "output_topics": list(self.output_topics_selected),
+        }
+
+        if self._current_tensor_spec is not None:
+            project_cfg["tensor_spec"] = dict(self._current_tensor_spec)
+
+        return project_cfg
 
     def _on_home_title_click(self, _event: tk.Event | None = None) -> None:
         if self.controller is not None:
             self.controller.show_page("start")
+
+    def _on_project_title_click(self, _event: tk.Event | None = None) -> None:
+        if self.controller is not None:
+            self.controller.show_page(
+                "view_project",
+                project={"robogym_project": {"name": self._current_project_name}},
+            )
 
     def _format_coord(self, coord: tuple[float, float, float, float] | None) -> str:
         if coord is None:
