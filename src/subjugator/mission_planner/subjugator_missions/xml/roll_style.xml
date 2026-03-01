@@ -4,22 +4,21 @@
             <!-- go down -->
             <SubTree ID="RelativeMove" _autoremap="true"
                 x="0.0" y="0.0" z="-0.1"
-                pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+                pos_tol="0.05" ori_tol_deg="12.0" msec="25000"
                 ctx="{ctx}"/>
 
             <!-- wait -->
-            <Delay delay_msec="10000"><AlwaysSuccess/></Delay>
+            <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
 
-            <!-- 40 90 degree turns or smt -->
             <Sequence>
                 <RollStyle name="roll_style" milliseconds="2500" ctx="{ctx}" />
-                <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
+                <Delay delay_msec="1000"><AlwaysSuccess/></Delay>
             </Sequence>
 
             <!-- surface -->
             <SubTree ID="RelativeMove" _autoremap="true"
                 x="0.0" y="0.0" z="0.0"
-                pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+                pos_tol="0.05" ori_tol_deg="12.0" msec="25000"
                 ctx="{ctx}"/>
         </Sequence>
     </BehaviorTree>

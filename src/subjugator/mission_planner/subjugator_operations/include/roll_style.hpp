@@ -15,11 +15,11 @@
 #include <tf2/tf2/LinearMath/Matrix3x3.hpp>
 #include <tf2/tf2/LinearMath/Quaternion.hpp>
 
-class RollStyle : public BT::SyncActionNode
+class RollStyle : public BT::ActionNodeBase
 {
   public:
     RollStyle(std::string const& name, const BT::NodeConfig& config)
-      : BT::SyncActionNode(name, config), state_rn(BT::NodeStatus::IDLE)
+      : BT::ActionNodeBase(name, config), state_rn(BT::NodeStatus::IDLE)
     {
         get_port_data();
     }
@@ -32,40 +32,11 @@ class RollStyle : public BT::SyncActionNode
         };
     }
 
-  private:
-    std::shared_ptr<Context> ctx_;
-    BT::NodeStatus state_rn;  // IDLE = WAITING, RUNNING = mid spin, SUCCESS = spin completed!
-
-    // stuff for keeping time think of it as a stop watch
-    double milliseconds_;
-    std::chrono::duration<double> wait_duration_;
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<long, std::ratio<1, 1000000000>>>
-        start_time_;
-    // ^ fuck you c++ this type is hideous
-
-    // stuff for checking if a request went through
-    rclcpp::Client<std_srvs::srv::SetBool>::SharedFuture controller_request_result;
-
-    void get_port_data()
+    void halt() override
     {
-        // ctx
-        auto ctx_res = getInput<std::shared_ptr<Context>>("ctx");
-        if (!ctx_res)
-        {
-            throw BT::RuntimeError("RollStyle requires [ctx] input");
-        }
-        ctx_ = ctx_res.value();
-
-        // time in ms
-        auto milliseconds_res = getInput<double>("milliseconds");
-        if (!milliseconds_res)
-        {
-            throw BT::RuntimeError("RollStyle requires [milliseconds] input");
-        }
-        milliseconds_ = milliseconds_res.value();
+        state_rn = BT::NodeStatus::IDLE;
     }
 
-  protected:
     BT::NodeStatus tick() override
     {
         // the action we take when ticked depends on our current status
@@ -80,7 +51,7 @@ class RollStyle : public BT::SyncActionNode
             controller_request_result = ctx_->controller_enable_client->async_send_request(request).future.share();
 
             // setup clock to count seconds
-            wait_duration_ = std::chrono::duration<double>(milliseconds_ * 1000);
+            wait_duration_ = std::chrono::duration<double>(milliseconds_ / 1000.0);
             start_time_ = std::chrono::steady_clock::now();
 
             // move to next state
@@ -176,4 +147,39 @@ class RollStyle : public BT::SyncActionNode
             return BT::NodeStatus::FAILURE;
         }
     }
+
+  private:
+    std::shared_ptr<Context> ctx_;
+    BT::NodeStatus state_rn;  // IDLE = WAITING, RUNNING = mid spin, SUCCESS = spin completed!
+
+    // stuff for keeping time think of it as a stop watch
+    double milliseconds_;
+    std::chrono::duration<double> wait_duration_;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<long, std::ratio<1, 1000000000>>>
+        start_time_;
+    // ^ fuck you c++ this type is hideous
+
+    // stuff for checking if a request went through
+    rclcpp::Client<std_srvs::srv::SetBool>::SharedFuture controller_request_result;
+
+    void get_port_data()
+    {
+        // ctx
+        auto ctx_res = getInput<std::shared_ptr<Context>>("ctx");
+        if (!ctx_res)
+        {
+            throw BT::RuntimeError("RollStyle requires [ctx] input");
+        }
+        ctx_ = ctx_res.value();
+
+        // time in ms
+        auto milliseconds_res = getInput<double>("milliseconds");
+        if (!milliseconds_res)
+        {
+            throw BT::RuntimeError("RollStyle requires [milliseconds] input");
+        }
+        milliseconds_ = milliseconds_res.value();
+    }
+
+  protected:
 };
