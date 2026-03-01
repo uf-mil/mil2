@@ -1,0 +1,223 @@
+<root BTCPP_format="4" main_tree_to_execute="pcNavChannel">
+  <BehaviorTree ID="pcNavChannel">
+    <Sequence>
+
+      <!-- 0) Use correct YOLO model -->
+      <Action ID="CheckYoloModel"
+              model_filename="new_sim_nav_channel.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- 1) Initial survey +/-45 while tracking (side unknown => channel_side=0) -->
+      <Parallel success_count="2" failure_count="2">
+
+        <!-- Tracking during initial sweep (doesn't block the sweep) -->
+        <ForceSuccess>
+          <Timeout msec="30000">
+            <Action ID="TrackBestPair"
+                    min_conf="0.25"
+                    channel_side="0"
+                    ctx="{ctx}"
+                    best_qx="{best_qx}" best_qy="{best_qy}"
+                    best_qz="{best_qz}" best_qw="{best_qw}"/>
+          </Timeout>
+        </ForceSuccess>
+
+        <!-- Sweeping motion -->
+        <Sequence>
+          <Repeat num_cycles="3">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+
+          <Repeat num_cycles="6">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+
+          <Repeat num_cycles="3">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+        </Sequence>
+
+      </Parallel>
+
+      <!-- 2) Yaw to memorized best orientation from initial survey -->
+      <Sequence>
+        <Action ID="PublishGoalPose"
+                use_euler_deg="false" relative="false" keep_current_pos_abs="true"
+                qx="{best_qx}" qy="{best_qy}" qz="{best_qz}" qw="{best_qw}" ctx="{ctx}"
+                abs_x="{goal_x}" abs_y="{goal_y}" abs_z="{goal_z}"
+                abs_qx="{goal_qx}" abs_qy="{goal_qy}" abs_qz="{goal_qz}" abs_qw="{goal_qw}"/>
+
+        <Timeout msec="10000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Sequence>
+              <Delay delay_msec="250"><AlwaysSuccess/></Delay>
+              <Condition ID="AtGoalPose"
+                         x="{goal_x}" y="{goal_y}" z="{goal_z}"
+                         qx="{goal_qx}" qy="{goal_qy}" qz="{goal_qz}" qw="{goal_qw}"
+                         pos_tol="0.25" ori_tol_deg="8.0" ctx="{ctx}"/>
+            </Sequence>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </Sequence>
+
+      <!-- 3) Drive forward until poles are big enough -->
+      <RetryUntilSuccessful num_attempts="-1">
+        <Fallback>
+
+          <Condition ID="PolesBigEnough"
+                     min_height_px="100.0"
+                     min_width_px="10.0"
+                     min_conf="0.30"
+                     consecutive_frames="2"
+                     need_both="true"
+                     ctx="{ctx}"/>
+
+          <Sequence>
+            <SubTree ID="RelativeMove" _autoremap="true" x="0.5"
+                     pos_tol="0.25" ori_tol_deg="30.0" msec="6000"
+                     ctx="{ctx}"/>
+            <AlwaysFailure/>
+          </Sequence>
+
+        </Fallback>
+      </RetryUntilSuccessful>
+
+      <!-- 4) Determine channel side (right_channel = +1 or -1). Don't block forever -->
+      <ForceSuccess>
+        <Timeout msec="4000">
+          <Action ID="DetermineChannelSide"
+                  min_conf="0.30"
+                  consecutive_frames="3"
+                  ctx="{ctx}"
+                  right_channel="{right_channel}"/>
+        </Timeout>
+      </ForceSuccess>
+
+      <!-- 5) Loop: while poles exist -> survey+track with known side -> micro-yaw steps -> forward 1m -->
+      <RetryUntilSuccessful num_attempts="-1">
+        <Fallback>
+
+          <!-- A) Poles exist: update pair, hone, move forward, repeat -->
+          <Sequence>
+
+            <Action ID="AnyPolesDetected" min_conf="0.30" ctx="{ctx}"/>
+
+            <!-- Survey while updating best pair using decided side -->
+            <Parallel success_count="2" failure_count="2">
+
+              <ForceSuccess>
+                <Timeout msec="15000">
+                  <Action ID="TrackBestPair"
+                          min_conf="0.25"
+                          channel_side="{right_channel}"
+                          ctx="{ctx}"
+                          best_qx="{best_qx}" best_qy="{best_qy}"
+                          best_qz="{best_qz}" best_qw="{best_qw}"/>
+                </Timeout>
+              </ForceSuccess>
+
+              <Sequence>
+                <!-- -30 degrees -->
+                <Repeat num_cycles="2">
+                  <Fallback>
+                    <SubTree ID="RelativeMove" _autoremap="true"
+                             yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                    <AlwaysSuccess/>
+                  </Fallback>
+                </Repeat>
+
+                <!-- to +30 total -->
+                <Repeat num_cycles="4">
+                  <Fallback>
+                    <SubTree ID="RelativeMove" _autoremap="true"
+                             yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                    <AlwaysSuccess/>
+                  </Fallback>
+                </Repeat>
+
+                <!-- back to center -->
+                <Repeat num_cycles="2">
+                  <Fallback>
+                    <SubTree ID="RelativeMove" _autoremap="true"
+                             yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                    <AlwaysSuccess/>
+                  </Fallback>
+                </Repeat>
+              </Sequence>
+
+            </Parallel>
+
+            <!-- Micro-step yaw P-control using RelativeMove.
+                 ASSUMPTION: HoneMidpoint outputs yaw_step_deg (degrees), not a rate.
+                 If your HoneMidpoint currently outputs yaw_cmd as a rate, change it to degrees per tick. -->
+            <RetryUntilSuccessful num_attempts="-1">
+              <Fallback>
+
+                <!-- returns SUCCESS when centered -->
+                <Timeout msec="8000">
+                  <Action ID="HoneMidpoint"
+                          ctx="{ctx}"
+                          min_conf="0.25"
+                          kp="0.03"
+                          max_cmd="3.0"
+                          tol_px="10.0"
+                          hold_ticks="5"
+                          yaw_cmd="{yaw_step_deg}"/>
+                </Timeout>
+
+                <!-- otherwise apply one yaw step and keep looping -->
+                <Sequence>
+                  <SubTree ID="RelativeMove" _autoremap="true"
+                           yaw_deg="{yaw_step_deg}"
+                           pos_tol="0.25" ori_tol_deg="6.0"
+                           msec="600"
+                           ctx="{ctx}"/>
+                  <AlwaysFailure/>
+                </Sequence>
+
+              </Fallback>
+            </RetryUntilSuccessful>
+
+            <!-- Move forward and keep looping -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="1.0" pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+            <AlwaysFailure/>
+
+          </Sequence>
+
+          <!-- B) Poles have been absent for ~30 checks, then nudge and finish -->
+          <Sequence>
+            <Repeat num_cycles="30">
+              <Sequence>
+                <Delay delay_msec="200"><AlwaysSuccess/></Delay>
+                <Inverter>
+                  <Action ID="AnyPolesDetected" min_conf="0.30" ctx="{ctx}"/>
+                </Inverter>
+              </Sequence>
+            </Repeat>
+
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="0.5" pos_tol="0.25" ori_tol_deg="180.0" msec="5000" ctx="{ctx}"/>
+            <AlwaysSuccess/>
+          </Sequence>
+
+        </Fallback>
+      </RetryUntilSuccessful>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

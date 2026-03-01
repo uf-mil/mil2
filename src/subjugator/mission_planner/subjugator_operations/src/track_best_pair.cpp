@@ -35,7 +35,6 @@ BT::PortsList TrackBestPair::providedPorts()
     ports.insert(BT::OutputPort<double>("best_qy"));
     ports.insert(BT::OutputPort<double>("best_qz"));
     ports.insert(BT::OutputPort<double>("best_qw"));
-    ports.insert(BT::OutputPort<double>("best_score"));
 
     return ports;
 }
@@ -169,7 +168,6 @@ BT::NodeStatus TrackBestPair::onRunning()
         setOutput("best_qy", q.y);
         setOutput("best_qz", q.z);
         setOutput("best_qw", q.w);
-        setOutput("best_score", best_pair_score_);
     }
 
     return BT::NodeStatus::RUNNING;

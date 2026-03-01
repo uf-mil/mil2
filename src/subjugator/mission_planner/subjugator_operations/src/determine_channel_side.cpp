@@ -18,7 +18,7 @@ BT::PortsList DetermineChannelSide::providedPorts()
     ports.insert(BT::InputPort<int>("consecutive_frames", 3, "Decision stability frames"));
     ports.insert(BT::InputPort<std::shared_ptr<Context>>("ctx", "Shared Context"));
 
-    ports.insert(BT::OutputPort<bool>("right_channel"));  // true if right channel
+    ports.insert(BT::OutputPort<int>("right_channel"));  // 1 if right channel
     return ports;
 }
 
@@ -74,8 +74,12 @@ BT::NodeStatus DetermineChannelSide::onRunning()
     if (!best_r || !best_w)
         return BT::NodeStatus::RUNNING;
 
-    bool const right = (best_w->bbox.center.position.x > best_r->bbox.center.position.x);
-    if (right)
+    double const rx = best_r->bbox.center.position.x;
+    double const wx = best_w->bbox.center.position.x;
+
+    bool const is_right_channel = (rx < wx);
+
+    if (is_right_channel)
     {
         right_count_++;
         left_count_ = 0;
@@ -88,14 +92,16 @@ BT::NodeStatus DetermineChannelSide::onRunning()
 
     if (right_count_ >= need_frames_)
     {
-        setOutput("right_channel", true);
-        RCLCPP_INFO_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 800, "DetermineChannelSide: RIGHT channel");
+        setOutput("right_channel", 1);  // RIGHT channel
+        RCLCPP_INFO_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 800,
+                             "DetermineChannelSide: RIGHT channel (red left of white)");
         return BT::NodeStatus::SUCCESS;
     }
     if (left_count_ >= need_frames_)
     {
-        setOutput("right_channel", false);
-        RCLCPP_INFO_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 800, "DetermineChannelSide: LEFT channel");
+        setOutput("right_channel", -1);  // LEFT channel
+        RCLCPP_INFO_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 800,
+                             "DetermineChannelSide: LEFT channel (red right of white)");
         return BT::NodeStatus::SUCCESS;
     }
     return BT::NodeStatus::RUNNING;
