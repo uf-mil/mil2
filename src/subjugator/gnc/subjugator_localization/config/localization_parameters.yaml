@@ -46,5 +46,5 @@
     frequency: 10.0
     disabled_at_startup: true
     alpha: 0.001
-    kappa: 0
-    beta: 2
+    kappa: 0.0
+    beta: 2.0
