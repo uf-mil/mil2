@@ -201,7 +201,7 @@ class ViewProjectPage(tk.Frame):
 
         projects = get_all_project_config()
         for project in projects:
-            if project.get("robogymproject", {}).get("name") == name:
+            if project.get("robogym_project", {}).get("name") == name:
                 return project
         return None
 
@@ -315,7 +315,16 @@ class ViewProjectPage(tk.Frame):
 
     def _on_editproject(self) -> None:
         """Handle Edit Project button action."""
-        print("editproject_page_activation")
+        if self.controller is None:
+            return
+
+        project_payload = self._safe_get_project_by_name(self.project_name)
+        if project_payload is None:
+            raise FileNotFoundError(
+                f"Project not found under name {self.project_name}",
+            )
+
+        self.controller.show_page("edit_project", project=project_payload)
 
     def _on_record_demo(self) -> None:
         """Handle Record Demo button action."""
