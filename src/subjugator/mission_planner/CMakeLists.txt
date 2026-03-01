@@ -8,11 +8,14 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(tf2 REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(mil_msgs REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(subjugator_msgs REQUIRED)
 find_package(yolo_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
@@ -38,8 +41,11 @@ ament_target_dependencies(
   operations
   rclcpp
   geometry_msgs
+  std_srvs
   nav_msgs
   mil_msgs
+  tf2
+  subjugator_msgs
   sensor_msgs
   yolo_msgs
   behaviortree_cpp
