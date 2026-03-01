@@ -139,6 +139,8 @@ install(DIRECTORY include/ DESTINATION include)
 # directory.
 install(DIRECTORY worlds/ DESTINATION share/${PROJECT_NAME}/worlds)
 
+install(PROGRAMS scripts/pinger_heading_node.py DESTINATION lib/${PROJECT_NAME})
+
 # Following directives are used when testing.
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
