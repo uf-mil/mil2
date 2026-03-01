@@ -7,6 +7,10 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
+    """
+    Launches gazebo simulation, the MIL RoboGYM interface, and the pose service to query position of sub9.
+    """
+
     return LaunchDescription(
         [
             IncludeLaunchDescription(

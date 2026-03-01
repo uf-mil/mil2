@@ -15,7 +15,7 @@ from ament_index_python.packages import (
 from .types import RoboGymProject
 
 
-def _resolve_default_base_dir() -> Path:
+def _resolve_default_base_dir() -> Path:  # TODO: Move to utilsi.py
     """
     Resolve the package share root for mil_robogym:
         <install_prefix>/share/mil_robogym
@@ -29,7 +29,7 @@ def _resolve_default_base_dir() -> Path:
         ) from e
 
 
-def to_lower_snake_case(name: str) -> str:
+def to_lower_snake_case(name: str) -> str:  # TODO: Move to utils.py
     """
     "Start Gate Agent" -> "start_gate_agent"
     "Start-Gate agent" -> "start_gate_agent"
@@ -41,7 +41,7 @@ def to_lower_snake_case(name: str) -> str:
     return s.lower()
 
 
-def format_agent_timestamp(dt: datetime) -> str:
+def format_agent_timestamp(dt: datetime) -> str:  # TODO: Make private
     # 12-hour color with am/pm, zero padding
     hour_12 = dt.strftime("%I")
     ampm = dt.strftime("%p").lower()
@@ -50,7 +50,7 @@ def format_agent_timestamp(dt: datetime) -> str:
 
 def create_project_folder(
     project: RoboGymProject,
-) -> Path:
+) -> Path:  # TODO: Also save in source directory as well
     """
     Creates:
         <share_dir>/projects/<lower_snake_project_name>/config.yaml
@@ -76,7 +76,7 @@ def create_project_folder(
 
     config_path = project_dir / "config.yaml"
 
-    cfg: dict[str, Any] = {
+    cfg: dict[str, Any] = {  # TODO: Make a type for this
         "robogym_project": {
             "name": project["project_name"],
             "world_file": project["world_file"],
@@ -119,7 +119,7 @@ def edit_project(
     project: RoboGymProject,
     *,
     original_project_name: str | None = None,
-) -> Path:
+) -> Path:  # TODO: Apply changes to source as well
     """
     Edit an existing project's config.yaml using a RoboGymProject payload.
 
@@ -148,7 +148,7 @@ def edit_project(
         project_dir = target_project_dir
 
     config_path = project_dir / "config.yaml"
-    cfg: dict[str, Any] = {
+    cfg: dict[str, Any] = {  # TODO: Apply typing
         "robogym_project": {
             "name": project["project_name"],
             "world_file": project["world_file"],
@@ -276,7 +276,9 @@ def create_demo_folder(
     *,
     demo_name: str,
     sampling_rate: float,
-    start_position: tuple[float, float, float, float] | None = None,
+    start_position: (
+        tuple[float, float, float, float] | None
+    ) = None,  # TODO: Create type for start position
 ) -> (Path, dict[str, Any]):
     """
     Create a demo folder under <project_dir>/demos/ with a config.yaml.
@@ -302,7 +304,7 @@ def create_demo_folder(
         start_position = (0.0, 0.0, 0.0, 0.0)
 
     config_path = demo_dir / "config.yaml"
-    cfg: dict[str, Any] = {
+    cfg: dict[str, Any] = {  # TODO: Apply typing for this
         "robogym_demo": {
             "demo_name": demo_name,
             "start_position": list(start_position),

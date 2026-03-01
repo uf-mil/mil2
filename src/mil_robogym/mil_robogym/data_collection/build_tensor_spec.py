@@ -7,7 +7,9 @@ from .types import RoboGymProject, RoboGymTensorSpec
 
 
 def _canonical_topic_name(topic: str) -> str:
-    """Normalize a topic name by trimming whitespace and leading slashes."""
+    """
+    Normalize a topic name by trimming whitespace and leading slashes.
+    """
     return topic.strip().lstrip("/")
 
 
@@ -138,7 +140,9 @@ def build_tensor_spec(
     combined_topics = _dedupe_preserve_order([*input_topics, *output_topics])
     sampled_all = sample_topics(combined_topics, timeout_s=timeout_s)
 
-    sampled_inputs = {topic: sampled_all[topic] for topic in input_topics}
+    sampled_inputs = {
+        topic: sampled_all[topic] for topic in input_topics
+    }  # TODO: remove once refactored the sample input and sample topics functions
     sampled_outputs = {topic: sampled_all[topic] for topic in output_topics}
 
     input_features, ignored_inputs = _collect_features(

@@ -5,14 +5,18 @@ import re
 from typing import TypedDict
 
 
-class TopicWarning(TypedDict):
+class TopicWarning(TypedDict):  # TODO: Move to types.py
     topic: str
     reason: str
     matched: list[str]
     category: str
 
 
-ALWAYS_WARN = {"clock", "tf", "tf_static"}
+ALWAYS_WARN = {
+    "clock",
+    "tf",
+    "tf_static",
+}  # TODO: Create config for mil_robogym and include these items in it and load them in.
 
 SAFE_KEYWORDS = {
     "processed",

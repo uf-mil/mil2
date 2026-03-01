@@ -103,9 +103,9 @@ def sample_topics(
         ) from e
 
     available_lookup = {
-        _canonical_topic_name(topic): topic
+        topic_name: topic
         for topic in available_topics
-        if _canonical_topic_name(topic)
+        if (topic_name := _canonical_topic_name(topic))
     }
 
     missing_topics = [
@@ -119,10 +119,15 @@ def sample_topics(
             f"in the ROS 2 graph: {missing_topics}",
         )
 
-    sampled_topics: dict[str, dict[str, object]] = {}
+    sampled_topics: dict[str, dict[str, object]] = {}  # TODO: Make type for this
     for topic in selected_topics:
         resolved_topic = available_lookup[_canonical_topic_name(topic)]
-        command = ("ros2", "topic", "type", resolved_topic)
+        command = (
+            "ros2",
+            "topic",
+            "type",
+            resolved_topic,
+        )  # TODO: Write test for nested message types
         try:
             result = subprocess.run(
                 command,
@@ -158,14 +163,14 @@ def sample_topics(
             )
 
         parsed = _default_message_as_dict(msg_type)
-        flattened: dict[str, object] = {}
+        flattened: dict[str, object] = {}  # TODO: Make type for this
         _flatten_value(parsed, "", flattened)
         sampled_topics[topic] = flattened
 
     return sampled_topics
 
 
-def sample_input_topics(
+def sample_input_topics(  # TODO: Merge with sample_topic and return input and output topic lists
     project: RoboGymProject,
     *,
     timeout_s: float = 2.0,

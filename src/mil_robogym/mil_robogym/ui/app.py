@@ -10,7 +10,7 @@ from mil_robogym.ui.pages.view_demo_page.view_demo_page import ViewDemoPage
 from mil_robogym.ui.pages.view_project_page.view_project_page import ViewProjectPage
 
 
-class RoboGymApp(tk.Tk):
+class App(tk.Tk):
     """
     Main Tkinter application class for the MIL RoboGYM UI.
     This class is responsible for initializing the root window,
@@ -75,9 +75,3 @@ class RoboGymApp(tk.Tk):
             if hasattr(page, "set_context"):
                 page.set_context(**kwargs)
             page.tkraise()
-
-
-def main() -> None:
-    """Application entry point."""
-    app = RoboGymApp()
-    app.mainloop()
