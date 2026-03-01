@@ -77,7 +77,7 @@
       <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
         <namespace>${namespace}</namespace>
         <joint_name>${prefix}_engine_propeller_joint</joint_name>
-        <topic>${thruster_namespace}${prefix}_thrust_cmd</topic>
+        <topic>${thruster_namespace}${prefix}/thrust</topic>
       </plugin>
     </gazebo>
   </xacro:macro>

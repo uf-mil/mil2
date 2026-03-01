@@ -63,6 +63,34 @@ def make_bridge(context, *args, **kwargs):
             "imu_sensor",
             sdf.Sensortype.IMU,
         ),
+        *payload_bridges.payload_bridges(
+            world_name,
+            "/wamv",
+            link,
+            "thruster_thrust_BL",
+            "BL",
+        ),
+        *payload_bridges.payload_bridges(
+            world_name,
+            "/wamv",
+            link,
+            "thruster_thrust_BR",
+            "BR",
+        ),
+        *payload_bridges.payload_bridges(
+            world_name,
+            "/wamv",
+            link,
+            "thruster_thrust_FL",
+            "FL",
+        ),
+        *payload_bridges.payload_bridges(
+            world_name,
+            "/wamv",
+            link,
+            "thruster_thrust_FR",
+            "FR",
+        ),
     ]
 
     bridge_args = [obj.argument() for obj in bridge_objs]
