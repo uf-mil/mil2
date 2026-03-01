@@ -2,16 +2,24 @@
 
 #include <behaviortree_cpp/action_node.h>
 #include <behaviortree_cpp/basic_types.h>
+#include <math.h>
 
-#include <mutex>
+#include <chrono>
+#include <memory>
 
 #include "context.hpp"
 #include "geometry_msgs/msg/pose.hpp"
+#include "std_srvs/srv/set_bool.hpp"
+#include "subjugator_msgs/msg/thruster_efforts.hpp"
+
+#include <tf2/tf2/LinearMath/Matrix3x3.hpp>
+#include <tf2/tf2/LinearMath/Quaternion.hpp>
 
 class RollStyle : public BT::SyncActionNode
 {
   public:
-    RollStyle(std::string const& name, const BT::NodeConfig& config) : BT::SyncActionNode(name, config)
+    RollStyle(std::string const& name, const BT::NodeConfig& config)
+      : BT::SyncActionNode(name, config), state_rn(BT::NodeStatus::IDLE)
     {
         get_port_data();
     }
@@ -20,68 +28,152 @@ class RollStyle : public BT::SyncActionNode
     {
         return {
             BT::InputPort<std::shared_ptr<Context>>("ctx"),
+            BT::InputPort<double>("milliseconds"),
         };
     }
 
   private:
     std::shared_ptr<Context> ctx_;
+    BT::NodeStatus state_rn;  // IDLE = WAITING, RUNNING = mid spin, SUCCESS = spin completed!
+
+    // stuff for keeping time think of it as a stop watch
+    double milliseconds_;
+    std::chrono::duration<double> wait_duration_;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<long, std::ratio<1, 1000000000>>>
+        start_time_;
+    // ^ fuck you c++ this type is hideous
+
+    // stuff for checking if a request went through
+    rclcpp::Client<std_srvs::srv::SetBool>::SharedFuture controller_request_result;
 
     void get_port_data()
     {
+        // ctx
         auto ctx_res = getInput<std::shared_ptr<Context>>("ctx");
         if (!ctx_res)
         {
             throw BT::RuntimeError("RollStyle requires [ctx] input");
         }
         ctx_ = ctx_res.value();
+
+        // time in ms
+        auto milliseconds_res = getInput<double>("milliseconds");
+        if (!milliseconds_res)
+        {
+            throw BT::RuntimeError("RollStyle requires [milliseconds] input");
+        }
+        milliseconds_ = milliseconds_res.value();
     }
 
   protected:
     BT::NodeStatus tick() override
     {
-        // read values from ctx, if no value then fail
-        geometry_msgs::msg::Pose last_goal;
+        // the action we take when ticked depends on our current status
+
+        if (state_rn == BT::NodeStatus::IDLE)
         {
-            std::scoped_lock lk(ctx_->last_goal_mx);
-            // we must have moved at least once b4 running style points ig
-            if (!ctx_->last_goal.has_value())
+            // record localization's position (maybe)
+
+            // stop controller
+            auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
+            request->data = false;  // false to disable the controller
+            controller_request_result = ctx_->controller_enable_client->async_send_request(request).future.share();
+
+            // setup clock to count seconds
+            wait_duration_ = std::chrono::duration<double>(milliseconds_ * 1000);
+            start_time_ = std::chrono::steady_clock::now();
+
+            // move to next state
+            state_rn = BT::NodeStatus::RUNNING;
+            return state_rn;
+        }
+
+        else if (state_rn == BT::NodeStatus::RUNNING)
+        {
+            // gotta wait for the request to have actually sent lol
+            // once the future completes, this will always be false so think of it as a guard
+            // for the rest of the function until the request completes
+            if (controller_request_result.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
             {
-                ctx_->last_goal.emplace(geometry_msgs::msg::Pose());
-                // return BT::NodeStatus::FAILURE;
+                start_time_ = std::chrono::steady_clock::now();
+                return BT::NodeStatus::RUNNING;
             }
-            last_goal = *ctx_->last_goal;
+
+            // publish strongest roll command
+            auto msg = subjugator_msgs::msg::ThrusterEfforts();
+            msg.thrust_blh = 0.0;  // duh
+            msg.thrust_brh = 0.0;  // duh
+            msg.thrust_flh = 0.0;  // duh
+            msg.thrust_frh = 0.0;  // duh
+            msg.thrust_blv = 1.0;
+            msg.thrust_brv = -1.0;
+            msg.thrust_flv = 1.0;
+            msg.thrust_frv = -1.0;
+            ctx_->raw_effort_pub->publish(msg);
+
+            // how much time has passed?
+            auto now = std::chrono::steady_clock::now();
+            auto enough_time_passed = now - start_time_ >= wait_duration_;
+
+            if (!enough_time_passed)
+            {
+                return BT::NodeStatus::RUNNING;
+            }
+
+            // if we made it here we are done:
+
+            // stop the thrusters immediately
+            msg.thrust_blh = 0.0;
+            msg.thrust_brh = 0.0;
+            msg.thrust_flh = 0.0;
+            msg.thrust_frh = 0.0;
+            msg.thrust_blv = 0.0;
+            msg.thrust_brv = 0.0;
+            msg.thrust_flv = 0.0;
+            msg.thrust_frv = 0.0;
+            ctx_->raw_effort_pub->publish(msg);
+
+            // publish current pose as goal pose (so that the controller doesn't freak)
+            auto our_pos_rn = ctx_->latest_odom;
+            auto goal_msg = geometry_msgs::msg::Pose();
+
+            goal_msg.position.x = our_pos_rn->pose.pose.position.x;
+            goal_msg.position.y = our_pos_rn->pose.pose.position.y;
+            goal_msg.position.z = our_pos_rn->pose.pose.position.z;
+
+            // horrific Quaternion math to safely remove roll and pitch from current pose
+            // if your reading this and think of the equation z^2 = sqrt(1-w^2) I will personally slaughter you
+            auto q_orig = our_pos_rn->pose.pose.orientation;
+            auto q_quat = tf2::Quaternion(q_orig.x, q_orig.y, q_orig.z, q_orig.w);
+            double roll = NAN, pitch = NAN, yaw = NAN;
+            auto matrix = tf2::Matrix3x3(q_quat);
+            matrix.getRPY(roll, pitch, yaw);
+            tf2::Quaternion yaw_only;
+            yaw_only.setRPY(0.0, 0.0, yaw);
+
+            goal_msg.orientation.x = yaw_only.x();
+            goal_msg.orientation.y = yaw_only.y();
+            goal_msg.orientation.z = yaw_only.z();
+            goal_msg.orientation.w = yaw_only.w();
+
+            ctx_->last_goal_mx.lock();
+            ctx_->goal_pub->publish(goal_msg);
+            ctx_->last_goal_mx.unlock();
+
+            // start controller (this will take a while so you should have a delay after this mission for the controller
+            // to start back up :)
+            auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
+            request->data = true;  // true to enable the controller
+            controller_request_result = ctx_->controller_enable_client->async_send_request(request).future.share();
+
+            // reset state and return success
+            state_rn = BT::NodeStatus::IDLE;
+            return BT::NodeStatus::SUCCESS;
         }
 
-        // use that value (plus a 90 degree rotation)
-        double const MAGIC_NUMBER = 0.70710678118;  // root 2 / 2 for rotation by 90 degrees
-
-        double x1 = MAGIC_NUMBER;
-        double y1 = 0;
-        double z1 = 0;
-        double w1 = MAGIC_NUMBER;
-
-        double x2 = last_goal.orientation.x;
-        double y2 = last_goal.orientation.y;
-        double z2 = last_goal.orientation.z;
-        double w2 = last_goal.orientation.w;
-
-        // evil math since eigen didn't want to work
-        double x3 = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
-        double y3 = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
-        double z3 = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
-        double w3 = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
-
-        last_goal.orientation.x = x3;
-        last_goal.orientation.y = y3;
-        last_goal.orientation.z = z3;
-        last_goal.orientation.w = w3;
-
-        ctx_->goal_pub->publish(last_goal);
-        {
-            std::scoped_lock lk(ctx_->last_goal_mx);
-            ctx_->last_goal.emplace(last_goal);
+        else
+        {  // THIS SHOULD BE UNREACHABLE
+            return BT::NodeStatus::FAILURE;
         }
-
-        return BT::NodeStatus::SUCCESS;
     }
 };
