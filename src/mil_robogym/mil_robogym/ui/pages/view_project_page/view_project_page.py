@@ -291,12 +291,26 @@ class ViewProjectPage(tk.Frame):
             ) -> None:
                 self._on_demo_row_click(name, demo)
 
-            def on_enter(_event: tk.Event | None = None) -> None:
-                for widget in (row, left_label, right_label):
+            def on_enter(
+                _event: tk.Event | None = None,
+                widgets: tuple[tk.Widget, tk.Widget, tk.Widget] = (
+                    row,
+                    left_label,
+                    right_label,
+                ),
+            ) -> None:
+                for widget in widgets:
                     widget.configure(bg="#DCDCDC")
 
-            def on_leave(_event: tk.Event | None = None) -> None:
-                for widget in (row, left_label, right_label):
+            def on_leave(
+                _event: tk.Event | None = None,
+                widgets: tuple[tk.Widget, tk.Widget, tk.Widget] = (
+                    row,
+                    left_label,
+                    right_label,
+                ),
+            ) -> None:
+                for widget in widgets:
                     widget.configure(bg="#ECECEC")
 
             for widget in (row, left_label, right_label):
