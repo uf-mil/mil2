@@ -1,0 +1,26 @@
+<root BTCPP_format="4">
+    <BehaviorTree ID="HoneBearingMove">
+        <Sequence>
+            <Action ID="HoneBearing"
+                    label="{label}"
+                    min_conf="{min_conf}"
+                    offset_deg="{offset_deg}"
+                    fov_deg="{fov_deg}"
+                    method="{method}"
+                    ctx="{ctx}"
+                    found="{hb_found}"
+                    bearing_deg="{hb_bearing_deg}"
+                    error_deg="{hb_error_deg}"
+                    yaw_cmd_deg="{hb_yaw_cmd_deg}"
+                    best_cx_px="{hb_best_cx_px}"
+                    best_conf="{hb_best_conf}" />
+
+            <SubTree ID="RelativeMove" _autoremap="true"
+                        x="0.0" y="0.0" z="0.0"
+                        roll_deg="0.0" pitch_deg="0.0" yaw_deg="{hb_yaw_cmd_deg}"
+                        pos_tol="{pos_tol}" ori_tol_deg="{ori_tol_deg}"
+                        msec="{msec}"
+                        ctx="{ctx}" />
+        </Sequence>
+    </BehaviorTree>
+</root>

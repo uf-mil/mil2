@@ -27,6 +27,7 @@ add_library(
   subjugator_operations/src/at_goal_pose.cpp
   subjugator_operations/src/detect_target.cpp
   subjugator_operations/src/hone_bearing.cpp
+  subjugator_operations/src/yaw_p_controller.cpp
   subjugator_operations/src/check_yolo_model.cpp
   subjugator_operations/src/track_largest_poles.cpp
   subjugator_operations/src/poles_big_enough.cpp
