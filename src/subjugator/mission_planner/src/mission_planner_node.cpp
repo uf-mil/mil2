@@ -17,6 +17,8 @@
 #include "hone_bearing.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
+#include "std_srvs/srv/set_bool.hpp"
+#include "subjugator_msgs/msg/thruster_efforts.hpp"
 #include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -63,6 +65,9 @@ int main(int argc, char** argv)
                                                                             ctx->img_width = msg->width;
                                                                             ctx->img_height = msg->height;
                                                                         });
+
+    ctx->controller_enable_client = node->create_client<std_srvs::srv::SetBool>("/pid_controller/enable", 10);
+    ctx->raw_effort_pub = node->create_publisher<subjugator_msgs::msg::ThrusterEfforts>("/thruster_efforts", 10);
 
     // Wait for odometry before starting mission
     RCLCPP_INFO(node->get_logger(), "Waiting for odometry...");
