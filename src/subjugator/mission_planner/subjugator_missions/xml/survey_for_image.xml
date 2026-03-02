@@ -1,40 +1,21 @@
 <root BTCPP_format="4" main_tree_to_execute="SurveyForImage">
     <BehaviorTree ID="SurveyForImage">
         <Sequence>
-            <Fallback>
-                <Sequence>
-                    <!-- the robot should surface before beginning to survey-->
-                    <!-- using absolute move?-->
-                    <Action ID="PublishGoalPose"
-                        x="-6.2500"
-                        y="9.500"
-                        z="-0.10"
-                        relative="false"
-                        keep_current_pos_abs="false"
-                        ctx="{ctx}"
-                    />
-                    <!-- check to see if it is done surfacing-->
-                    <Timeout msec="20000">
-                        <RetryUntilSuccessful num_attempts="-1">
-                            <Condition ID="AtGoalPose"
-                                x="-6.2500"
-                                y="9.500"
-                                z="-0.10"
-                                qx="0"
-                                qy="0"
-                                qz="0"
-                                qw="0"
-                                pos_tol="0.25"
-                                ori_tol_deg="999"
-                                ctx="{ctx}"
-                            />
-                        </RetryUntilSuccessful>
-                    </Timeout>
-                </Sequence>
-                <!--it kept reaching the timeout before it was done moving-->
-                <AlwaysSuccess/>
-            </Fallback>
-
+            <Parallel success_count="1" failure_count="1">
+                <Timeout msec="10000">
+                    <SubTree ID="RelativeMove"
+                        x="0"
+                        y="0"
+                        z="0.5"
+                        roll_deg="0.0"
+                        pitch_deg="0.0"
+                        yaw_deg="0.0"
+                        msec="5000"
+                        pos_tol="0.2"
+                        ori_tol_deg="10.0"
+                        ctx="{ctx}"/>
+                </Timeout>
+            </Parallel>
             <Parallel success_count="1" failure_count="1">
                 <RetryUntilSuccessful num_attempts="-1">
                     <SubTree ID="RelativeMove"
