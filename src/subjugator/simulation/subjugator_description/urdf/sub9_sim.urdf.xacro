@@ -33,16 +33,18 @@
     </visual>
 
     <!-- Collision Data -->
+
+    <!-- Back Left Object -->
     <collision name="buoyancy_collision_1">
       <!-- This collision is for calculating the buoyant forces-->
-      <origin rpy="0 0 0" xyz="0.0 0.128 0.15"/>
+      <origin rpy="0 0 0" xyz="0.0 0.128 -0.05"/>
       <geometry>
         <sphere radius="0.1116715973224"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_1">
-      <origin rpy="0 0 0" xyz="0 0.128 0.15"/>
+      <origin rpy="0 0 0" xyz="0 0.128 -0.05"/>
       <geometry>
         <sphere radius="0.1116715973224"/>
       </geometry>
@@ -51,16 +53,16 @@
       </material>
     </visual>
 
-    <!-- Second buoyancy collision. Adds an additional buoyant object-->
+    <!-- Front Left Object -->
     <collision name="buoyancy_collision_2">
-      <origin rpy="0 0 0" xyz="0.708 0.128 0.15"/>
+      <origin rpy="0 0 0" xyz="0.708 0.128 -0.05"/>
       <geometry>
         <sphere radius="0.1116715973224"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_2">
-      <origin rpy="0 0 0" xyz="0.708 0.128 0.15"/>
+      <origin rpy="0 0 0" xyz="0.708 0.128 -0.05"/>
       <geometry>
         <sphere radius="0.1116715973224"/>
       </geometry>
@@ -69,15 +71,16 @@
       </material>
     </visual>
 
+    <!-- Back Right Object -->
     <collision name="buoyancy_collision_3">
-      <origin rpy="0 0 0" xyz="0 -.128 .15"/>
+      <origin rpy="0 0 0" xyz="0 -.128 -0.05"/>
       <geometry>
         <sphere radius="0.1116715973224"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_3">
-      <origin rpy="0 0 0" xyz="0 -.128 .15"/>
+      <origin rpy="0 0 0" xyz="0 -.128 -0.05"/>
       <geometry>
         <sphere radius="0.1116715973224"/>
       </geometry>
@@ -86,15 +89,16 @@
       </material>
     </visual>
 
+    <!-- Front Right Object -->
     <collision name="buoyancy_collision_4">
-      <origin rpy="0 0 0" xyz="0.708 -.128 .15"/>
+      <origin rpy="0 0 0" xyz="0.708 -.128 -0.05"/>
       <geometry>
         <sphere radius="0.1116715973224"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_4">
-      <origin rpy="0 0 0" xyz="0.708 -.128 .15"/>
+      <origin rpy="0 0 0" xyz="0.708 -.128 -0.05"/>
       <geometry>
         <sphere radius="0.1116715973224"/>
       </geometry>
@@ -103,8 +107,9 @@
       </material>
     </visual>
 
+    <!-- Top Front Object -->
     <collision name="buoyancy_collision_5">
-      <origin rpy="0 0 0" xyz="0.531 0 0.15"/>
+      <origin rpy="0 0 0" xyz="0.4425 0 0.15"/>
       <geometry>
         <sphere radius="0.1116715973224"/>
       </geometry>
@@ -120,6 +125,7 @@
       </material>
     </visual>
 
+    <!-- Top Back Object -->
     <collision name="buoyancy_collision_6">
       <origin rpy="0 0 0" xyz="0.25875 0 0.15"/>
       <geometry>
