@@ -24,7 +24,6 @@ using std::placeholders::_1;
 namespace thrusterBridge
 {
 class ThrusterBridge : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPostUpdate
-
 {
   public:
     ThrusterBridge();

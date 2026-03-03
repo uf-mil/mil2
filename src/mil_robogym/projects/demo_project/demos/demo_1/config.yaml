@@ -1,0 +1,4 @@
+robogym_demo:
+  demo_name: "Demo 1"
+  start_position: (1,2,3,4)
+  sampling_rate: 1.0
