@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from typing import Callable
 
 from mil_robogym.data_collection.filesystem import (
     create_demo_folder,
@@ -9,11 +10,10 @@ from mil_robogym.data_collection.get_all_project_config import find_projects_dir
 
 
 class CreateDemoPopup:
-    def __init__(self, parent, on_cancel=None):
+    def __init__(self, parent: tk.Frame, on_cancel: Callable[[], None] | None = None):
         """
-        parent     : root window
-        on_create  : callback(name:str, sampling_rate:int)
-        on_cancel  : callback()
+        parent      : root Tk window
+        on_cancel() : function that executes when the pop up is toggled away.
         """
         self.parent = parent
         self.on_cancel = on_cancel
@@ -22,13 +22,12 @@ class CreateDemoPopup:
         self.win.title("Record Demo")
         self.win.resizable(False, False)
         self.win.transient(parent)
-
         self.win.attributes("-topmost", True)
 
         container = ttk.Frame(self.win, padding=20)
         container.grid(row=0, column=0)
 
-        # Demo Name
+        # Demo Name Row
         ttk.Label(container, text="Demo Name:").grid(
             row=0,
             column=0,
@@ -41,7 +40,7 @@ class CreateDemoPopup:
         self.name_entry.grid(row=0, column=1, pady=5)
         self.name_entry.focus()
 
-        # Sampling Rate
+        # Sampling Rate Row
         ttk.Label(container, text="Sampling Rate:").grid(
             row=1,
             column=0,
@@ -64,7 +63,7 @@ class CreateDemoPopup:
 
         ttk.Label(container, text="steps / second").grid(row=1, column=2, padx=(8, 0))
 
-        # Buttons
+        # Buttons Row
         button_frame = ttk.Frame(container)
         button_frame.grid(row=2, column=0, columnspan=3, pady=(15, 0))
 
@@ -82,7 +81,7 @@ class CreateDemoPopup:
         return value.isdigit() or value == ""
 
     def _create(self):
-        """User clicked Create Demo."""
+        """User clicked 'Create Demo', a demo folder is created, and user is brought to demo page."""
         name = self.name_var.get().strip()
         rate_text = self.rate_var.get().strip()
 
@@ -104,7 +103,7 @@ class CreateDemoPopup:
         )
 
     def _cancel(self):
-        """User cancelled."""
+        """User cancelled and pop up is removed."""
         if self.on_cancel:
             self.on_cancel()
 

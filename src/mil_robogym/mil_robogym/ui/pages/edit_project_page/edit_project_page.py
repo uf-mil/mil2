@@ -10,7 +10,7 @@ from mil_robogym.data_collection.filesystem import edit_project
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
 from mil_robogym.data_collection.types import RoboGymProject
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
-from mil_robogym.ui.components.keyboard_controls import TeleopGUI
+from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 
@@ -34,7 +34,7 @@ class EditProjectPage(tk.Frame):
         self.world_control_client = WorldControlClient()
         self.gz_pose_client = ModelPoseClient()
 
-        self.keyboard_controls_gui: TeleopGUI | None = None
+        self.keyboard_controls_gui: KeyboardControlsGUI | None = None
         self.popup: GrabCoordinatesPopup | None = None
 
         self._world_default = self._safe_get_world_file()
@@ -476,7 +476,7 @@ class EditProjectPage(tk.Frame):
     def _on_grab_from_sim(self) -> None:
         self.world_control_client.play_simulation()
 
-        self.keyboard_controls_gui = self.keyboard_controls_gui or TeleopGUI(
+        self.keyboard_controls_gui = self.keyboard_controls_gui or KeyboardControlsGUI(
             self,
             self._on_close_of_keyboard_controls,
         )

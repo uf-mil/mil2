@@ -9,7 +9,7 @@ from mil_robogym.data_collection.get_all_project_config import get_all_project_c
 from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
 from mil_robogym.data_collection.sample_input_topics import sample_topics
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
-from mil_robogym.ui.components.keyboard_controls import TeleopGUI
+from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 
@@ -1101,7 +1101,7 @@ class CreateProjectPage(tk.Frame):
         self.world_control_client.play_simulation()
 
         # Run keyboard controls
-        self.keyboard_controls_gui = self.keyboard_controls_gui or TeleopGUI(
+        self.keyboard_controls_gui = self.keyboard_controls_gui or KeyboardControlsGUI(
             self,
             self._on_close_of_keyboard_controls,
         )

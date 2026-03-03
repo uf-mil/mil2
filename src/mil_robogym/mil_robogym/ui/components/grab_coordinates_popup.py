@@ -1,12 +1,19 @@
 import tkinter as tk
+from typing import Callable
 
 
 class GrabCoordinatesPopup:
-    def __init__(self, parent, record_callback, finish_callback):
+    def __init__(
+        self,
+        parent: tk.Frame,
+        record_callback: Callable[[], None],
+        finish_callback: Callable[[tuple, tuple], None] | None = None,
+    ):
         """
-        parent            : root Tk window
-        record_callback() : function that calls your ROS2 service
-                            and RETURNS a 4D coordinate (tuple/list)
+        parent                  : root Tk window
+        record_callback()       : function that calls your ROS2 service
+                                  and RETURNS a 4D coordinate (tuple/list)
+        finish_callback(c1, c2) : function that receives the recorded coordinates.
         """
         self.parent = parent
         self.record_callback = record_callback
