@@ -247,6 +247,12 @@ class KeyboardControlsGUI:
         self.root.lift()
         self.root.focus_force()
 
+    def hide(self) -> None:
+        """
+        Close the teleop window.
+        """
+        self.root.withdraw()
+
     def _on_close(self) -> None:
         """
         Handle window close event.
