@@ -14,6 +14,8 @@ class ControlsSection(tk.Frame):
         super().__init__(parent, bg="#CFCFCF", height=60)
         self.grid_propagate(False)
 
+        self.parent = parent
+
         self.btns = tk.Frame(self, bg="#CFCFCF")
         self.btns.pack(pady=10)
 
@@ -30,6 +32,7 @@ class ControlsSection(tk.Frame):
         # Random Pose button
         random_spawn_space = project["random_spawn_space"]
         RandomPoseButton(
+            self.parent,
             self.btns,
             random_spawn_space["enabled"],
             random_spawn_space["coord1_4d"],

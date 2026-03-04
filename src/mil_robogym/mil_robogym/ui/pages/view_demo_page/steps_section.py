@@ -48,7 +48,7 @@ class StepsSection(tk.Frame):
         row = tk.Frame(self.steps_frame, bg=color, bd=1, relief="solid")
         row.pack(fill="x", padx=6, pady=4)
 
-        tk.Label(row, text=text, bg=color, font=("Courier", 10)).pack(
+        tk.Label(row, text=text, bg=color, font=("Courier", 8)).pack(
             side="left",
             padx=6,
             pady=6,

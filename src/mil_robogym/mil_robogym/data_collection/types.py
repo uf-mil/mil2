@@ -28,3 +28,13 @@ class RoboGymProject(TypedDict):
     input_topics: list[str]
     output_topics: list[str]
     tensor_spec: NotRequired[RoboGymTensorSpec]
+
+
+class RoboGymDemoConfig(TypedDict):
+    robogym_demo: RoboGymDemo
+
+
+class RoboGymDemo(TypedDict):
+    demo_name: str
+    start_position: Coord4D
+    sampling_rate: float

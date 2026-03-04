@@ -12,7 +12,7 @@ from ament_index_python.packages import (
     get_package_share_directory,
 )
 
-from .types import RoboGymProject
+from .types import RoboGymDemo, RoboGymDemoConfig, RoboGymProject
 
 
 def _resolve_default_base_dir() -> Path:  # TODO: Move to utilsi.py
@@ -184,6 +184,54 @@ def edit_project(
         yaml.safe_dump(cfg, f, sort_keys=False)
 
     return project_dir
+
+
+def edit_demo(
+    project: RoboGymProject,
+    demo: RoboGymDemo,
+    *,
+    original_demo_name: str | None = None,
+) -> Path:
+    """
+    Edit an existing demo's config.yaml using a RoboGymDemo payload.
+
+    Writes:
+        <share_dir>/projects/<lower_snake_project_name>/demos/<lower_snake_demo_name>/config.yaml
+
+    Returns the existing demo directory Path
+    """
+    root = _resolve_default_base_dir()
+    projects_dir = root / "projects"
+    project_name = to_lower_snake_case(project["name"])
+    demo_name = to_lower_snake_case(original_demo_name or demo["demo_name"])
+    demo_dir = projects_dir / project_name / "demos" / demo_name
+
+    if not demo_dir.exists() or not demo_dir.is_dir():
+        raise FileNotFoundError(f"Demo folder does not exist: {demo_dir}")
+
+    target_folder_name = to_lower_snake_case(demo["demo_name"])
+    target_demo_dir = demo_dir.parent / target_folder_name
+    if target_demo_dir != demo_dir:
+        if target_demo_dir.exists():
+            raise FileExistsError(
+                f"Cannot rename demo; target folder already exists: {target_demo_dir}",
+            )
+        demo_dir.rename(target_demo_dir)
+        demo_dir = target_demo_dir
+
+    config_path = demo_dir / "config.yaml"
+    cfg: RoboGymDemoConfig = {
+        "robogym_demo": {
+            "demo_name": demo["demo_name"],
+            "start_position": demo["start_position"],
+            "sampling_rate": demo["sampling_rate"],
+        },
+    }
+
+    with config_path.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)
+
+    return demo_dir
 
 
 def create_agent_folder(
