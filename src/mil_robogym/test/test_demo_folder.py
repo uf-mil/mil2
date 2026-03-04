@@ -1,3 +1,5 @@
+"""Tests for demo folder creation and duplicate handling."""
+
 from pathlib import Path
 
 import pytest
@@ -7,6 +9,7 @@ from mil_robogym.data_collection.filesystem import create_demo_folder
 
 
 def test_create_demo_folder_creates_files(tmp_path: Path):
+    """Creates a demo folder and writes the expected config fields."""
     project_dir = tmp_path / "projects" / "start_gate_agent"
     project_dir.mkdir(parents=True)
 
@@ -27,6 +30,7 @@ def test_create_demo_folder_creates_files(tmp_path: Path):
 
 
 def test_create_demo_folder_raises_if_exists(tmp_path: Path):
+    """Raises when creating a demo folder that already exists."""
     project_dir = tmp_path / "projects" / "demo_project"
     project_dir.mkdir(parents=True)
 

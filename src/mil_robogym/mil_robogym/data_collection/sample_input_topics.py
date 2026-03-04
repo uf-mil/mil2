@@ -3,12 +3,8 @@ from __future__ import annotations
 import subprocess
 
 from .get_ros2_topics import get_ros2_topics
-from .types import RoboGymProject
-
-
-def _canonical_topic_name(topic: str) -> str:
-    """Normalize a topic name by trimming whitespace and leading slashes."""
-    return topic.strip().lstrip("/")
+from .types import RoboGymProject, SampledTopics
+from .utils import canonical_topic_name
 
 
 def _default_message_as_dict(msg_type: str) -> object:
@@ -66,11 +62,22 @@ def _flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
         out["value"] = value
 
 
+def _dedupe_preserve_order(values: list[str]) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped
+
+
 def sample_topics(
     topics: list[str],
     *,
     timeout_s: float = 2.0,
-) -> dict[str, dict[str, object]]:
+) -> SampledTopics:
     """
     Resolve each topic to a ROS 2 message type and return flattened defaults.
 
@@ -105,13 +112,13 @@ def sample_topics(
     available_lookup = {
         topic_name: topic
         for topic in available_topics
-        if (topic_name := _canonical_topic_name(topic))
+        if (topic_name := canonical_topic_name(topic))
     }
 
     missing_topics = [
         topic
         for topic in selected_topics
-        if _canonical_topic_name(topic) not in available_lookup
+        if canonical_topic_name(topic) not in available_lookup
     ]
     if missing_topics:
         raise RuntimeError(
@@ -119,15 +126,15 @@ def sample_topics(
             f"in the ROS 2 graph: {missing_topics}",
         )
 
-    sampled_topics: dict[str, dict[str, object]] = {}  # TODO: Make type for this
+    sampled_topics: SampledTopics = {}
     for topic in selected_topics:
-        resolved_topic = available_lookup[_canonical_topic_name(topic)]
+        resolved_topic = available_lookup[canonical_topic_name(topic)]
         command = (
             "ros2",
             "topic",
             "type",
             resolved_topic,
-        )  # TODO: Write test for nested message types
+        )
         try:
             result = subprocess.run(
                 command,
@@ -163,26 +170,46 @@ def sample_topics(
             )
 
         parsed = _default_message_as_dict(msg_type)
-        flattened: dict[str, object] = {}  # TODO: Make type for this
+        flattened: dict[str, object] = {}
         _flatten_value(parsed, "", flattened)
         sampled_topics[topic] = flattened
 
     return sampled_topics
 
 
-def sample_input_topics(  # TODO: Merge with sample_topic and return input and output topic lists
+def sample_project_topics(
     project: RoboGymProject,
     *,
     timeout_s: float = 2.0,
-) -> dict[str, dict[str, object]]:
+) -> tuple[SampledTopics, SampledTopics]:
+    """
+    Resolve input and output topic schemas for a project in one ROS 2 query pass.
+
+    Returns:
+      Tuple of (sampled_inputs, sampled_outputs)
+    """
+    input_topics = list(project["input_topics"])
+    output_topics = list(project["output_topics"])
+    selected_topics = _dedupe_preserve_order([*input_topics, *output_topics])
+    sampled_all = sample_topics(selected_topics, timeout_s=timeout_s)
+    sampled_inputs = {topic: sampled_all[topic] for topic in input_topics}
+    sampled_outputs = {topic: sampled_all[topic] for topic in output_topics}
+    return sampled_inputs, sampled_outputs
+
+
+def sample_input_topics(
+    project: RoboGymProject,
+    *,
+    timeout_s: float = 2.0,
+) -> SampledTopics:
     """
     Resolve each project input topic to a ROS 2 message type and return
     flattened default values for that type.
 
-    This is a project-shaped wrapper around `sample_topics`.
+    This is a project-shaped wrapper around `sample_project_topics`.
 
     Uses:
-        - `sample_topics(project["input_topics"], timeout_s=...)`
+        - `sample_project_topics(project, timeout_s=...)`
 
     Returns:
         A mapping from the original input topic string to flattened field/value
@@ -193,4 +220,8 @@ def sample_input_topics(  # TODO: Merge with sample_topic and return input and o
         ValueError if `timeout_s` is not positive.
         RuntimeError if topic discovery, type resolution, or introspection fails.
     """
-    return sample_topics(list(project["input_topics"]), timeout_s=timeout_s)
+    sampled_inputs, _sampled_outputs = sample_project_topics(
+        project,
+        timeout_s=timeout_s,
+    )
+    return sampled_inputs
