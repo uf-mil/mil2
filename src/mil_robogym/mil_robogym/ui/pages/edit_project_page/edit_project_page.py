@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import messagebox
 from typing import Any, Mapping
 
-from mil_robogym.clients.model_pose_client import ModelPoseClient
+from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.filesystem import edit_project
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
@@ -32,7 +32,7 @@ class EditProjectPage(tk.Frame):
         self.coordinate2: tuple[float, float, float, float] | None = None
 
         self.world_control_client = WorldControlClient()
-        self.gz_pose_client = ModelPoseClient()
+        self.gz_pose_client = GetPoseClient()
 
         self.keyboard_controls_gui: KeyboardControlsGUI | None = None
         self.popup: GrabCoordinatesPopup | None = None
