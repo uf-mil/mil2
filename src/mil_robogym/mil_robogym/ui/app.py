@@ -54,9 +54,7 @@ class App(tk.Tk):
         :param page_cls: Frame class implementing the page UI.
         :type page_cls: type[tk.Frame]
         """
-        frame = page_cls(self.container, controller=self)
-        self.pages[name] = frame
-        frame.grid(row=0, column=0, sticky="nsew")
+        self.pages[name] = page_cls
 
     def show_page(self, name: str, **kwargs: Any) -> None:
         """
@@ -70,8 +68,14 @@ class App(tk.Tk):
         :type name: str
         :param kwargs: Optional context data passed to the page.
         """
-        page = self.pages.get(name)
-        if page is not None:
-            if hasattr(page, "set_context"):
-                page.set_context(**kwargs)
-            page.tkraise()
+        page_cls = self.pages.get(name)
+
+        if page_cls is not None:
+
+            frame = page_cls(self.container, controller=self)
+            frame.grid(row=0, column=0, sticky="nsew")
+
+            if hasattr(frame, "set_context"):
+                frame.set_context(**kwargs)
+
+            frame.tkraise()
