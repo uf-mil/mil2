@@ -16,8 +16,8 @@ class ViewDemoPage(tk.Frame):
         super().__init__(parent, bg="#DADADA")
         self.app = controller
 
-        self._project: Mapping[str, Any] | None = None
-        self._demo: Mapping[str, Any] | None = None
+        self.project: Mapping[str, Any] | None = None
+        self.demo: Mapping[str, Any] | None = None
 
         self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -54,26 +54,28 @@ class ViewDemoPage(tk.Frame):
         project: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
-        self._project = project
-        self._demo = kwargs.get("demo", {}).get("robogym_demo", {})
+        self.project = project
+        self.demo = kwargs.get("demo", {}).get("robogym_demo", {})
 
         demo_name = kwargs.get("demo_name", "")
         project_name = ""
 
         if project:
             project_name = project.get("robogym_project", {}).get("name", "")
+            self.controls.enable_buttons(project["robogym_project"])
 
         self.header.set_titles(project_name, demo_name)
 
-        if self._demo and project:
+        if self.demo and project:
             subtitle = (
-                f"Sampling rate: {self._demo['sampling_rate']} steps / sec | "
+                f"Sampling rate: {self.demo['sampling_rate']} steps / sec | "
                 f"World: {project['robogym_project']['world_file']}"
             )
             self.header.set_subtitle(subtitle)
 
             self.steps.clear()
-            self.steps.add_step(f"Origin: {self._demo['start_position']}")
+            x, y, z, yaw = self.demo["start_position"]
+            self.steps.add_step(f"Origin: ({x:.2f}, {y:.2f}, {z:.2f}, {yaw:.2f})")
 
     def _on_home_click(self) -> None:
         self.steps.clear()
@@ -81,4 +83,4 @@ class ViewDemoPage(tk.Frame):
 
     def _on_project_click(self) -> None:
         self.steps.clear()
-        self.app.show_page("view_project", project=self._project)
+        self.app.show_page("view_project", project=self.project)

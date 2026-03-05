@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 
 from .get_ros2_topics import get_ros2_topics
-from .types import RoboGymProject, SampledTopics
+from .types import RoboGymProjectYaml, SampledTopics
 from .utils import canonical_topic_name
 
 
@@ -178,7 +178,7 @@ def sample_topics(
 
 
 def sample_project_topics(
-    project: RoboGymProject,
+    project: RoboGymProjectYaml,
     *,
     timeout_s: float = 2.0,
 ) -> tuple[SampledTopics, SampledTopics]:
@@ -198,7 +198,7 @@ def sample_project_topics(
 
 
 def sample_input_topics(
-    project: RoboGymProject,
+    project: RoboGymProjectYaml,
     *,
     timeout_s: float = 2.0,
 ) -> SampledTopics:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 
 from .sample_input_topics import sample_project_topics
-from .types import RoboGymProject, RoboGymTensorSpec
+from .types import RoboGymProjectYaml, RoboGymTensorSpec
 from .utils import canonical_topic_name
 
 
@@ -79,7 +79,7 @@ def _collect_features(
 
 
 def build_tensor_spec(
-    project: RoboGymProject,
+    project: RoboGymProjectYaml,
     *,
     timeout_s: float = 2.0,
     strict_numeric: bool = False,

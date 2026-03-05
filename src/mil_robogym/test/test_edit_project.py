@@ -67,8 +67,8 @@ def test_edit_project_updates_share_and_source(tmp_path: Path, monkeypatch):
     source_cfg = yaml.safe_load(
         (source_new / "config.yaml").read_text(encoding="utf-8"),
     )
-    assert share_cfg["robogym_project"]["name"] == "New Name"
-    assert source_cfg["robogym_project"]["name"] == "New Name"
+    assert share_cfg["robogym_project"]["project_name"] == "New Name"
+    assert source_cfg["robogym_project"]["project_name"] == "New Name"
     assert share_cfg == source_cfg
 
 

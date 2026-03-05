@@ -7,19 +7,21 @@ class GrabCoordinatesPopup:
         self,
         parent: tk.Frame,
         record_callback: Callable[[], None],
-        finish_callback: Callable[[tuple, tuple], None] | None = None,
+        finish_callback: Callable | None = None,
+        num_coordinates: int = 2,
     ):
         """
         parent                  : root Tk window
         record_callback()       : function that calls your ROS2 service
                                   and RETURNS a 4D coordinate (tuple/list)
-        finish_callback(c1, c2) : function that receives the recorded coordinates.
+        finish_callback(coords[]) : function that receives the recorded coordinates.
         """
         self.parent = parent
         self.record_callback = record_callback
         self.finish_callback = finish_callback
+        self.num_coordinates = num_coordinates
 
-        self.coords = [None, None]
+        self.coords = [None] * num_coordinates
         self.index = 0  # which coordinate we are recording
 
         # Build window
@@ -27,28 +29,22 @@ class GrabCoordinatesPopup:
         self.win.title("Grabbing Coordinates From Simulation")
         self.win.geometry("420x180")
 
-        # Make it modal
-        self.win.transient(parent)
-        self.win.attributes("-topmost", True)
-
         container = tk.Frame(self.win, padx=20, pady=20)
         container.pack(fill="both", expand=True)
 
-        self.label1 = tk.Label(
-            container,
-            text="4D-Coordinate 1: Not Recorded",
-            anchor="w",
-            font=("Arial", 11),
-        )
-        self.label1.pack(fill="x", pady=5)
+        self.labels = []
 
-        self.label2 = tk.Label(
-            container,
-            text="4D-Coordinate 2: Not Recorded",
-            anchor="w",
-            font=("Arial", 11),
-        )
-        self.label2.pack(fill="x", pady=5)
+        for i in range(num_coordinates):
+            label = tk.Label(
+                container,
+                text=f"4D-Coordinate {"" if num_coordinates == 1 else i+1}: Not Recorded",
+                anchor="w",
+                font=("Arial", 11),
+            )
+
+            label.pack(fill="x", pady=5)
+
+            self.labels.append(label)
 
         self.record_btn = tk.Button(
             container,
@@ -72,23 +68,25 @@ class GrabCoordinatesPopup:
 
         formatted = f"({coord.x:.2f}, {coord.y:.2f}, {coord.z:.2f}, {coord.yaw:.2f})"
 
-        if self.index == 0:
-            self.label1.config(text=f"4D-Coordinate 1: {formatted}")
-        else:
-            self.label2.config(text=f"4D-Coordinate 2: {formatted}")
+        self.labels[self.index].config(
+            text=(
+                f"4D-Coordinate: {formatted}"
+                if self.num_coordinates == 1
+                else f"4D-Coordinate {self.index + 1}: {formatted}"
+            ),
+        )
 
         self.index += 1
 
         # If we captured both → auto close
-        if self.index >= 2:
+        if self.index >= self.num_coordinates:
             self.finish()
 
     def finish(self):
         """
         Process coordinates through finish callback.
         """
-        c1, c2 = self.coords
         self.win.destroy()
 
         if self.finish_callback:
-            self.finish_callback(c1, c2)
+            self.finish_callback(self.coords)

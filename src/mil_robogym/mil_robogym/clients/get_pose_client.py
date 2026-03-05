@@ -3,7 +3,7 @@ from mil_msgs.srv import GetGZPose
 from rclpy.node import Node
 
 
-class ModelPoseClient(Node):
+class GetPoseClient(Node):
     """
     Client node that gets pose data for the model being queried by the service.
     """

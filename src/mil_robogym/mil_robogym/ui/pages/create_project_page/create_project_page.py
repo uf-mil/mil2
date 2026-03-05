@@ -3,7 +3,7 @@ from __future__ import annotations
 import tkinter as tk
 from typing import Any
 
-from mil_robogym.clients.model_pose_client import ModelPoseClient
+from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.filesystem import create_project_folder
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
@@ -46,7 +46,7 @@ class CreateProjectPage(tk.Frame):
 
         self.controller = controller
         self.world_control_client = WorldControlClient()
-        self.gz_pose_client = ModelPoseClient()
+        self.gz_pose_client = GetPoseClient()
 
         self.keyboard_controls_gui: KeyboardControlsGUI | None = None
         self.popup: GrabCoordinatesPopup | None = None

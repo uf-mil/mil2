@@ -10,7 +10,6 @@ from .types import (
     Coord4D,
     RoboGymDemoConfig,
     RoboGymDemoYaml,
-    RoboGymProject,
     RoboGymProjectConfig,
     RoboGymProjectYaml,
 )
@@ -42,38 +41,8 @@ def _project_roots() -> list[Path]:
     return roots
 
 
-def _build_project_config(project: RoboGymProject) -> RoboGymProjectConfig:
-    cfg_project: RoboGymProjectYaml = {
-        "name": project["project_name"],
-        "world_file": project["world_file"],
-        "model_name": project["model_name"],
-        "random_spawn_space": {
-            "enabled": project["random_spawn_space"]["enabled"],
-            # Store as yaml lists for portability.
-            "coord1_4d": list(project["random_spawn_space"]["coord1_4d"]),
-            "coord2_4d": list(project["random_spawn_space"]["coord2_4d"]),
-        },
-        "input_topics": list(project["input_topics"]),
-        "output_topics": list(project["output_topics"]),
-    }
-
-    tensor_spec = project.get("tensor_spec")
-    if tensor_spec is not None:
-        cfg_project["tensor_spec"] = {
-            "input_features": list(tensor_spec["input_features"]),
-            "output_features": list(tensor_spec["output_features"]),
-            "input_dim": int(tensor_spec["input_dim"]),
-            "output_dim": int(tensor_spec["output_dim"]),
-            "ignored_input_features": {
-                topic: list(fields)
-                for topic, fields in tensor_spec["ignored_input_features"].items()
-            },
-            "ignored_output_features": {
-                topic: list(fields)
-                for topic, fields in tensor_spec["ignored_output_features"].items()
-            },
-        }
-    return {"robogym_project": cfg_project}
+def _build_project_config(project: RoboGymProjectYaml) -> RoboGymProjectConfig:
+    return {"robogym_project": project}
 
 
 def _build_demo_config(
@@ -99,7 +68,7 @@ def _write_yaml_config(
 
 
 def create_project_folder(
-    project: RoboGymProject,
+    project: RoboGymProjectYaml,
 ) -> Path:
     """
     Creates:
@@ -134,12 +103,12 @@ def create_project_folder(
 
 
 def edit_project(
-    project: RoboGymProject,
+    project: RoboGymProjectYaml,
     *,
     original_project_name: str | None = None,
 ) -> Path:
     """
-    Edit an existing project's config.yaml using a RoboGymProject payload.
+    Edit an existing project's config.yaml using a RoboGymProjectYaml payload.
 
     Writes:
         <share_dir>/projects/<lower_snake_project_name>/config.yaml
@@ -198,6 +167,54 @@ def edit_project(
         _write_yaml_config(source_target_project_dir / "config.yaml", cfg)
 
     return project_dir
+
+
+def edit_demo(
+    project: RoboGymProjectYaml,
+    demo: RoboGymDemoYaml,
+    *,
+    original_demo_name: str | None = None,
+) -> Path:
+    """
+    Edit an existing demo's config.yaml using a RoboGymDemo payload.
+
+    Writes:
+        <share_dir>/projects/<lower_snake_project_name>/demos/<lower_snake_demo_name>/config.yaml
+
+    Returns the existing demo directory Path
+    """
+    roots = _project_roots()
+    projects_dir = roots[0]
+    project_name = to_lower_snake_case(project["name"])
+    demo_name = to_lower_snake_case(original_demo_name or demo["demo_name"])
+    demo_dir = projects_dir / project_name / "demos" / demo_name
+
+    if not demo_dir.exists() or not demo_dir.is_dir():
+        raise FileNotFoundError(f"Demo folder does not exist: {demo_dir}")
+
+    target_folder_name = to_lower_snake_case(demo["demo_name"])
+    target_demo_dir = demo_dir.parent / target_folder_name
+    if target_demo_dir != demo_dir:
+        if target_demo_dir.exists():
+            raise FileExistsError(
+                f"Cannot rename demo; target folder already exists: {target_demo_dir}",
+            )
+        demo_dir.rename(target_demo_dir)
+        demo_dir = target_demo_dir
+
+    config_path = demo_dir / "config.yaml"
+    cfg: RoboGymDemoConfig = {
+        "robogym_demo": {
+            "demo_name": demo["demo_name"],
+            "start_position": demo["start_position"],
+            "sampling_rate": demo["sampling_rate"],
+        },
+    }
+
+    with config_path.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)
+
+    return demo_dir
 
 
 def create_agent_folder(
