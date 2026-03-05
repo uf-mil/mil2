@@ -152,11 +152,6 @@ def _validate_project_config_payload(project: RoboGymProjectYaml) -> None:
         )
 
 
-def _build_project_config(project: RoboGymProjectYaml) -> RoboGymProjectConfig:
-    _validate_project_config_payload(project)
-    return {"robogym_project": project}
-
-
 def _build_demo_config(
     *,
     name: str,
@@ -207,7 +202,8 @@ def create_project_folder(
         project_dir.mkdir(parents=True, exist_ok=False)
         (project_dir / "demos").mkdir(exist_ok=True)
 
-    cfg = _build_project_config(project)
+    _validate_project_config_payload(project)
+    cfg: RoboGymProjectConfig = {"robogym_project": project}
     for project_dir in project_dirs:
         _write_yaml_config(project_dir / "config.yaml", cfg)
 
@@ -273,7 +269,8 @@ def edit_project(
             source_target_project_dir.mkdir(parents=True, exist_ok=True)
         (source_target_project_dir / "demos").mkdir(exist_ok=True)
 
-    cfg = _build_project_config(project)
+    _validate_project_config_payload(project)
+    cfg: RoboGymProjectConfig = {"robogym_project": project}
     _write_yaml_config(project_dir / "config.yaml", cfg)
     if source_target_project_dir is not None:
         _write_yaml_config(source_target_project_dir / "config.yaml", cfg)
