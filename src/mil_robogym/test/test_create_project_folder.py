@@ -1,18 +1,19 @@
+"""Tests for project folder creation and project-name normalization helpers."""
+
 from pathlib import Path
 
 import pytest
 import yaml
 
-from mil_robogym.data_collection.filesystem import (
-    create_project_folder,
-    to_lower_snake_case,
-)
+from mil_robogym.data_collection.filesystem import create_project_folder
+from mil_robogym.data_collection.utils import to_lower_snake_case
 
 
 def test_create_project_folder(tmp_path: Path, monkeypatch):
+    """Creates a project folder and writes a project config file."""
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.get_package_share_directory",
-        lambda _pkg: str(tmp_path),
+        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
+        lambda: tmp_path,
     )
 
     proj = {
@@ -40,27 +41,32 @@ def test_create_project_folder(tmp_path: Path, monkeypatch):
 
 
 def test_to_lower_snake_case_basic():
+    """Converts a spaced name into lower snake case."""
     assert to_lower_snake_case("Start Gate Agent") == "start_gate_agent"
 
 
 def test_to_lower_snake_case_hyphens_and_spaces():
+    """Normalizes repeated spaces and hyphens into underscores."""
     assert to_lower_snake_case("Start-Gate agent") == "start_gate_agent"
     assert to_lower_snake_case("Start   Gate---Agent") == "start_gate_agent"
 
 
 def test_to_lower_snake_case_punctuation():
+    """Removes punctuation while preserving the expected word boundaries."""
     assert to_lower_snake_case("Start Gate: Agent!") == "start_gate_agent"
     assert to_lower_snake_case("  Start (Gate) Agent  ") == "start_gate_agent"
 
 
 def test_to_lower_snake_case_already_snake():
+    """Leaves an already normalized snake case string unchanged."""
     assert to_lower_snake_case("start_gate_agent") == "start_gate_agent"
 
 
 def test_create_project_folder_raises_if_exists(tmp_path, monkeypatch):
+    """Raises when creating the same project folder twice."""
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.get_package_share_directory",
-        lambda _pkg: str(tmp_path),
+        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
+        lambda: tmp_path,
     )
 
     proj = {
@@ -86,9 +92,10 @@ def test_create_project_folder_raises_if_exists(tmp_path, monkeypatch):
 
 
 def test_create_project_folder_writes_tensor_spec(tmp_path: Path, monkeypatch):
+    """Persists tensor_spec fields when they are provided in the project payload."""
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.get_package_share_directory",
-        lambda _pkg: str(tmp_path),
+        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
+        lambda: tmp_path,
     )
 
     proj = {
@@ -121,3 +128,44 @@ def test_create_project_folder_writes_tensor_spec(tmp_path: Path, monkeypatch):
         "imu/processed:x",
         "imu/processed:y",
     ]
+
+
+def test_create_project_folder_writes_source_and_install(tmp_path: Path, monkeypatch):
+    """Writes identical project config files to install and source project roots."""
+    share_dir = tmp_path / "install" / "mil_robogym" / "share" / "mil_robogym"
+    source_projects = tmp_path / "src" / "mil_robogym" / "projects"
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
+        lambda: share_dir,
+    )
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda _share_dir: source_projects,
+    )
+
+    proj = {
+        "project_name": "Dual Write Project",
+        "world_file": "src/default/world/file",
+        "model_name": "weights.pt",
+        "random_spawn_space": {
+            "enabled": False,
+            "coord1_4d": (0.0, 0.0, 0.0, 0.0),
+            "coord2_4d": (1.0, 2.0, 3.0, 4.0),
+        },
+        "input_topics": ["imu/processed"],
+        "output_topics": ["trajectory/4_deg"],
+    }
+
+    share_project_dir = create_project_folder(proj)
+    source_project_dir = source_projects / "dual_write_project"
+
+    assert share_project_dir == share_dir / "projects" / "dual_write_project"
+    assert (share_project_dir / "config.yaml").is_file()
+    assert (source_project_dir / "config.yaml").is_file()
+    assert (share_project_dir / "config.yaml").read_text(
+        encoding="utf-8",
+    ) == source_project_dir.joinpath(
+        "config.yaml",
+    ).read_text(
+        encoding="utf-8",
+    )

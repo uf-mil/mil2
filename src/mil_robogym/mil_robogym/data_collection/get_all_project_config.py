@@ -3,10 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from ament_index_python.packages import (
-    PackageNotFoundError,
-    get_package_share_directory,
-)
+
+from .utils import resolve_package_share_dir
 
 
 def count_demo_folders(demos_dir: Path) -> int:
@@ -46,8 +44,8 @@ def find_projects_dir() -> Path:
     :rtype: Path
     """
     try:
-        share_dir = Path(get_package_share_directory("mil_robogym"))
-    except PackageNotFoundError as e:
+        share_dir = resolve_package_share_dir("mil_robogym")
+    except RuntimeError as e:
         raise RuntimeError(
             "Projects directory could not be found because this code was ran without being built into a ROS 2 Package.",
         ) from e

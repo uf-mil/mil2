@@ -2,15 +2,9 @@ from __future__ import annotations
 
 from collections import Counter
 
-from .sample_input_topics import sample_topics
+from .sample_input_topics import sample_project_topics
 from .types import RoboGymProject, RoboGymTensorSpec
-
-
-def _canonical_topic_name(topic: str) -> str:
-    """
-    Normalize a topic name by trimming whitespace and leading slashes.
-    """
-    return topic.strip().lstrip("/")
+from .utils import canonical_topic_name
 
 
 def _validate_unique_topics(topics: list[str], *, side: str) -> None:
@@ -23,7 +17,7 @@ def _validate_unique_topics(topics: list[str], *, side: str) -> None:
     Raises:
       ValueError if duplicate normalized topic names are found.
     """
-    normalized = [_canonical_topic_name(topic) for topic in topics]
+    normalized = [canonical_topic_name(topic) for topic in topics]
     counts = Counter(name for name in normalized if name)
     duplicates = sorted(name for name, count in counts.items() if count > 1)
     if duplicates:
@@ -84,23 +78,6 @@ def _collect_features(
     return features, ignored
 
 
-def _dedupe_preserve_order(values: list[str]) -> list[str]:
-    """
-    Remove duplicate strings while preserving first-seen order.
-
-    Returns:
-      A list with duplicate string values removed.
-    """
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for value in values:
-        if value in seen:
-            continue
-        seen.add(value)
-        deduped.append(value)
-    return deduped
-
-
 def build_tensor_spec(
     project: RoboGymProject,
     *,
@@ -111,7 +88,8 @@ def build_tensor_spec(
     Build a deterministic tensor specification for selected input/output topics.
 
     Reads:
-      - Topic schemas for selected input/output topics using `sample_topics`.
+      - Topic schemas for selected input/output topics using
+        `sample_project_topics`.
 
     Builds:
       - `input_features` and `output_features` in `<topic>:<field>` format.
@@ -137,13 +115,10 @@ def build_tensor_spec(
     _validate_unique_topics(input_topics, side="input")
     _validate_unique_topics(output_topics, side="output")
 
-    combined_topics = _dedupe_preserve_order([*input_topics, *output_topics])
-    sampled_all = sample_topics(combined_topics, timeout_s=timeout_s)
-
-    sampled_inputs = {
-        topic: sampled_all[topic] for topic in input_topics
-    }  # TODO: remove once refactored the sample input and sample topics functions
-    sampled_outputs = {topic: sampled_all[topic] for topic in output_topics}
+    sampled_inputs, sampled_outputs = sample_project_topics(
+        project,
+        timeout_s=timeout_s,
+    )
 
     input_features, ignored_inputs = _collect_features(
         sampled_inputs,

@@ -2,11 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable
 
-from mil_robogym.data_collection.filesystem import (
-    create_demo_folder,
-    to_lower_snake_case,
-)
+from mil_robogym.data_collection.filesystem import create_demo_folder
 from mil_robogym.data_collection.get_all_project_config import find_projects_dir
+from mil_robogym.data_collection.utils import to_lower_snake_case
 
 
 class CreateDemoPopup:
