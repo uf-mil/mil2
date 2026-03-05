@@ -127,8 +127,6 @@ def test_create_project_folder_writes_tensor_spec(tmp_path: Path, monkeypatch):
             "output_features": ["trajectory/4_deg:heading"],
             "input_dim": 2,
             "output_dim": 1,
-            "ignored_input_features": {"imu/processed": ["frame_id"]},
-            "ignored_output_features": {},
         },
     }
 
@@ -148,8 +146,40 @@ def test_create_project_folder_writes_tensor_spec(tmp_path: Path, monkeypatch):
     assert cfg["robogym_project"]["output_topics"]["trajectory/4_deg"] == [
         "heading",
     ]
-    assert "ignored_input_features" not in cfg["robogym_project"]["tensor_spec"]
-    assert "ignored_output_features" not in cfg["robogym_project"]["tensor_spec"]
+
+
+def test_create_project_folder_rejects_legacy_ignored_tensor_spec_fields(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Rejects legacy ignored_* tensor-spec fields under strict schema validation."""
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
+        lambda: tmp_path,
+    )
+
+    proj = {
+        "name": "Legacy Tensor Spec Project",
+        "world_file": "src/default/world/file",
+        "model_name": "weights.pt",
+        "random_spawn_space": {
+            "enabled": False,
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
+        },
+        "input_topics": {"imu/processed": ["x"]},
+        "output_topics": {"trajectory/4_deg": ["heading"]},
+        "tensor_spec": {
+            "input_features": ["imu/processed:x"],
+            "output_features": ["trajectory/4_deg:heading"],
+            "input_dim": 1,
+            "output_dim": 1,
+            "ignored_input_features": {"imu/processed": ["frame_id"]},
+        },
+    }
+
+    with pytest.raises(ValueError, match="must not include ignored_input_features"):
+        create_project_folder(proj)
 
 
 def test_create_project_folder_writes_source_and_install(tmp_path: Path, monkeypatch):

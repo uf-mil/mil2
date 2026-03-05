@@ -41,50 +41,120 @@ def _project_roots() -> list[Path]:
     return roots
 
 
-def _normalize_topic_subtopics(
-    topic_subtopics: object,
+def _validate_topic_subtopics(
     *,
     field_name: str,
-) -> dict[str, list[str]]:
+    topic_subtopics: object,
+) -> None:
     if not isinstance(topic_subtopics, dict):
         raise ValueError(
             f"project['{field_name}'] must be a mapping of topic -> list[str].",
         )
-    normalized: dict[str, list[str]] = {}
     for topic, subtopics in topic_subtopics.items():
-        if not isinstance(subtopics, (list, tuple, set)):
+        if not isinstance(topic, str) or not topic.strip():
             raise ValueError(
-                f"project['{field_name}'][topic] must be a list-like of subtopics.",
+                f"project['{field_name}'] contains an invalid topic name.",
             )
-        normalized[str(topic)] = [str(subtopic) for subtopic in subtopics]
-    return normalized
+        if not isinstance(subtopics, list):
+            raise ValueError(
+                f"project['{field_name}'][{topic!r}] must be a list[str].",
+            )
+        for subtopic in subtopics:
+            if not isinstance(subtopic, str) or not subtopic.strip():
+                raise ValueError(
+                    f"project['{field_name}'][{topic!r}] contains an invalid subtopic.",
+                )
+
+
+def _validate_project_config_payload(project: RoboGymProjectYaml) -> None:
+    required_fields = (
+        "name",
+        "world_file",
+        "model_name",
+        "random_spawn_space",
+        "input_topics",
+        "output_topics",
+    )
+    for field_name in required_fields:
+        if field_name not in project:
+            raise ValueError(f"project is missing required field {field_name!r}.")
+
+    for field_name in ("name", "world_file", "model_name"):
+        value = project[field_name]
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"project[{field_name!r}] must be a non-empty string.")
+
+    random_spawn_space = project["random_spawn_space"]
+    if not isinstance(random_spawn_space, dict):
+        raise ValueError(
+            "project['random_spawn_space'] must be a mapping.",
+        )
+    if not isinstance(random_spawn_space.get("enabled"), bool):
+        raise ValueError("project['random_spawn_space']['enabled'] must be a bool.")
+    for coord_field in ("coord1_4d", "coord2_4d"):
+        coord = random_spawn_space.get(coord_field)
+        if not isinstance(coord, list) or len(coord) != 4:
+            raise ValueError(
+                f"project['random_spawn_space']['{coord_field}'] must be a list[float] of length 4.",
+            )
+        for value in coord:
+            if not isinstance(value, float):
+                raise ValueError(
+                    f"project['random_spawn_space']['{coord_field}'] must only contain floats.",
+                )
+
+    _validate_topic_subtopics(
+        field_name="input_topics",
+        topic_subtopics=project["input_topics"],
+    )
+    _validate_topic_subtopics(
+        field_name="output_topics",
+        topic_subtopics=project["output_topics"],
+    )
+
+    tensor_spec = project.get("tensor_spec")
+    if tensor_spec is None:
+        return
+    if not isinstance(tensor_spec, dict):
+        raise ValueError("project['tensor_spec'] must be a mapping when provided.")
+    if (
+        "ignored_input_features" in tensor_spec
+        or "ignored_output_features" in tensor_spec
+    ):
+        raise ValueError(
+            "project['tensor_spec'] must not include ignored_input_features or ignored_output_features.",
+        )
+    for key in ("input_features", "output_features", "input_dim", "output_dim"):
+        if key not in tensor_spec:
+            raise ValueError(f"project['tensor_spec'] is missing required key {key!r}.")
+
+    for key in ("input_features", "output_features"):
+        features = tensor_spec[key]
+        if not isinstance(features, list) or any(
+            not isinstance(feature, str) or not feature.strip() for feature in features
+        ):
+            raise ValueError(
+                f"project['tensor_spec']['{key}'] must be a list[str].",
+            )
+    for key in ("input_dim", "output_dim"):
+        value = tensor_spec[key]
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ValueError(
+                f"project['tensor_spec']['{key}'] must be a non-negative int.",
+            )
+    if tensor_spec["input_dim"] != len(tensor_spec["input_features"]):
+        raise ValueError(
+            "project['tensor_spec']['input_dim'] must match len(input_features).",
+        )
+    if tensor_spec["output_dim"] != len(tensor_spec["output_features"]):
+        raise ValueError(
+            "project['tensor_spec']['output_dim'] must match len(output_features).",
+        )
 
 
 def _build_project_config(project: RoboGymProjectYaml) -> RoboGymProjectConfig:
-    cfg_project: RoboGymProjectYaml = {
-        "name": str(project["name"]),
-        "world_file": str(project["world_file"]),
-        "model_name": str(project["model_name"]),
-        "random_spawn_space": {
-            "enabled": bool(project["random_spawn_space"]["enabled"]),
-            "coord1_4d": [float(v) for v in project["random_spawn_space"]["coord1_4d"]],
-            "coord2_4d": [float(v) for v in project["random_spawn_space"]["coord2_4d"]],
-        },
-        "input_topics": _normalize_topic_subtopics(
-            project["input_topics"],
-            field_name="input_topics",
-        ),
-        "output_topics": _normalize_topic_subtopics(
-            project["output_topics"],
-            field_name="output_topics",
-        ),
-    }
-    if "tensor_spec" in project:
-        tensor_spec = dict(project["tensor_spec"])
-        tensor_spec.pop("ignored_input_features", None)
-        tensor_spec.pop("ignored_output_features", None)
-        cfg_project["tensor_spec"] = tensor_spec
-    return {"robogym_project": cfg_project}
+    _validate_project_config_payload(project)
+    return {"robogym_project": project}
 
 
 def _build_demo_config(
