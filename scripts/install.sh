@@ -21,13 +21,13 @@ if [[ -z ${TERM} ]]; then
 fi
 
 # Before even starting, check if using Ubuntu 20.04
-NAME=$(awk -F= '/^NAME/{print $2}' /etc/os-release)
-VERSION=$(awk -F'=' '/^VERSION=/{print $2}' /etc/os-release)
+NAME=$(awk -F= '/^NAME=/{print $2}' /etc/os-release)
+VERSION=$(awk -F= '/^VERSION=/{print $2}' /etc/os-release)
 if [[ $NAME != *"Ubuntu"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu (you're using: ${NAME}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
-if [[ $VERSION != *"24.04"* && $VERSION != *"22.04.5 LTS (Jammy Jellyfish)"* ]]; then
+if [[ $VERSION != *"24.04"* && $VERSION != *"22.04"* ]]; then
 	printf "${Red}This script is only supported on Ubuntu 24.04 (you're using: ${VERSION}). Please install Ubuntu 24.04.${Res}\n"
 	exit 1
 fi
@@ -71,12 +71,6 @@ You shouldn't need to do much - sit back and watch the magic happen before your
 eyes!$(color "$Res")
 EOF
 
-sleep 1
-
-mil_system_install() {
-	sudo apt install -y "$@"
-}
-
 cat <<EOF
 $(color "$Pur")
 $(hash_header)
@@ -84,18 +78,8 @@ Fetching latest apt packages...
 $(hash_header)
 EOF
 
-# Installation for virtual machines$
-# Installs the apt-add-repository command
-sudo apt-get install software-properties-common -y
-
-# Install neovim (to prevent cameron from going mad)
-sudo apt-add-repository ppa:neovim-ppa/stable -y
-
 # Update apt
 sudo apt update
-
-# Installs keyboard config without prompting for input
-sudo DEBIAN_FRONTEND=noninteractive apt-get install keyboard-configuration -y # Weird bug
 
 cat <<EOF
 $(color "$Pur")
@@ -103,12 +87,16 @@ $(hash_header)
 $(color "$Gre")Fetched latest apt packages.
 $(color "$Pur")Installing needed Linux dependencies...
 $(hash_header)$(color "$Res")
-
 EOF
 
+# Headless keyboard config, debconf stuff, add-apt-repository
+sudo DEBIAN_FRONTEND=noninteractive apt install -y \
+	keyboard-configuration \
+	apt-utils \
+	software-properties-common
+
 # System dependencies
-mil_system_install apt-utils
-mil_system_install --no-install-recommends \
+sudo apt install -y --no-install-recommends \
 	ca-certificates \
 	curl \
 	dirmngr \
@@ -119,14 +107,12 @@ mil_system_install --no-install-recommends \
 	gnupg \
 	gnupg2 \
 	graphviz \
-	lsb-release \
-	neovim \
+	locales \
 	python3 \
 	python3-pip \
 	ruby \
 	tzdata \
-	wget \
-	vim
+	wget
 
 # Turn on breaking system packages in pip (set to 0 by default in noble)
 # Generally, our packages shouldn't break the system, but we will continue to monitor
@@ -134,19 +120,15 @@ mil_system_install --no-install-recommends \
 # and using system pip packages in the past has been fine.
 sudo python3 -m pip config set global.break-system-packages true
 
-sudo pip3 install -U vcstool
-
 cat <<EOF
 $(color "$Pur")
 $(hash_header)
 $(color "$Gre")Installed needed Linux dependencies.
 $(color "$Pur")Setting up ROS distributions...
 $(hash_header)$(color "$Res")
-
 EOF
 
-# Ensure that locales are set up correctly
-sudo apt update && sudo apt install -y locales
+# Ensure that locales are set up correctly (package installed above)
 sudo locale-gen en_US en_US.UTF-8
 sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 export LANG=en_US.UTF-8
@@ -158,21 +140,26 @@ sudo add-apt-repository universe -y
 sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 
 # ROS2 apt source
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list >/dev/null
+ARCH=$(dpkg --print-architecture)
+CODENAME=$(awk -F= '/^UBUNTU_CODENAME=/{print $2}' /etc/os-release)
+sudo tee /etc/apt/sources.list.d/ros2.list <<EOF >/dev/null
+deb [arch=$ARCH signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $CODENAME main
+EOF
+
+# Gazebo GPG key
+sudo curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
 
 # Install Gazebo apt source
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list >/dev/null
+sudo tee /etc/apt/sources.list.d/gazebo-stable.list <<EOF >/dev/null
+deb [arch=$ARCH signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $CODENAME main
+EOF
 
-# Pull ROS apt key
-sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
-# Pull gazebo apt key
-sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key D2486D2DD83DB69272AFE98867170598AF249743
+# Install MESA drivers for GZ
+sudo add-apt-repository ppa:kisak/kisak-mesa -y
 
-# Setup Gazebo GPG key
-sudo curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list >/dev/null
 # Update apt again and install ros
 sudo apt update
+sudo apt upgrade -y # switch to kisak mesa
 
 cat <<EOF
 $(color "$Pur")
@@ -182,23 +169,23 @@ $(color "$Pur")Downloading ROS2 Jazzy Jalisco...
 $(hash_header)$(color "$Res")
 EOF
 
-# Install MESA drivers for GZ
-sudo add-apt-repository ppa:kisak/kisak-mesa -y
-sudo apt update -y
-sudo apt upgrade -y
-
-mil_system_install ros-jazzy-desktop-full ros-jazzy-ros-gz
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
-mil_system_install \
+sudo apt install -y \
+	libboost-all-dev \
 	nlohmann-json3-dev \
 	python3-colcon-common-extensions \
+	python3-gz-transport13 \
+	python3-rosdep \
 	ros-jazzy-backward-ros \
+	ros-jazzy-behaviortree-cpp \
 	ros-jazzy-control-toolbox \
+	ros-jazzy-desktop-full \
 	ros-jazzy-generate-parameter-library \
 	ros-jazzy-geographic-msgs \
 	ros-jazzy-robot-localization \
 	ros-jazzy-rmw-cyclonedds-cpp \
+	ros-jazzy-ros-gz \
 	ros-jazzy-tf2-sensor-msgs \
 	ros-jazzy-tf-transformations \
 	ros-jazzy-velodyne \
@@ -213,16 +200,8 @@ $(color "$Pur")Installing Python dependencies...
 $(hash_header)$(color "$Res")
 EOF
 
-# Disable "automatic updates" Ubuntu prompt (thanks to https://askubuntu.com/a/610623!)
-if which update-manager >/dev/null 2>&1; then
-	sudo sed -i 's/Prompt=.*/Prompt=never/' /etc/update-manager/release-upgrades
-fi
-
 # Install Python 3 dependencies
 sudo pip3 install -r requirements.txt
-
-# Install Python dependencies for GZ Transoport
-sudo apt install python3-gz-transport13 --assume-yes
 
 cat <<EOF
 $(color "$Pur")
@@ -232,48 +211,19 @@ $(color "$Pur")Initializing rosdep...
 $(hash_header)$(color "$Res")
 EOF
 
-# Install Colcon
-sudo pip3 install -U colcon-common-extensions
-
-# Initialize rosdep
-sudo apt-get install -y python3-rosdep
-
 # Update rosdep
 sudo rm -rf /etc/ros/rosdep/sources.list.d/* # Delete this file first - if not deleted, error could be thrown
 sudo rosdep init
 sudo rosdep update
-sudo rosdep install --from-paths src --ignore-src -r -y
 
 # If this script is not ~/mil2/scripts/install.sh, throw an error to prevent members
 # from installing the repo in the wrong location. Setting ALLOW_NONSTANDARD_DIR=1
 # will bypass this check.
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+SCRIPT_DIR=$(realpath -- "$(dirname -- "${BASH_SOURCE[0]}")")
 if [[ $SCRIPT_DIR != "$HOME/mil2/scripts" && -z ${ALLOW_NONSTANDARD_DIR:-} ]]; then
 	echo "${Red}Error: This script must be located in ~/mil2/scripts/install.sh. Please review the installation guide and try again.${Res}"
 	exit 1
 fi
-# COLCON_SOURCE_DIR="$HOME/src"
-
-# Clone repository
-mil_user_install_dependencies() {
-	sudo apt update
-	sudo apt install -y \
-		git \
-		tmux \
-		vim \
-		htop \
-		tmuxinator \
-		net-tools \
-		cifs-utils \
-		nmap \
-		fd-find \
-		ripgrep \
-		fzf \
-		aptitude \
-		lm-sensors \
-		libboost-all-dev \
-		ros-jazzy-behaviortree-cpp
-}
 
 # Add line to user's bashrc which source the repo's setup files
 # This allows us to update aliases, environment variables, etc
@@ -295,7 +245,7 @@ mil_user_setup_rc() {
 			} >>~/.zshrc
 		fi
 	else
-		# User is using zsh
+		# User is using bash
 		if grep -Fq "$BASH_RC_LINES" ~/.bashrc; then
 			echo "milrc is already sourced in ~/.bashrc, skipping"
 		else
@@ -308,14 +258,17 @@ mil_user_setup_rc() {
 		fi
 	fi
 
-	# Copies bashrc to interactive login shells (like tmux)
-	echo 'if [ -n "$BASH_VERSION" ] && [ -n "$PS1" ]; then
-		# include .bashrc if it exists
-		if [ -f "$HOME/.bashrc" ]; then
-			. "$HOME/.bashrc"
-		fi
-	fi' >>~/.profile
-
+	if ! grep -q "bashrc" ~/.profile; then
+		# Copies bashrc to interactive login shells (like tmux)
+		cat <<-EOF >>~/.profile
+			# include .bashrc if it exists
+			if [ -n "$BASH_VERSION" ] && [ -n "$PS1" ]; then
+			  if [ -f "$HOME/.bashrc" ]; then
+			    . "$HOME/.bashrc"
+			  fi
+			fi
+		EOF
+	fi
 }
 
 add_hosts_entry() {
@@ -372,7 +325,22 @@ $(color "$Pur")Installing user tools and shell...
 $(hash_header)$(color "$Res")
 EOF
 
-mil_user_install_dependencies
+sudo apt install -y \
+	aptitude \
+	cifs-utils \
+	fd-find \
+	fzf \
+	git \
+	htop \
+	lm-sensors \
+	net-tools \
+	neovim \
+	nmap \
+	ripgrep \
+	tmux \
+	tmuxinator \
+	vim
+
 mil_user_setup_rc
 llvm
 hadolint
