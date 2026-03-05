@@ -11,16 +11,16 @@ from mil_robogym.data_collection.filesystem import edit_project
 def _project_payload(name: str) -> dict:
     """Builds a minimal project payload for edit tests."""
     return {
-        "project_name": name,
+        "name": name,
         "world_file": "src/default/world/file",
         "model_name": "weights.pt",
         "random_spawn_space": {
             "enabled": False,
-            "coord1_4d": (0.0, 0.0, 0.0, 0.0),
-            "coord2_4d": (1.0, 2.0, 3.0, 4.0),
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
         },
-        "input_topics": ["imu/processed"],
-        "output_topics": ["trajectory/4_deg"],
+        "input_topics": {"imu/processed": ["orientation.x"]},
+        "output_topics": {"trajectory/4_deg": ["yaw"]},
     }
 
 
@@ -44,11 +44,29 @@ def test_edit_project_updates_share_and_source(tmp_path: Path, monkeypatch):
     (share_old / "demos").mkdir()
     (source_old / "demos").mkdir()
     (share_old / "config.yaml").write_text(
-        "robogym_project:\n  name: old\n",
+        "robogym_project:\n"
+        "  name: Old Name\n"
+        "  world_file: src/default/world/file\n"
+        "  model_name: weights.pt\n"
+        "  random_spawn_space:\n"
+        "    enabled: false\n"
+        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "  input_topics: {}\n"
+        "  output_topics: {}\n",
         encoding="utf-8",
     )
     (source_old / "config.yaml").write_text(
-        "robogym_project:\n  name: old\n",
+        "robogym_project:\n"
+        "  name: Old Name\n"
+        "  world_file: src/default/world/file\n"
+        "  model_name: weights.pt\n"
+        "  random_spawn_space:\n"
+        "    enabled: false\n"
+        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "  input_topics: {}\n"
+        "  output_topics: {}\n",
         encoding="utf-8",
     )
 
@@ -67,8 +85,14 @@ def test_edit_project_updates_share_and_source(tmp_path: Path, monkeypatch):
     source_cfg = yaml.safe_load(
         (source_new / "config.yaml").read_text(encoding="utf-8"),
     )
-    assert share_cfg["robogym_project"]["project_name"] == "New Name"
-    assert source_cfg["robogym_project"]["project_name"] == "New Name"
+    assert share_cfg["robogym_project"]["name"] == "New Name"
+    assert source_cfg["robogym_project"]["name"] == "New Name"
+    assert share_cfg["robogym_project"]["input_topics"]["imu/processed"] == [
+        "orientation.x",
+    ]
+    assert share_cfg["robogym_project"]["output_topics"]["trajectory/4_deg"] == [
+        "yaw",
+    ]
     assert share_cfg == source_cfg
 
 

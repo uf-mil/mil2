@@ -41,18 +41,60 @@ def _project_roots() -> list[Path]:
     return roots
 
 
+def _normalize_topic_subtopics(
+    topic_subtopics: object,
+    *,
+    field_name: str,
+) -> dict[str, list[str]]:
+    if not isinstance(topic_subtopics, dict):
+        raise ValueError(
+            f"project['{field_name}'] must be a mapping of topic -> list[str].",
+        )
+    normalized: dict[str, list[str]] = {}
+    for topic, subtopics in topic_subtopics.items():
+        if not isinstance(subtopics, (list, tuple, set)):
+            raise ValueError(
+                f"project['{field_name}'][topic] must be a list-like of subtopics.",
+            )
+        normalized[str(topic)] = [str(subtopic) for subtopic in subtopics]
+    return normalized
+
+
 def _build_project_config(project: RoboGymProjectYaml) -> RoboGymProjectConfig:
-    return {"robogym_project": project}
+    cfg_project: RoboGymProjectYaml = {
+        "name": str(project["name"]),
+        "world_file": str(project["world_file"]),
+        "model_name": str(project["model_name"]),
+        "random_spawn_space": {
+            "enabled": bool(project["random_spawn_space"]["enabled"]),
+            "coord1_4d": [float(v) for v in project["random_spawn_space"]["coord1_4d"]],
+            "coord2_4d": [float(v) for v in project["random_spawn_space"]["coord2_4d"]],
+        },
+        "input_topics": _normalize_topic_subtopics(
+            project["input_topics"],
+            field_name="input_topics",
+        ),
+        "output_topics": _normalize_topic_subtopics(
+            project["output_topics"],
+            field_name="output_topics",
+        ),
+    }
+    if "tensor_spec" in project:
+        tensor_spec = dict(project["tensor_spec"])
+        tensor_spec.pop("ignored_input_features", None)
+        tensor_spec.pop("ignored_output_features", None)
+        cfg_project["tensor_spec"] = tensor_spec
+    return {"robogym_project": cfg_project}
 
 
 def _build_demo_config(
     *,
-    demo_name: str,
+    name: str,
     sampling_rate: float,
     start_position: Coord4D,
 ) -> RoboGymDemoConfig:
     cfg_demo: RoboGymDemoYaml = {
-        "demo_name": demo_name,
+        "name": name,
         "start_position": list(start_position),
         "sampling_rate": sampling_rate,
     }
@@ -77,7 +119,7 @@ def create_project_folder(
     Uses the ROS 2 package share directory for 'mil_robogym' as the root.
     Returns the created project directory Path.
     """
-    folder_name = to_lower_snake_case(project["project_name"])
+    folder_name = to_lower_snake_case(project["name"])
     project_roots = _project_roots()
     project_dirs = [root / folder_name for root in project_roots]
 
@@ -119,14 +161,14 @@ def edit_project(
     share_projects_dir = project_roots[0]
     source_projects_dir = project_roots[1] if len(project_roots) > 1 else None
 
-    current_name = original_project_name or project["project_name"]
+    current_name = original_project_name or project["name"]
     current_folder_name = to_lower_snake_case(current_name)
     project_dir = share_projects_dir / current_folder_name
 
     if not project_dir.exists() or not project_dir.is_dir():
         raise FileNotFoundError(f"Project folder does not exist: {project_dir}")
 
-    target_folder_name = to_lower_snake_case(project["project_name"])
+    target_folder_name = to_lower_snake_case(project["name"])
     target_project_dir = share_projects_dir / target_folder_name
 
     source_project_dir: Path | None = None
@@ -186,13 +228,13 @@ def edit_demo(
     roots = _project_roots()
     projects_dir = roots[0]
     project_name = to_lower_snake_case(project["name"])
-    demo_name = to_lower_snake_case(original_demo_name or demo["demo_name"])
+    demo_name = to_lower_snake_case(original_demo_name or demo["name"])
     demo_dir = projects_dir / project_name / "demos" / demo_name
 
     if not demo_dir.exists() or not demo_dir.is_dir():
         raise FileNotFoundError(f"Demo folder does not exist: {demo_dir}")
 
-    target_folder_name = to_lower_snake_case(demo["demo_name"])
+    target_folder_name = to_lower_snake_case(demo["name"])
     target_demo_dir = demo_dir.parent / target_folder_name
     if target_demo_dir != demo_dir:
         if target_demo_dir.exists():
@@ -205,7 +247,7 @@ def edit_demo(
     config_path = demo_dir / "config.yaml"
     cfg: RoboGymDemoConfig = {
         "robogym_demo": {
-            "demo_name": demo["demo_name"],
+            "name": demo["name"],
             "start_position": demo["start_position"],
             "sampling_rate": demo["sampling_rate"],
         },
@@ -305,7 +347,7 @@ def create_agent_folder(
 def create_demo_folder(
     project_dir: Path,
     *,
-    demo_name: str,
+    name: str,
     sampling_rate: float,
     start_position: Coord4D | None = None,
 ) -> tuple[Path, RoboGymDemoConfig]:
@@ -321,7 +363,7 @@ def create_demo_folder(
     demos_dir = project_dir / "demos"
     demos_dir.mkdir(parents=True, exist_ok=True)
 
-    folder_name = to_lower_snake_case(demo_name)
+    folder_name = to_lower_snake_case(name)
     demo_dir = demos_dir / folder_name
 
     if demo_dir.exists():
@@ -334,7 +376,7 @@ def create_demo_folder(
 
     config_path = demo_dir / "config.yaml"
     cfg = _build_demo_config(
-        demo_name=demo_name,
+        name=name,
         sampling_rate=sampling_rate,
         start_position=start_position,
     )

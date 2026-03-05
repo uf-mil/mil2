@@ -38,8 +38,8 @@ def find_projects_dir() -> Path:
 
     :raises RuntimeError: If the 'mil_robogym' package cannot be found (e.g.,
         the code is run outside of a built and sourced ROS 2 workspace).
-    :raises FileNotFoundError: If the 'projects' directory does not exist or
-        is not a directory.
+    :raises FileNotFoundError: If the 'projects' path exists but is not a
+        directory.
     :return: Absolute path to the 'projects' directory.
     :rtype: Path
     """
@@ -51,9 +51,11 @@ def find_projects_dir() -> Path:
         ) from e
 
     share_projects = share_dir.joinpath("projects")
-    if not share_projects.is_dir():
+    if not share_projects.exists():
+        share_projects.mkdir(parents=True, exist_ok=True)
+    elif not share_projects.is_dir():
         raise FileNotFoundError(
-            "Projects directory could not be found for unknown reason. Projects directory may not exist.",
+            "Projects path exists but is not a directory.",
         )
 
     return share_projects
@@ -95,6 +97,47 @@ def get_all_project_config() -> list[dict]:
             raise ValueError(
                 f"Config path for project '{project_dir}' could be parsed, but is empty",
             )
+
+        if not isinstance(parsed, dict):
+            raise ValueError(
+                f"Config path for project '{project_dir}' is not a mapping.",
+            )
+
+        try:
+            robogym_project = parsed["robogym_project"]
+            project_name = robogym_project["name"]
+            input_topics = robogym_project["input_topics"]
+            output_topics = robogym_project["output_topics"]
+        except (KeyError, TypeError) as e:
+            raise ValueError(
+                "Project config must include "
+                "'robogym_project.name' and "
+                "'robogym_project.{input_topics,output_topics}'.",
+            ) from e
+
+        if not isinstance(project_name, str) or not project_name.strip():
+            raise ValueError(
+                f"Project config for '{project_dir}' has an invalid name.",
+            )
+
+        if not isinstance(input_topics, dict) or not isinstance(output_topics, dict):
+            raise ValueError(
+                f"Project config for '{project_dir}' has invalid topic mappings.",
+            )
+
+        for list_name, topic_map in (
+            ("input_topics", input_topics),
+            ("output_topics", output_topics),
+        ):
+            for topic, subtopics in topic_map.items():
+                if not isinstance(topic, str):
+                    raise ValueError(
+                        f"Project config for '{project_dir}' has a non-string topic in {list_name}.",
+                    )
+                if not isinstance(subtopics, list):
+                    raise ValueError(
+                        f"Project config for '{project_dir}' has non-list subtopics in {list_name}.",
+                    )
 
         project_config = dict(parsed)
         project_config["num_demos"] = count_demo_folders(project_dir / "demos")
