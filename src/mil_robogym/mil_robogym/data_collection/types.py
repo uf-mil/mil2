@@ -17,8 +17,6 @@ class RoboGymTensorSpec(TypedDict):
     output_features: list[str]
     input_dim: int
     output_dim: int
-    ignored_input_features: dict[str, list[str]]
-    ignored_output_features: dict[str, list[str]]
 
 
 class RandomSpawnSpaceConfig(TypedDict):
@@ -32,8 +30,8 @@ class RoboGymProjectYaml(TypedDict):
     world_file: str
     model_name: str
     random_spawn_space: RandomSpawnSpaceConfig
-    input_topics: list[str]
-    output_topics: list[str]
+    input_topics: dict[str, list[str]]
+    output_topics: dict[str, list[str]]
     tensor_spec: NotRequired[RoboGymTensorSpec]
 
 
@@ -42,7 +40,7 @@ class RoboGymProjectConfig(TypedDict):
 
 
 class RoboGymDemoYaml(TypedDict):
-    demo_name: str
+    name: str
     start_position: Coord4DList
     sampling_rate: float
 

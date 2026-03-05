@@ -44,6 +44,8 @@ class EditProjectPage(tk.Frame):
         self._current_tensor_spec: Mapping[str, Any] | None = None
         self.input_topics_selected: list[str] = []
         self.output_topics_selected: list[str] = []
+        self.input_topic_subtopics: dict[str, list[str]] = {}
+        self.output_topic_subtopics: dict[str, list[str]] = {}
 
         title_row = tk.Frame(self, bg="#DADADA")
         title_row.grid(row=0, column=0, columnspan=6, sticky="w", padx=14, pady=(14, 8))
@@ -380,6 +382,8 @@ class EditProjectPage(tk.Frame):
             self._current_tensor_spec = None
             self.input_topics_selected = []
             self.output_topics_selected = []
+            self.input_topic_subtopics = {}
+            self.output_topic_subtopics = {}
             self._render_topics(list_type="input", topics=self.input_topics_selected)
             self._render_topics(list_type="output", topics=self.output_topics_selected)
             self._toggle_random_spawn()
@@ -413,10 +417,24 @@ class EditProjectPage(tk.Frame):
         self.random_spawn_var.set(enabled)
         self._toggle_random_spawn()
 
-        input_topics = details.get("input_topics", [])
-        output_topics = details.get("output_topics", [])
-        self.input_topics_selected = [str(topic) for topic in (input_topics or [])]
-        self.output_topics_selected = [str(topic) for topic in (output_topics or [])]
+        input_topics = details.get("input_topics", {})
+        output_topics = details.get("output_topics", {})
+        if isinstance(input_topics, Mapping):
+            self.input_topic_subtopics = {
+                str(topic): [str(field) for field in (fields or [])]
+                for topic, fields in input_topics.items()
+            }
+        else:
+            self.input_topic_subtopics = {}
+        if isinstance(output_topics, Mapping):
+            self.output_topic_subtopics = {
+                str(topic): [str(field) for field in (fields or [])]
+                for topic, fields in output_topics.items()
+            }
+        else:
+            self.output_topic_subtopics = {}
+        self.input_topics_selected = list(self.input_topic_subtopics)
+        self.output_topics_selected = list(self.output_topic_subtopics)
         self._render_topics(list_type="input", topics=self.input_topics_selected)
         self._render_topics(list_type="output", topics=self.output_topics_selected)
 
@@ -552,7 +570,7 @@ class EditProjectPage(tk.Frame):
             messagebox.showerror("Save Changes", f"Failed to save project:\n{e}")
             return
 
-        saved_name = project_cfg["project_name"]
+        saved_name = project_cfg["name"]
         loaded_project = self._safe_get_project_by_name(saved_name)
         if loaded_project is None:
             loaded_project = {"robogym_project": {"name": saved_name}}
@@ -589,16 +607,22 @@ class EditProjectPage(tk.Frame):
             )
 
         project_cfg: RoboGymProjectYaml = {
-            "project_name": project_name,
+            "name": project_name,
             "world_file": self.world_file_var.get().strip(),
             "model_name": self.model_name_var.get().strip(),
             "random_spawn_space": {
                 "enabled": random_enabled,
-                "coord1_4d": coord1,
-                "coord2_4d": coord2,
+                "coord1_4d": [float(v) for v in coord1],
+                "coord2_4d": [float(v) for v in coord2],
             },
-            "input_topics": list(self.input_topics_selected),
-            "output_topics": list(self.output_topics_selected),
+            "input_topics": {
+                topic: list(self.input_topic_subtopics.get(topic, []))
+                for topic in self.input_topics_selected
+            },
+            "output_topics": {
+                topic: list(self.output_topic_subtopics.get(topic, []))
+                for topic in self.output_topics_selected
+            },
         }
 
         if self._current_tensor_spec is not None:

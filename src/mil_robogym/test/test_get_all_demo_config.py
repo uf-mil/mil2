@@ -12,7 +12,7 @@ def _write_demo_config(
     base_dir: Path,
     *,
     folder_name: str,
-    demo_name: str,
+    name: str,
     sampling_rate: float = 10.0,
 ) -> None:
     """Writes a demo config file under a demo subdirectory."""
@@ -20,7 +20,7 @@ def _write_demo_config(
     demo_dir.mkdir(parents=True, exist_ok=True)
     payload = {
         "robogym_demo": {
-            "demo_name": demo_name,
+            "name": name,
             "start_position": [0.0, 0.0, 0.0, 0.0],
             "sampling_rate": sampling_rate,
         },
@@ -35,8 +35,8 @@ def test_get_all_demo_config_returns_configs_by_raw_demo_name(
     """Loads all demo configs keyed by their raw demo names."""
     projects_dir = tmp_path / "projects"
     demos_dir = projects_dir / "example_project" / "demos"
-    _write_demo_config(demos_dir, folder_name="demo_1", demo_name="Demo One")
-    _write_demo_config(demos_dir, folder_name="demo_2", demo_name="Demo Two")
+    _write_demo_config(demos_dir, folder_name="demo_1", name="Demo One")
+    _write_demo_config(demos_dir, folder_name="demo_2", name="Demo Two")
     monkeypatch.setattr(
         "mil_robogym.data_collection.get_all_demo_config.find_projects_dir",
         lambda: projects_dir,
@@ -69,8 +69,26 @@ def test_get_all_demo_config_raises_on_invalid_robogym_demo_structure(
         get_all_demo_config("Example Project")
 
 
-def test_get_all_demo_config_raises_when_demo_name_missing(tmp_path: Path, monkeypatch):
-    """Raises when robogym_demo is missing the demo_name field."""
+def test_get_all_demo_config_returns_empty_when_demos_dir_missing(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Creates demos directory and returns empty configs when none exist yet."""
+    projects_dir = tmp_path / "projects"
+    (projects_dir / "example_project").mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.get_all_demo_config.find_projects_dir",
+        lambda: projects_dir,
+    )
+
+    configs = get_all_demo_config("Example Project")
+
+    assert configs == {}
+    assert (projects_dir / "example_project" / "demos").is_dir()
+
+
+def test_get_all_demo_config_raises_when_name_missing(tmp_path: Path, monkeypatch):
+    """Raises when robogym_demo is missing the name field."""
     projects_dir = tmp_path / "projects"
     demo_dir = projects_dir / "example_project" / "demos" / "broken"
     demo_dir.mkdir(parents=True, exist_ok=True)

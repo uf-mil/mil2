@@ -17,16 +17,19 @@ def test_create_project_folder(tmp_path: Path, monkeypatch):
     )
 
     proj = {
-        "project_name": "Start Gate Agent",
+        "name": "Start Gate Agent",
         "world_file": "src/default/world/file",
         "model_name": "weights.pt",
         "random_spawn_space": {
             "enabled": False,
-            "coord1_4d": (0.0, 0.0, 0.0, 0.0),
-            "coord2_4d": (1.0, 2.0, 3.0, 4.0),
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
         },
-        "input_topics": ["imu/processed", "dvl/processed"],
-        "output_topics": ["trajectory/4_deg"],
+        "input_topics": {
+            "imu/processed": ["orientation.x", "orientation.y"],
+            "dvl/processed": ["velocity.x"],
+        },
+        "output_topics": {"trajectory/4_deg": ["yaw"]},
     }
 
     project_dir = create_project_folder(proj)
@@ -38,6 +41,16 @@ def test_create_project_folder(tmp_path: Path, monkeypatch):
     assert "robogym_project" in cfg
     assert "Start Gate Agent" in cfg
     assert "imu/processed" in cfg
+
+    parsed = yaml.safe_load(cfg)
+    assert parsed["robogym_project"]["name"] == "Start Gate Agent"
+    assert parsed["robogym_project"]["input_topics"]["imu/processed"] == [
+        "orientation.x",
+        "orientation.y",
+    ]
+    assert parsed["robogym_project"]["output_topics"]["trajectory/4_deg"] == [
+        "yaw",
+    ]
 
 
 def test_to_lower_snake_case_basic():
@@ -70,16 +83,16 @@ def test_create_project_folder_raises_if_exists(tmp_path, monkeypatch):
     )
 
     proj = {
-        "project_name": "Start Gate Agent",
+        "name": "Start Gate Agent",
         "world_file": "src/default/world/file",
         "model_name": "weights.pt",
         "random_spawn_space": {
             "enabled": False,
-            "coord1_4d": (0.0, 0.0, 0.0, 0.0),
-            "coord2_4d": (0.0, 0.0, 0.0, 0.0),
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [0.0, 0.0, 0.0, 0.0],
         },
-        "input_topics": ["imu/processed", "dvl/processed"],
-        "output_topics": ["trajectory/4_deg"],
+        "input_topics": {"imu/processed": [], "dvl/processed": []},
+        "output_topics": {"trajectory/4_deg": []},
     }
 
     # Create the folder first time
@@ -99,23 +112,21 @@ def test_create_project_folder_writes_tensor_spec(tmp_path: Path, monkeypatch):
     )
 
     proj = {
-        "project_name": "Tensor Spec Project",
+        "name": "Tensor Spec Project",
         "world_file": "src/default/world/file",
         "model_name": "weights.pt",
         "random_spawn_space": {
             "enabled": False,
-            "coord1_4d": (0.0, 0.0, 0.0, 0.0),
-            "coord2_4d": (1.0, 2.0, 3.0, 4.0),
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
         },
-        "input_topics": ["imu/processed"],
-        "output_topics": ["trajectory/4_deg"],
+        "input_topics": {"imu/processed": ["x", "y"]},
+        "output_topics": {"trajectory/4_deg": ["heading"]},
         "tensor_spec": {
             "input_features": ["imu/processed:x", "imu/processed:y"],
             "output_features": ["trajectory/4_deg:heading"],
             "input_dim": 2,
             "output_dim": 1,
-            "ignored_input_features": {"imu/processed": ["frame_id"]},
-            "ignored_output_features": {},
         },
     }
 
@@ -128,6 +139,47 @@ def test_create_project_folder_writes_tensor_spec(tmp_path: Path, monkeypatch):
         "imu/processed:x",
         "imu/processed:y",
     ]
+    assert cfg["robogym_project"]["input_topics"]["imu/processed"] == [
+        "x",
+        "y",
+    ]
+    assert cfg["robogym_project"]["output_topics"]["trajectory/4_deg"] == [
+        "heading",
+    ]
+
+
+def test_create_project_folder_rejects_legacy_ignored_tensor_spec_fields(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Rejects legacy ignored_* tensor-spec fields under strict schema validation."""
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
+        lambda: tmp_path,
+    )
+
+    proj = {
+        "name": "Legacy Tensor Spec Project",
+        "world_file": "src/default/world/file",
+        "model_name": "weights.pt",
+        "random_spawn_space": {
+            "enabled": False,
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
+        },
+        "input_topics": {"imu/processed": ["x"]},
+        "output_topics": {"trajectory/4_deg": ["heading"]},
+        "tensor_spec": {
+            "input_features": ["imu/processed:x"],
+            "output_features": ["trajectory/4_deg:heading"],
+            "input_dim": 1,
+            "output_dim": 1,
+            "ignored_input_features": {"imu/processed": ["frame_id"]},
+        },
+    }
+
+    with pytest.raises(ValueError, match="must not include ignored_input_features"):
+        create_project_folder(proj)
 
 
 def test_create_project_folder_writes_source_and_install(tmp_path: Path, monkeypatch):
@@ -144,16 +196,16 @@ def test_create_project_folder_writes_source_and_install(tmp_path: Path, monkeyp
     )
 
     proj = {
-        "project_name": "Dual Write Project",
+        "name": "Dual Write Project",
         "world_file": "src/default/world/file",
         "model_name": "weights.pt",
         "random_spawn_space": {
             "enabled": False,
-            "coord1_4d": (0.0, 0.0, 0.0, 0.0),
-            "coord2_4d": (1.0, 2.0, 3.0, 4.0),
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
         },
-        "input_topics": ["imu/processed"],
-        "output_topics": ["trajectory/4_deg"],
+        "input_topics": {"imu/processed": ["velocity.x"]},
+        "output_topics": {"trajectory/4_deg": ["yaw"]},
     }
 
     share_project_dir = create_project_folder(proj)

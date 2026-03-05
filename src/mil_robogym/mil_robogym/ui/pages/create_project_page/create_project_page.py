@@ -1017,18 +1017,28 @@ class CreateProjectPage(tk.Frame):
         random_spawn_enabled = self.random_spawn_var.get()
         coord1 = self.coordinate1 or self._parse_coord(self.coord1_var.get())
         coord2 = self.coordinate2 or self._parse_coord(self.coord2_var.get())
+        input_subtopics = self._selected_subtopic_fields("input")
+        output_subtopics = self._selected_subtopic_fields("output")
+        selected_input_topics = self._selected_topics("input")
+        selected_output_topics = self._selected_topics("output")
 
         return {
-            "project_name": self.project_name_var.get().strip(),
+            "name": self.project_name_var.get().strip(),
             "world_file": self.world_file_var.get().strip(),
             "model_name": self.model_name_var.get().strip(),
             "random_spawn_space": {
                 "enabled": random_spawn_enabled,
-                "coord1_4d": coord1 or (0.0, 0.0, 0.0, 0.0),
-                "coord2_4d": coord2 or (0.0, 0.0, 0.0, 0.0),
+                "coord1_4d": [float(v) for v in (coord1 or (0.0, 0.0, 0.0, 0.0))],
+                "coord2_4d": [float(v) for v in (coord2 or (0.0, 0.0, 0.0, 0.0))],
             },
-            "input_topics": self._selected_topics("input"),
-            "output_topics": self._selected_topics("output"),
+            "input_topics": {
+                topic: sorted(input_subtopics.get(topic, set()))
+                for topic in selected_input_topics
+            },
+            "output_topics": {
+                topic: sorted(output_subtopics.get(topic, set()))
+                for topic in selected_output_topics
+            },
         }
 
     def _on_compute_tensor_spec(self):
@@ -1073,19 +1083,11 @@ class CreateProjectPage(tk.Frame):
 
         self._tensor_spec = tensor_spec
         self._tensor_spec_topic_signature = self._current_tensor_spec_signature()
-        ignored_input = sum(
-            len(fields) for fields in tensor_spec["ignored_input_features"].values()
-        )
-        ignored_output = sum(
-            len(fields) for fields in tensor_spec["ignored_output_features"].values()
-        )
         self._set_tensor_spec_status(
             (
                 "Tensor Spec: "
                 f"in={tensor_spec['input_dim']} "
-                f"out={tensor_spec['output_dim']} "
-                f"ignored_in={ignored_input} "
-                f"ignored_out={ignored_output}"
+                f"out={tensor_spec['output_dim']}"
             ),
             fg="#222222",
         )
@@ -1173,7 +1175,7 @@ class CreateProjectPage(tk.Frame):
 
         self._update_create_project_button_state()
         project_cfg = self._build_project_config()
-        project_name = project_cfg["project_name"]
+        project_name = project_cfg["name"]
 
         if (
             self._tensor_spec is not None
