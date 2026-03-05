@@ -45,7 +45,7 @@ class FrontCamDriver(Node):
         self.declare_parameter(
             "camera-id",
             # "/dev/v4l/by-id/usb-H264_USB_Camera_H264_USB_Camera_2020032801-video-index0" # old
-            "/dev/v4l/by-id/usb-H264_USB_Camera_H264_USB_Camera_2020032801-video-index0",
+            "/dev/v4l/by-id/usb-e-con_Systems_See3CAM_CU20_06040000-video-index0"
         )
         self.declare_parameter("camera-topic", "front_cam/image_raw")
 
