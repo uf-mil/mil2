@@ -5,13 +5,6 @@ from datetime import datetime
 from pathlib import Path
 
 import yaml
-from ament_index_python.packages import (
-    PackageNotFoundError,
-    get_package_share_directory,
-)
-
-from .types import RoboGymDemo, RoboGymDemoConfig, RoboGymProject
-
 
 from .types import (
     Coord4D,
@@ -208,8 +201,8 @@ def edit_project(
 
 
 def edit_demo(
-    project: RoboGymProject,
-    demo: RoboGymDemo,
+    project: RoboGymProjectYaml,
+    demo: RoboGymDemoYaml,
     *,
     original_demo_name: str | None = None,
 ) -> Path:
@@ -221,8 +214,8 @@ def edit_demo(
 
     Returns the existing demo directory Path
     """
-    root = _resolve_default_base_dir()
-    projects_dir = root / "projects"
+    roots = _project_roots()
+    projects_dir = roots[0]
     project_name = to_lower_snake_case(project["name"])
     demo_name = to_lower_snake_case(original_demo_name or demo["demo_name"])
     demo_dir = projects_dir / project_name / "demos" / demo_name

@@ -60,23 +60,3 @@ class TopicWarning(TypedDict):
     reason: str
     matched: list[str]
     category: str
-
-
-class RoboGymProject(TypedDict):
-    project_name: str
-    world_file: str
-    model_name: str
-    random_spawn_space: RandomSpawnSpace
-    input_topics: list[str]
-    output_topics: list[str]
-    tensor_spec: NotRequired[RoboGymTensorSpec]
-
-
-class RoboGymDemoConfig(TypedDict):
-    robogym_demo: RoboGymDemo
-
-
-class RoboGymDemo(TypedDict):
-    demo_name: str
-    start_position: Coord4D
-    sampling_rate: float
