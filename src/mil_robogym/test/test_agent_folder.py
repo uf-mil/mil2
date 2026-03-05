@@ -1,20 +1,24 @@
+"""Tests for agent folder creation and timestamp formatting."""
+
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 from mil_robogym.data_collection.filesystem import (
+    _format_agent_timestamp,
     create_agent_folder,
-    format_agent_timestamp,
 )
 
 
 def test_format_agent_timestamp():
+    """Formats the agent timestamp using the expected 12-hour naming convention."""
     dt = datetime(2026, 2, 22, 23, 0)  # 11:00 pm
-    assert format_agent_timestamp(dt) == "2026_02_22_11_00_pm"
+    assert _format_agent_timestamp(dt) == "2026_02_22_11_00_pm"
 
 
 def test_create_agent_folder_creates_files(tmp_path: Path):
+    """Creates an agent folder with weights and metrics artifacts."""
     project_dir = tmp_path / "projects" / "start_gate_agent"
     project_dir.mkdir(parents=True)
 
@@ -38,6 +42,7 @@ def test_create_agent_folder_creates_files(tmp_path: Path):
 
 
 def test_create_agent_folder_raises_if_exists(tmp_path: Path):
+    """Raises when creating an agent folder for an existing timestamp."""
     project_dir = tmp_path / "proj"
     project_dir.mkdir()
 

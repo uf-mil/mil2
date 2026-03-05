@@ -2,90 +2,15 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TypedDict
 
+from .topic_warning_config import load_topic_warning_config
+from .types import TopicWarning
 
-class TopicWarning(TypedDict):  # TODO: Move to types.py
-    topic: str
-    reason: str
-    matched: list[str]
-    category: str
-
-
-ALWAYS_WARN = {
-    "clock",
-    "tf",
-    "tf_static",
-}  # TODO: Create config for mil_robogym and include these items in it and load them in.
-
-SAFE_KEYWORDS = {
-    "processed",
-    "filtered",
-    "fused",
-    "state",
-    "estimate",
-    "est",
-    "odom",
-    "odometry",
-    "pose",
-    "cmd",
-    "command",
-    "control",
-    "setpoint",
-    "target",
-    "ref",
-    "trajectory",
-}
-
-WARN_RULES: dict[str, list[str]] = {
-    "raw_sensor_stream": [
-        "image_raw",
-        "camera",
-        "depth",
-        "rgb",
-        "point_cloud",
-        "points",
-        "lidar",
-        "laser",
-        "scan",
-        "raw",
-        "sensor",
-        "imu",
-        "gps",
-        "mag",
-    ],
-    "sim_internal": [
-        "ground_truth",
-        "truth",
-        "model",
-        "link_states",
-        "joint_states",
-        "pose/info",
-        "world",
-        "gz",
-        "gazebo",
-    ],
-    "debug_or_stats": [
-        "debug",
-        "statistics",
-        "stats",
-        "diagnostics",
-        "perf",
-        "profile",
-    ],
-    "system_topic": [
-        "time",
-        "clock",
-        "event",
-    ],
-}
-
-WARN_ORDER = (
-    "system_topic",
-    "sim_internal",
-    "debug_or_stats",
-    "raw_sensor_stream",
-)
+_WARN_CONFIG = load_topic_warning_config()
+ALWAYS_WARN = _WARN_CONFIG["always_warn"]
+SAFE_KEYWORDS = _WARN_CONFIG["safe_keywords"]
+WARN_RULES = _WARN_CONFIG["warn_rules"]
+WARN_ORDER = _WARN_CONFIG["warn_order"]
 
 TOKEN_SPLIT_RE = re.compile(r"[\/._-]+")
 
