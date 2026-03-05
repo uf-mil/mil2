@@ -1,7 +1,7 @@
 import threading
 import tkinter as tk
 
-from mil_robogym.clients.model_pose_client import ModelPoseClient
+from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
 from mil_robogym.data_collection.filesystem import create_project_folder
@@ -39,7 +39,7 @@ class CreateProjectPage(tk.Frame):
         self.controller = controller
 
         self.world_control_client = WorldControlClient()
-        self.gz_pose_client = ModelPoseClient()
+        self.gz_pose_client = GetPoseClient()
 
         self.keyboard_controls_gui = None
         self.popup = None
@@ -1120,10 +1120,12 @@ class CreateProjectPage(tk.Frame):
             self._display_collected_coords,
         )
 
-    def _display_collected_coords(self, c1, c2):  # TODO:  Type hints
+    def _display_collected_coords(self, coords):  # TODO:  Type hints
         """
         Display the coordinates collected from simulation.
         """
+        c1, c2 = coords
+
         if c1 and c2:
             self.coordinate1 = c1
             self.coord1_entry.delete(0, tk.END)

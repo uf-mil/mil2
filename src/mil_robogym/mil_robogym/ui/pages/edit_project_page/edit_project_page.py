@@ -4,11 +4,11 @@ import tkinter as tk
 from tkinter import messagebox
 from typing import Any, Mapping
 
-from mil_robogym.clients.model_pose_client import ModelPoseClient
+from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.filesystem import edit_project
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
-from mil_robogym.data_collection.types import RoboGymProject
+from mil_robogym.data_collection.types import RoboGymProjectYaml
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
@@ -32,7 +32,7 @@ class EditProjectPage(tk.Frame):
         self.coordinate2: tuple[float, float, float, float] | None = None
 
         self.world_control_client = WorldControlClient()
-        self.gz_pose_client = ModelPoseClient()
+        self.gz_pose_client = GetPoseClient()
 
         self.keyboard_controls_gui: KeyboardControlsGUI | None = None
         self.popup: GrabCoordinatesPopup | None = None
@@ -560,7 +560,7 @@ class EditProjectPage(tk.Frame):
         if self.controller is not None:
             self.controller.show_page("view_project", project=loaded_project)
 
-    def _build_project_config_from_form(self) -> RoboGymProject | None:
+    def _build_project_config_from_form(self) -> RoboGymProjectYaml | None:
         project_name = self.project_name_var.get().strip()
         if not project_name:
             messagebox.showerror("Save Changes", "Project name cannot be empty.")
@@ -588,7 +588,7 @@ class EditProjectPage(tk.Frame):
                 else (0.0, 0.0, 0.0, 0.0)
             )
 
-        project_cfg: RoboGymProject = {
+        project_cfg: RoboGymProjectYaml = {
             "project_name": project_name,
             "world_file": self.world_file_var.get().strip(),
             "model_name": self.model_name_var.get().strip(),
