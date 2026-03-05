@@ -1,6 +1,6 @@
 import tkinter as tk
 
-from mil_robogym.data_collection.types import RoboGymProject
+from mil_robogym.data_collection.types import RoboGymProjectYaml
 
 from .buttons.preposition import PrepositionButton
 from .buttons.random_pose import RandomPoseButton
@@ -23,7 +23,7 @@ class ControlsSection(tk.Frame):
         for label in ["Reset Demo", "Play/Continue", "Pause", "Undo", "Redo"]:
             tk.Button(self.btns, text=label, width=12).pack(side="left", padx=4)
 
-    def enable_buttons(self, project: RoboGymProject) -> None:
+    def enable_buttons(self, project: RoboGymProjectYaml) -> None:
         PrepositionButton(self.parent, self.btns, True)
 
         random_spawn_space = project["random_spawn_space"]

@@ -10,7 +10,6 @@ from .types import (
     Coord4D,
     RoboGymDemoConfig,
     RoboGymDemoYaml,
-    RoboGymProject,
     RoboGymProjectConfig,
     RoboGymProjectYaml,
 )
@@ -42,38 +41,8 @@ def _project_roots() -> list[Path]:
     return roots
 
 
-def _build_project_config(project: RoboGymProject) -> RoboGymProjectConfig:
-    cfg_project: RoboGymProjectYaml = {
-        "name": project["project_name"],
-        "world_file": project["world_file"],
-        "model_name": project["model_name"],
-        "random_spawn_space": {
-            "enabled": project["random_spawn_space"]["enabled"],
-            # Store as yaml lists for portability.
-            "coord1_4d": list(project["random_spawn_space"]["coord1_4d"]),
-            "coord2_4d": list(project["random_spawn_space"]["coord2_4d"]),
-        },
-        "input_topics": list(project["input_topics"]),
-        "output_topics": list(project["output_topics"]),
-    }
-
-    tensor_spec = project.get("tensor_spec")
-    if tensor_spec is not None:
-        cfg_project["tensor_spec"] = {
-            "input_features": list(tensor_spec["input_features"]),
-            "output_features": list(tensor_spec["output_features"]),
-            "input_dim": int(tensor_spec["input_dim"]),
-            "output_dim": int(tensor_spec["output_dim"]),
-            "ignored_input_features": {
-                topic: list(fields)
-                for topic, fields in tensor_spec["ignored_input_features"].items()
-            },
-            "ignored_output_features": {
-                topic: list(fields)
-                for topic, fields in tensor_spec["ignored_output_features"].items()
-            },
-        }
-    return {"robogym_project": cfg_project}
+def _build_project_config(project: RoboGymProjectYaml) -> RoboGymProjectConfig:
+    return {"robogym_project": project}
 
 
 def _build_demo_config(
@@ -99,7 +68,7 @@ def _write_yaml_config(
 
 
 def create_project_folder(
-    project: RoboGymProject,
+    project: RoboGymProjectYaml,
 ) -> Path:
     """
     Creates:
@@ -134,12 +103,12 @@ def create_project_folder(
 
 
 def edit_project(
-    project: RoboGymProject,
+    project: RoboGymProjectYaml,
     *,
     original_project_name: str | None = None,
 ) -> Path:
     """
-    Edit an existing project's config.yaml using a RoboGymProject payload.
+    Edit an existing project's config.yaml using a RoboGymProjectYaml payload.
 
     Writes:
         <share_dir>/projects/<lower_snake_project_name>/config.yaml
