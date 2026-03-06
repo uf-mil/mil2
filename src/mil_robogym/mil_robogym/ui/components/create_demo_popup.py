@@ -87,7 +87,7 @@ class CreateDemoPopup:
 
         _path, cfg = create_demo_folder(
             find_projects_dir() / to_lower_snake_case(self.parent.project_name),
-            demo_name=name,
+            name=name,
             sampling_rate=sampling_rate,
         )
 

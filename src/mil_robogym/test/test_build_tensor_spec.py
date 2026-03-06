@@ -8,16 +8,16 @@ from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
 def _project(input_topics: list[str], output_topics: list[str]) -> dict:
     """Builds a minimal project payload used by tensor-spec tests."""
     return {
-        "project_name": "Tensor Spec Project",
+        "name": "Tensor Spec Project",
         "world_file": "/tmp/world.sdf",
         "model_name": "model.pt",
         "random_spawn_space": {
             "enabled": False,
-            "coord1_4d": (0.0, 0.0, 0.0, 0.0),
-            "coord2_4d": (1.0, 1.0, 1.0, 1.0),
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 1.0, 1.0, 1.0],
         },
-        "input_topics": input_topics,
-        "output_topics": output_topics,
+        "input_topics": {topic: [] for topic in input_topics},
+        "output_topics": {topic: [] for topic in output_topics},
     }
 
 
@@ -65,8 +65,6 @@ def test_build_tensor_spec_success_filters_non_numeric(monkeypatch):
     assert result["output_features"] == ["/trajectory/4_deg:x"]
     assert result["input_dim"] == 4
     assert result["output_dim"] == 1
-    assert result["ignored_input_features"] == {"/imu/data": ["header.frame_id"]}
-    assert result["ignored_output_features"] == {"/trajectory/4_deg": ["mode"]}
 
 
 def test_build_tensor_spec_preserves_sampler_order(monkeypatch):
@@ -194,8 +192,6 @@ def test_build_tensor_spec_allows_empty_topic_lists(monkeypatch):
         "output_features": [],
         "input_dim": 0,
         "output_dim": 0,
-        "ignored_input_features": {},
-        "ignored_output_features": {},
     }
 
 
@@ -236,8 +232,8 @@ def test_build_tensor_spec_supports_shared_input_output_topic(monkeypatch):
     """Supports a topic selected for both inputs and outputs."""
 
     def fake_sample_project_topics(project, *, timeout_s):
-        assert project["input_topics"] == ["/shared"]
-        assert project["output_topics"] == ["/shared"]
+        assert project["input_topics"] == {"/shared": []}
+        assert project["output_topics"] == {"/shared": []}
         return (
             {"/shared": {"x": 1}},
             {"/shared": {"x": 1}},
