@@ -49,7 +49,13 @@ def generate_launch_description():
     model_name = LaunchConfiguration("model_name")
     urdf_out = pkg_project_description / "urdf" / "navigator.urdf"
     generate_urdf = ExecuteProcess(
-        cmd=["xacro", LaunchConfiguration("xacro_file"), "-o", urdf_out],
+        cmd=[
+            "xacro",
+            LaunchConfiguration("xacro_file"),
+            "-o",
+            urdf_out,
+            [TextSubstitution(text="namespace:="), model_name],
+        ],
         output="screen",
     )
 
