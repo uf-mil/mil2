@@ -1,23 +1,25 @@
 import threading
 import tkinter as tk
 
-from mil_robogym.clients.model_pose_client import ModelPoseClient
+from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
-from mil_robogym.data_collection.filesystem import (
-    create_project_folder,
-)
+from mil_robogym.data_collection.filesystem import create_project_folder
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
 from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
 from mil_robogym.data_collection.sample_input_topics import sample_topics
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
-from mil_robogym.ui.components.keyboard_controls import TeleopGUI
+from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 
 class CreateProjectPage(tk.Frame):
 
-    def __init__(self, parent, controller=None):
+    def __init__(
+        self,
+        parent,
+        controller=None,
+    ):  # TODO: Use typehints. and change name of controller to app.
         """
         Build and lay out the "Create Project" page.
 
@@ -37,10 +39,11 @@ class CreateProjectPage(tk.Frame):
         self.controller = controller
 
         self.world_control_client = WorldControlClient()
-        self.gz_pose_client = ModelPoseClient()
+        self.gz_pose_client = GetPoseClient()
 
         self.keyboard_controls_gui = None
         self.popup = None
+
         self._create_project_error_tip = None
         self._create_project_error_tip_after_id = None
         self._tensor_spec = None
@@ -104,7 +107,7 @@ class CreateProjectPage(tk.Frame):
             ipady=3,
         )
 
-        tk.Label(
+        tk.Label(  # TODO: Be consistent with code styling.
             self,
             text="World File:",
             bg="#DADADA",
@@ -179,7 +182,7 @@ class CreateProjectPage(tk.Frame):
             borderwidth=0,
         ).grid(row=4, column=0, columnspan=2, sticky="nsew", padx=(14, 8), pady=(6, 2))
 
-        self.coord1_label = tk.Label(
+        self.coord1_label = tk.Label(  # TODO: Be consistent!!!
             self,
             text="Coord 1:",
             bg="#DADADA",
@@ -309,22 +312,30 @@ class CreateProjectPage(tk.Frame):
             pady=(6, 2),
         )
 
-        self.input_topic_vars = {}
+        self.input_topic_vars = {}  # TODO: Figure out why and comment it.
         self.output_topic_vars = {}
+
         self.input_topic_buttons = {}
         self.output_topic_buttons = {}
+
         self.input_subtopic_vars = {}
         self.output_subtopic_vars = {}
+
         self.input_subtopic_field_order = {}
         self.output_subtopic_field_order = {}
+
         self.input_subtopic_numeric_fields = {}
         self.output_subtopic_numeric_fields = {}
+
         self.input_subtopic_expanded = {}
         self.output_subtopic_expanded = {}
+
         self.input_subtopic_loading = set()
         self.output_subtopic_loading = set()
+
         self.input_subtopic_load_errors = {}
         self.output_subtopic_load_errors = {}
+
         self.input_subtopic_summary_labels = {}
         self.output_subtopic_summary_labels = {}
 
@@ -343,8 +354,8 @@ class CreateProjectPage(tk.Frame):
         if not self._topics:
             self._topics = ["No topics found"]
 
-        self.input_topic_order = list(self._topics)
-        self.output_topic_order = list(self._topics)
+        self.input_topic_order = self._topics.copy()
+        self.output_topic_order = self._topics.copy()
         self._build_topic_checkboxes(list_type="input")
         self._build_topic_checkboxes(list_type="output")
 
@@ -441,8 +452,6 @@ class CreateProjectPage(tk.Frame):
             pady=(2, 6),
         )
 
-        action_row = 11
-
         tk.Button(
             self,
             text="Cancel",
@@ -456,7 +465,7 @@ class CreateProjectPage(tk.Frame):
             padx=10,
             pady=6,
         ).grid(
-            row=action_row,
+            row=11,
             column=0,
             columnspan=3,
             sticky="nsew",
@@ -478,7 +487,7 @@ class CreateProjectPage(tk.Frame):
             pady=6,
         )
         self.create_project_button.grid(
-            row=action_row,
+            row=11,
             column=3,
             columnspan=3,
             sticky="nsew",
@@ -492,7 +501,7 @@ class CreateProjectPage(tk.Frame):
         self.grid_rowconfigure(9, weight=1)
         self._update_create_project_button_state()
 
-    def _safe_get_topics(self):
+    def _safe_get_topics(self):  # TODO: display user facing error.
         """
         Retrieve available ROS 2 topics with normalized error handling.
 
@@ -538,7 +547,10 @@ class CreateProjectPage(tk.Frame):
         )
         self._update_create_project_button_state()
 
-    def _build_topic_checkboxes(self, list_type):
+    def _build_topic_checkboxes(
+        self,
+        list_type,
+    ):  # TODO: Type hints, use enum instead of inputing a string.
         """
         Build topic checkboxes for either input or output topics.
         """
@@ -571,11 +583,15 @@ class CreateProjectPage(tk.Frame):
             topic_button.pack(anchor="w")
             topic_buttons[topic] = topic_button
 
-    def _on_topic_clicked(self, topic, list_type):
+    def _on_topic_clicked(
+        self,
+        topic,
+        list_type,
+    ):  # TODO: type hints and return type hints
         """
         Move the clicked topic to the top of only its own topic list.
         """
-        if list_type == "input":
+        if list_type == "input":  # TODO: Use ternary
             topic_order = self.input_topic_order
             topic_buttons = self.input_topic_buttons
         else:
@@ -596,7 +612,8 @@ class CreateProjectPage(tk.Frame):
         self._refresh_subtopic_sections(list_type)
         self._update_create_project_button_state()
 
-    def _subtopic_state(self, list_type):
+    def _subtopic_state(self, list_type):  # TODO: type hints here as well.
+        # TODO: Make the subtopics thing their own component inside the create_project_page folder.
         """
         Return subtopic state containers for one topic list type.
         """
@@ -898,7 +915,7 @@ class CreateProjectPage(tk.Frame):
                     anchor="w",
                 ).pack(anchor="w")
 
-    def _selected_topics(self, list_type):
+    def _selected_topics(self, list_type):  # TODO: type hints
         """
         Return selected topics in current UI order for one topic list.
         """
@@ -1000,18 +1017,28 @@ class CreateProjectPage(tk.Frame):
         random_spawn_enabled = self.random_spawn_var.get()
         coord1 = self.coordinate1 or self._parse_coord(self.coord1_var.get())
         coord2 = self.coordinate2 or self._parse_coord(self.coord2_var.get())
+        input_subtopics = self._selected_subtopic_fields("input")
+        output_subtopics = self._selected_subtopic_fields("output")
+        selected_input_topics = self._selected_topics("input")
+        selected_output_topics = self._selected_topics("output")
 
         return {
-            "project_name": self.project_name_var.get().strip(),
+            "name": self.project_name_var.get().strip(),
             "world_file": self.world_file_var.get().strip(),
             "model_name": self.model_name_var.get().strip(),
             "random_spawn_space": {
                 "enabled": random_spawn_enabled,
-                "coord1_4d": coord1 or (0.0, 0.0, 0.0, 0.0),
-                "coord2_4d": coord2 or (0.0, 0.0, 0.0, 0.0),
+                "coord1_4d": [float(v) for v in (coord1 or (0.0, 0.0, 0.0, 0.0))],
+                "coord2_4d": [float(v) for v in (coord2 or (0.0, 0.0, 0.0, 0.0))],
             },
-            "input_topics": self._selected_topics("input"),
-            "output_topics": self._selected_topics("output"),
+            "input_topics": {
+                topic: sorted(input_subtopics.get(topic, set()))
+                for topic in selected_input_topics
+            },
+            "output_topics": {
+                topic: sorted(output_subtopics.get(topic, set()))
+                for topic in selected_output_topics
+            },
         }
 
     def _on_compute_tensor_spec(self):
@@ -1056,25 +1083,17 @@ class CreateProjectPage(tk.Frame):
 
         self._tensor_spec = tensor_spec
         self._tensor_spec_topic_signature = self._current_tensor_spec_signature()
-        ignored_input = sum(
-            len(fields) for fields in tensor_spec["ignored_input_features"].values()
-        )
-        ignored_output = sum(
-            len(fields) for fields in tensor_spec["ignored_output_features"].values()
-        )
         self._set_tensor_spec_status(
             (
                 "Tensor Spec: "
                 f"in={tensor_spec['input_dim']} "
-                f"out={tensor_spec['output_dim']} "
-                f"ignored_in={ignored_input} "
-                f"ignored_out={ignored_output}"
+                f"out={tensor_spec['output_dim']}"
             ),
             fg="#222222",
         )
         self._hide_create_project_error_tooltip()
 
-    def _on_grab_from_sim(self):
+    def _on_grab_from_sim(self):  # TODO: Type hints
         """
         Handle the "Grab from Sim" action.
 
@@ -1084,7 +1103,7 @@ class CreateProjectPage(tk.Frame):
         self.world_control_client.play_simulation()
 
         # Run keyboard controls
-        self.keyboard_controls_gui = self.keyboard_controls_gui or TeleopGUI(
+        self.keyboard_controls_gui = self.keyboard_controls_gui or KeyboardControlsGUI(
             self,
             self._on_close_of_keyboard_controls,
         )
@@ -1103,10 +1122,12 @@ class CreateProjectPage(tk.Frame):
             self._display_collected_coords,
         )
 
-    def _display_collected_coords(self, c1, c2):
+    def _display_collected_coords(self, coords):  # TODO:  Type hints
         """
         Display the coordinates collected from simulation.
         """
+        c1, c2 = coords
+
         if c1 and c2:
             self.coordinate1 = c1
             self.coord1_entry.delete(0, tk.END)
@@ -1154,7 +1175,7 @@ class CreateProjectPage(tk.Frame):
 
         self._update_create_project_button_state()
         project_cfg = self._build_project_config()
-        project_name = project_cfg["project_name"]
+        project_name = project_cfg["name"]
 
         if (
             self._tensor_spec is not None

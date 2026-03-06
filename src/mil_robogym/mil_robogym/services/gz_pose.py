@@ -36,7 +36,11 @@ class GZPoseService(Node):
             self.get_gz_pose,
         )
 
-    def get_gz_pose(self, request, response):
+    def get_gz_pose(
+        self,
+        request: GetGZPose.Request,
+        response: GetGZPose.Response,
+    ) -> GetGZPose.Response | None:
         """
         Find the pose message for the requested model.
         """
@@ -54,7 +58,6 @@ class GZPoseService(Node):
         raise ValueError(f"Could not get pose information for model {self.model_name}")
 
     def _update_logged_pose(self, msg: Pose_V):
-
         model_pose = next(
             (pose for pose in msg.pose if pose.name == self.model_name),
             None,
@@ -86,6 +89,9 @@ class GZPoseService(Node):
 
 
 def main():
+    """
+    Main entry point to launch the gazebo pose getter service.
+    """
     rclpy.init()
 
     gz_pose_service = GZPoseService()
