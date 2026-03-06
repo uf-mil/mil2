@@ -73,7 +73,7 @@
         <box size="0.708 0.345 0.001"/>
       </geometry>
     </collision>
-    <collision name="Front_Shell">
+    <collision name="Bottom_Shell">
       <origin rpy="0 0 0" xyz="0.345 0 -0.177"/>
       <geometry>
         <box size="0.708 0.345 0.001"/>
@@ -103,10 +103,10 @@
 
     <plugin filename="MarbleDropper" name="marble_dropper::MarbleDropper"/>
 
-    <plugin filename="GripperControl" name="gripper_control::GripperControl">
+    <!-- <plugin filename="GripperControl" name="gripper_control::GripperControl">
       <left_joint_name>gripper_leftArm_joint</left_joint_name>
       <right_joint_name>gripper_rightArm_joint</right_joint_name>
-    </plugin>
+    </plugin> -->
   </gazebo>
 
   <link name="localization_center">
@@ -142,7 +142,7 @@
   <xacro:asym_drag_plate parent="base_link" name="asym_drag" pose_x="0.8" pose_y="0" pose_z="0" mass="0.001" yV="0" yVabsV="0"/>
 
   <!-- Gripper -->
-  <xacro:gripper name="gripper" parent="base_link" xyz="0.375 0 -0.225" rpy="0 0 0"/>
+  <xacro:gripper name="gripper" parent="base_link" xyz="0.354 0 -0.225" rpy="0 0 0"/>
 
   <!-- Thrusters -->
   <!-- Front/Back Left/Right Vertical/Horizontal -->
