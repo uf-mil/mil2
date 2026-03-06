@@ -1,26 +1,33 @@
+"""Tests for topic sampling, ROS type resolution, and flattening behavior."""
+
 import subprocess
 
 import pytest
 
-from mil_robogym.data_collection.sample_input_topics import sample_input_topics
+from mil_robogym.data_collection.sample_input_topics import (
+    sample_input_topics,
+    sample_project_topics,
+)
 
 
 def _project(input_topics: list[str]) -> dict:
+    """Builds a minimal project payload used by sampling tests."""
     return {
-        "project_name": "Sampling Test Project",
+        "name": "Sampling Test Project",
         "world_file": "/tmp/world.sdf",
         "model_name": "model.pt",
         "random_spawn_space": {
             "enabled": False,
-            "coord1_4d": (0.0, 0.0, 0.0, 0.0),
-            "coord2_4d": (1.0, 1.0, 1.0, 1.0),
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 1.0, 1.0, 1.0],
         },
-        "input_topics": input_topics,
-        "output_topics": [],
+        "input_topics": {topic: [] for topic in input_topics},
+        "output_topics": {},
     }
 
 
 def test_sample_input_topics_success(monkeypatch):
+    """Samples topics successfully and flattens nested/default message fields."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
         lambda: ["/imu/data", "/down_cam/image_raw"],
@@ -76,7 +83,91 @@ def test_sample_input_topics_success(monkeypatch):
     assert result["/down_cam/image_raw"]["encoding"] == "rgb8"
 
 
+def test_sample_input_topics_flattens_nested_message_types(monkeypatch):
+    """Flattens nested list/dict message structures into feature keys."""
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
+        lambda: ["/nested/msg"],
+    )
+
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="custom_msgs/msg/Nested\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.sample_input_topics.subprocess.run",
+        fake_run,
+    )
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.sample_input_topics._default_message_as_dict",
+        lambda _msg_type: {
+            "outer": [
+                {
+                    "inner": {
+                        "x": 1.0,
+                        "label": "a",
+                    },
+                },
+                {
+                    "inner": {
+                        "x": 2.0,
+                        "label": "b",
+                    },
+                },
+            ],
+        },
+    )
+
+    result = sample_input_topics(_project(["/nested/msg"]))
+
+    assert result["/nested/msg"]["outer[0].inner.x"] == 1.0
+    assert result["/nested/msg"]["outer[1].inner.x"] == 2.0
+    assert result["/nested/msg"]["outer[0].inner.label"] == "a"
+    assert result["/nested/msg"]["outer[1].inner.label"] == "b"
+
+
+def test_sample_project_topics_samples_shared_topic_once(monkeypatch):
+    """Samples a shared input/output topic once and returns both mappings."""
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
+        lambda: ["/shared"],
+    )
+
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="std_msgs/msg/Int32\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.sample_input_topics.subprocess.run",
+        fake_run,
+    )
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.sample_input_topics._default_message_as_dict",
+        lambda _msg_type: {"x": 1},
+    )
+
+    project = _project(["/shared"])
+    project["output_topics"] = {"/shared": []}
+    sampled_inputs, sampled_outputs = sample_project_topics(project)
+
+    assert len(calls) == 1
+    assert sampled_inputs["/shared"]["x"] == 1
+    assert sampled_outputs["/shared"]["x"] == 1
+
+
 def test_sample_input_topics_accepts_topics_without_leading_slash(monkeypatch):
+    """Resolves topics even when the request omits the leading slash."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
         lambda: ["/imu/data"],
@@ -109,16 +200,19 @@ def test_sample_input_topics_accepts_topics_without_leading_slash(monkeypatch):
 
 
 def test_sample_input_topics_returns_empty_for_empty_input_topics():
+    """Returns an empty mapping when no input topics are requested."""
     result = sample_input_topics(_project([]))
     assert result == {}
 
 
 def test_sample_input_topics_raises_on_invalid_timeout():
+    """Raises ValueError when timeout_s is not positive."""
     with pytest.raises(ValueError):
         sample_input_topics(_project(["/imu/data"]), timeout_s=0.0)
 
 
 def test_sample_input_topics_raises_on_missing_topic(monkeypatch):
+    """Raises when requested topics are missing from the ROS graph."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
         lambda: ["/imu/data"],
@@ -129,6 +223,8 @@ def test_sample_input_topics_raises_on_missing_topic(monkeypatch):
 
 
 def test_sample_input_topics_raises_when_topic_listing_fails(monkeypatch):
+    """Raises when ROS topic discovery fails before sampling."""
+
     def fake_get_topics():
         raise RuntimeError("ros2 topic list failed")
 
@@ -142,6 +238,7 @@ def test_sample_input_topics_raises_when_topic_listing_fails(monkeypatch):
 
 
 def test_sample_input_topics_raises_on_echo_nonzero_return_code(monkeypatch):
+    """Raises when `ros2 topic type` returns a non-zero exit code."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
         lambda: ["/imu/data"],
@@ -168,6 +265,7 @@ def test_sample_input_topics_raises_on_echo_nonzero_return_code(monkeypatch):
 
 
 def test_sample_input_topics_raises_on_topic_type_timeout(monkeypatch):
+    """Raises when topic type resolution exceeds the timeout."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
         lambda: ["/imu/data"],
@@ -188,6 +286,7 @@ def test_sample_input_topics_raises_on_topic_type_timeout(monkeypatch):
 def test_sample_input_topics_raises_when_ros2_cli_missing_during_topic_type(
     monkeypatch,
 ):
+    """Raises when the ROS 2 CLI is unavailable during type resolution."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
         lambda: ["/imu/data"],
@@ -206,6 +305,7 @@ def test_sample_input_topics_raises_when_ros2_cli_missing_during_topic_type(
 
 
 def test_sample_input_topics_raises_on_empty_topic_type_stdout(monkeypatch):
+    """Raises when the topic type command produces empty output."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
         lambda: ["/imu/data"],
@@ -229,6 +329,7 @@ def test_sample_input_topics_raises_on_empty_topic_type_stdout(monkeypatch):
 
 
 def test_sample_input_topics_raises_on_message_type_resolution_failure(monkeypatch):
+    """Propagates failures from default message resolution."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
         lambda: ["/imu/data"],
@@ -260,6 +361,7 @@ def test_sample_input_topics_raises_on_message_type_resolution_failure(monkeypat
 
 
 def test_sample_input_topics_flattens_scalar_root(monkeypatch):
+    """Stores a scalar root message under the reserved `value` key."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
         lambda: ["/scalar_topic"],
