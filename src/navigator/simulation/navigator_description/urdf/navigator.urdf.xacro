@@ -8,9 +8,10 @@
 
   <!-- Properties -->
   <xacro:property name="sensor_namespace" value="sensors/"/>
-  <xacro:property name="camera_namespace" value="camera/"/>
+  <!-- <xacro:property name="camera_namespace" value="camera/"/> -->
   <xacro:property name="shooter_namespace" value="shooters/"/>
   <xacro:property name="acoustic_namespace" value="pingers/"/>
+  <!-- <xacro:property name="namespace" value="/navigator"/> -->
 
   <!-- Simulated sensors/actuators -->
   <!-- <xacro:main_collisions prefix="navigator"/> -->
@@ -23,7 +24,7 @@
   <xacro:wamv_pinger pinger_name="hydrophones" sensor_name="hydrophones" position="1 0 -1"/>
 
   <!-- Add 4 thrusters -->
-  <xacro:property name="thruster_namespace" value="thrusters"/>
+  <xacro:property name="thruster_namespace" value="thrusters/"/>
   <!-- === engine === -->
   <xacro:mil_engine prefix="BL" position="-1.9304 1.1 0.318237" orientation="0.0 0.0 0.785398" mech_reduction="1.35"/>
   <xacro:mil_engine prefix="BR" position="-1.9304 -1.1 0.318237" orientation="0.0 0.0 -0.785398" mech_reduction="1.35"/>
