@@ -339,5 +339,4 @@ def create_demo_folder(
         start_position=start_position,
     )
     _write_yaml_config(config_path, cfg)
-
     return demo_dir, cfg
