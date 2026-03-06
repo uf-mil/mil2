@@ -19,6 +19,8 @@ class ProjectRow(tk.Frame):
         left_text: str,
         right_text: str,
         command: Callable[[], Any] | None = None,
+        action_text: str | None = None,
+        action_command: Callable[[], Any] | None = None,
     ) -> None:
 
         super().__init__(
@@ -34,6 +36,7 @@ class ProjectRow(tk.Frame):
 
         inner.grid_columnconfigure(0, weight=1)
         inner.grid_columnconfigure(1, weight=0)
+        inner.grid_columnconfigure(2, weight=0)
 
         left: tk.Label = tk.Label(
             inner,
@@ -52,6 +55,23 @@ class ProjectRow(tk.Frame):
 
         left.grid(row=0, column=0, sticky="w")
         right.grid(row=0, column=1, sticky="e", padx=(20, 0))
+
+        action_btn: tk.Button | None = None
+        if action_text and callable(action_command):
+            action_btn = tk.Button(
+                inner,
+                text=action_text,
+                command=action_command,
+                bg="#DCDCDC",
+                activebackground="#CFCFCF",
+                fg="black",
+                relief="solid",
+                bd=1,
+                padx=8,
+                pady=2,
+                cursor="hand2",
+            )
+            action_btn.grid(row=0, column=2, sticky="e", padx=(12, 0))
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -72,6 +92,8 @@ class ProjectRow(tk.Frame):
                 return
             for w in (self, inner, left, right):
                 w.configure(bg="#DCDCDC")
+            if action_btn is not None:
+                action_btn.configure(bg="#CECECE")
 
         def on_leave(_event: tk.Event | None = None) -> None:
             """Remove hover styling when the pointer leaves the widget."""
@@ -79,8 +101,13 @@ class ProjectRow(tk.Frame):
                 return
             for w in (self, inner, left, right):
                 w.configure(bg="#E6E6E6")
+            if action_btn is not None:
+                action_btn.configure(bg="#DCDCDC")
 
         if command is not None:
             for w in (self, inner, left, right):
                 w.bind("<Enter>", on_enter)
                 w.bind("<Leave>", on_leave)
+            if action_btn is not None:
+                action_btn.bind("<Enter>", on_enter)
+                action_btn.bind("<Leave>", on_leave)
