@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>navigator_thrust_mapper</name>
+  <version>0.0.0</version>
+  <description>Thruster mapping utilities and node for Navigator</description>
+  <maintainer email="devnull@example.com">MIL</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>geometry_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+</package>
