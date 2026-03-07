@@ -19,11 +19,17 @@ from launch_ros.actions import Node
 def make_robot_state(context, *args, **kwargs):
     model_path = Path(LaunchConfiguration("model_file").perform(context))
     use_sim_time = bool(LaunchConfiguration("use_sim_time").perform(context))
+    namespace = LaunchConfiguration("namespace").perform(context)
+    model_name = LaunchConfiguration("model_name").perform(context)
+
     # Create robot_desc
     if model_path.suffix == ".urdf":
         robot_desc = model_path.read_text()
     elif model_path.suffix == ".xacro":
-        robot_desc = xacro.process_file(str(model_path)).toxml()
+        robot_desc = xacro.process_file(
+            str(model_path),
+            mappings={"namespace": namespace, "model_name": model_name},
+        ).toxml()
     else:
         raise ValueError(f"Invalid model file {model_path}")
 
@@ -68,10 +74,22 @@ def generate_launch_description():
         description="Path to the robot model file (.urdf or .urdf.xacro)",
     )
 
+    model_name_arg = DeclareLaunchArgument(
+        "model_name",
+        default_value="navigator",
+        description="Model name for generating the urdf file",
+    )
+
     use_sim_time_arg = DeclareLaunchArgument(
         "use_sim_time",
         default_value="false",
         description="Use sim clock (true for sim, false for real)",
+    )
+
+    namespace_arg = DeclareLaunchArgument(
+        "namespace",
+        default_value="wamv",
+        description="Namespace for generating the urdf file",
     )
 
     # # Convert URDF to SDF using Gazebo's gz tool
@@ -162,6 +180,8 @@ def generate_launch_description():
             gui_cmd,
             use_sim_time_arg,
             model_file_arg,
+            model_name_arg,
+            namespace_arg,
             OpaqueFunction(function=make_robot_state),
             rviz,
             # !!! Uncomment once navigator_localization is created !!!

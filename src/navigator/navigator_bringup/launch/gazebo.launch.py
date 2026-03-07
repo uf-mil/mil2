@@ -54,24 +54,28 @@ def static_tf(parent, child, xyz=(0, 0, 0), rpy=(0, 0, 0)):
 
 
 # Publish additional tf to build the tf tree
-def make_tf(world_name, model_name, link):
+def make_tf(world_name, model_name, base_link, namespace):
 
-    base_frame = f"{model_name}/{link}"
+    base_frame = f"{model_name}/{base_link}"
     lidar_frame = f"{base_frame}/velodyne_sensor"
     front_left_camera_frame = f"{base_frame}/front_left_cam_sensor"
     front_right_camera_frame = f"{base_frame}/front_right_cam_sensor"
 
+    lidar_link = "velodyne"
+    front_left_camera_link = f"{namespace}/front_left_cam_link_optical"
+    front_right_camera_link = f"{namespace}/front_right_cam_link_optical"
+
     return [
-        static_tf("wamv/base_link", base_frame, (0, 0, 0), (0, 0, 0)),
-        static_tf("velodyne", lidar_frame, (0, 0, 0), (0, 0, 0)),
+        static_tf(base_link, base_frame, (0, 0, 0), (0, 0, 0)),
+        static_tf(lidar_link, lidar_frame, (0, 0, 0), (0, 0, 0)),
         static_tf(
-            "wamv/front_left_cam_link_optical",
+            front_left_camera_link,
             front_left_camera_frame,
             (0, 0, 0),
             (0, 0, 0),
         ),
         static_tf(
-            "wamv/front_right_cam_link_optical",
+            front_right_camera_link,
             front_right_camera_frame,
             (0, 0, 0),
             (0, 0, 0),
@@ -166,10 +170,11 @@ def make_bridge(world_name, model_name, link):
 def make_bridge_n_tf(context, *args, **kwargs):
     world_name = Path(LaunchConfiguration("world").perform(context)).stem
     model_name = LaunchConfiguration("model_name").perform(context)
-    link = "wamv/base_link"
+    namespace = LaunchConfiguration("namespace").perform(context)
+    base_link = f"{namespace}/base_link"
 
-    bridge_nodes = make_bridge(world_name, model_name, link)
-    tf_nodes = make_tf(world_name, model_name, link)
+    bridge_nodes = make_bridge(world_name, model_name, base_link)
+    tf_nodes = make_tf(world_name, model_name, base_link, namespace)
 
     return bridge_nodes + tf_nodes
 
@@ -177,15 +182,17 @@ def make_bridge_n_tf(context, *args, **kwargs):
 def spwan_model(context, pkg_project_gazebo, pkg_project_bringup, *args, **kwargs):
     model_name = LaunchConfiguration("model_name").perform(context)
     model_path = Path(LaunchConfiguration("model_file").perform(context))
+    namespace = LaunchConfiguration("namespace").perform(context)
 
     if model_path.suffix == ".urdf" or model_path.suffix == ".sdf":
         pass
     elif model_path.suffix == ".xacro":
-        model_xml = xacro.process_file(str(model_path)).toxml()
+        model_xml = xacro.process_file(
+            str(model_path),
+            mappings={"namespace": namespace, "model_name": model_name},
+        ).toxml()
         model_path = model_path.with_suffix("")
         model_path.write_text(model_xml)
-
-    print(model_path)
 
     spwan_navigator = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -235,6 +242,7 @@ def generate_launch_description():
     )
     world_arg = DeclareLaunchArgument("world", default_value="robotx_2024.world")
     model_name_arg = DeclareLaunchArgument("model_name", default_value="navigator")
+    namespace_arg = DeclareLaunchArgument("namespace", default_value="wamv")
 
     world = LaunchConfiguration("world")
 
@@ -279,6 +287,7 @@ def generate_launch_description():
             world_arg,
             model_file_arg,
             model_name_arg,
+            namespace_arg,
             set_env,
             gz_sim,
             # !!! Uncomment once navigator_controller is created !!!
