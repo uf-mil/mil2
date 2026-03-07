@@ -1,6 +1,6 @@
 #include <mil_msgs/PerceptionObject.h>
 
-#include <point_cloud_object_detection_and_recognition/object_map.hpp>
+#include <pcl_stack/object_map.hpp>
 
 namespace pcodar
 {

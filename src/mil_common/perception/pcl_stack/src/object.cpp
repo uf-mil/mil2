@@ -2,7 +2,7 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <point_cloud_object_detection_and_recognition/object.hpp>
+#include <pcl_stack/object.hpp>
 
 namespace pcodar
 {

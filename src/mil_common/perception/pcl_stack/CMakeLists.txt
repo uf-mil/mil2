@@ -20,6 +20,7 @@ find_package(tf2_eigen REQUIRED)
 find_package(pcl_ros REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(mil_msgs REQUIRED)
 
 # PCL stuff
 find_package(PCL 1.2 REQUIRED)
@@ -52,7 +53,8 @@ ament_target_dependencies(
   tf2_eigen
   pcl_ros
   pcl_conversions
-  cv_bridge)
+  cv_bridge
+  mil_msgs)
 
 # create an exec that runs everything
 

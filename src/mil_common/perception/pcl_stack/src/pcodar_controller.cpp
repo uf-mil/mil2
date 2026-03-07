@@ -7,7 +7,7 @@
 
 #include <boost/scope_exit.hpp>
 
-#include <point_cloud_object_detection_and_recognition/pcodar_controller.hpp>
+#include <pcl_stack/pcodar_controller.hpp>
 
 namespace pcodar
 {

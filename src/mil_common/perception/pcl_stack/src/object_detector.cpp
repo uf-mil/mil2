@@ -1,6 +1,6 @@
 #include <tf2/transform_datatypes.h>
 
-#include <point_cloud_object_detection_and_recognition/object_detector.hpp>
+#include <pcl_stack/object_detector.hpp>
 
 namespace pcodar
 {

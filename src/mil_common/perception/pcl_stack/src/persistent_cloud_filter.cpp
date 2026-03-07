@@ -1,4 +1,4 @@
-#include <point_cloud_object_detection_and_recognition/persistent_cloud_filter.hpp>
+#include <pcl_stack/persistent_cloud_filter.hpp>
 
 namespace pcodar
 {
