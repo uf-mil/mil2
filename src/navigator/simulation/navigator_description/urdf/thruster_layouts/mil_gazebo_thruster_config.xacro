@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<plugin xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="mil_gazebo_thruster_config" params="name enable_angle:=true">
+    <thruster>
+      <!-- Required Parameters -->
+      <joint_name>${name}_engine_propeller_joint</joint_name>
+      <topic>${thruster_namespace}${name}_thrust_cmd</topic>
+    </thruster>
+  </xacro:macro>
+</plugin>
