@@ -13,16 +13,25 @@ def static_tf(parent, child, xyz=(0, 0, 0), rpy=(0, 0, 0)):
         package="tf2_ros",
         executable="static_transform_publisher",
         arguments=[
+            "--x",
             str(xyz[0]),
+            "--y",
             str(xyz[1]),
+            "--z",
             str(xyz[2]),
+            "--roll",
             str(rpy[0]),
+            "--pitch",
             str(rpy[1]),
+            "--yaw",
             str(rpy[2]),
+            "--frame-id",
             parent,
+            "--child-frame-id",
             child,
         ],
         output="screen",
+        parameters=[{"use_sim_time": True}],
     )
 
 

@@ -82,6 +82,7 @@ def generate_launch_description():
             "-d",
             os.path.join(pkg_project_bringup, "config", "navigator.rviz"),
         ],
+        parameters=[{"use_sim_time": LaunchConfiguration("use_sim_time")}],
         condition=IfCondition(LaunchConfiguration("gui")),
     )
 

@@ -22,6 +22,7 @@ from launch.substitutions import (
 )
 from launch_ros.actions import Node
 from vrx_gz import bridges, payload_bridges
+from vrx_gz.bridges import Bridge, BridgeDirection
 
 
 # Bridge ROS topics and Gazebo messages for establishing communication
@@ -91,9 +92,19 @@ def make_bridge(context, *args, **kwargs):
             "thruster_thrust_FR",
             "FR",
         ),
+        Bridge(
+            gz_topic=f"/world/{world_name}/model/{model_name}/joint_state",
+            ros_topic="joint_states",
+            gz_type="gz.msgs.Model",
+            ros_type="sensor_msgs/msg/JointState",
+            direction=BridgeDirection.GZ_TO_ROS,
+        ),
     ]
 
     bridge_args = [obj.argument() for obj in bridge_objs]
+    remapping_args = [obj.remapping() for obj in bridge_objs]
+
+    print(remapping_args)
 
     return [
         Node(
@@ -102,10 +113,7 @@ def make_bridge(context, *args, **kwargs):
             name="gz_bridge",
             output="screen",
             arguments=bridge_args,
-            # remappings=[
-            #     ("/pose", "/tf"),
-            #     ("/pose_static", "/tf_static")
-            # ],
+            remappings=remapping_args,
         ),
     ]
 

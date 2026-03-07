@@ -34,6 +34,10 @@
   <!-- Attach hydrodynamics plugin -->
   <xacro:usv_dynamics_gazebo name="wamv_dynamics_plugin"/>
 
+  <gazebo>
+    <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher"/>
+  </gazebo>
+
   <!-- Attach wind plugin -->
   <!-- Temporarily disabled pending updates for VRX compatibility
   <xacro:include filename="$(find vrx_gazebo)/worlds/xacros/usv_wind_plugin.xacro" />
