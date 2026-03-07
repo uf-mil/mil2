@@ -53,7 +53,7 @@ def static_tf(parent, child, xyz=(0, 0, 0), rpy=(0, 0, 0)):
     )
 
 
-# Publish additional tf to build the tf tree
+# Publish additional tf to link sensor frames and existing links
 def make_tf(world_name, model_name, base_link, namespace):
 
     base_frame = f"{model_name}/{base_link}"
