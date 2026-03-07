@@ -1,10 +1,12 @@
 #pragma once
 #include <mutex>
 #include <optional>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
@@ -32,6 +34,11 @@ struct Context
     std::mutex img_mx;
     uint32_t img_width{ 0 };
     uint32_t img_height{ 0 };
+
+    // Waypoints
+    std::mutex waypoints_mx;
+    std::vector<geometry_msgs::msg::PoseStamped> waypoints;
+    std::optional<geometry_msgs::msg::PoseStamped> last_waypoint;
 
     inline rclcpp::Logger logger() const
     {
