@@ -2,7 +2,6 @@ from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    ExecuteProcess,
 )
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -16,10 +15,10 @@ def generate_launch_description():
     # pkg_ros_gz_sim = get_package_share_path("ros_gz_sim")
 
     # Generate urdf from the xacro file
-    xacro_file_arg = DeclareLaunchArgument(
-        "xacro_file",
-        default_value=pkg_project_description / "urdf" / "navigator.urdf.xacro",
-        description="Path to the robot xacro file",
+    model_file_arg = DeclareLaunchArgument(
+        "model_file",
+        default_value=pkg_project_description / "urdf" / "navigator.urdf",
+        description="Path to the robot model file (.urdf or .sdf)",
     )
 
     model_name_arg = DeclareLaunchArgument(
@@ -29,17 +28,7 @@ def generate_launch_description():
     )
 
     model_name = LaunchConfiguration("model_name")
-    urdf_out = pkg_project_description / "urdf" / "navigator.urdf"
-    generate_urdf = ExecuteProcess(
-        cmd=[
-            "xacro",
-            LaunchConfiguration("xacro_file"),
-            "-o",
-            urdf_out,
-            ["model_name:=", model_name],
-        ],
-        output="screen",
-    )
+    model_file = LaunchConfiguration("model_file")
 
     # Spawn the navigator
     navigator_x = "0.0"
@@ -53,7 +42,7 @@ def generate_launch_description():
             "-name",
             model_name,
             "-file",
-            urdf_out,
+            model_file,
             "-x",
             navigator_x,
             "-y",
@@ -67,5 +56,5 @@ def generate_launch_description():
     )
 
     return LaunchDescription(
-        [xacro_file_arg, model_name_arg, generate_urdf, spawn_navigator],
+        [model_file_arg, model_name_arg, spawn_navigator],
     )

@@ -1,19 +1,45 @@
 import os
+from pathlib import Path
 
+import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
+    OpaqueFunction,
 )
 from launch.conditions import IfCondition
 from launch.substitutions import (
-    Command,
-    FindExecutable,
     LaunchConfiguration,
     PathJoinSubstitution,
 )
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
+
+
+def make_robot_state(context, *args, **kwargs):
+    model_path = Path(LaunchConfiguration("model_file").perform(context))
+    use_sim_time = bool(LaunchConfiguration("use_sim_time").perform(context))
+    # Create robot_desc
+    if model_path.suffix == ".urdf":
+        robot_desc = model_path.read_text()
+    elif model_path.suffix == ".xacro":
+        robot_desc = xacro.process_file(str(model_path)).toxml()
+    else:
+        raise ValueError(f"Invalid model file {model_path}")
+
+    # Takes the description and joint angles as inputs and publishes the 3D poses of the robot links
+    return [
+        Node(
+            package="robot_state_publisher",
+            executable="robot_state_publisher",
+            name="robot_state_publisher",
+            output="both",
+            parameters=[
+                {"use_sim_time": use_sim_time},
+                {"robot_description": robot_desc},
+            ],
+        ),
+    ]
 
 
 def generate_launch_description():
@@ -34,24 +60,18 @@ def generate_launch_description():
         description="whether to launch the gui",
     )
 
-    xacro_file_arg = DeclareLaunchArgument(
-        "xacro_file",
+    model_file_arg = DeclareLaunchArgument(
+        "model_file",
         default_value=PathJoinSubstitution(
             [pkg_project_description, "urdf", "navigator.urdf.xacro"],
         ),
-        description="Path to the robot xacro file",
+        description="Path to the robot model file (.urdf or .urdf.xacro)",
     )
 
     use_sim_time_arg = DeclareLaunchArgument(
         "use_sim_time",
         default_value="false",
         description="Use sim clock (true for sim, false for real)",
-    )
-
-    # Expand xacro at runtime
-    robot_desc = ParameterValue(
-        Command([FindExecutable(name="xacro"), " ", LaunchConfiguration("xacro_file")]),
-        value_type=str,
     )
 
     # # Convert URDF to SDF using Gazebo's gz tool
@@ -61,18 +81,6 @@ def generate_launch_description():
     #     print(f"Successfully converted {urdf_file} to {sdf_file}")
     # except subprocess.CalledProcessError as e:
     #     print(f"Error converting URDF to SDF: {e}")
-
-    # Takes the description and joint angles as inputs and publishes the 3D poses of the robot links
-    robot_state_publisher_node = Node(
-        package="robot_state_publisher",
-        executable="robot_state_publisher",
-        name="robot_state_publisher",
-        output="both",
-        parameters=[
-            {"use_sim_time": LaunchConfiguration("use_sim_time")},
-            {"robot_description": robot_desc},
-        ],
-    )
 
     # Visualize in RViz
     rviz = Node(
@@ -152,10 +160,9 @@ def generate_launch_description():
     return LaunchDescription(
         [
             gui_cmd,
-            xacro_file_arg,
             use_sim_time_arg,
-            robot_state_publisher_node,
-            # joint_state_publisher_node,
+            model_file_arg,
+            OpaqueFunction(function=make_robot_state),
             rviz,
             # !!! Uncomment once navigator_localization is created !!!
             # thruster_manager,
