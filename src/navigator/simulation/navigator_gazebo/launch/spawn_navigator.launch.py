@@ -4,35 +4,8 @@ from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,
 )
-from launch.substitutions import LaunchConfiguration, TextSubstitution
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-
-
-def static_tf(parent, child, xyz=(0, 0, 0), rpy=(0, 0, 0)):
-    return Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments=[
-            "--x",
-            str(xyz[0]),
-            "--y",
-            str(xyz[1]),
-            "--z",
-            str(xyz[2]),
-            "--roll",
-            str(rpy[0]),
-            "--pitch",
-            str(rpy[1]),
-            "--yaw",
-            str(rpy[2]),
-            "--frame-id",
-            parent,
-            "--child-frame-id",
-            child,
-        ],
-        output="screen",
-        parameters=[{"use_sim_time": True}],
-    )
 
 
 def generate_launch_description():
@@ -58,7 +31,13 @@ def generate_launch_description():
     model_name = LaunchConfiguration("model_name")
     urdf_out = pkg_project_description / "urdf" / "navigator.urdf"
     generate_urdf = ExecuteProcess(
-        cmd=["xacro", LaunchConfiguration("xacro_file"), "-o", urdf_out],
+        cmd=[
+            "xacro",
+            LaunchConfiguration("xacro_file"),
+            "-o",
+            urdf_out,
+            ["model_name:=", model_name],
+        ],
         output="screen",
     )
 
@@ -87,35 +66,6 @@ def generate_launch_description():
         output="screen",
     )
 
-    # Publish a tf to resolve the extra model_name at the beginning of frame
-    # Publish tfs to remap sensor frames
-    base_frame = [model_name, TextSubstitution(text="/wamv/base_link")]
-    lidar_frame = [*base_frame, "/velodyne_sensor"]
-    front_left_camera_frame = [*base_frame, "/front_left_cam_sensor"]
-    front_right_camera_frame = [*base_frame, "/front_right_cam_sensor"]
-    tf_nodes = [
-        static_tf("wamv/base_link", base_frame, (0, 0, 0), (0, 0, 0)),
-        static_tf("velodyne", lidar_frame, (0, 0, 0), (0, 0, 0)),
-        static_tf(
-            "wamv/front_left_cam_link_optical",
-            front_left_camera_frame,
-            (0, 0, 0),
-            (0, 0, 0),
-        ),
-        static_tf(
-            "wamv/front_right_cam_link_optical",
-            front_right_camera_frame,
-            (0, 0, 0),
-            (0, 0, 0),
-        ),
-    ]
-
     return LaunchDescription(
-        [
-            xacro_file_arg,
-            model_name_arg,
-            generate_urdf,
-            spawn_navigator,
-            *tf_nodes,
-        ],
+        [xacro_file_arg, model_name_arg, generate_urdf, spawn_navigator],
     )

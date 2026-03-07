@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <robot name="navigator" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:arg name="model_name" default="navigator"/>
   <!-- Include all dependent xacro files-->
   <xacro:include filename="$(find wamv_description)/urdf/wamv_base.urdf.xacro"/>
   <xacro:include filename="$(find wamv_gazebo)/urdf/macros.xacro"/>
@@ -8,10 +9,9 @@
 
   <!-- Properties -->
   <xacro:property name="sensor_namespace" value="sensors/"/>
-  <!-- <xacro:property name="camera_namespace" value="camera/"/> -->
   <xacro:property name="shooter_namespace" value="shooters/"/>
   <xacro:property name="acoustic_namespace" value="pingers/"/>
-  <!-- <xacro:property name="namespace" value="/navigator"/> -->
+  <xacro:property name="model_name" value="$(arg model_name)"/>
 
   <!-- Simulated sensors/actuators -->
   <!-- <xacro:main_collisions prefix="navigator"/> -->

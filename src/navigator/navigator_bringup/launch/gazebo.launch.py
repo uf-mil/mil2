@@ -25,6 +25,61 @@ from vrx_gz import bridges, payload_bridges
 from vrx_gz.bridges import Bridge, BridgeDirection
 
 
+def static_tf(parent, child, xyz=(0, 0, 0), rpy=(0, 0, 0)):
+    return Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        arguments=[
+            "--x",
+            str(xyz[0]),
+            "--y",
+            str(xyz[1]),
+            "--z",
+            str(xyz[2]),
+            "--roll",
+            str(rpy[0]),
+            "--pitch",
+            str(rpy[1]),
+            "--yaw",
+            str(rpy[2]),
+            "--frame-id",
+            parent,
+            "--child-frame-id",
+            child,
+        ],
+        output="screen",
+        parameters=[{"use_sim_time": True}],
+    )
+
+
+# Publish additional tf to build the tf tree
+def make_tf(context, *args, **kwargs):
+    model_name = LaunchConfiguration("model_name").perform(context)
+    link = "wamv/base_link"
+
+    base_frame = f"{model_name}/{link}"
+    lidar_frame = f"{base_frame}/velodyne_sensor"
+    front_left_camera_frame = f"{base_frame}/front_left_cam_sensor"
+    front_right_camera_frame = f"{base_frame}/front_right_cam_sensor"
+
+    return [
+        static_tf("wamv/base_link", base_frame, (0, 0, 0), (0, 0, 0)),
+        static_tf("velodyne", lidar_frame, (0, 0, 0), (0, 0, 0)),
+        static_tf(
+            "wamv/front_left_cam_link_optical",
+            front_left_camera_frame,
+            (0, 0, 0),
+            (0, 0, 0),
+        ),
+        static_tf(
+            "wamv/front_right_cam_link_optical",
+            front_right_camera_frame,
+            (0, 0, 0),
+            (0, 0, 0),
+        ),
+    ]
+
+
 # Bridge ROS topics and Gazebo messages for establishing communication
 def make_bridge(context, *args, **kwargs):
     world_name = Path(LaunchConfiguration("world").perform(context)).stem
@@ -32,10 +87,29 @@ def make_bridge(context, *args, **kwargs):
 
     link = "wamv/base_link"
 
-    bridge_objs = [
-        bridges.clock(),
-        # bridges.pose(model_name),
-        # bridges.pose_static(model_name),
+    # Generate bridges for thrusters
+    thruster_bridge_objs = []
+
+    for prefix in ["FL", "FR", "BL", "BR"]:
+        # For the propeller
+        thruster_bridge_objs += payload_bridges.payload_bridges(
+            world_name,
+            model_name,
+            link,
+            f"thruster_thrust_{prefix}",
+            prefix,
+        )
+        # For the engine joint
+        thruster_bridge_objs += payload_bridges.payload_bridges(
+            world_name,
+            model_name,
+            link,
+            f"thruster_rotate_{prefix}",
+            prefix,
+        )
+
+    # Generate bridges for sensors
+    sensor_bridge_objs = [
         *payload_bridges.payload_bridges(
             world_name,
             model_name,
@@ -64,34 +138,11 @@ def make_bridge(context, *args, **kwargs):
             "imu_sensor",
             sdf.Sensortype.IMU,
         ),
-        *payload_bridges.payload_bridges(
-            world_name,
-            "/wamv",
-            link,
-            "thruster_thrust_BL",
-            "BL",
-        ),
-        *payload_bridges.payload_bridges(
-            world_name,
-            "/wamv",
-            link,
-            "thruster_thrust_BR",
-            "BR",
-        ),
-        *payload_bridges.payload_bridges(
-            world_name,
-            "/wamv",
-            link,
-            "thruster_thrust_FL",
-            "FL",
-        ),
-        *payload_bridges.payload_bridges(
-            world_name,
-            "/wamv",
-            link,
-            "thruster_thrust_FR",
-            "FR",
-        ),
+    ]
+
+    # Generate bridge for other stuff. e.g. clock, joint_states
+    other_bridge_objs = [
+        bridges.clock(),
         Bridge(
             gz_topic=f"/world/{world_name}/model/{model_name}/joint_state",
             ros_topic="joint_states",
@@ -101,10 +152,9 @@ def make_bridge(context, *args, **kwargs):
         ),
     ]
 
+    bridge_objs = thruster_bridge_objs + sensor_bridge_objs + other_bridge_objs
     bridge_args = [obj.argument() for obj in bridge_objs]
     remapping_args = [obj.remapping() for obj in bridge_objs]
-
-    print(remapping_args)
 
     return [
         Node(
@@ -215,5 +265,6 @@ def generate_launch_description():
             navigator_setup,
             spawn_navigator,
             OpaqueFunction(function=make_bridge),
+            OpaqueFunction(function=make_tf),
         ],
     )
