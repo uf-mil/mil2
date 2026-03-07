@@ -53,9 +53,7 @@ def static_tf(parent, child, xyz=(0, 0, 0), rpy=(0, 0, 0)):
 
 
 # Publish additional tf to build the tf tree
-def make_tf(context, *args, **kwargs):
-    model_name = LaunchConfiguration("model_name").perform(context)
-    link = "wamv/base_link"
+def make_tf(world_name, model_name, link):
 
     base_frame = f"{model_name}/{link}"
     lidar_frame = f"{base_frame}/velodyne_sensor"
@@ -81,11 +79,7 @@ def make_tf(context, *args, **kwargs):
 
 
 # Bridge ROS topics and Gazebo messages for establishing communication
-def make_bridge(context, *args, **kwargs):
-    world_name = Path(LaunchConfiguration("world").perform(context)).stem
-    model_name = LaunchConfiguration("model_name").perform(context)
-
-    link = "wamv/base_link"
+def make_bridge(world_name, model_name, link):
 
     # Generate bridges for thrusters
     thruster_bridge_objs = []
@@ -166,6 +160,17 @@ def make_bridge(context, *args, **kwargs):
             remappings=remapping_args,
         ),
     ]
+
+
+def make_bridge_n_tf(context, *args, **kwargs):
+    world_name = Path(LaunchConfiguration("world").perform(context)).stem
+    model_name = LaunchConfiguration("model_name").perform(context)
+    link = "wamv/base_link"
+
+    bridge_nodes = make_bridge(world_name, model_name, link)
+    tf_nodes = make_tf(world_name, model_name, link)
+
+    return bridge_nodes + tf_nodes
 
 
 def generate_launch_description():
@@ -264,7 +269,6 @@ def generate_launch_description():
             # set_sim_params,
             navigator_setup,
             spawn_navigator,
-            OpaqueFunction(function=make_bridge),
-            OpaqueFunction(function=make_tf),
+            OpaqueFunction(function=make_bridge_n_tf),
         ],
     )
