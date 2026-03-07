@@ -30,6 +30,9 @@ find_package(OpenCV 4.0 REQUIRED)
 # include directories
 include_directories(include ${PCL_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
+# collecting nesccary files
+file(GLOB SOURCES src/*.cpp)
+
 # creating library called pcl_stack
 add_library(pcl_stack ${SOURCES})
 
