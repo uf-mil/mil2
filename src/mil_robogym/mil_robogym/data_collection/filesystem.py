@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,7 @@ from .utils import (
     resolve_package_share_dir,
     resolve_source_projects_dir,
     to_lower_snake_case,
+    topic_to_data_folder_name,
 )
 
 
@@ -172,6 +174,212 @@ def _write_yaml_config(
 ) -> None:
     with config_path.open("w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
+
+
+METADATA_CSV_HEADERS = ("topic", "relative_path")
+NUMERICAL_DATA_TOPIC = "/numerical"
+ACTIONS_DATA_TOPIC = "/actions"
+ACTIONS_CSV_HEADERS = ("delta_x", "delta_y", "delta_z", "delta_yaw")
+
+
+def _relative_demo_path(demo_dir: Path, path: Path | str) -> str:
+    candidate = Path(path)
+    if candidate.is_absolute():
+        try:
+            relative_path = candidate.resolve().relative_to(demo_dir.resolve())
+        except ValueError as e:
+            raise ValueError(
+                f"Path must be inside demo directory {demo_dir}: {candidate}",
+            ) from e
+    else:
+        relative_path = candidate
+
+    if ".." in relative_path.parts:
+        raise ValueError(f"Relative path cannot escape demo directory: {relative_path}")
+    return relative_path.as_posix()
+
+
+def _ensure_demo_data_layout(demo_dir: Path) -> tuple[Path, Path, Path]:
+    data_dir = demo_dir / "data"
+    numerical_dir = data_dir / "numerical"
+    actions_dir = data_dir / "actions"
+    numerical_csv_path = numerical_dir / "data.csv"
+    actions_csv_path = actions_dir / "data.csv"
+    metadata_csv_path = demo_dir / "metadata.csv"
+
+    numerical_dir.mkdir(parents=True, exist_ok=True)
+    actions_dir.mkdir(parents=True, exist_ok=True)
+    numerical_csv_path.touch(exist_ok=True)
+    if (not actions_csv_path.exists()) or actions_csv_path.stat().st_size == 0:
+        with actions_csv_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(ACTIONS_CSV_HEADERS)
+
+    if (not metadata_csv_path.exists()) or metadata_csv_path.stat().st_size == 0:
+        with metadata_csv_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(METADATA_CSV_HEADERS)
+            writer.writerow(
+                (
+                    NUMERICAL_DATA_TOPIC,
+                    Path("data/numerical/data.csv").as_posix(),
+                ),
+            )
+            writer.writerow(
+                (
+                    ACTIONS_DATA_TOPIC,
+                    Path("data/actions/data.csv").as_posix(),
+                ),
+            )
+
+    return metadata_csv_path, numerical_csv_path, actions_csv_path
+
+
+def append_demo_metadata_entry(
+    demo_dir: Path,
+    *,
+    topic: str,
+    relative_path: Path | str,
+) -> None:
+    """
+    Append a metadata manifest row to <demo_dir>/metadata.csv.
+
+    The metadata file is a simple index of topic -> relative file path.
+    """
+    normalized_topic = topic.strip()
+    if not normalized_topic:
+        raise ValueError("topic must be a non-empty string.")
+
+    metadata_csv_path, _, _ = _ensure_demo_data_layout(demo_dir)
+    normalized_relative_path = _relative_demo_path(demo_dir, relative_path)
+    with metadata_csv_path.open("a", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow((normalized_topic, normalized_relative_path))
+
+
+def append_demo_numerical_row(
+    demo_dir: Path,
+    row: list[object],
+) -> None:
+    """
+    Append one numerical sample row to <demo_dir>/data/numerical/data.csv.
+    """
+    if not isinstance(row, list):
+        raise ValueError("row must be a list of scalar values.")
+
+    _, numerical_csv_path, _ = _ensure_demo_data_layout(demo_dir)
+    with numerical_csv_path.open("a", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(row)
+
+
+def initialize_demo_numerical_csv_headers(
+    demo_dir: Path,
+    headers: list[str],
+) -> None:
+    """
+    Initialize numerical CSV headers when the file is empty.
+    """
+    if not headers:
+        raise ValueError("headers must be a non-empty list of column names.")
+
+    _, numerical_csv_path, _ = _ensure_demo_data_layout(demo_dir)
+    if numerical_csv_path.stat().st_size != 0:
+        return
+
+    with numerical_csv_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(headers)
+
+
+def append_demo_action_row(
+    demo_dir: Path,
+    row: list[object],
+) -> None:
+    """
+    Append one action sample row to <demo_dir>/data/actions/data.csv.
+    """
+    if not isinstance(row, list):
+        raise ValueError("row must be a list of scalar values.")
+    if len(row) != 4:
+        raise ValueError(
+            "action row must contain exactly 4 values: "
+            "delta_x, delta_y, delta_z, delta_yaw.",
+        )
+
+    _, _, actions_csv_path = _ensure_demo_data_layout(demo_dir)
+    with actions_csv_path.open("a", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(row)
+
+
+def write_demo_topic_payload_file(
+    demo_dir: Path,
+    *,
+    topic: str,
+    file_name: str,
+    payload: bytes,
+) -> Path:
+    """
+    Write a raw topic payload file under <demo_dir>/data/<topic_folder>/.
+
+    This is useful for complex topic outputs (for example, YOLO detections)
+    where CSV rows are not the desired representation.
+    """
+    if not file_name.strip():
+        raise ValueError("file_name must be a non-empty string.")
+    topic_data_dir = get_demo_topic_data_dir(demo_dir, topic=topic)
+    file_path = topic_data_dir / file_name
+    if file_path.exists():
+        raise FileExistsError(f"Topic data file already exists: {file_path}")
+
+    file_path.write_bytes(payload)
+    append_demo_metadata_entry(
+        demo_dir,
+        topic=topic,
+        relative_path=file_path,
+    )
+    return file_path
+
+
+def get_demo_topic_data_dir(
+    demo_dir: Path,
+    *,
+    topic: str,
+) -> Path:
+    """
+    Resolve and create a topic-specific data folder under <demo_dir>/data/.
+
+    Example:
+        "/frontcam/image_raw" -> <demo_dir>/data/frontcam_image_raw
+    """
+    _ensure_demo_data_layout(demo_dir)
+    topic_folder = topic_to_data_folder_name(topic)
+    topic_data_dir = demo_dir / "data" / topic_folder
+    topic_data_dir.mkdir(parents=True, exist_ok=True)
+    return topic_data_dir
+
+
+def write_demo_topic_png(
+    demo_dir: Path,
+    *,
+    topic: str,
+    file_name: str,
+    png_data: bytes,
+) -> Path:
+    """
+    Write a PNG image artifact and register it in metadata.csv.
+    """
+    if not file_name.strip():
+        raise ValueError("file_name must be a non-empty string.")
+    if not file_name.lower().endswith(".png"):
+        raise ValueError("file_name must end with '.png'.")
+    return write_demo_topic_payload_file(
+        demo_dir,
+        topic=topic,
+        file_name=file_name,
+        payload=png_data,
+    )
 
 
 def create_project_folder(
@@ -423,6 +631,9 @@ def create_demo_folder(
 
     Creates:
         <project_dir>/demos/<lower_snake_demo_name>/config.yaml
+        <project_dir>/demos/<lower_snake_demo_name>/metadata.csv
+        <project_dir>/demos/<lower_snake_demo_name>/data/numerical/data.csv
+        <project_dir>/demos/<lower_snake_demo_name>/data/actions/data.csv
 
     If start_position is None, defaults to (0.0, 0.0, 0.0, 0.0).
     Returns the created demo directory Path.
@@ -448,4 +659,5 @@ def create_demo_folder(
         start_position=start_position,
     )
     _write_yaml_config(config_path, cfg)
+    _ensure_demo_data_layout(demo_dir)
     return demo_dir, cfg
