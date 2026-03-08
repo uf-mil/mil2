@@ -1,6 +1,8 @@
 import tkinter as tk
 from typing import Any, Mapping
 
+from mil_robogym.clients.set_pose_client import SetPoseClient
+
 from .collected_data_section import CollectedDataSection
 from .controls_section import ControlsSection
 from .header import Header
@@ -75,7 +77,11 @@ class ViewDemoPage(tk.Frame):
 
             self.steps.clear()
             x, y, z, yaw = self.demo["start_position"]
-            self.steps.add_step(f"Origin: ({x:.2f}, {y:.2f}, {z:.2f}, {yaw:.2f})")
+            self.steps.add_step(self.demo["start_position"], is_origin=True)
+
+            set_pose_client = SetPoseClient()
+            set_pose_client.set_pose(x, y, z, yaw=yaw)
+            set_pose_client.destroy_node()
 
     def _on_home_click(self) -> None:
         self._clean_components()
