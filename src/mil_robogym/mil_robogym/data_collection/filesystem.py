@@ -41,18 +41,125 @@ def _project_roots() -> list[Path]:
     return roots
 
 
-def _build_project_config(project: RoboGymProjectYaml) -> RoboGymProjectConfig:
-    return {"robogym_project": project}
+def _validate_topic_subtopics(
+    *,
+    field_name: str,
+    topic_subtopics: object,
+) -> None:
+    if not isinstance(topic_subtopics, dict):
+        raise ValueError(
+            f"project['{field_name}'] must be a mapping of topic -> list[str].",
+        )
+    for topic, subtopics in topic_subtopics.items():
+        if not isinstance(topic, str) or not topic.strip():
+            raise ValueError(
+                f"project['{field_name}'] contains an invalid topic name.",
+            )
+        if not isinstance(subtopics, list):
+            raise ValueError(
+                f"project['{field_name}'][{topic!r}] must be a list[str].",
+            )
+        for subtopic in subtopics:
+            if not isinstance(subtopic, str) or not subtopic.strip():
+                raise ValueError(
+                    f"project['{field_name}'][{topic!r}] contains an invalid subtopic.",
+                )
+
+
+def _validate_project_config_payload(project: RoboGymProjectYaml) -> None:
+    required_fields = (
+        "name",
+        "world_file",
+        "model_name",
+        "random_spawn_space",
+        "input_topics",
+        "output_topics",
+    )
+    for field_name in required_fields:
+        if field_name not in project:
+            raise ValueError(f"project is missing required field {field_name!r}.")
+
+    for field_name in ("name", "world_file", "model_name"):
+        value = project[field_name]
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"project[{field_name!r}] must be a non-empty string.")
+
+    random_spawn_space = project["random_spawn_space"]
+    if not isinstance(random_spawn_space, dict):
+        raise ValueError(
+            "project['random_spawn_space'] must be a mapping.",
+        )
+    if not isinstance(random_spawn_space.get("enabled"), bool):
+        raise ValueError("project['random_spawn_space']['enabled'] must be a bool.")
+    for coord_field in ("coord1_4d", "coord2_4d"):
+        coord = random_spawn_space.get(coord_field)
+        if not isinstance(coord, list) or len(coord) != 4:
+            raise ValueError(
+                f"project['random_spawn_space']['{coord_field}'] must be a list[float] of length 4.",
+            )
+        for value in coord:
+            if not isinstance(value, float):
+                raise ValueError(
+                    f"project['random_spawn_space']['{coord_field}'] must only contain floats.",
+                )
+
+    _validate_topic_subtopics(
+        field_name="input_topics",
+        topic_subtopics=project["input_topics"],
+    )
+    _validate_topic_subtopics(
+        field_name="output_topics",
+        topic_subtopics=project["output_topics"],
+    )
+
+    tensor_spec = project.get("tensor_spec")
+    if tensor_spec is None:
+        return
+    if not isinstance(tensor_spec, dict):
+        raise ValueError("project['tensor_spec'] must be a mapping when provided.")
+    if (
+        "ignored_input_features" in tensor_spec
+        or "ignored_output_features" in tensor_spec
+    ):
+        raise ValueError(
+            "project['tensor_spec'] must not include ignored_input_features or ignored_output_features.",
+        )
+    for key in ("input_features", "output_features", "input_dim", "output_dim"):
+        if key not in tensor_spec:
+            raise ValueError(f"project['tensor_spec'] is missing required key {key!r}.")
+
+    for key in ("input_features", "output_features"):
+        features = tensor_spec[key]
+        if not isinstance(features, list) or any(
+            not isinstance(feature, str) or not feature.strip() for feature in features
+        ):
+            raise ValueError(
+                f"project['tensor_spec']['{key}'] must be a list[str].",
+            )
+    for key in ("input_dim", "output_dim"):
+        value = tensor_spec[key]
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ValueError(
+                f"project['tensor_spec']['{key}'] must be a non-negative int.",
+            )
+    if tensor_spec["input_dim"] != len(tensor_spec["input_features"]):
+        raise ValueError(
+            "project['tensor_spec']['input_dim'] must match len(input_features).",
+        )
+    if tensor_spec["output_dim"] != len(tensor_spec["output_features"]):
+        raise ValueError(
+            "project['tensor_spec']['output_dim'] must match len(output_features).",
+        )
 
 
 def _build_demo_config(
     *,
-    demo_name: str,
+    name: str,
     sampling_rate: float,
     start_position: Coord4D,
 ) -> RoboGymDemoConfig:
     cfg_demo: RoboGymDemoYaml = {
-        "demo_name": demo_name,
+        "name": name,
         "start_position": list(start_position),
         "sampling_rate": sampling_rate,
     }
@@ -77,7 +184,7 @@ def create_project_folder(
     Uses the ROS 2 package share directory for 'mil_robogym' as the root.
     Returns the created project directory Path.
     """
-    folder_name = to_lower_snake_case(project["project_name"])
+    folder_name = to_lower_snake_case(project["name"])
     project_roots = _project_roots()
     project_dirs = [root / folder_name for root in project_roots]
 
@@ -95,7 +202,8 @@ def create_project_folder(
         project_dir.mkdir(parents=True, exist_ok=False)
         (project_dir / "demos").mkdir(exist_ok=True)
 
-    cfg = _build_project_config(project)
+    _validate_project_config_payload(project)
+    cfg: RoboGymProjectConfig = {"robogym_project": project}
     for project_dir in project_dirs:
         _write_yaml_config(project_dir / "config.yaml", cfg)
 
@@ -119,14 +227,14 @@ def edit_project(
     share_projects_dir = project_roots[0]
     source_projects_dir = project_roots[1] if len(project_roots) > 1 else None
 
-    current_name = original_project_name or project["project_name"]
+    current_name = original_project_name or project["name"]
     current_folder_name = to_lower_snake_case(current_name)
     project_dir = share_projects_dir / current_folder_name
 
     if not project_dir.exists() or not project_dir.is_dir():
         raise FileNotFoundError(f"Project folder does not exist: {project_dir}")
 
-    target_folder_name = to_lower_snake_case(project["project_name"])
+    target_folder_name = to_lower_snake_case(project["name"])
     target_project_dir = share_projects_dir / target_folder_name
 
     source_project_dir: Path | None = None
@@ -161,7 +269,8 @@ def edit_project(
             source_target_project_dir.mkdir(parents=True, exist_ok=True)
         (source_target_project_dir / "demos").mkdir(exist_ok=True)
 
-    cfg = _build_project_config(project)
+    _validate_project_config_payload(project)
+    cfg: RoboGymProjectConfig = {"robogym_project": project}
     _write_yaml_config(project_dir / "config.yaml", cfg)
     if source_target_project_dir is not None:
         _write_yaml_config(source_target_project_dir / "config.yaml", cfg)
@@ -186,13 +295,13 @@ def edit_demo(
     roots = _project_roots()
     projects_dir = roots[0]
     project_name = to_lower_snake_case(project["name"])
-    demo_name = to_lower_snake_case(original_demo_name or demo["demo_name"])
+    demo_name = to_lower_snake_case(original_demo_name or demo["name"])
     demo_dir = projects_dir / project_name / "demos" / demo_name
 
     if not demo_dir.exists() or not demo_dir.is_dir():
         raise FileNotFoundError(f"Demo folder does not exist: {demo_dir}")
 
-    target_folder_name = to_lower_snake_case(demo["demo_name"])
+    target_folder_name = to_lower_snake_case(demo["name"])
     target_demo_dir = demo_dir.parent / target_folder_name
     if target_demo_dir != demo_dir:
         if target_demo_dir.exists():
@@ -205,7 +314,7 @@ def edit_demo(
     config_path = demo_dir / "config.yaml"
     cfg: RoboGymDemoConfig = {
         "robogym_demo": {
-            "demo_name": demo["demo_name"],
+            "name": demo["name"],
             "start_position": demo["start_position"],
             "sampling_rate": demo["sampling_rate"],
         },
@@ -305,7 +414,7 @@ def create_agent_folder(
 def create_demo_folder(
     project_dir: Path,
     *,
-    demo_name: str,
+    name: str,
     sampling_rate: float,
     start_position: Coord4D | None = None,
 ) -> tuple[Path, RoboGymDemoConfig]:
@@ -321,7 +430,7 @@ def create_demo_folder(
     demos_dir = project_dir / "demos"
     demos_dir.mkdir(parents=True, exist_ok=True)
 
-    folder_name = to_lower_snake_case(demo_name)
+    folder_name = to_lower_snake_case(name)
     demo_dir = demos_dir / folder_name
 
     if demo_dir.exists():
@@ -334,10 +443,9 @@ def create_demo_folder(
 
     config_path = demo_dir / "config.yaml"
     cfg = _build_demo_config(
-        demo_name=demo_name,
+        name=name,
         sampling_rate=sampling_rate,
         start_position=start_position,
     )
     _write_yaml_config(config_path, cfg)
-
     return demo_dir, cfg

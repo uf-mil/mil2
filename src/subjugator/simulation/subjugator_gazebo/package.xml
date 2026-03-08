@@ -9,9 +9,13 @@
   <author>Keith Khadar</author>
 
   <depend>geometry_msgs</depend>
+  <depend>gz-plugin</depend>
+  <depend>gz-sim</depend>
+  <depend>gz-transport</depend>
   <depend>mil_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
+  <depend>sdf</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>subjugator_description</depend>

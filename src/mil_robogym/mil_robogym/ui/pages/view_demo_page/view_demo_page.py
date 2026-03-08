@@ -32,17 +32,17 @@ class ViewDemoPage(tk.Frame):
         self.header.subtitle.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 8))
 
         # Content
-        content = tk.Frame(self, bg="#DADADA")
-        content.grid(row=2, column=0, sticky="nsew", padx=14)
-        content.grid_rowconfigure(0, weight=1)
-        content.grid_columnconfigure(1, weight=1)
+        self.content = tk.Frame(self, bg="#DADADA")
+        self.content.grid(row=2, column=0, sticky="nsew", padx=14)
+        self.content.grid_rowconfigure(0, weight=1)
+        self.content.grid_columnconfigure(1, weight=1)
 
         # Steps section
-        self.steps = StepsSection(content)
+        self.steps = StepsSection(self.content)
         self.steps.grid(row=0, column=0, sticky="nsw", padx=(0, 10))
 
         # Data collected section
-        self.data_section = CollectedDataSection(content)
+        self.data_section = CollectedDataSection(self.content)
         self.data_section.grid(row=0, column=1, sticky="nsew")
 
         # Controls
@@ -78,9 +78,13 @@ class ViewDemoPage(tk.Frame):
             self.steps.add_step(f"Origin: ({x:.2f}, {y:.2f}, {z:.2f}, {yaw:.2f})")
 
     def _on_home_click(self) -> None:
-        self.steps.clear()
+        self._clean_components()
         self.app.show_page("start")
 
     def _on_project_click(self) -> None:
-        self.steps.clear()
+        self._clean_components()
         self.app.show_page("view_project", project=self.project)
+
+    def _clean_components(self) -> None:
+        self.header.destroy()
+        self.content.destroy()

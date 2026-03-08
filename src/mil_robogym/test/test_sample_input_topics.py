@@ -13,16 +13,16 @@ from mil_robogym.data_collection.sample_input_topics import (
 def _project(input_topics: list[str]) -> dict:
     """Builds a minimal project payload used by sampling tests."""
     return {
-        "project_name": "Sampling Test Project",
+        "name": "Sampling Test Project",
         "world_file": "/tmp/world.sdf",
         "model_name": "model.pt",
         "random_spawn_space": {
             "enabled": False,
-            "coord1_4d": (0.0, 0.0, 0.0, 0.0),
-            "coord2_4d": (1.0, 1.0, 1.0, 1.0),
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 1.0, 1.0, 1.0],
         },
-        "input_topics": input_topics,
-        "output_topics": [],
+        "input_topics": {topic: [] for topic in input_topics},
+        "output_topics": {},
     }
 
 
@@ -158,7 +158,7 @@ def test_sample_project_topics_samples_shared_topic_once(monkeypatch):
     )
 
     project = _project(["/shared"])
-    project["output_topics"] = ["/shared"]
+    project["output_topics"] = {"/shared": []}
     sampled_inputs, sampled_outputs = sample_project_topics(project)
 
     assert len(calls) == 1

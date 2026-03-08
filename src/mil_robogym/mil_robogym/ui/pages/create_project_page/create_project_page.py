@@ -8,7 +8,7 @@ from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.filesystem import create_project_folder
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
 from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
-from mil_robogym.data_collection.types import Coord4D, RoboGymProject
+from mil_robogym.data_collection.types import Coord4D, RoboGymProjectYaml
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 
@@ -111,7 +111,8 @@ class CreateProjectPage(tk.Frame):
             ) from exc
 
     def _safe_get_world_file(self) -> str:
-        """Return the default world-file path used for new projects. This keeps behavior scoped to the current component.
+        """
+        Return the default world-file path used for new projects. This keeps behavior scoped to the current component.
 
         Args:
             None.
@@ -212,28 +213,36 @@ class CreateProjectPage(tk.Frame):
         if self.controller is not None:
             self.controller.show_page("start")
 
-    def _build_project_config(self) -> RoboGymProject:
+    def _build_project_config(
+        self,
+        *,
+        ensure_subtopics_loaded: bool = False,
+    ) -> RoboGymProjectYaml:
         """Build the project config payload from current section state. This keeps behavior scoped to the current component.
 
         Args:
             None.
         Returns:
-            RoboGymProject dictionary used for tensor-spec and folder creation.
+            RoboGymProjectYaml dictionary used for tensor-spec and folder creation.
         """
         coord1, coord2 = self.random_spawn_section.get_coords()
         random_spawn_enabled = self.random_spawn_section.is_random_spawn_enabled()
 
         return {
-            "project_name": self.project_name_var.get().strip(),
+            "name": self.project_name_var.get().strip(),
             "world_file": self.world_file_var.get().strip(),
             "model_name": self.model_name_var.get().strip(),
             "random_spawn_space": {
                 "enabled": random_spawn_enabled,
-                "coord1_4d": coord1 or (0.0, 0.0, 0.0, 0.0),
-                "coord2_4d": coord2 or (0.0, 0.0, 0.0, 0.0),
+                "coord1_4d": [float(v) for v in (coord1 or (0.0, 0.0, 0.0, 0.0))],
+                "coord2_4d": [float(v) for v in (coord2 or (0.0, 0.0, 0.0, 0.0))],
             },
-            "input_topics": self.topics_section.get_selected_input_topics(),
-            "output_topics": self.topics_section.get_selected_output_topics(),
+            "input_topics": self.topics_section.get_selected_input_topic_subtopics(
+                ensure_loaded=ensure_subtopics_loaded,
+            ),
+            "output_topics": self.topics_section.get_selected_output_topic_subtopics(
+                ensure_loaded=ensure_subtopics_loaded,
+            ),
         }
 
     def _on_create_project(self) -> None:
@@ -249,8 +258,8 @@ class CreateProjectPage(tk.Frame):
             return
 
         self._update_create_project_button_state()
-        project_cfg = self._build_project_config()
-        project_name = project_cfg["project_name"]
+        project_cfg = self._build_project_config(ensure_subtopics_loaded=True)
+        project_name = project_cfg["name"]
 
         tensor_spec = self.topics_section.get_tensor_spec_for_current_selection()
         if tensor_spec is not None:

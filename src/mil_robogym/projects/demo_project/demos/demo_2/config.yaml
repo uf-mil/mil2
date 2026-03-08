@@ -1,5 +1,5 @@
 robogym_demo:
-  demo_name: "Demo 2"
+  name: "Demo 2"
   start_position:
     - 1
     - 2

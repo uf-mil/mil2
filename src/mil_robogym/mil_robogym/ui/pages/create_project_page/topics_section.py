@@ -9,13 +9,17 @@ from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
 from mil_robogym.data_collection.sample_input_topics import sample_topics
 from mil_robogym.data_collection.types import (
     FlattenedTopic,
-    RoboGymProject,
+    RoboGymProjectYaml,
     RoboGymTensorSpec,
     SampledTopics,
 )
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 TopicListType = Literal["input", "output"]
+TensorSpecTopicSignature = tuple[
+    tuple[tuple[str, tuple[str, ...]], ...],
+    tuple[tuple[str, tuple[str, ...]], ...],
+]
 
 
 @dataclass
@@ -63,7 +67,7 @@ class TopicsSection:
         self,
         parent: tk.Widget,
         topics: list[str],
-        get_project_config: Callable[[], RoboGymProject],
+        get_project_config: Callable[[], RoboGymProjectYaml],
         on_selection_change: Callable[[], None],
         show_error: Callable[[str], None],
         hide_error: Callable[[], None],
@@ -86,9 +90,7 @@ class TopicsSection:
         self._hide_error = hide_error
 
         self._tensor_spec: RoboGymTensorSpec | None = None
-        self._tensor_spec_topic_signature: (
-            tuple[tuple[str, ...], tuple[str, ...]] | None
-        ) = None
+        self._tensor_spec_topic_signature: TensorSpecTopicSignature | None = None
 
         input_topics_label = tk.Label(
             parent,
@@ -716,6 +718,21 @@ class TopicsSection:
         """
         return self.selected_topics("input")
 
+    def get_selected_input_topic_subtopics(
+        self,
+        *,
+        ensure_loaded: bool = False,
+    ) -> dict[str, list[str]]:
+        """Return selected input topics mapped to selected numeric subtopic fields.
+
+        Args:
+            ensure_loaded: When True, synchronously samples missing subtopics for
+                currently selected topics before building the mapping.
+        Returns:
+            Mapping of input topic to ordered selected numeric subtopic fields.
+        """
+        return self._selected_topic_subtopics("input", ensure_loaded=ensure_loaded)
+
     def get_selected_output_topics(self) -> list[str]:
         """Return selected output topic names in current UI order. This keeps behavior scoped to the current component.
 
@@ -725,6 +742,21 @@ class TopicsSection:
             Ordered list of selected output topic names.
         """
         return self.selected_topics("output")
+
+    def get_selected_output_topic_subtopics(
+        self,
+        *,
+        ensure_loaded: bool = False,
+    ) -> dict[str, list[str]]:
+        """Return selected output topics mapped to selected numeric subtopic fields.
+
+        Args:
+            ensure_loaded: When True, synchronously samples missing subtopics for
+                currently selected topics before building the mapping.
+        Returns:
+            Mapping of output topic to ordered selected numeric subtopic fields.
+        """
+        return self._selected_topic_subtopics("output", ensure_loaded=ensure_loaded)
 
     def has_valid_topic_selection(self) -> bool:
         """Check whether at least one input and output topic are selected. This keeps behavior scoped to the current component.
@@ -738,18 +770,74 @@ class TopicsSection:
             self.get_selected_output_topics(),
         )
 
-    def _current_tensor_spec_signature(self) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    def _current_tensor_spec_signature(self) -> TensorSpecTopicSignature:
         """Build a cache signature from current input and output topic selections. This keeps behavior scoped to the current component.
 
         Args:
             None.
         Returns:
-            Tuple containing immutable selected input and output topic sequences.
+            Tuple containing immutable selected input/output topic+subtopic mappings.
         """
+        selected_input_topic_subtopics = self.get_selected_input_topic_subtopics()
+        selected_output_topic_subtopics = self.get_selected_output_topic_subtopics()
         return (
-            tuple(self.get_selected_input_topics()),
-            tuple(self.get_selected_output_topics()),
+            tuple(
+                (topic, tuple(fields))
+                for topic, fields in selected_input_topic_subtopics.items()
+            ),
+            tuple(
+                (topic, tuple(fields))
+                for topic, fields in selected_output_topic_subtopics.items()
+            ),
         )
+
+    def _selected_topic_subtopics(
+        self,
+        list_type: TopicListType,
+        *,
+        ensure_loaded: bool = False,
+    ) -> dict[str, list[str]]:
+        """Return selected topics mapped to selected numeric subtopic fields.
+
+        Args:
+            list_type: Topic list type whose selected topic mapping is requested.
+            ensure_loaded: When True, synchronously samples subtopics that have
+                not been loaded yet for selected topics.
+        Returns:
+            Mapping from topic names to ordered selected numeric field names.
+        """
+        state = self._subtopic_state(list_type)
+        selected_topic_subtopics: dict[str, list[str]] = {}
+
+        for topic in self.selected_topics(list_type):
+            if ensure_loaded and topic not in state.field_order:
+                field_order, numeric_fields, error_text = (
+                    self._sample_subtopics_for_topic(
+                        topic,
+                    )
+                )
+                if error_text is not None:
+                    state.load_errors[topic] = error_text
+                    selected_topic_subtopics[topic] = []
+                    continue
+
+                state.load_errors.pop(topic, None)
+                state.field_order[topic] = field_order
+                state.numeric_fields[topic] = numeric_fields
+
+            field_order = state.field_order.get(topic, [])
+            numeric_fields = state.numeric_fields.get(topic, set())
+            topic_vars = state.vars.setdefault(topic, {})
+
+            selected_fields: list[str] = [
+                field
+                for field in field_order
+                if field in numeric_fields
+                and (field not in topic_vars or topic_vars[field].get())
+            ]
+            selected_topic_subtopics[topic] = selected_fields
+
+        return selected_topic_subtopics
 
     def _selected_subtopic_fields(
         self,
@@ -798,14 +886,6 @@ class TopicsSection:
             "output_features": list(tensor_spec["output_features"]),
             "input_dim": tensor_spec["input_dim"],
             "output_dim": tensor_spec["output_dim"],
-            "ignored_input_features": {
-                key: list(value)
-                for key, value in tensor_spec["ignored_input_features"].items()
-            },
-            "ignored_output_features": {
-                key: list(value)
-                for key, value in tensor_spec["ignored_output_features"].items()
-            },
         }
 
         input_filters = self._selected_subtopic_fields("input")
@@ -908,20 +988,11 @@ class TopicsSection:
 
         self._tensor_spec = tensor_spec
         self._tensor_spec_topic_signature = self._current_tensor_spec_signature()
-
-        ignored_input = sum(
-            len(fields) for fields in tensor_spec["ignored_input_features"].values()
-        )
-        ignored_output = sum(
-            len(fields) for fields in tensor_spec["ignored_output_features"].values()
-        )
         self._set_tensor_spec_status(
             (
                 "Tensor Spec: "
                 f"in={tensor_spec['input_dim']} "
-                f"out={tensor_spec['output_dim']} "
-                f"ignored_in={ignored_input} "
-                f"ignored_out={ignored_output}"
+                f"out={tensor_spec['output_dim']}"
             ),
             fg="#222222",
         )
