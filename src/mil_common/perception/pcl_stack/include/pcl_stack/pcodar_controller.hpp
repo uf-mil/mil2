@@ -3,7 +3,6 @@
 #include <dynamic_reconfigure/client.h>
 #include <dynamic_reconfigure/server.h>
 #include <mil_bounds/BoundsConfig.h>
-#include <mil_msgs/ObjectDBQuery.h>
 #include <nav_msgs/Odometry.h>
 #include <pcl/filters/passthrough.h>
 #include <roboteq_msgs/Command.h>
@@ -20,6 +19,7 @@
 
 #include "input_cloud_filter.hpp"
 #include "marker_manager.hpp"
+#include "mil_msgs/mil_msgs/msg/object_db_query.hpp"
 #include "object_associator.hpp"
 #include "object_detector.hpp"
 #include "object_map.hpp"

@@ -1,3 +1,5 @@
+#include "pcl_stack/pcodar_controller.hpp"
+
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
@@ -6,8 +8,6 @@
 #include <functional>
 
 #include <boost/scope_exit.hpp>
-
-#include <pcl_stack/pcodar_controller.hpp>
 
 namespace pcodar
 {

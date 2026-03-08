@@ -1,11 +1,12 @@
+#include "pcl_stack/object_associator.hpp"
+
 #include <pcl/registration/correspondence_estimation.h>
 #include <pcl/registration/correspondence_rejection_trimmed.h>
 #include <pcl/search/octree.h>
 
 #include <unordered_set>
 
-#include <mil_msgs/PerceptionObject.hpp>
-#include <pcl_stack/object_associator.hpp>
+#include "mil_msgs/msg/perception_object.hpp"
 
 namespace pcodar
 {

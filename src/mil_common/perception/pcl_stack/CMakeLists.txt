@@ -28,6 +28,8 @@ find_package(PCL 1.2 REQUIRED)
 # OPENCV stuff
 find_package(OpenCV 4.0 REQUIRED)
 
+find_package(interactive_markers REQUIRED)
+
 # include directories
 include_directories(include ${PCL_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
@@ -54,6 +56,7 @@ ament_target_dependencies(
   pcl_ros
   pcl_conversions
   cv_bridge
+  interactive_markers
   mil_msgs)
 
 # create an exec that runs everything

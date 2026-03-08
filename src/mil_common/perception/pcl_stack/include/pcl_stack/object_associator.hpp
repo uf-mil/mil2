@@ -1,9 +1,8 @@
 #pragma once
 
-#include <mil_msgs/PerceptionObject.h>
-
 #include <limits>
 
+#include "mil_msgs/mil_msgs/msg/perception_object_array.hpp"
 #include "object_map.hpp"
 #include "pcodar_types.hpp"
 

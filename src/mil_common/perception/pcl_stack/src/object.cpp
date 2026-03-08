@@ -1,8 +1,9 @@
+#include "pcl_stack/object.hpp"
+
 #include <tf2/LinearMath/Quaternion.h>
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <pcl_stack/object.hpp>
 
 namespace pcodar
 {

@@ -1,7 +1,7 @@
+#include "pcl_stack/ogrid_manager.hpp"
+
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/utils.h>
-
-#include <pcl_stack/ogrid_manager.hpp>
 
 namespace pcodar
 {

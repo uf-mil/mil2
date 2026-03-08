@@ -1,11 +1,11 @@
 #pragma once
 
-#include <mil_msgs/PerceptionObject.h>
-#include <mil_msgs/PerceptionObjectArray.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 
+#include "mil_msgs/mil_msgs/msg/perception_object.hpp"
+#include "mil_msgs/mil_msgs/msg/perception_object_array.hpp"
 #include "object_map.hpp"
 #include "pcodar_types.hpp"
 

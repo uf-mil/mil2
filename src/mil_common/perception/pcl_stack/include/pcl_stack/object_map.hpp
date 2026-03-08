@@ -1,8 +1,7 @@
 #pragma once
 
-#include <mil_msgs/msg/ObjectDBQuery.h>
-#include <mil_msgs/msg/PerceptionObjectArray.h>
-
+#include "mil_msgs/mil_msgs/msg/object_db_query.hpp"
+#include "mil_msgs/mil_msgs/msg/perception_object_array.hpp"
 #include "object.hpp"
 #include "pcodar_types.hpp"
 
