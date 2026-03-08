@@ -22,6 +22,8 @@ find_package(pcl_conversions REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(mil_msgs REQUIRED)
 
+# generate_dynamic_reconfigure_options( cfg/PCODAR.cfg )
+
 # PCL stuff
 find_package(PCL 1.2 REQUIRED)
 
