@@ -15,7 +15,7 @@ from .filesystem import write_demo_topic_png
 from .get_ros2_topics import get_ros2_topics
 from .sample_input_topics import (
     collect_numeric_values_from_topic_subtopics,
-    collect_topic_messages_once,
+    collect_topic_payloads_once,
     numerical_headers_from_topic_subtopics,
 )
 
@@ -348,7 +348,7 @@ def _run_live_sampling_smoke_test(cfg: LiveTestConfig) -> int:
             publisher=publisher,
         )
 
-        messages = collect_topic_messages_once(
+        messages = collect_topic_payloads_once(
             [numeric_topic, status_topic, image_topic],
             timeout_s=cfg.timeout_s,
         )

@@ -315,7 +315,7 @@ def sample_topics(
     return sampled_topics
 
 
-def collect_topic_messages_once(
+def collect_topic_payloads_once(
     topics: list[str],
     *,
     timeout_s: float = 2.0,
@@ -334,7 +334,7 @@ def collect_topic_messages_once(
         return []
     resolved_topics = _resolve_topics_in_graph(
         selected_topics,
-        operation="collect topic messages",
+        operation="collect topic payloads",
     )
     return _collect_topic_messages_once_via_subscriptions(
         resolved_topics,
@@ -366,7 +366,7 @@ def collect_numeric_values_from_topic_subtopics(
     For missing or non-numeric fields, returns `None` in that position.
     """
     selected_topics = list(topic_subtopics)
-    raw_messages = collect_topic_messages_once(selected_topics, timeout_s=timeout_s)
+    raw_messages = collect_topic_payloads_once(selected_topics, timeout_s=timeout_s)
 
     values: list[bool | int | float | None] = []
     for topic, message in zip(selected_topics, raw_messages):

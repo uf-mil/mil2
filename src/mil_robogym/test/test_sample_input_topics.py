@@ -6,7 +6,7 @@ import pytest
 
 from mil_robogym.data_collection.sample_input_topics import (
     collect_numeric_values_from_topic_subtopics,
-    collect_topic_messages_once,
+    collect_topic_payloads_once,
     numerical_headers_from_topic_subtopics,
     sample_input_topics,
     sample_project_topics,
@@ -391,7 +391,7 @@ def test_sample_input_topics_flattens_scalar_root(monkeypatch):
     assert result["/scalar_topic"]["value"] == 3
 
 
-def test_collect_topic_messages_once_returns_one_payload_per_topic(monkeypatch):
+def test_collect_topic_payloads_once_returns_one_payload_per_topic(monkeypatch):
     """Collects one parsed ROS payload per requested topic in order."""
     monkeypatch.setattr(
         "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
@@ -420,7 +420,7 @@ def test_collect_topic_messages_once_returns_one_payload_per_topic(monkeypatch):
         fake_collect,
     )
 
-    result = collect_topic_messages_once(["/imu/data", "/front_cam/image_raw"])
+    result = collect_topic_payloads_once(["/imu/data", "/front_cam/image_raw"])
 
     assert len(result) == 2
     assert result[0]["header"]["stamp"]["sec"] == 1
@@ -435,7 +435,7 @@ def test_collect_numeric_values_from_topic_subtopics_uses_header_order(monkeypat
         "/trajectory/4_deg": ["yaw"],
     }
     monkeypatch.setattr(
-        "mil_robogym.data_collection.sample_input_topics.collect_topic_messages_once",
+        "mil_robogym.data_collection.sample_input_topics.collect_topic_payloads_once",
         lambda topics, timeout_s=2.0: [
             {
                 "orientation": {"x": 0.25, "y": -0.5},
