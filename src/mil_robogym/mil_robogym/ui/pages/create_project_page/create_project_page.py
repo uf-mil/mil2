@@ -16,6 +16,8 @@ from .controls_section import ControlsSection
 from .header_section import HeaderSection
 from .project_fields_section import ProjectFieldsSection
 from .random_spawn_section import RandomSpawnSection
+from .sub_topics_section import SubTopicsSection
+from .tensor_spec_section import TensorSpecSection
 from .topics_section import TopicsSection
 
 
@@ -54,6 +56,11 @@ class CreateProjectPage(tk.Frame):
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
 
+        self.selected_input_topics: list[str] = []
+        self.selected_output_topics: list[str] = []
+        self.selected_input_topic_subtopics: dict[str, list[str]] = {}
+        self.selected_output_topic_subtopics: dict[str, list[str]] = {}
+
         self.header_section = HeaderSection(self, self._on_home_title_click)
         self.project_fields_section = ProjectFieldsSection(
             self,
@@ -76,11 +83,26 @@ class CreateProjectPage(tk.Frame):
         self.topics_section = TopicsSection(
             self,
             self._topics,
-            self._build_project_config,
-            self._on_form_state_changed,
+            self._on_topics_selection_changed,
+        )
+
+        self.sub_topics_section = SubTopicsSection(
+            self,
+            self._on_subtopics_selection_changed,
+        )
+
+        self.tensor_spec_section = TensorSpecSection(
+            self,
+            lambda: self._build_project_config(ensure_subtopics_loaded=True),
+            self._get_selected_input_topics,
+            self._get_selected_output_topics,
+            self._get_selected_input_topic_subtopics,
+            self._get_selected_output_topic_subtopics,
             self.controls_section.show_error_tooltip,
             self.controls_section.hide_error_tooltip,
         )
+
+        self._sync_subtopics_with_topics()
 
         for col in range(6):
             self.grid_columnconfigure(col, weight=1, uniform="half")
@@ -243,10 +265,10 @@ class CreateProjectPage(tk.Frame):
                 "coord1_4d": [float(v) for v in (coord1 or (0.0, 0.0, 0.0, 0.0))],
                 "coord2_4d": [float(v) for v in (coord2 or (0.0, 0.0, 0.0, 0.0))],
             },
-            "input_topics": self.topics_section.get_selected_input_topic_subtopics(
+            "input_topics": self._selected_input_topic_subtopics(
                 ensure_loaded=ensure_subtopics_loaded,
             ),
-            "output_topics": self.topics_section.get_selected_output_topic_subtopics(
+            "output_topics": self._selected_output_topic_subtopics(
                 ensure_loaded=ensure_subtopics_loaded,
             ),
         }
@@ -264,12 +286,13 @@ class CreateProjectPage(tk.Frame):
             return
 
         self._update_create_project_button_state()
+        tensor_spec = self.tensor_spec_section.compute_tensor_spec()
+        if tensor_spec is None:
+            return
+
         project_cfg = self._build_project_config(ensure_subtopics_loaded=True)
         project_name = project_cfg["name"]
-
-        tensor_spec = self.topics_section.get_tensor_spec_for_current_selection()
-        if tensor_spec is not None:
-            project_cfg["tensor_spec"] = tensor_spec
+        project_cfg["tensor_spec"] = tensor_spec
 
         try:
             create_project_folder(project_cfg)
@@ -320,6 +343,8 @@ class CreateProjectPage(tk.Frame):
         project_name = self.project_fields_section.project_name_var.get().strip()
         has_valid_name = self._is_filesystem_safe_name(project_name)
         has_valid_topics = self.topics_section.has_valid_topic_selection()
+        self._sync_selected_topic_subtopics_from_section()
+        has_valid_subtopics = self._has_valid_subtopic_selection()
 
         random_spawn_enabled = self.random_spawn_section.is_random_spawn_enabled()
         coord1, coord2 = self.random_spawn_section.get_coords()
@@ -327,7 +352,24 @@ class CreateProjectPage(tk.Frame):
             coord1 is not None and coord2 is not None
         )
 
-        return has_valid_name and has_valid_topics and has_valid_coords
+        return (
+            has_valid_name
+            and has_valid_topics
+            and has_valid_subtopics
+            and has_valid_coords
+        )
+
+    def _has_valid_subtopic_selection(self) -> bool:
+        """Return True when each selected topic has at least one selected subtopic."""
+        for topic in self.selected_input_topics:
+            if not self.selected_input_topic_subtopics.get(topic):
+                return False
+
+        for topic in self.selected_output_topics:
+            if not self.selected_output_topic_subtopics.get(topic):
+                return False
+
+        return True
 
     def _update_create_project_button_state(self) -> None:
         """Update Create Project button state from current form validity. This keeps behavior scoped to the current component.
@@ -338,3 +380,78 @@ class CreateProjectPage(tk.Frame):
             None.
         """
         self.controls_section.update_create_project_button_state(self._is_form_valid())
+
+    def _sync_subtopics_with_topics(self) -> None:
+        """Sync subtopic panels with currently selected input/output topics."""
+        self.selected_input_topics = self.topics_section.get_selected_input_topics()
+        self.selected_output_topics = self.topics_section.get_selected_output_topics()
+
+        self.sub_topics_section.set_selected_topics(
+            input_topics=self.selected_input_topics,
+            output_topics=self.selected_output_topics,
+        )
+
+        self._sync_selected_topic_subtopics_from_section()
+
+    def _on_topics_selection_changed(self) -> None:
+        """Handle topic list selection changes from TopicsSection."""
+        self._sync_subtopics_with_topics()
+        self.tensor_spec_section.invalidate_tensor_spec()
+        self._on_form_state_changed()
+
+    def _on_subtopics_selection_changed(self) -> None:
+        """Handle subtopic selection changes from SubTopicsSection."""
+        self._sync_selected_topic_subtopics_from_section()
+        self.tensor_spec_section.invalidate_tensor_spec()
+        self._on_form_state_changed()
+
+    def _sync_selected_topic_subtopics_from_section(
+        self,
+        *,
+        ensure_loaded: bool = False,
+    ) -> None:
+        """Update page-level selected subtopic mappings from the subtopics section."""
+        self.selected_input_topic_subtopics = (
+            self.sub_topics_section.get_selected_input_topic_subtopics(
+                ensure_loaded=ensure_loaded,
+            )
+        )
+        self.selected_output_topic_subtopics = (
+            self.sub_topics_section.get_selected_output_topic_subtopics(
+                ensure_loaded=ensure_loaded,
+            )
+        )
+
+    def _selected_input_topic_subtopics(
+        self,
+        *,
+        ensure_loaded: bool = False,
+    ) -> dict[str, list[str]]:
+        self._sync_selected_topic_subtopics_from_section(ensure_loaded=ensure_loaded)
+        return self.selected_input_topic_subtopics
+
+    def _selected_output_topic_subtopics(
+        self,
+        *,
+        ensure_loaded: bool = False,
+    ) -> dict[str, list[str]]:
+        self._sync_selected_topic_subtopics_from_section(ensure_loaded=ensure_loaded)
+        return self.selected_output_topic_subtopics
+
+    def _get_selected_input_topics(self) -> list[str]:
+        return list(self.selected_input_topics)
+
+    def _get_selected_output_topics(self) -> list[str]:
+        return list(self.selected_output_topics)
+
+    def _get_selected_input_topic_subtopics(self) -> dict[str, list[str]]:
+        return {
+            topic: list(fields)
+            for topic, fields in self.selected_input_topic_subtopics.items()
+        }
+
+    def _get_selected_output_topic_subtopics(self) -> dict[str, list[str]]:
+        return {
+            topic: list(fields)
+            for topic, fields in self.selected_output_topic_subtopics.items()
+        }
