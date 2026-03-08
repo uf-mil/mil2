@@ -16,7 +16,6 @@
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
 #include "hone_midpoint.hpp"
-#include "log_to_file.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "track_best_pair.hpp"
@@ -96,7 +95,6 @@ int main(int argc, char** argv)
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
     factory.registerNodeType<TrackBestPair>("TrackBestPair");
     factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
-    factory.registerNodeType<LogToFile>("LogToFile");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
