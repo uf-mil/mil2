@@ -6,11 +6,17 @@
 <root BTCPP_format="4">
     <include path="absolute_move.xml"/>
     <include path="relative_move.xml"/>
-    <include path="square_test_mission.xml"/>
-    <include path="BUST_mission.xml"/>
     <include path="start_gate_mission.xml"/>
     <include path="nav_channel_mission.xml"/>
+    <include path="yaw_style.xml"/>
+    <include path="pc_nav_channel.xml"/>
+
+    <!-- Test missions -->
     <include path="topic_ticker_test_mission.xml"/>
     <include path="sonar_follower_test_mission.xml"/>
-    <include path="yaw_style.xml"/>
+    <include path="square_test_mission.xml"/>
+    <include path="midpoint_test_mission.xml"/>
+    <include path="best_pair_test_mission.xml"/>
+    <include path="BUST_mission.xml"/>
+
 </root>

@@ -284,6 +284,10 @@ function move_rel() {
 	python3 "$MIL_REPO/scripts/move_rel.py" "$@"
 }
 
+function largest_area_sum() {
+	python3 "$MIL_REPO/scripts/largest_area_sum.py" "$@"
+}
+
 alias list_mil_devices="list_lan_devices 192.168.37.1/24"
 
 # aliases for localization and controller service calls
