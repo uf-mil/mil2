@@ -8,8 +8,8 @@
 
 #include <memory>
 
-#include "mil_msgs/mil_msgs/msg/perception_object.hpp"
-#include "mil_msgs/mil_msgs/msg/perception_object_array.hpp"
+#include "mil_msgs/msg/perception_object.hpp"
+#include "mil_msgs/msg/perception_object_array.hpp"
 #include "object_map.hpp"
 #include "pcodar_types.hpp"
 

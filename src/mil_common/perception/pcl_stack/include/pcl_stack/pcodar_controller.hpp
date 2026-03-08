@@ -19,7 +19,7 @@
 
 #include "input_cloud_filter.hpp"
 #include "marker_manager.hpp"
-#include "mil_msgs/mil_msgs/msg/object_db_query.hpp"
+#include "mil_msgs/msg/object_db_query.hpp"
 #include "object_associator.hpp"
 #include "object_detector.hpp"
 #include "object_map.hpp"

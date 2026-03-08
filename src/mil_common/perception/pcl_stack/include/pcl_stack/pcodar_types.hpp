@@ -8,7 +8,7 @@
 
 #include <unordered_map>
 
-#include "mil_msgs/mil_msgs/msg/perception_object.hpp"
+#include "mil_msgs/msg/perception_object.hpp"
 
 namespace pcodar
 {
