@@ -5,6 +5,9 @@ import subprocess
 import pytest
 
 from mil_robogym.data_collection.sample_input_topics import (
+    collect_numeric_values_from_topic_subtopics,
+    collect_topic_messages_once,
+    numerical_headers_from_topic_subtopics,
     sample_input_topics,
     sample_project_topics,
 )
@@ -386,3 +389,69 @@ def test_sample_input_topics_flattens_scalar_root(monkeypatch):
 
     result = sample_input_topics(_project(["/scalar_topic"]))
     assert result["/scalar_topic"]["value"] == 3
+
+
+def test_collect_topic_messages_once_returns_one_payload_per_topic(monkeypatch):
+    """Collects one parsed ROS payload per requested topic in order."""
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.sample_input_topics.get_ros2_topics",
+        lambda: ["/imu/data", "/front_cam/image_raw"],
+    )
+
+    payloads = {
+        "/imu/data": {
+            "header": {"stamp": {"sec": 1}},
+            "x": 2,
+        },
+        "/front_cam/image_raw": {
+            "height": 600,
+            "width": 960,
+            "encoding": "rgb8",
+            "data": [1, 2],
+        },
+    }
+
+    def fake_collect(resolved_topics, timeout_s):
+        assert timeout_s == 2.0
+        return [payloads[topic] for topic in resolved_topics]
+
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.sample_input_topics._collect_topic_messages_once_via_subscriptions",
+        fake_collect,
+    )
+
+    result = collect_topic_messages_once(["/imu/data", "/front_cam/image_raw"])
+
+    assert len(result) == 2
+    assert result[0]["header"]["stamp"]["sec"] == 1
+    assert result[1]["encoding"] == "rgb8"
+    assert result[1]["data"] == [1, 2]
+
+
+def test_collect_numeric_values_from_topic_subtopics_uses_header_order(monkeypatch):
+    """Builds stable headers and value rows from selected numeric subtopics."""
+    topic_subtopics = {
+        "/imu/data": ["orientation.x", "orientation.y", "header.frame_id"],
+        "/trajectory/4_deg": ["yaw"],
+    }
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.sample_input_topics.collect_topic_messages_once",
+        lambda topics, timeout_s=2.0: [
+            {
+                "orientation": {"x": 0.25, "y": -0.5},
+                "header": {"frame_id": "sub9"},
+            },
+            {"yaw": 1.2},
+        ],
+    )
+
+    headers = numerical_headers_from_topic_subtopics(topic_subtopics)
+    values = collect_numeric_values_from_topic_subtopics(topic_subtopics)
+
+    assert headers == [
+        "/imu/data:orientation.x",
+        "/imu/data:orientation.y",
+        "/imu/data:header.frame_id",
+        "/trajectory/4_deg:yaw",
+    ]
+    assert values == [0.25, -0.5, None, 1.2]
