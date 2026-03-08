@@ -13,8 +13,8 @@ from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopu
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 
 from .controls_section import ControlsSection
-from .header_section import build_header_section
-from .project_fields_section import build_project_fields_section
+from .header_section import HeaderSection
+from .project_fields_section import ProjectFieldsSection
 from .random_spawn_section import RandomSpawnSection
 from .topics_section import TopicsSection
 
@@ -54,18 +54,12 @@ class CreateProjectPage(tk.Frame):
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
 
-        header_section = build_header_section(self, self._on_home_title_click)
-        self.home_title = header_section.home_title
-        self.page_title = header_section.page_title
-
-        project_fields_section = build_project_fields_section(
+        self.header_section = HeaderSection(self, self._on_home_title_click)
+        self.project_fields_section = ProjectFieldsSection(
             self,
             self._world_default,
             self._on_form_state_changed,
         )
-        self.project_name_var = project_fields_section.project_name_var
-        self.world_file_var = project_fields_section.world_file_var
-        self.model_name_var = project_fields_section.model_name_var
 
         self.controls_section = ControlsSection(
             self,
@@ -156,8 +150,20 @@ class CreateProjectPage(tk.Frame):
         self.popup = GrabCoordinatesPopup(
             self,
             self.gz_pose_client.send_request,
-            self._display_collected_coords,
+            self._on_popup_finished,
         )
+
+    def _on_popup_finished(self, coords: list[Coord4D | None]) -> None:
+        """Handle popup completion by normalizing returned coordinate list.
+
+        Args:
+            coords: Coordinate list returned by the popup finish callback.
+        Returns:
+            None.
+        """
+        c1 = coords[0] if len(coords) > 0 else None
+        c2 = coords[1] if len(coords) > 1 else None
+        self._display_collected_coords(c1, c2)
 
     def _display_collected_coords(
         self,
@@ -229,9 +235,9 @@ class CreateProjectPage(tk.Frame):
         random_spawn_enabled = self.random_spawn_section.is_random_spawn_enabled()
 
         return {
-            "name": self.project_name_var.get().strip(),
-            "world_file": self.world_file_var.get().strip(),
-            "model_name": self.model_name_var.get().strip(),
+            "name": self.project_fields_section.project_name_var.get().strip(),
+            "world_file": self.project_fields_section.world_file_var.get().strip(),
+            "model_name": self.project_fields_section.model_name_var.get().strip(),
             "random_spawn_space": {
                 "enabled": random_spawn_enabled,
                 "coord1_4d": [float(v) for v in (coord1 or (0.0, 0.0, 0.0, 0.0))],
@@ -311,7 +317,7 @@ class CreateProjectPage(tk.Frame):
         Returns:
             True when name, topic selections, and optional coords are valid.
         """
-        project_name = self.project_name_var.get().strip()
+        project_name = self.project_fields_section.project_name_var.get().strip()
         has_valid_name = self._is_filesystem_safe_name(project_name)
         has_valid_topics = self.topics_section.has_valid_topic_selection()
 

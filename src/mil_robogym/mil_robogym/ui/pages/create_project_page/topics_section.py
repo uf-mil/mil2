@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import threading
 import tkinter as tk
-from dataclasses import dataclass
 from typing import Callable, Literal
 
 from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
@@ -22,7 +21,6 @@ TensorSpecTopicSignature = tuple[
 ]
 
 
-@dataclass
 class SubtopicState:
     """Store subtopic UI state for one topic list type. This keeps behavior scoped to the current component.
 
@@ -39,14 +37,27 @@ class SubtopicState:
         None.
     """
 
-    frame: tk.Frame
-    expanded: dict[str, bool]
-    field_order: dict[str, list[str]]
-    numeric_fields: dict[str, set[str]]
-    vars: dict[str, dict[str, tk.BooleanVar]]
-    loading: set[str]
-    load_errors: dict[str, str]
-    summary_labels: dict[str, tk.Label]
+    def __init__(
+        self,
+        *,
+        frame: tk.Frame,
+        expanded: dict[str, bool],
+        field_order: dict[str, list[str]],
+        numeric_fields: dict[str, set[str]],
+        vars: dict[str, dict[str, tk.BooleanVar]],
+        loading: set[str],
+        load_errors: dict[str, str],
+        summary_labels: dict[str, tk.Label],
+    ) -> None:
+        """Initialize mutable subtopic state for a topic-list side."""
+        self.frame = frame
+        self.expanded = expanded
+        self.field_order = field_order
+        self.numeric_fields = numeric_fields
+        self.vars = vars
+        self.loading = loading
+        self.load_errors = load_errors
+        self.summary_labels = summary_labels
 
 
 class TopicsSection:
