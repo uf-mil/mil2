@@ -1,0 +1,118 @@
+<root BTCPP_format="4" main_tree_to_execute="TrackBestPairTestMission">
+  <BehaviorTree ID="TrackBestPairTestMission">
+    <Sequence>
+
+      <!-- 1) Use correct YOLO model -->
+      <Action ID="CheckYoloModel"
+              model_filename="new_sim_nav_channel.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- 2) Sweep while TrackBestPair keeps updating best_q* -->
+      <Parallel success_count="2" failure_count="2">
+
+        <!-- Track best red/white pair during the sweep -->
+        <ForceSuccess>
+          <Timeout msec="20000">
+            <Action ID="TrackBestPair"
+                    min_conf="0.15"
+                    channel_side="0"
+                    ctx="{ctx}"
+                    best_qx="{best_qx}"
+                    best_qy="{best_qy}"
+                    best_qz="{best_qz}"
+                    best_qw="{best_qw}"/>
+          </Timeout>
+        </ForceSuccess>
+
+        <!-- Sweep: center -> +45 -> -45 -> center -->
+        <Sequence>
+
+          <Repeat num_cycles="3">
+            <Fallback>
+              <SubTree ID="RelativeMove"
+                       _autoremap="true"
+                       yaw_deg="-15.0"
+                       pos_tol="0.25"
+                       ori_tol_deg="6.0"
+                       msec="3500"
+                       ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+
+          <Repeat num_cycles="12">
+            <Fallback>
+              <SubTree ID="RelativeMove"
+                       _autoremap="true"
+                       yaw_deg="7.5"
+                       pos_tol="0.25"
+                       ori_tol_deg="5.0"
+                       msec="3500"
+                       ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+
+          <Repeat num_cycles="6">
+            <Fallback>
+              <SubTree ID="RelativeMove"
+                       _autoremap="true"
+                       yaw_deg="-7.5"
+                       pos_tol="0.25"
+                       ori_tol_deg="5.0"
+                       msec="3500"
+                       ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+
+        </Sequence>
+
+      </Parallel>
+
+      <!-- 3) Turn to the best remembered orientation -->
+      <Sequence>
+        <Action ID="PublishGoalPose"
+                use_euler_deg="false"
+                relative="false"
+                keep_current_pos_abs="true"
+                qx="{best_qx}"
+                qy="{best_qy}"
+                qz="{best_qz}"
+                qw="{best_qw}"
+                ctx="{ctx}"
+                abs_x="{goal_x}"
+                abs_y="{goal_y}"
+                abs_z="{goal_z}"
+                abs_qx="{goal_qx}"
+                abs_qy="{goal_qy}"
+                abs_qz="{goal_qz}"
+                abs_qw="{goal_qw}"/>
+
+        <Timeout msec="10000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Sequence>
+              <Delay delay_msec="250">
+                <AlwaysSuccess/>
+              </Delay>
+              <Condition ID="AtGoalPose"
+                         x="{goal_x}"
+                         y="{goal_y}"
+                         z="{goal_z}"
+                         qx="{goal_qx}"
+                         qy="{goal_qy}"
+                         qz="{goal_qz}"
+                         qw="{goal_qw}"
+                         pos_tol="0.25"
+                         ori_tol_deg="8.0"
+                         ctx="{ctx}"/>
+            </Sequence>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </Sequence>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

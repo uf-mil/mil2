@@ -16,7 +16,7 @@
         <ForceSuccess>
           <Timeout msec="30000">
             <Action ID="TrackBestPair"
-                    min_conf="0.25"
+                    min_conf="0.15"
                     channel_side="0"
                     ctx="{ctx}"
                     best_qx="{best_qx}" best_qy="{best_qy}"
@@ -81,9 +81,9 @@
           <Condition ID="PolesBigEnough"
                      min_height_px="100.0"
                      min_width_px="10.0"
-                     min_conf="0.30"
+                     min_conf="0.15"
                      consecutive_frames="2"
-                     need_both="true"
+                     need_both="false"
                      ctx="{ctx}"/>
 
           <Sequence>
@@ -100,7 +100,7 @@
       <ForceSuccess>
         <Timeout msec="4000">
           <Action ID="DetermineChannelSide"
-                  min_conf="0.30"
+                  min_conf="0.15"
                   consecutive_frames="3"
                   ctx="{ctx}"
                   right_channel="{right_channel}"/>
@@ -114,7 +114,7 @@
           <!-- A) Poles exist: update pair, hone, move forward, repeat -->
           <Sequence>
 
-            <Action ID="AnyPolesDetected" min_conf="0.30" ctx="{ctx}"/>
+            <Action ID="AnyPolesDetected" min_conf="0.15" ctx="{ctx}"/>
 
             <!-- Survey while updating best pair using decided side -->
             <Parallel success_count="2" failure_count="2">
@@ -122,7 +122,7 @@
               <ForceSuccess>
                 <Timeout msec="15000">
                   <Action ID="TrackBestPair"
-                          min_conf="0.25"
+                          min_conf="0.15"
                           channel_side="{right_channel}"
                           ctx="{ctx}"
                           best_qx="{best_qx}" best_qy="{best_qy}"
@@ -161,17 +161,36 @@
 
             </Parallel>
 
-            <!-- Micro-step yaw P-control using RelativeMove.
-                 ASSUMPTION: HoneMidpoint outputs yaw_step_deg (degrees), not a rate.
-                 If your HoneMidpoint currently outputs yaw_cmd as a rate, change it to degrees per tick. -->
-            <RetryUntilSuccessful num_attempts="-1">
-              <Fallback>
+            <!-- Yaw to memorized best orientation from this survey -->
+            <Sequence>
+              <Action ID="PublishGoalPose"
+                      use_euler_deg="false" relative="false" keep_current_pos_abs="true"
+                      qx="{best_qx}" qy="{best_qy}" qz="{best_qz}" qw="{best_qw}" ctx="{ctx}"
+                      abs_x="{loop_goal_x}" abs_y="{loop_goal_y}" abs_z="{loop_goal_z}"
+                      abs_qx="{loop_goal_qx}" abs_qy="{loop_goal_qy}" abs_qz="{loop_goal_qz}" abs_qw="{loop_goal_qw}"/>
 
-                <!-- returns SUCCESS when centered -->
+              <Timeout msec="10000">
+                <RetryUntilSuccessful num_attempts="-1">
+                  <Sequence>
+                    <Delay delay_msec="250"><AlwaysSuccess/></Delay>
+                    <Condition ID="AtGoalPose"
+                              x="{loop_goal_x}" y="{loop_goal_y}" z="{loop_goal_z}"
+                              qx="{loop_goal_qx}" qy="{loop_goal_qy}" qz="{loop_goal_qz}" qw="{loop_goal_qw}"
+                              pos_tol="0.25" ori_tol_deg="8.0" ctx="{ctx}"/>
+                  </Sequence>
+                </RetryUntilSuccessful>
+              </Timeout>
+            </Sequence>
+
+            <!-- Micro-step yaw centering using HoneMidpoint + RelativeMove -->
+            <RetryUntilSuccessful num_attempts="-1">
+              <Parallel success_count="1" failure_count="1">
+
+                <!-- HoneMidpoint keeps updating yaw_step_deg and succeeds once centered -->
                 <Timeout msec="8000">
                   <Action ID="HoneMidpoint"
                           ctx="{ctx}"
-                          min_conf="0.25"
+                          min_conf="0.15"
                           kp="0.03"
                           max_cmd="3.0"
                           tol_px="10.0"
@@ -179,17 +198,20 @@
                           yaw_cmd="{yaw_step_deg}"/>
                 </Timeout>
 
-                <!-- otherwise apply one yaw step and keep looping -->
-                <Sequence>
-                  <SubTree ID="RelativeMove" _autoremap="true"
-                           yaw_deg="{yaw_step_deg}"
-                           pos_tol="0.25" ori_tol_deg="6.0"
-                           msec="600"
-                           ctx="{ctx}"/>
-                  <AlwaysFailure/>
-                </Sequence>
+                <!-- Keep applying the latest yaw step until HoneMidpoint succeeds -->
+                <RetryUntilSuccessful num_attempts="-1">
+                  <Sequence>
+                    <SubTree ID="RelativeMove" _autoremap="true"
+                            yaw_deg="{yaw_step_deg}"
+                            pos_tol="0.25" ori_tol_deg="6.0"
+                            msec="600"
+                            ctx="{ctx}"/>
+                    <AlwaysFailure/>
+                  </Sequence>
+                </RetryUntilSuccessful>
 
-              </Fallback>
+              </Parallel>
+
             </RetryUntilSuccessful>
 
             <!-- Move forward and keep looping -->
