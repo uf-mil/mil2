@@ -43,6 +43,7 @@ setup(
             "mechanisms_server = subjugator_mission_planner.mechanisms_server:main",
             "sonar_follower = subjugator_mission_planner.sonar_follower_server:main",
             "nav_channel_server = subjugator_mission_planner.nav_channel_server:main",
+            "trash_pickup_server = subjugator_mission_planner.trash_pickup_server:main",
         ],
     },
 )

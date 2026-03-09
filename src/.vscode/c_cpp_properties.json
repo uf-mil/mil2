@@ -1,0 +1,33 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "includePath": [
+                "/opt/ros/jazzy/include/**",
+                "/home/mason/mil2/src/mil_common/electrical_protocol/include/**",
+                "/home/mason/mil2/src/mil_common/mil_preflight/include/**",
+                "/home/mason/mil2/src/mil_common/mil_tools/include/**",
+                "/home/mason/mil2/src/navigator/hardware_drivers/navigator_kill_board/include/**",
+                "/home/mason/mil2/src/subjugator/command/subjugator_keyboard_control/include/**",
+                "/home/mason/mil2/src/subjugator/drivers/waterlinked_dvl/libwaterlinked/include/**",
+                "/home/mason/mil2/src/subjugator/drivers/waterlinked_dvl/waterlinked_dvl_driver/include/**",
+                "/home/mason/mil2/src/subjugator/gnc/subjugator_controller/include/**",
+                "/home/mason/mil2/src/subjugator/gnc/subjugator_path_planner/include/**",
+                "/home/mason/mil2/src/subjugator/gnc/subjugator_thruster_manager/include/**",
+                "/home/mason/mil2/src/subjugator/gnc/subjugator_trajectory_planner/include/**",
+                "/home/mason/mil2/src/subjugator/mission_planner/include/**",
+                "/home/mason/mil2/src/subjugator/simulation/subjugator_gazebo/include/**",
+                "/usr/include/**"
+            ],
+            "name": "ros2",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}

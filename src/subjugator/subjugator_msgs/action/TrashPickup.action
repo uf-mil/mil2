@@ -1,0 +1,10 @@
+# Goal
+string target_label
+float64 timeout
+---
+# Result
+bool success
+string message
+---
+# Feedback
+string status

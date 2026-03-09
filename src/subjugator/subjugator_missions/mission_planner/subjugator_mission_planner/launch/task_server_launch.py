@@ -47,5 +47,11 @@ def generate_launch_description():
                 name="nav_channel_server",
                 parameters=[],
             ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="trash_pickup_server",
+                name="trash_pickup_server",
+                parameters=[],
+            ),
         ],
     )

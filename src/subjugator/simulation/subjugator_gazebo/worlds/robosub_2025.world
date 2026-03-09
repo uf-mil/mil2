@@ -744,13 +744,12 @@
             </mesh>
           </geometry>
         </visual>
-        <collision name='collision'>
+        <collision name='tabletop_collision'>
+          <pose>0.4155 0.1617 0.62 0 0 0</pose>
           <geometry>
-            <mesh>
-              <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/table.dae
-              </uri>
-            </mesh>
+            <box>
+              <size>0.6096 0.6096 0.02</size>
+            </box>
           </geometry>
         </collision>
       </link>
@@ -808,7 +807,7 @@
     </model>
 
     <model name='Yellow_Cup'>
-      <static>true</static>
+      <static>false</static>
       <link name='link'>
         <visual name='visual'>
           <geometry>
@@ -821,21 +820,53 @@
         </visual>
         <collision name='collision'>
           <geometry>
-            <mesh>
-              <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/yellow_bottle.dae
-              </uri>
-            </mesh>
+            <box>
+              <size>0.0635 0.0635 0.1778</size>
+            </box>
           </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.35</mu>
+                <mu2>0.35</mu2>
+              </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1e6</kp>
+                <kd>100</kd>
+              </ode>
+            </contact>
+          </surface>
         </collision>
+        <inertial>
+          <mass>0.80</mass>
+          <inertia>
+            <ixx>0.002079</ixx>
+            <iyy>0.002079</iyy>
+            <izz>0.000470</izz>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyz>0</iyz>
+          </inertia>
+        </inertial>
+        <!-- damping to simulate water drag and prevent spinning/oscillation-->
+        <velocity_decay>
+          <linear>0.1</linear>
+          <angular>
+0.8
+          </angular>
+        </velocity_decay>
+        <enable_wind>false</enable_wind>
       </link>
-      <pose>-6.95 14 -0.847 0 1.57 0</pose>
+      <pose>-6.95 14.05 -0.8 0 1.57 0</pose>
     </model>
 
     <model name='Pink_Spoon'>
-      <static>true</static>
+      <static>false</static>
       <link name='link'>
         <visual name='visual'>
+          <pose>0 0 0 0 1.57 0</pose>
           <geometry>
             <mesh>
               <uri>
@@ -844,17 +875,50 @@
             </mesh>
           </geometry>
         </visual>
+        <!-- box collision for graded buoyancy. Z set to actual thickness rather
+             than angled bounding box to keep buoyancy math realistic-->
         <collision name='collision'>
           <geometry>
-            <mesh>
-              <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/pink_spoon.dae
-              </uri>
-            </mesh>
+            <box>
+              <size>0.0908 0.1944 0.02</size>
+            </box>
           </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.35</mu>
+                <mu2>0.35</mu2>
+              </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1e6</kp>
+                <kd>100</kd>
+              </ode>
+            </contact>
+          </surface>
         </collision>
+        <!-- neutral buoyancy mass 0.353kg. at 0.37kg it sinks gently-->
+        <inertial>
+          <mass>0.37</mass>
+          <inertia>
+            <ixx>0.001241</ixx>
+            <iyy>0.000282</iyy>
+            <izz>0.001432</izz>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyz>0</iyz>
+          </inertia>
+        </inertial>
+        <!-- damping to simulate water drag and prevent spinning/oscillations
+        <velocity_decay>
+          <linear>0.1</linear>
+          <angular>0.8</angular>
+        </velocity_decay>
+        -->
+        <enable_wind>false</enable_wind>
       </link>
-      <pose>-6.945 14.0762 -0.98 0.785 1.748 0</pose>
+      <pose>-6.945 14 -0.90 0 0 0</pose>
     </model>
   </world>
 </sdf>
