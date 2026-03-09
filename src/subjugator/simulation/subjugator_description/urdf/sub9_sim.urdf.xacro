@@ -20,8 +20,8 @@
     <inertial>
       <origin rpy="0 0 0" xyz="0.352 0 0"/>
       <!-- Need to be properly calculated at some point -->
-      <mass value="20.5"/>
-      <inertia ixx="2.4" ixy="0" ixz="0" iyy="2.4" iyz="0.0" izz="3.0"/>
+      <mass value="29.67"/>
+      <inertia ixx="0.8726" ixy="0.06649" ixz="-0.1350" iyy="1.980" iyz="-0.02051" izz="2.025"/>
     </inertial>
 
     <!-- Visual Data-->
@@ -39,14 +39,14 @@
       <!-- This collision is for calculating the buoyant forces-->
       <origin rpy="0 0 0" xyz="0.0 0.128 -0.05"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.087986820425585"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_1">
       <origin rpy="0 0 0" xyz="0 0.128 -0.05"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.087986820425585"/>
       </geometry>
       <material name="orange">
         <color rgba="1 0.6 0 0.5"/>
@@ -57,14 +57,14 @@
     <collision name="buoyancy_collision_2">
       <origin rpy="0 0 0" xyz="0.708 0.128 -0.05"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.087986820425585"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_2">
       <origin rpy="0 0 0" xyz="0.708 0.128 -0.05"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.087986820425585"/>
       </geometry>
       <material name="orange">
         <color rgba="1 0.6 0 0.5"/>
@@ -75,14 +75,14 @@
     <collision name="buoyancy_collision_3">
       <origin rpy="0 0 0" xyz="0 -.128 -0.05"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.087986820425585"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_3">
       <origin rpy="0 0 0" xyz="0 -.128 -0.05"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.087986820425585"/>
       </geometry>
       <material name="orange">
         <color rgba="1 0.6 0 0.5"/>
@@ -93,14 +93,14 @@
     <collision name="buoyancy_collision_4">
       <origin rpy="0 0 0" xyz="0.708 -.128 -0.05"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.087986820425585"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_4">
       <origin rpy="0 0 0" xyz="0.708 -.128 -0.05"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.087986820425585"/>
       </geometry>
       <material name="orange">
         <color rgba="1 0.6 0 0.5"/>
@@ -111,14 +111,14 @@
     <collision name="buoyancy_collision_5">
       <origin rpy="0 0 0" xyz="0.4425 0 0.15"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.14120533335187"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_5">
       <origin rpy="0 0 0" xyz="0.4425 0 0.15"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.14120533335187"/>
       </geometry>
       <material name="orange">
         <color rgba="1 0.6 0 0.5"/>
@@ -129,14 +129,14 @@
     <collision name="buoyancy_collision_6">
       <origin rpy="0 0 0" xyz="0.25875 0 0.15"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.14120533335187"/>
       </geometry>
     </collision>
 
     <visual name="buoyancy_visual_6">
       <origin rpy="0 0 0" xyz="0.25875 0 0.15"/>
       <geometry>
-        <sphere radius="0.1116715973224"/>
+        <sphere radius="0.14120533335187"/>
       </geometry>
       <material name="orange">
         <color rgba="1 0.6 0 0.5"/>
@@ -193,8 +193,8 @@
       <yVabsV>-25</yVabsV>
       <zW>-50</zW>
       <zWabsW>-25</zWabsW>
-      <kP>-30</kP>
-      <kPabsP>-8</kPabsP>
+      <kP>-15</kP>
+      <kPabsP>-4</kPabsP>
       <mQ>-35</mQ>
       <mQabsQ>-10</mQabsQ>
       <nR>-40</nR>
