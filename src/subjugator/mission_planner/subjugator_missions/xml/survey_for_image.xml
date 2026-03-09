@@ -1,6 +1,27 @@
 <root BTCPP_format="4" main_tree_to_execute="SurveyForImage">
     <BehaviorTree ID="SurveyForImage">
         <Sequence>
+            <!-- go to pinger x and y (dont change z)-->
+            <SonarFollower
+                name="sonar_follower"
+                ctx="{ctx}"
+                sonar_x="{sonar_x}"
+                sonar_y="{sonar_y}"
+                sonar_z="{sonar_z}"
+                sonar_w="{sonar_w}">
+                <SubTree ID="RelativeMove"
+                    _autoremap="true"
+                    x="{sonar_x}"
+                    y="{sonar_y}"
+                    z="0.0"
+                    pos_tol="0.20"
+                    ori_tol_deg="12.0"
+                    msec="25000"
+                    ctx="{ctx}"/>
+            </SonarFollower>
+            <!-- surface -->
+
+            <!-- survey for image-->
             <Parallel success_count="1" failure_count="1">
                 <RetryUntilSuccessful num_attempts="-1">
                     <SubTree ID="RelativeMove"
