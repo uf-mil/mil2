@@ -1,11 +1,12 @@
 #pragma once
 
 #include <pcl/filters/extract_indices.h>
-#include <sensor_msgs/PointCloud2.h>
 
 #include <boost/circular_buffer.hpp>
 
 #include "pcodar_types.hpp"
+
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 namespace pcodar
 {

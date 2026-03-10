@@ -2,70 +2,112 @@
 
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl_ros/transforms.h>
 
 #include <functional>
 
 #include <boost/scope_exit.hpp>
 
+#include <pcl_ros/point_cloud.hpp>
+#include <pcl_ros/transforms.hpp>
+
 namespace pcodar
 {
-NodeBase::NodeBase(ros::NodeHandle _nh)
-  : nh_(_nh)
-  , bounds_client_("/bounds_server", std::bind(&NodeBase::bounds_update_cb, this, std::placeholders::_1))
-  , tf_listener(tf_buffer_, nh_)
+
+// declared as a ROS1 nodeHandler,
+// NodeBase::NodeBase(ros::NodeHandle _nh)
+//   : nh_(_nh)
+//   , bounds_client_("/bounds_server", std::bind(&NodeBase::bounds_update_cb, this, std::placeholders::_1))
+//   , tf_listener(tf_buffer_, nh_)
+//   , global_frame_("enu")
+//   , config_server_(_nh)
+//   , intensity_filter_min_intensity(10)
+//   , intensity_filter_max_intensity(100)
+//   , objects_(std::make_shared<ObjectMap>())
+// {
+//     config_server_.setCallback(
+//         std::bind(&NodeBase::ConfigCallback, this, std::placeholders::_1, std::placeholders::_2));
+// }
+
+// Inherits directly from rclpp
+NodeBase::NodeBase(std::string const& node_name)
+  : rclcpp::Node(node_name)
+  , tf_buffer_(this->get_clock())
+  , tf_listener_(tf_buffer_)
   , global_frame_("enu")
-  , config_server_(_nh)
-  , intensity_filter_min_intensity(10)
-  , intensity_filter_max_intensity(100)
-  , objects_(std::make_shared<ObjectMap>())
+  , intensity_filter_min_intensity_(10)
+  , intensity_filter_max_intensity_(100)
 {
-    config_server_.setCallback(
-        std::bind(&NodeBase::ConfigCallback, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void NodeBase::ConfigCallback(Config const& config, uint32_t level)
 {
-    if (!level || level & 16)
-        ogrid_manager_.update_config(config);
+    // don't need this for now, will have to change later
+
+    // if (!level || level & 16)
+    //     ogrid_manager_.update_config(config);
 }
 
 void NodeBase::UpdateObjects()
 {
-    ogrid_manager_.update_ogrid(*objects_);
-    auto objects_msg = objects_->to_msg();
-    marker_manager_.update_markers();
-    pub_objects_.publish(objects_msg);
+    // uncomment later
+
+    // ogrid_manager_.update_ogrid(*objects_);
+    // auto objects_msg = objects_->to_msg();
+    // marker_manager_.update_markers();
+    // pub_objects_.publish(objects_msg);
 }
 
 void NodeBase::initialize()
 {
-    marker_manager_.initialize(nh_, objects_);
-    ogrid_manager_.initialize(nh_);
+    // marker_manager_.initialize(nh_, objects_);
+    // ogrid_manager_.initialize(nh_);
 
-    modify_classification_service_ = nh_.advertiseService("/database/requests", &NodeBase::DBQuery_cb, this);
-    reset_service_ = nh_.advertiseService("reset", &NodeBase::Reset, this);
+    // modify_classification_service_ = nh_.advertiseService("/database/requests", &NodeBase::DBQuery_cb, this);
+    // reset_service_ = nh_.advertiseService("reset", &NodeBase::Reset, this);
 
-    // Publish PerceptionObjects
-    pub_objects_ = nh_.advertise<mil_msgs::PerceptionObjectArray>("objects", 1);
+    // // Publish PerceptionObjects
+    // pub_objects_ = nh_.advertise<mil_msgs::PerceptionObjectArray>("objects", 1);
 }
 
-bool NodeBase::transform_to_global(std::string const& frame, ros::Time const& time, Eigen::Affine3d& out,
-                                   ros::Duration timeout)
+// bool NodeBase::transform_to_global(std::string const& frame, ros::Time const& time, Eigen::Affine3d& out,
+//                                    ros::Duration timeout)
+// {
+//     geometry_msgs::TransformStamped transform;
+//     try
+//     {
+//         transform = tf_buffer_.lookupTransform("enu", frame, time, timeout);
+//     }
+//     catch (tf2::TransformException& ex)
+//     {
+//         ROS_ERROR("%s", ex.what());
+//         return false;
+//     }
+//     out = tf2::transformToEigen(transform);
+//     return true;
+// }
+
+bool NodeBase::transform_to_global(std::string const& frame, rclcpp::Time const& time, Eigen::Affine3d& out)
 {
-    geometry_msgs::TransformStamped transform;
+    geometry_msgs::msg::TransformStamped transform;
     try
     {
-        transform = tf_buffer_.lookupTransform("enu", frame, time, timeout);
+        transform = tf_buffer_.lookupTransform("enu", frame, time, tf2::durationFromSec(1.0));
     }
     catch (tf2::TransformException& ex)
     {
-        ROS_ERROR("%s", ex.what());
+        RCLCPP_ERROR(this->get_logger(), "%s", ex.what());
         return false;
     }
     out = tf2::transformToEigen(transform);
     return true;
+}
+
+bool NodeBase::Reset(std::shared_ptr<std_srvs::srv::Trigger::Request> const req,
+                     std::shared_ptr<std_srvs::srv::Trigger::Response> res)
+{
+    // marker_manager_.reset();
+    // objects_->objects_.clear();
+    // return true;
 }
 
 bool NodeBase::bounds_update_cb(mil_bounds::BoundsConfig const& config)
@@ -88,14 +130,7 @@ bool NodeBase::bounds_update_cb(mil_bounds::BoundsConfig const& config)
 
 bool NodeBase::DBQuery_cb(mil_msgs::ObjectDBQuery::Request& req, mil_msgs::ObjectDBQuery::Response& res)
 {
-    return objects_->DatabaseQuery(req, res);
-}
-
-bool NodeBase::Reset(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res)
-{
-    marker_manager_.reset();
-    objects_->objects_.clear();
-    return true;
+    // return objects_->DatabaseQuery(req, res);
 }
 
 bool NodeBase::transform_point_cloud(sensor_msgs::PointCloud2 const& pc_msg, point_cloud_i& out)
@@ -113,20 +148,41 @@ bool NodeBase::transform_point_cloud(sensor_msgs::PointCloud2 const& pc_msg, poi
     return true;
 }
 
-Node::Node(ros::NodeHandle _nh) : NodeBase(_nh)
-{
-    config_server_.setCallback(std::bind(&Node::ConfigCallback, this, std::placeholders::_1, std::placeholders::_2));
+// Node::Node(ros::NodeHandle _nh) : NodeBase(_nh)
+// {
+//     config_server_.setCallback(std::bind(&Node::ConfigCallback, this, std::placeholders::_1, std::placeholders::_2));
 
-    // TODO: pull from params (currently misleading)
-    // Currently based on WAMv in VRX, inflated x 1.2 for safety factor
+//     // TODO: pull from params (currently misleading)
+//     // Currently based on WAMv in VRX, inflated x 1.2 for safety factor
+//     double const HALF_LENGTH = 2.739625 * 1.2;
+//     double const HALF_WIDTH = 2.02589 * 1.2;
+//     double const BOTTOM = -5.;
+//     double const TOP = 5.;
+//     Eigen::Vector4f min(-HALF_LENGTH, -HALF_WIDTH, BOTTOM, 1.);
+//     Eigen::Vector4f max(HALF_LENGTH, HALF_WIDTH, TOP, 1.);
+
+//     // Give the filter the footprint of the robot to remove from pointcloud
+//     input_cloud_filter_.set_robot_footprint(min, max);
+// }
+
+Node::Node() : NodeBase("pcl_stack_node")
+{
+    // pull all params
+    this->declare_parameter("accumulator_number_persistant_clouds", config_.accumulator_number_persistant_clouds);
+    this->declare_parameter("persistant_cloud_filter_radius", config_.persistant_cloud_filter_radius);
+    this->declare_parameter("persistant_cloud_filter_min_neighbors", config_.persistant_cloud_filter_min_neighbors);
+    this->declare_parameter("cluster_tolerance_m", config_.cluster_tolerance_m);
+    this->declare_parameter("cluster_min_points", config_.cluster_min_points);
+    this->declare_parameter("intensity_filter_min_intensity", config_.intensity_filter_min_intensity);
+    this->declare_parameter("intensity_filter_max_intensity", config_.intensity_filter_max_intensity);
+
+    // Robot footprint filter
     double const HALF_LENGTH = 2.739625 * 1.2;
     double const HALF_WIDTH = 2.02589 * 1.2;
     double const BOTTOM = -5.;
     double const TOP = 5.;
     Eigen::Vector4f min(-HALF_LENGTH, -HALF_WIDTH, BOTTOM, 1.);
     Eigen::Vector4f max(HALF_LENGTH, HALF_WIDTH, TOP, 1.);
-
-    // Give the filter the footprint of the robot to remove from pointcloud
     input_cloud_filter_.set_robot_footprint(min, max);
 }
 
