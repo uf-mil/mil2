@@ -21,6 +21,7 @@ find_package(pcl_ros REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(mil_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 # generate_dynamic_reconfigure_options( cfg/PCODAR.cfg )
 
@@ -32,11 +33,21 @@ find_package(OpenCV 4.0 REQUIRED)
 
 find_package(interactive_markers REQUIRED)
 
+find_package(std_srvs REQUIRED)
+
 # include directories
 include_directories(include ${PCL_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
-# collecting nesccary files
-file(GLOB SOURCES src/*.cpp)
+# collecting nesccary files file(GLOB SOURCES src/*.cpp)
+
+# CHANGE - just for testing for now - will change to all later
+set(SOURCES
+    # src/input_cloud_filter.cpp
+    # src/persistent_cloud_filter.cpp
+    # src/point_cloud_builder.cpp
+    # src/object_detector.cpp
+    # src/object.cpp
+    src/pcodar_controller.cpp)
 
 # creating library called pcl_stack
 add_library(pcl_stack ${SOURCES})
@@ -55,10 +66,13 @@ ament_target_dependencies(
   tf2
   tf2_ros
   tf2_eigen
+  tf2_msgs
   pcl_ros
   pcl_conversions
   cv_bridge
   interactive_markers
+  nav_msgs
+  std_srvs
   mil_msgs)
 
 # create an exec that runs everything
