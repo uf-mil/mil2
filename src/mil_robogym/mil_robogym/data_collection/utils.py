@@ -80,3 +80,17 @@ def to_lower_snake_case(name: str) -> str:
 def canonical_topic_name(topic: str) -> str:
     """Normalize a topic name by trimming whitespace and leading slashes."""
     return topic.strip().lstrip("/")
+
+
+def topic_to_data_folder_name(topic: str) -> str:
+    """
+    Convert a topic name into a filesystem-safe folder name.
+
+    Example:
+        "/frontcam/image_raw" -> "frontcam_image_raw"
+    """
+    normalized = canonical_topic_name(topic)
+    normalized = normalized.replace("/", "_")
+    normalized = re.sub(r"[^\w.-]", "_", normalized)
+    normalized = re.sub(r"_+", "_", normalized).strip("_")
+    return normalized or "topic"

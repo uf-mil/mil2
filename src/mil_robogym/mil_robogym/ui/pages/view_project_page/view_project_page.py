@@ -325,7 +325,16 @@ class ViewProjectPage(tk.Frame):
 
     def _on_train_test(self) -> None:
         """Handle Train/Test button action."""
-        print("train_test_activation")
+        if self.controller is None:
+            return
+
+        project_payload = self._safe_get_project_by_name(self.project_name)
+        if project_payload is None:
+            raise FileNotFoundError(
+                f"Project not found under name {self.project_name}",
+            )
+
+        self.controller.show_page("train_test", project=project_payload)
 
     def _on_editproject(self) -> None:
         """Handle Edit Project button action."""
