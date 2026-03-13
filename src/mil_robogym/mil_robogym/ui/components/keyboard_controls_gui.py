@@ -258,7 +258,8 @@ class KeyboardControlsGUI:
         """
         Close with event.
         """
-        self._on_close()
+        self.on_close_callback()
+        self.hide()
 
     def _on_close(self) -> None:
         """

@@ -1,9 +1,9 @@
 import tkinter as tk
+from typing import Callable
 
 from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.set_pose_client import SetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
-from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 
 
 class PlayButton:
@@ -15,17 +15,17 @@ class PlayButton:
         self,
         grand_parent: tk.Widget,
         parent: tk.Frame,
+        on_play: Callable,
         sampling_rate: float,
-    ) -> None:
+    ):
 
         self.grand_parent = grand_parent
         self.sampling_rate = sampling_rate
+        self.on_play = on_play
 
         self.get_pose_client = GetPoseClient()
         self.set_pose_client = SetPoseClient()
         self.world_control_client = WorldControlClient()
-
-        self.keyboard_controls_gui = None
 
         self.button = tk.Button(
             parent,
@@ -47,19 +47,13 @@ class PlayButton:
         # Play the simulation
         self.world_control_client.play_simulation()
 
-        # Start up keyboard controls
-        self.keyboard_controls_gui = self.keyboard_controls_gui or KeyboardControlsGUI(
-            self.grand_parent,
-            self._on_close_of_keyboard_controls,
-        )
-        self.keyboard_controls_gui.show()
-
         # Start sampling asynchronously
         self.sampling_active = True
         self._schedule_next_sample()
 
         # Disable button
         self.button.config(state=tk.DISABLED)
+        self.on_play()
 
     def _schedule_next_sample(self) -> None:
         """
@@ -86,11 +80,3 @@ class PlayButton:
         # Display new step
         self.grand_parent.steps.add_step((x, y, z, yaw))
         self.grand_parent.steps.canvas.yview_moveto(1.0)
-
-    def _on_close_of_keyboard_controls(self) -> None:
-        """
-        Stop sampling when keyboard controls close.
-        """
-        self.sampling_active = False
-        self.world_control_client.pause_simulation()
-        self.button.config(state=tk.ACTIVE)
