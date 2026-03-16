@@ -1,0 +1,23 @@
+<library path="actuator_plugin">
+  <class type="mil_preflight::ActuatorPlugin" base_class_type="mil_preflight::PluginBase">
+    <description>This is a square plugin.</description>
+  </class>
+</library>
+
+<library path="node_plugin">
+  <class type="mil_preflight::NodePlugin" base_class_type="mil_preflight::PluginBase">
+    <description>This is a triangl plugin.</description>
+  </class>
+</library>
+
+<library path="setup_plugin">
+  <class type="mil_preflight::SetupPlugin" base_class_type="mil_preflight::PluginBase">
+    <description>This is a triangl plugin.</description>
+  </class>
+</library>
+
+<library path="topic_plugin">
+  <class type="mil_preflight::TopicPlugin" base_class_type="mil_preflight::PluginBase">
+    <description>This is a triangl plugin.</description>
+  </class>
+</library>
