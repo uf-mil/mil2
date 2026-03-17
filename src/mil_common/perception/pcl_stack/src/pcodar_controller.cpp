@@ -1,13 +1,11 @@
 #include "pcl_stack/pcodar_controller.hpp"
 
-#include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <functional>
 
 #include <boost/scope_exit.hpp>
 
-#include <pcl_ros/point_cloud.hpp>
 #include <pcl_ros/transforms.hpp>
 
 namespace pcodar
@@ -28,14 +26,14 @@ namespace pcodar
 //         std::bind(&NodeBase::ConfigCallback, this, std::placeholders::_1, std::placeholders::_2));
 // }
 
-// Inherits directly from rclpp
+// Inherits directly from rclpp in header
 NodeBase::NodeBase(std::string const& node_name)
   : rclcpp::Node(node_name)
   , tf_buffer_(this->get_clock())
   , tf_listener_(tf_buffer_)
   , global_frame_("enu")
-  , intensity_filter_min_intensity_(10)
-  , intensity_filter_max_intensity_(100)
+  , intensity_filter_min_intensity(10)
+  , intensity_filter_max_intensity(100)
 {
 }
 

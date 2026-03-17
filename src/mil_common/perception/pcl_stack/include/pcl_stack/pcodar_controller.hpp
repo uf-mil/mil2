@@ -36,11 +36,14 @@ namespace pcodar
  * This can be fulfilled by processesing LIDAR pointclouds (like in @pcodar::Node) or using
  * simulated ground truth (like in pcodar_gazebo).
  */
-class NodeBase
+class NodeBase : public rclcpp::Node
 {
   public:
     /// Create a NodeBase in the namespace of nh
-    NodeBase(ros::NodeHandle nh);
+
+    /// creating new NodeBase using ROS2
+    NodeBase(std::string const& node_name);
+
     /// Initialize ROS communication
     virtual void initialize();
     /// Update markers, ogrid, and publish the internal object map to ROS interfaces. Call after updating objects.
@@ -51,13 +54,13 @@ class NodeBase
     // bool DBQuery_cb(mil_msgs::ObjectDBQuery::Request& req, mil_msgs::ObjectDBQuery::Response& res);
 
     /// Reset PCODAR
-    virtual bool Reset(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
+    virtual bool Reset(std::shared_ptr<std_srvs::srv::Trigger::Request> const req,
+                       std::shared_ptr<std_srvs::srv::Trigger::Response> res);
     /// Transform
-    bool transform_to_global(std::string const& frame, ros::Time const& time, Eigen::Affine3d& out,
-                             ros::Duration timeout = ros::Duration(1, 0));
+    /// Rostime not used for ROS2
+    bool transform_to_global(std::string const& frame, rclcpp::Time const& time, Eigen::Affine3d& out);
     /// Transform a pointcloud ROS message into a PCL pointcloud in the global frame
-    bool transform_point_cloud(sensor_msgs::PointCloud2 const& pcloud2, point_cloud_i& out);
-
+    bool transform_point_cloud(sensor_msgs::msg::PointCloud2 const& pcloud2, point_cloud_i& out);
     // virtual bool bounds_update_cb(mil_bounds::BoundsConfig const& config);
 
     virtual void ConfigCallback(Config const& config, uint32_t level);
@@ -91,8 +94,10 @@ class NodeBase
     point_cloud_ptr bounds_;
 
     // Visualization
-    MarkerManager marker_manager_;
-    OgridManager ogrid_manager_;
+
+    // Uncomment later
+    // MarkerManager marker_manager_;
+    // OgridManager ogrid_manager_;
 
     // Intensity filter
     double intensity_filter_min_intensity;
@@ -102,18 +107,20 @@ class NodeBase
 class Node : public NodeBase
 {
   public:
-    Node(ros::NodeHandle nh);
+    // making a new node now
+    Node();
 
-    void velodyne_cb(sensor_msgs::PointCloud2ConstPtr const& pcloud);
+    void velodyne_cb(sensor_msgs::msg::PointCloud2::SharedPtr const pcloud);
 
     void initialize() override;
 
   private:
-    bool bounds_update_cb(mil_bounds::BoundsConfig const& config) override;
+    // bool bounds_update_cb(mil_bounds::BoundsConfig const& config) override;
     void ConfigCallback(Config const& config, uint32_t level) override;
     void update_config(Config const& config);
     /// Reset PCODAR
-    bool Reset(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res) override;
+    bool Reset(std::shared_ptr<std_srvs::srv::Trigger::Request> const req,
+               std::shared_ptr<std_srvs::srv::Trigger::Response> res) override;
 
   private:
     // ros::Publisher pub_pcl_;
@@ -127,10 +134,10 @@ class Node : public NodeBase
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;  // for reset requests
 
     // Model (It eventually will be object tracker, but for now just detections)
-    InputCloudFilter input_cloud_filter_;
-    PersistentCloudFilter persistent_cloud_filter_;
-    PointCloudCircularBuffer persistent_cloud_builder_;
-    ObjectDetector detector_;
+    // InputCloudFilter input_cloud_filter_;
+    // PersistentCloudFilter persistent_cloud_filter_;
+    // PointCloudCircularBuffer persistent_cloud_builder_;
+    // ObjectDetector detector_;
 
     // uncomment later
     // Associator ass;
