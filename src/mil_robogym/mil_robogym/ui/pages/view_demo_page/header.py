@@ -1,5 +1,4 @@
 import tkinter as tk
-from typing import Callable
 
 
 class Header(tk.Frame):
@@ -7,16 +6,8 @@ class Header(tk.Frame):
     Top header section showing breadcrumb navigation and demo info.
     """
 
-    def __init__(
-        self,
-        parent: tk.Widget,
-        on_home_click: Callable[[], None],
-        on_project_click: Callable[[], None],
-    ) -> None:
+    def __init__(self, parent: tk.Widget, controller) -> None:
         super().__init__(parent, bg="#DADADA")
-
-        self._on_home_click = on_home_click
-        self._on_project_click = on_project_click
 
         self.grid_columnconfigure(0, weight=1)
 
@@ -31,7 +22,7 @@ class Header(tk.Frame):
             cursor="hand2",
         )
         self.home_title.pack(side="left")
-        self.home_title.bind("<Button-1>", lambda _: self._on_home_click())
+        self.home_title.bind("<Button-1>", controller.navigate_to_home)
 
         self.project_title = tk.Label(
             self._title_left,
@@ -41,7 +32,7 @@ class Header(tk.Frame):
             cursor="hand2",
         )
         self.project_title.pack(side="left", padx=(6, 0))
-        self.project_title.bind("<Button-1>", lambda _: self._on_project_click())
+        self.project_title.bind("<Button-1>", controller.navigate_to_project)
 
         self.demo_title = tk.Label(
             self._title_left,
@@ -62,10 +53,3 @@ class Header(tk.Frame):
             font=("Arial", 11),
             anchor="w",
         )
-
-    def set_titles(self, project_name: str, demo_name: str) -> None:
-        self.project_title.configure(text=f"{project_name} >")
-        self.demo_title.configure(text=demo_name)
-
-    def set_subtitle(self, text: str) -> None:
-        self.subtitle.configure(text=text)
