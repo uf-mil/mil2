@@ -1,11 +1,13 @@
-#include <point_cloud_object_detection_and_recognition/pcodar_controller.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <pcl_stack/pcodar_controller.hpp>
 
 int main(int argc, char* argv[])
 {
-    ros::init(argc, argv, "point_cloud_object_detector");
-    ros::NodeHandle nh(ros::this_node::getName());
-    pcodar::Node c(nh);
-    c.initialize();
-    ros::spin();
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<pcodar::Node>();
+    node->initialize();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
     return 0;
 }
