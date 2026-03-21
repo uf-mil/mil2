@@ -7,6 +7,39 @@ from pathlib import Path
 SOURCE_PROJECTS_DIR_ENV = "MIL_ROBOGYM_SOURCE_PROJECTS_DIR"
 
 
+def flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
+    """
+    Flatten nested dictionaries/lists into dot and bracket notation keys.
+
+    Examples:
+        pose.position.x
+        covariance[0]
+    """
+    if isinstance(value, dict):
+        if not value and prefix:
+            out[prefix] = {}
+            return
+        for key in sorted(value, key=str):
+            key_str = str(key)
+            child_prefix = f"{prefix}.{key_str}" if prefix else key_str
+            flatten_value(value[key], child_prefix, out)
+        return
+
+    if isinstance(value, list):
+        if not value and prefix:
+            out[prefix] = []
+            return
+        for index, item in enumerate(value):
+            child_prefix = f"{prefix}[{index}]" if prefix else f"[{index}]"
+            flatten_value(item, child_prefix, out)
+        return
+
+    if prefix:
+        out[prefix] = value
+    else:
+        out["value"] = value
+
+
 def resolve_package_share_dir(package_name: str = "mil_robogym") -> Path:
     """
     Resolve a package share directory from the ROS 2 ament index.

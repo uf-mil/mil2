@@ -179,7 +179,16 @@ def _write_yaml_config(
 METADATA_CSV_HEADERS = ("topic", "relative_path")
 NUMERICAL_DATA_TOPIC = "/numerical"
 ACTIONS_DATA_TOPIC = "/actions"
-ACTIONS_CSV_HEADERS = ("delta_x", "delta_y", "delta_z", "delta_yaw")
+ACTIONS_CSV_HEADERS = (
+    "delta_x",
+    "delta_y",
+    "delta_z",
+    "delta_yaw",
+    "x",
+    "y",
+    "z",
+    "yaw",
+)
 
 
 def _relative_demo_path(demo_dir: Path, path: Path | str) -> str:
@@ -679,3 +688,16 @@ def create_demo_folder(
     )
 
     return demo_dir, cfg
+
+
+def get_demo_dir_path(project: RoboGymProjectYaml, demo: RoboGymDemoYaml) -> Path:
+    """
+    Get the demo dir path based on the project and demo yamls.
+    """
+    roots = _project_roots()
+    projects_dir = roots[0]
+    project_name = to_lower_snake_case(project["name"])
+    demo_name = to_lower_snake_case(demo["name"])
+    demo_dir = projects_dir / project_name / "demos" / demo_name
+
+    return demo_dir
