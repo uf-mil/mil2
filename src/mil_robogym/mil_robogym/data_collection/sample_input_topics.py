@@ -396,8 +396,25 @@ def sample_project_topics(
     output_topics = list(project["output_topics"])
     selected_topics = _dedupe_preserve_order([*input_topics, *output_topics])
     sampled_all = sample_topics(selected_topics, timeout_s=timeout_s)
-    sampled_inputs = {topic: sampled_all[topic] for topic in input_topics}
-    sampled_outputs = {topic: sampled_all[topic] for topic in output_topics}
+
+    sampled_inputs = {
+        topic: {
+            subfield: value
+            for subfield, value in sampled_all[topic].items()
+            if subfield in project["input_topics"][topic]
+        }
+        for topic in input_topics
+    }
+
+    sampled_outputs = {
+        topic: {
+            subfield: value
+            for subfield, value in sampled_all[topic].items()
+            if subfield in project["output_topics"][topic]
+        }
+        for topic in output_topics
+    }
+
     return sampled_inputs, sampled_outputs
 
 
@@ -428,4 +445,5 @@ def sample_input_topics(
         project,
         timeout_s=timeout_s,
     )
+
     return sampled_inputs

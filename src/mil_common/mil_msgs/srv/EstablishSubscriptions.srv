@@ -1,0 +1,5 @@
+string[] topics
+---
+bool success
+string[] active_topics
+string[] failed_topics

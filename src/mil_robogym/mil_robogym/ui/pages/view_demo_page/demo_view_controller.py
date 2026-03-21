@@ -1,8 +1,10 @@
+import json
 import tkinter as tk
 from typing import Any
 
 import numpy as np
 
+from mil_robogym.clients.data_collector_client import DataCollectorClient
 from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.set_pose_client import SetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
@@ -25,6 +27,7 @@ class DemoViewController:
 
         self.project: dict[str, Any] | None = None
         self.demo: dict[str, Any] | None = None
+        self.steps: list[dict] = []
 
         self.coordinate_popup = None
 
@@ -35,6 +38,7 @@ class DemoViewController:
         self.get_pose_client = GetPoseClient()
         self.set_pose_client = SetPoseClient()
         self.world_control_client = WorldControlClient()
+        self.data_collector = DataCollectorClient()
 
         self.keyboard_controls_gui = KeyboardControlsGUI(
             self.view,
@@ -55,6 +59,11 @@ class DemoViewController:
         if self.project and self.demo:
 
             self.delay = int((1.0 / self.demo["sampling_rate"]) * 1000)
+
+            # Create and start data collector node
+            self.data_collector.establish_subscriptions(
+                list(self.project["input_topics"].keys()),
+            )
 
             # Configure UI Components
             self.view.header.project_title.config(text=f"{self.project['name']} >")
@@ -199,9 +208,11 @@ class DemoViewController:
         pose = self.get_pose_client.send_request()
         x, y, z, yaw = (pose.x, pose.y, pose.z, pose.yaw)
 
-        # TODO: Get input topic state data.
+        # Get input topic state data.
+        _data = json.loads(self.data_collector.get_snapshot().data)
 
-        # TODO: Record data into persistent CSV files.
+        # Record data into persistent CSV files.
+        # append_demo_numerical_row(self.project, self.demo, data)
 
         # Display step in GUI
         self.view.steps.add_step((x, y, z, yaw))
@@ -212,6 +223,10 @@ class DemoViewController:
         Save coordinate for the start position of the model.
         """
         coordinate = coordinates[0]
+
+        if coordinate is None:
+            return
+
         x, y, z, yaw = coordinate
         self.demo["start_position"] = (float(x), float(y), float(z), float(yaw))
 

@@ -258,14 +258,20 @@ def append_demo_metadata_entry(
 
 
 def append_demo_numerical_row(
-    demo_dir: Path,
-    row: list[object],
+    project: RoboGymProjectYaml,
+    demo: RoboGymDemoYaml,
+    row: dict[str, int | float | complex],
 ) -> None:
     """
     Append one numerical sample row to <demo_dir>/data/numerical/data.csv.
     """
-    if not isinstance(row, list):
-        raise ValueError("row must be a list of scalar values.")
+
+    # Get path for demo
+    roots = _project_roots()
+    projects_dir = roots[0]
+    project_name = to_lower_snake_case(project["name"])
+    demo_name = to_lower_snake_case(demo["name"])
+    demo_dir = projects_dir / project_name / "demos" / demo_name
 
     _, numerical_csv_path, _ = _ensure_demo_data_layout(demo_dir)
     with numerical_csv_path.open("a", encoding="utf-8", newline="") as f:
@@ -620,7 +626,7 @@ def create_agent_folder(
 
 
 def create_demo_folder(
-    project_dir: Path,
+    project: RoboGymProjectYaml,
     *,
     name: str,
     sampling_rate: float,
@@ -638,6 +644,11 @@ def create_demo_folder(
     If start_position is None, defaults to (0.0, 0.0, 0.0, 0.0).
     Returns the created demo directory Path.
     """
+    roots = _project_roots()
+    projects_dir = roots[0]
+    project_name = to_lower_snake_case(project["name"])
+    project_dir = projects_dir / project_name
+
     demos_dir = project_dir / "demos"
     demos_dir.mkdir(parents=True, exist_ok=True)
 
@@ -660,4 +671,11 @@ def create_demo_folder(
     )
     _write_yaml_config(config_path, cfg)
     _ensure_demo_data_layout(demo_dir)
+
+    # Flatten project input topics
+    initialize_demo_numerical_csv_headers(
+        demo_dir,
+        project["tensor_spec"]["input_features"],
+    )
+
     return demo_dir, cfg
