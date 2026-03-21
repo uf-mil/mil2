@@ -3,7 +3,7 @@
   <!-- Macro for inserting a camera -->
   <xacro:macro name="mil_camera" params="name parent xyz rpy
             use_image_processing=false
-            width=960 height=600 fov=1.919862177 fps=30">
+            width=960 height=600 fov=1.148 fps=30">
     <!-- Camera Link -->
     <link name="${name}_link">
       <origin xyz="0 0 0" rpy="0 0 0"/>
