@@ -44,7 +44,8 @@ class VAIRL(AIRL):
         self.vairl_reward_net.to(self.device)
 
         self._vairl_disc_opt = optim.Adam(
-            self.vairl_reward_net.parameters(), lr=disc_lr,
+            self.vairl_reward_net.parameters(),
+            lr=disc_lr,
         )
 
     def train_disc(
@@ -73,10 +74,16 @@ class VAIRL(AIRL):
         dones_g = to_torch(gen_samples["dones"]).unsqueeze(1)
 
         f_e, stats_e = self.vairl_reward_net.forward_with_stats(
-            obs_e, acts_e, next_obs_e, dones_e,
+            obs_e,
+            acts_e,
+            next_obs_e,
+            dones_e,
         )
         f_g, stats_g = self.vairl_reward_net.forward_with_stats(
-            obs_g, acts_g, next_obs_g, dones_g,
+            obs_g,
+            acts_g,
+            next_obs_g,
+            dones_g,
         )
 
         with torch.no_grad():

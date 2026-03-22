@@ -42,5 +42,11 @@ def generate_launch_description():
                 name="data_collector_srv",
                 output="screen",
             ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="movement_server",
+                name="movement_server",
+                output="screen",
+            ),
         ],
     )

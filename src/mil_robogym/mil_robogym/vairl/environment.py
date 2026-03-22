@@ -1,3 +1,7 @@
+"""
+IMPORTANT: THIS ENVIRONMENT IS CONFIGURED FOR MOVEMENT ONLY I.E. 4D. It is not configured for other outputs yet.
+"""
+
 import numpy as np
 
 try:
@@ -9,9 +13,13 @@ except ImportError:  # fallback for older gym
 
     _GYMNASIUM = False
 
+from mil_robogym.data_collection.types import RandomSpawnSpace
 
-SEED = 42
-MAX_STEP_COUNT = 40  # TODO: Dynamically determine this value based on the average number of steps per demo.
+from ..client.controller_client import ControllerClient
+from ..client.data_collector_client import DataCollectorClient
+from ..client.localization_client import LocalizationClient
+from ..client.move_client import MoveClient
+from ..clients.set_pose_client import SetPoseClient
 
 
 class Environment(gym.Env):
@@ -19,9 +27,56 @@ class Environment(gym.Env):
     Training environment for VAIRL algorithm with Gazebo.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        seed: int,
+        max_step_count: int,
+        input_features: list[str],
+        random_spawn_space: RandomSpawnSpace,
+        data_collector_client: DataCollectorClient,
+        controller_client: ControllerClient | None = None,
+        localization_client: LocalizationClient | None = None,
+    ):
         super().__init__()
 
+        # Data Collector
+        self.data_collector_client = data_collector_client
+        self.data_collector_client.get_snapshot()  # Initialize service with request
+
+        # Clients
+        self.move_client = MoveClient()
+        self.set_pose_client = SetPoseClient()
+        self.controller_client = controller_client or ControllerClient()
+        self.localization_client = localization_client or LocalizationClient()
+
+        # Saved parameters
+        self.seed = seed
+        self.max_step_count = max_step_count
+        self.input_features = input_features
+
+        # Configure random spawn space
+        c1 = random_spawn_space["coord1_4d"]
+        c2 = random_spawn_space["coord2_4d"]
+        self.min_coord = np.minimum(c1, c2)
+        self.max_coord = np.maximum(c1, c2)
+
+        # Configure observation space
+        self.observation_space = gym.spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(len(input_features),),
+            dtype=np.float32,
+        )
+
+        # TODO: adapt shape size when we start considering other output like shooting a torpedo.
+        self.action_space = gym.spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(4,),
+            dtype=np.float32,
+        )
+
+        # Tracked values
         self.state = None
         self.t = 0
         self.rng = np.random.default_rng(SEED)
@@ -33,14 +88,20 @@ class Environment(gym.Env):
         if seed is not None:
             self.rng = np.random.default_rng(seed)
 
-        self.state = np.array(
-            [
-                # TODO: Get random position
-            ],
-            dtype=np.float32,
-        )
-
         self.t = 0
+
+        # Set position
+        x, y, z, yaw = np.random.uniform(low=self.min_coord, high=self.max_coord)
+        self.set_pose_client.set_pose(x, y, z, yaw=yaw)
+
+        # Reset controller and localization
+        self.controller_client.reset_controller()
+        self.localization_client.reset_localization()
+
+        # Record state
+        self.state = self.data_collector_client.get_flattened_snapshot_values(
+            self.input_features,
+        )
 
         if _GYMNASIUM:
             return self.state.copy(), {}
@@ -54,20 +115,34 @@ class Environment(gym.Env):
         self.t += 1
 
         action = np.asarray(action, dtype=np.float32)
-        next_state = self.state + action
+        dx, dy, dz, dyaw = action
 
         env_reward = 0.0
 
-        # TODO: Publish a goal pose and wait for action to be completed
+        # Publish a goal pose and wait for action to be completed
+        movement = self.move_client.move((dx, dy, dz, dyaw))
 
-        # TODO: Determine if it hits an obstacle and deduct points
+        # Determine if it hits an obstacle and deduct points
+        if not movement.success:
+            env_reward -= 1.0
+
+        # Record next state
+        next_state = self.data_collector_client.get_flattened_snapshot_values(
+            self.input_features,
+        )
+        while not next_state:
+            self.data_collector.get_logger().warn(
+                "Unable to retrieve state, trying again...",
+            )
+            next_state = self.data_collector_client.get_flattened_snapshot_values(
+                self.input_features,
+            )
 
         self.state = next_state
 
-        # TODO: Maybe determine condition for termination
-
+        # TODO: Maybe determine condition for termination based on where most demos terminate
         terminated = False
-        truncated = self.t >= MAX_STEP_COUNT
+        truncated = self.t >= self.max_step_count
 
         if _GYMNASIUM:
             return (

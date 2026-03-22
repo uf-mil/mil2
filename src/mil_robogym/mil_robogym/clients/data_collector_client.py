@@ -1,6 +1,10 @@
+import json
+
 import rclpy
 from mil_msgs.srv import EstablishSubscriptions, GetSnapshot
 from rclpy.node import Node
+
+from mil_robogym.data_collection.utils import flatten_value
 
 
 class DataCollectorClient(Node):
@@ -47,3 +51,38 @@ class DataCollectorClient(Node):
         rclpy.spin_until_future_complete(self, future)
 
         return future.result()
+
+    def get_flattened_snapshot_values(self, input_features: list[str]) -> list[any]:
+
+        data = json.loads(self.get_snapshot().data)
+
+        if data:
+            filtered_data = self._flatten_and_filter_state_fields(data, input_features)
+            return [filtered_data[key] for key in input_features]  # Maintain order
+
+        return []
+
+    # TODO: This is inefficient, implement a fast mapper on the server side.
+    def _flatten_and_filter_state_fields(
+        self,
+        data: dict,
+        input_features: list[str],
+    ) -> dict:
+        """
+        Flatten dict into column names and keep only desired column names.
+        """
+        flattened_states = {}
+
+        for topic, msg in data.items():
+
+            temp = {}
+            flatten_value(msg, "", temp)
+
+            for key, value in temp.items():
+
+                feature_name = f"{topic}:{key}"
+                flattened_states[feature_name] = value
+
+        features_allowed = set(input_features)
+
+        return {k: v for k, v in flattened_states.items() if k in features_allowed}
