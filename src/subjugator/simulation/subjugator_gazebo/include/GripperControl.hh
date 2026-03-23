@@ -3,7 +3,9 @@
 
 #include <gz/msgs/double.pb.h>
 
+#include <atomic>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include <rclcpp/rclcpp.hpp>
@@ -19,14 +21,12 @@
 #include <gz/transport/Node.hh>
 #include <sdf/Element.hh>
 #include <std_msgs/msg/string.hpp>
+#include <std_srvs/srv/set_bool.hpp>
 
 namespace gripper_control
 {
 
-class GripperControl : public gz::sim::System,
-                       public gz::sim::ISystemConfigure,
-                       public gz::sim::ISystemPreUpdate,
-                       public gz::sim::ISystemPostUpdate
+class GripperControl : public gz::sim::System, public gz::sim::ISystemConfigure, public gz::sim::ISystemPreUpdate
 {
   public:
     GripperControl();
@@ -40,14 +40,19 @@ class GripperControl : public gz::sim::System,
     void PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &_ecm) override;
 
     // PostUpdate - called each simulation step (read-only access)
-    void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
+    // void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
+
+    // Service callback
+    void setOpen(std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+                 std::shared_ptr<std_srvs::srv::SetBool::Response> response);
 
     // Keypress callback
     void KeypressCallback(std_msgs::msg::String::SharedPtr const msg);
 
   private:
-    // ROS2 Node and subscription
+    // ROS2 Node, Service, and Subscription
     rclcpp::Node::SharedPtr node_;
+    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr service_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr key_sub_;
 
     // Gazebo transport node + publishers for left and right joints
@@ -58,6 +63,8 @@ class GripperControl : public gz::sim::System,
     // State & settings
     bool u_pressed_{ false };
     bool gripper_open_{ false };
+    bool service_called{ false };
+    // static std::atomic<bool> service_called_flag_; // Atomic
     double open_pos_{ 0.85 };   // radians (default)
     double closed_pos_{ 0.0 };  // radians (default)
 
