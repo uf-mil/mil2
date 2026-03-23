@@ -201,7 +201,7 @@ class ViewProjectPage(tk.Frame):
 
         projects = get_all_project_config()
         for project in projects:
-            if project.get("robogymproject", {}).get("name") == name:
+            if project.get("robogym_project", {}).get("name") == name:
                 return project
         return None
 
@@ -291,12 +291,26 @@ class ViewProjectPage(tk.Frame):
             ) -> None:
                 self._on_demo_row_click(name, demo)
 
-            def on_enter(_event: tk.Event | None = None) -> None:
-                for widget in (row, left_label, right_label):
+            def on_enter(
+                _event: tk.Event | None = None,
+                widgets: tuple[tk.Widget, tk.Widget, tk.Widget] = (
+                    row,
+                    left_label,
+                    right_label,
+                ),
+            ) -> None:
+                for widget in widgets:
                     widget.configure(bg="#DCDCDC")
 
-            def on_leave(_event: tk.Event | None = None) -> None:
-                for widget in (row, left_label, right_label):
+            def on_leave(
+                _event: tk.Event | None = None,
+                widgets: tuple[tk.Widget, tk.Widget, tk.Widget] = (
+                    row,
+                    left_label,
+                    right_label,
+                ),
+            ) -> None:
+                for widget in widgets:
                     widget.configure(bg="#ECECEC")
 
             for widget in (row, left_label, right_label):
@@ -311,11 +325,29 @@ class ViewProjectPage(tk.Frame):
 
     def _on_train_test(self) -> None:
         """Handle Train/Test button action."""
-        print("train_test_activation")
+        if self.controller is None:
+            return
+
+        project_payload = self._safe_get_project_by_name(self.project_name)
+        if project_payload is None:
+            raise FileNotFoundError(
+                f"Project not found under name {self.project_name}",
+            )
+
+        self.controller.show_page("train_test", project=project_payload)
 
     def _on_editproject(self) -> None:
         """Handle Edit Project button action."""
-        print("editproject_page_activation")
+        if self.controller is None:
+            return
+
+        project_payload = self._safe_get_project_by_name(self.project_name)
+        if project_payload is None:
+            raise FileNotFoundError(
+                f"Project not found under name {self.project_name}",
+            )
+
+        self.controller.show_page("edit_project", project=project_payload)
 
     def _on_record_demo(self) -> None:
         """Handle Record Demo button action."""

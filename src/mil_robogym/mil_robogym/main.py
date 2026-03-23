@@ -1,8 +1,9 @@
 import rclpy
 
-import mil_robogym.ui.ui
+from mil_robogym.ui.app import App
 
 
 def main():
     rclpy.init()
-    mil_robogym.ui.ui.main()
+    app = App()
+    app.mainloop()

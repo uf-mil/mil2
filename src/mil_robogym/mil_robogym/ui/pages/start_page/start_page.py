@@ -2,11 +2,11 @@ import shutil
 import tkinter as tk
 from tkinter import font, messagebox
 
-from mil_robogym.data_collection.filesystem import to_lower_snake_case
 from mil_robogym.data_collection.get_all_project_config import (
     find_projects_dir,
     get_all_project_config,
 )
+from mil_robogym.data_collection.utils import to_lower_snake_case
 
 from .project_row import ProjectRow
 
