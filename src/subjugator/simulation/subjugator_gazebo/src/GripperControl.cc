@@ -31,7 +31,6 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
     this->node_ = std::make_shared<rclcpp::Node>("gripper_control_plugin_node");
     this->key_sub_ = this->node_->create_subscription<std_msgs::msg::String>(
         "/keyboard/keypress", 10, std::bind(&GripperControl::KeypressCallback, this, std::placeholders::_1));
-
     std::cout << "[GripperControl] ROS2 node created and subscribed to /keyboard/keypress" << std::endl;
 
     // Try to obtain model name (from Entity Name component or SDF attribute)
