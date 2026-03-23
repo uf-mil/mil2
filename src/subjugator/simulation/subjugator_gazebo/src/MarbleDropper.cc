@@ -32,6 +32,7 @@ void MarbleDropper::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf
     // Create copy of the Sub SDF element to perform modifications due to const
     this->sub9_SDF = sdf->Clone();
 
+    // Get the world name from the EntityComponentManager (only done once)
     if (!worldNameFound)
     {
         ecm.Each<gz::sim::components::World, gz::sim::components::Name>(
