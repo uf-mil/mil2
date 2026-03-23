@@ -12,16 +12,14 @@ setup(
     ],
     install_requires=["setuptools"],
     zip_safe=True,
-    maintainer="ckreis",
-    maintainer_email="cckreis0507@gmail.com",
+    maintainer="Carlos Chavez",
+    maintainer_email="c.chavez@ufl.edu",
     description="TODO: Package description",
     license="TODO: License declaration",
-    extras_require={
-        "test": [
-            "pytest",
-        ],
-    },
+    tests_require=["pytest"],
     entry_points={
-        "console_scripts": [],
+        "console_scripts": [
+            "sim_actuator_client = subjugator_sim_actuator_client.main:main",
+        ],
     },
 )
