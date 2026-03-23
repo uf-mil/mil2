@@ -24,6 +24,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
 add_library(
   operations
   subjugator_operations/src/publish_goal.cpp
+  subjugator_operations/src/at_goal_depth.cpp
   subjugator_operations/src/at_goal_pose.cpp
   subjugator_operations/src/detect_target.cpp
   subjugator_operations/src/hone_bearing.cpp

@@ -8,6 +8,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "any_poles_detected.hpp"
+#include "at_goal_depth.hpp"
 #include "at_goal_pose.hpp"
 #include "check_yolo_model.hpp"
 #include "context.hpp"
@@ -33,7 +34,7 @@ int main(int argc, char** argv)
     auto ctx = std::make_shared<Context>();
     ctx->node = node;
 
-    node->declare_parameter<std::string>("mission", "SurveyForImage");
+    node->declare_parameter<std::string>("mission", "GoToDepth");
     std::string mission_to_run = node->get_parameter("mission").as_string();
 
     // Topics to subscribe/publish to
@@ -91,6 +92,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
+    factory.registerNodeType<AtGoalDepth>("AtGoalDepth");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");

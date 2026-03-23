@@ -1,0 +1,31 @@
+<root BTCPP_format="4" main_tree_to_execute="OctogonMission">
+    <BehaviorTree ID="OctogonMission">
+        <Sequence>
+            <!-- go to pinger -->
+            <SonarFollower
+                name="sonar_follower"
+                ctx="{ctx}"
+                sonar_x="{sonar_x}"
+                sonar_y="{sonar_y}"
+                sonar_z="{sonar_z}"
+                sonar_w="{sonar_w}">
+                <SubTree ID="RelativeMove"
+                    _autoremap="true"
+                    x="{sonar_x}"
+                    y="{sonar_y}"
+                    z="0.0"
+                    pos_tol="0.20"
+                    ori_tol_deg="12.0"
+                    msec="25000"
+                    ctx="{ctx}"/>
+            </SonarFollower>
+            <!-- surface -->
+            <SubTree ID="GoToDepth"
+                z="0.3"
+                msec="2000"
+                ctx="{ctx}"/>
+            <!-- survey for image-->
+            <SubTree ID="SurveyForImage" ctx="{ctx}"/>
+        </Sequence>
+    </BehaviorTree>
+</root>

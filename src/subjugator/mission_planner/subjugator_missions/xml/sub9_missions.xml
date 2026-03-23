@@ -14,4 +14,6 @@
     <include path="sonar_follower_test_mission.xml"/>
     <include path="yaw_style.xml"/>
     <include path="survey_for_image.xml"/>
+    <include path="go_to_depth.xml"/>
+    <include path="octogon_mission.xml"/>
 </root>

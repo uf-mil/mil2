@@ -1,61 +1,27 @@
 <root BTCPP_format="4" main_tree_to_execute="SurveyForImage">
     <BehaviorTree ID="SurveyForImage">
-        <Sequence>
-            <!-- go to pinger x and y (dont change z)-->
-            <!--<SonarFollower
-                name="sonar_follower"
-                ctx="{ctx}"
-                sonar_x="{sonar_x}"
-                sonar_y="{sonar_y}"
-                sonar_z="{sonar_z}"
-                sonar_w="{sonar_w}">
+        <Parallel success_count="1" failure_count="1">
+            <RetryUntilSuccessful num_attempts="-1">
                 <SubTree ID="RelativeMove"
-                    _autoremap="true"
-                    x="{sonar_x}"
-                    y="{sonar_y}"
+                    x="0.0"
+                    y="0.0"
                     z="0.0"
-                    pos_tol="0.20"
-                    ori_tol_deg="12.0"
-                    msec="25000"
+                    roll_deg="0.0"
+                    pitch_deg="0.0"
+                    yaw_deg="45.0"
+                    msec="5000"
+                    pos_tol="0.2"
+                    ori_tol_deg="10.0"
                     ctx="{ctx}"/>
-            </SonarFollower>-->
-            <!-- surface -->
-            <!-- test mpving up by like half a meter first-->
-            <SubTree ID="RelativeMove"
-                x = "0.0"
-                y = "0.0"
-                z = "0.5"
-                roll_deg = "0.0"
-                pitch_deg = "0.0"
-                yaw_deg = "0.0"
-                pos_tol = "0.2"
-                ori_tol_deg = "10.0"
-                ctx = "{ctx}"
-                />
-            <!-- survey for image-->
-            <Parallel success_count="1" failure_count="1">
+            </RetryUntilSuccessful>
+            <Timeout msec="5000">
                 <RetryUntilSuccessful num_attempts="-1">
-                    <SubTree ID="RelativeMove"
-                        x="0.0"
-                        y="0.0"
-                        z="0.0"
-                        roll_deg="0.0"
-                        pitch_deg="0.0"
-                        yaw_deg="45.0"
-                        msec="5000"
-                        pos_tol="0.2"
-                        ori_tol_deg="10.0"
-                        ctx="{ctx}"/>
+                        <Condition ID="DetectTarget"
+                            label="Shark"
+                            min_conf="0.35"
+                            ctx="{ctx}"/>
                 </RetryUntilSuccessful>
-                <Timeout msec="5000">
-                    <RetryUntilSuccessful num_attempts="-1">
-                            <Condition ID="DetectTarget"
-                                label="Shark"
-                                min_conf="0.35"
-                                ctx="{ctx}"/>
-                    </RetryUntilSuccessful>
-                </Timeout>
-            </Parallel>
-        </Sequence>
+            </Timeout>
+        </Parallel>
     </BehaviorTree>
 </root>
