@@ -5,7 +5,7 @@
                 <SubTree ID="RelativeMove"
                     x="0.0"
                     y="0.0"
-                    z="-0.3"
+                    z="0.3"
                     roll_deg="0.0"
                     pitch_deg="0.0"
                     yaw_deg="0.0"
