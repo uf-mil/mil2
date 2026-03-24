@@ -1,10 +1,24 @@
+import numpy as np
+import torch
+from imitation.data import rollout
+from imitation.util.networks import RunningNorm
+from imitation.util.util import make_vec_env
+from sb3_contrib import TRPO
+
 from mil_robogym.data_collection.types import RoboGymProjectYaml
 
 from ..client.data_collector_client import DataCollectorClient
 from ..clients.controller_client import ControllerClient
 from ..clients.localization_client import LocalizationClient
 from ..clients.world_control_client import WorldControlClient
-from .environment import Environment
+from .environment import GYMNASIUM, Environment
+from .reward_net import VAIRLRewardNet
+from .utils import (
+    fetch_demo_trajectories,
+    trajectories_to_batches,
+    trajectories_to_imitations,
+)
+from .vairl import VAIRL
 
 
 class Trainer:
@@ -32,6 +46,7 @@ class Trainer:
         expert_noise_std: float = 1e-4,
     ):
         # Save all parameters to class attributes
+        self.project = project
         self.max_step_count = max_step_count
         self.max_step_size = max_step_size
         self.num_episodes = num_episodes
@@ -59,8 +74,18 @@ class Trainer:
             list(project["input_topics"].keys()),
         )
 
-        # Training components
-        self.environment = Environment(
+        # Fetch and process expert demonstrations
+        self.demo_trajectories = fetch_demo_trajectories(
+            self.project,
+            self.expert_noise_std,
+        )
+        self.demo_batches = trajectories_to_batches(self.demo_trajectories)
+        self.demo_imitations = trajectories_to_imitations(self.demo_trajectories)
+        flattened_demo_trajectories = rollout.flatten_trajectories(self.demo_imitations)
+        demos_batch_size = int(min(2048, len(flattened_demo_trajectories)))
+
+        # Environment set up
+        self.eval_environment = Environment(
             seed,
             max_step_count,
             project["tensor_spec"]["input_features"],
@@ -70,34 +95,163 @@ class Trainer:
             self.localization_client,
         )
 
-    def train(self):
+        self.register_env()
+
+        self.train_venv = make_vec_env(
+            self.env_id,
+            rng=np.random.default_rng(self.seed),
+            n_envs=1,
+            env_make_kwargs={
+                "seed": seed,
+                "max_step_count": max_step_count,
+                "input_features": project["tensor_spec"]["input_features"],
+                "random_spawn_space": project["random_spawn_space"],
+                "data_collector_client": self.data_collector,
+                "controller_client": self.controller_client,
+                "localization_client": self.localization_client,
+            },
+        )
+
+        # Generator set up
+        self.generator = TRPO(
+            policy="MlpPolicy",
+            env=self.train_venv,
+            learning_rate=self.generator_learning_rate,
+            batch_size=2048,
+            gamma=0.99,
+            gae_lambda=0.95,
+            target_kl=0.01,
+            verbose=True,
+            seed=self.seed,
+        )
+
+        # Reward Net set up
+        self.reward_net = VAIRLRewardNet(
+            observation_space=self.train_venv.observation_space,
+            action_space=self.train_venv.action_space,
+            normalize_input_layer=RunningNorm,
+            z_size=self.z_size,
+            gamma=self.gamma,
+        )
+
+        # VAIRL algorithm set up
+        self.vairl = VAIRL(
+            demonstrations=flattened_demo_trajectories,
+            demo_batch_size=demos_batch_size,
+            venv=self.train_venv,
+            gen_algo=self.generator,
+            reward_net=self.reward_net,
+            beta=0.0,
+            i_c=self.i_c,
+            beta_step_size=self.beta_step_size,
+            disc_lr=self.discriminator_learning_rate,
+            allow_variable_horizon=True,
+        )
+
+        # TODO: Configure metric outputs
+
+    def train(self):  # TODO: Incorporate metrics into training loop.
         """
         Train the VAIRL algorithm.
         """
 
         train_discriminator_flag = True
 
-        # TODO: Configure metric outputs
+        for episode in range(self.num_episodes):
 
-        # TODO: Register environment
+            self.reward_net.eval()
 
-        # TODO: Load in expert demonstrations
+            gen_data, reward_mean, reward_std = self.generate_generator_trajectories()
 
-        # TODO: Create vec env
+            gen_batch = trajectories_to_batches(gen_data)
 
-        # TODO: Establish TRPO policy
+            # Train Generator
+            self.vairl.train_gen(total_timesteps=self.rollout_steps)
 
-        # TODO: Instantiate Reward network
+            # Train Reward Net
+            self.reward_net.train()
 
-        # TODO: Instantiate VAIRL
+            # Train Discriminator
+            if train_discriminator_flag:
+                _disc_stats = self.vairl.train_disc(
+                    expert_samples=self.demo_batches,
+                    gen_samples=gen_batch,
+                )
+            else:
+                _disc_stats = {"loss": 0.0, "kl": 0.0, "beta": float(self.vairl.beta)}
 
-        # TODO: Create VAIRL environment
+    def register_env(self) -> None:
+        try:
+            if GYMNASIUM:
+                from gymnasium.envs.registration import register
+            else:
+                from gym.envs.registration import register
 
-        for episode in range(NUM_EPISODES):
-
-            # TODO: Training loop
-
+            register(
+                id=self.env_id,
+                entry_point=Environment,
+                max_episode_steps=self.max_step_count,
+            )
+        except Exception:
+            # Already registered or gym registry unavailable; ignore
             pass
+
+    def generate_generator_trajectories(self, n_trajs: int = 20):
+        """
+        Generate an array of trajectories and return the reward mean and standard deviation from the trajectories.
+        """
+        trajectories = []
+        rewards = []
+
+        for _ in range(n_trajs):
+
+            if GYMNASIUM:
+                state, _ = self.eval_environment.reset()
+            else:
+                state = self.eval_environment.reset()
+
+            traj = []
+            reward_accumulated = 0.0
+
+            for _ in range(self.max_step_count):
+
+                action, _ = self.generator.predict(state, deterministic=False)
+                action = np.asarray(action, dtype=np.float32)
+
+                if GYMNASIUM:
+                    next_state, _env_reward, terminated, truncated, _ = (
+                        self.eval_environment.step(action)
+                    )
+                    done = terminated or truncated
+                else:
+                    next_state, _env_reward, done, _ = self.eval_environment.step(
+                        action,
+                    )
+
+                with torch.no_grad():
+                    s_t = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+                    a_t = torch.tensor(action, dtype=torch.float32).unsqueeze(0)
+                    s_next_t = torch.tensor(next_state, dtype=torch.float32).unsqueeze(
+                        0,
+                    )
+                    d_t = torch.tensor([float(done)], dtype=torch.float32).unsqueeze(1)
+                    reward = self.reward_net(s_t, a_t, s_next_t, d_t).item()
+
+                reward_accumulated += reward
+                traj.append((state.copy(), action.copy(), next_state.copy()))
+
+                state = next_state
+
+                if done:
+                    if GYMNASIUM:
+                        state, _ = self.eval_environment.reset()
+                    else:
+                        state = self.eval_environment.reset()
+
+            rewards.append(reward_accumulated)
+            trajectories.append(traj)
+
+        return trajectories, float(np.mean(rewards)), float(np.std(rewards))
 
     def _ready_simulation(self):
         """

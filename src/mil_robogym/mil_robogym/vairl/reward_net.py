@@ -1,4 +1,6 @@
+import numpy as np
 import torch
+from imitation.rewards.reward_nets import RewardNet
 from imitation.util.networks import RunningNorm
 
 try:
@@ -6,8 +8,7 @@ try:
 except ImportError:
     import gym
 
-GAMMA = 0.99
-Z_SIZE = 6
+from .nueral_nets import Encoder, GNet, HNet
 
 
 class VAIRLRewardNet(RewardNet):
@@ -20,8 +21,9 @@ class VAIRLRewardNet(RewardNet):
         self,
         observation_space: gym.Space,  # TODO: Figure out how to set this up with the bounds of gazebo.
         action_space: gym.Space,
+        z_size: int,
+        gamma: float,
         normalize_input_layer=RunningNorm,
-        gamma: float = GAMMA,
     ):
         try:
             super().__init__(observation_space, action_space)
@@ -43,8 +45,8 @@ class VAIRLRewardNet(RewardNet):
 
         self.enc_g = Encoder(self.obs_dim + self.act_dim)
         self.enc_h = Encoder(self.obs_dim)
-        self.g = GNet(Z_SIZE)
-        self.h = HNet(Z_SIZE)
+        self.g = GNet(z_size)
+        self.h = HNet(z_size)
 
     def _normalize(self, obs: torch.Tensor, acts: torch.Tensor):
         if self.obs_norm is not None:

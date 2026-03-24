@@ -701,3 +701,15 @@ def get_demo_dir_path(project: RoboGymProjectYaml, demo: RoboGymDemoYaml) -> Pat
     demo_dir = projects_dir / project_name / "demos" / demo_name
 
     return demo_dir
+
+
+def get_project_dir_path(project: RoboGymProjectYaml) -> Path:
+    """
+    Get the project dir path based on the project yaml.
+    """
+    roots = _project_roots()
+    projects_dir = roots[0]
+    project_name = to_lower_snake_case(project["name"])
+    project_dir = projects_dir / project_name
+
+    return project_dir

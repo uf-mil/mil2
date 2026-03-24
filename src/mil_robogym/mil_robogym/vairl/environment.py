@@ -7,11 +7,11 @@ import numpy as np
 try:
     import gymnasium as gym
 
-    _GYMNASIUM = True
+    GYMNASIUM = True
 except ImportError:  # fallback for older gym
     import gym
 
-    _GYMNASIUM = False
+    GYMNASIUM = False
 
 from mil_robogym.data_collection.types import RandomSpawnSpace
 
@@ -79,7 +79,7 @@ class Environment(gym.Env):
         # Tracked values
         self.state = None
         self.t = 0
-        self.rng = np.random.default_rng(SEED)
+        self.rng = np.random.default_rng(seed)
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         """
@@ -103,7 +103,7 @@ class Environment(gym.Env):
             self.input_features,
         )
 
-        if _GYMNASIUM:
+        if GYMNASIUM:
             return self.state.copy(), {}
 
         return self.state.copy()
@@ -144,7 +144,7 @@ class Environment(gym.Env):
         terminated = False
         truncated = self.t >= self.max_step_count
 
-        if _GYMNASIUM:
+        if GYMNASIUM:
             return (
                 next_state.copy(),
                 float(env_reward),

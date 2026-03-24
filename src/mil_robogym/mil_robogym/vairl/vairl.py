@@ -1,4 +1,8 @@
+import numpy as np
+import torch
+import torch.nn.functional as F
 import torch.optim as optim
+from imitation.algorithms.adversarial.airl import AIRL
 
 from .reward_net import VAIRLRewardNet
 
@@ -104,7 +108,7 @@ class VAIRL(AIRL):
         loss_disc = F.binary_cross_entropy_with_logits(logits_e, labels_e)
         loss_disc = loss_disc + F.binary_cross_entropy_with_logits(logits_g, labels_g)
 
-        kl = 0.5 * (total_kl(stats_e) + total_kl(stats_g))
+        kl = 0.5 * (self._total_kl(stats_e) + self._total_kl(stats_g))
         bottleneck = kl - self.i_c
 
         loss = loss_disc + self.beta * bottleneck
@@ -120,3 +124,14 @@ class VAIRL(AIRL):
             "kl": float(kl.item()),
             "beta": float(self.beta),
         }
+
+    def _total_kl(self, stats: tuple[torch.Tensor, ...]) -> torch.Tensor:
+        mu_g, logvar_g, mu_h, logvar_h, mu_hn, logvar_hn = stats
+        return (
+            self._kl_divergence(mu_g, logvar_g)
+            + self._kl_divergence(mu_h, logvar_h)
+            + self._kl_divergence(mu_hn, logvar_hn)
+        ).mean()
+
+    def _kl_divergence(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
+        return 0.5 * torch.sum(mu.pow(2) + logvar.exp() - logvar - 1, dim=1)
