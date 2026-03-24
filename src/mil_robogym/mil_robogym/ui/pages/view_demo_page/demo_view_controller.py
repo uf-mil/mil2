@@ -43,7 +43,6 @@ class DemoViewController:
         self.world_control_client = WorldControlClient()
         self.data_collector = DataCollectorClient()
         self.csv_writer = None
-
         self.keyboard_controls_gui = KeyboardControlsGUI(
             self.view,
             self.pause_recording,
