@@ -9,7 +9,11 @@ from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.set_pose_client import SetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.filesystem import edit_demo
-from mil_robogym.data_collection.types import Coord4D
+from mil_robogym.data_collection.types import (
+    Coord4D,
+    RoboGymDemoYaml,
+    RoboGymProjectYaml,
+)
 from mil_robogym.data_collection.writers.csv_writer import AsyncCSVWriter
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
@@ -24,8 +28,8 @@ class DemoViewController:
         self.view = view
         self.app = app
 
-        self.project: dict[str, Any] | None = None
-        self.demo: dict[str, Any] | None = None
+        self.project: RoboGymProjectYaml | None = None
+        self.demo: RoboGymDemoYaml | None = None
         self.steps: list[dict] = []
 
         self.coordinate_popup = None
