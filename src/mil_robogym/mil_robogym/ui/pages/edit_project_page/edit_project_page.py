@@ -8,7 +8,7 @@ from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.filesystem import edit_project
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
-from mil_robogym.data_collection.types import RoboGymProjectYaml
+from mil_robogym.data_collection.types import Coord4D, RoboGymProjectYaml
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
@@ -514,9 +514,10 @@ class EditProjectPage(tk.Frame):
 
     def _display_collected_coords(
         self,
-        c1: tuple[float, float, float, float] | None,
-        c2: tuple[float, float, float, float] | None,
+        coords: list[Coord4D],
     ) -> None:
+        c1, c2 = coords
+
         if c1 and c2:
             self.coordinate1 = c1
             self.coord1_entry.delete(0, tk.END)

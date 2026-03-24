@@ -1,6 +1,6 @@
 import tkinter as tk
+from typing import Callable
 
-from mil_robogym.clients.set_pose_client import SetPoseClient
 from mil_robogym.data_collection.types import Coord4D
 
 
@@ -9,11 +9,14 @@ class Step(tk.Frame):
     UI object for a step.
     """
 
-    def __init__(self, parent: tk.Frame, coordinate: Coord4D, is_origin: bool):
-        color = "#E6E6E6"
-        self.set_pose_client = SetPoseClient()
-
-        super().__init__(parent, bg=color, bd=1, relief="solid")
+    def __init__(
+        self,
+        parent: tk.Frame,
+        on_click: Callable,
+        coordinate: Coord4D,
+        is_origin: bool,
+    ):
+        super().__init__(parent, bg="#E6E6E6", bd=1, relief="solid")
         self.pack(fill="x", padx=6, pady=4)
 
         self.coordinate = coordinate
@@ -23,17 +26,13 @@ class Step(tk.Frame):
             "Origin: " if is_origin else ""
         ) + f"({x:.2f}, {y:.2f}, {z:.2f}, {yaw:.2f})"
 
-        label = tk.Label(self, text=text, bg=color, font=("Courier", 8))
+        label = tk.Label(self, text=text, bg="#E6E6E6", font=("Courier", 8))
         label.pack(
             side="left",
             padx=6,
             pady=6,
         )
-        label.bind("<Button-1>", self._on_click)
-
-    def _on_click(self, _event) -> None:
-        x, y, z, yaw = self.coordinate
-        self.set_pose_client.set_pose(x, y, z, yaw=yaw)
+        label.bind("<Button-1>", on_click)
 
 
 class StepsSection(tk.Frame):
@@ -41,10 +40,9 @@ class StepsSection(tk.Frame):
     Left panel displaying demo steps in a scrollable region.
     """
 
-    def __init__(self, parent: tk.Widget) -> None:
+    def __init__(self, parent: tk.Widget, controller) -> None:
         super().__init__(parent, bg="#CFCFCF", width=260)
-
-        self.last_pose = None
+        self.controller = controller
 
         self.grid_propagate(False)
 
@@ -80,8 +78,13 @@ class StepsSection(tk.Frame):
         )
 
     def add_step(self, coordinate: Coord4D, is_origin: bool = False) -> None:
-        self.last_pose = coordinate
-        Step(self.steps_frame, coordinate, is_origin)
+        self.controller.last_pose = coordinate
+        Step(
+            self.steps_frame,
+            lambda _: self.controller.move_model_to(coordinate),
+            coordinate,
+            is_origin,
+        )
 
     def clear(self) -> None:
         for child in self.steps_frame.winfo_children():

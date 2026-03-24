@@ -189,8 +189,7 @@ class CreateProjectPage(tk.Frame):
 
     def _display_collected_coords(
         self,
-        c1: Coord4D | None,
-        c2: Coord4D | None,
+        coords: list[Coord4D],
     ) -> None:
         """Apply collected simulation coordinates and pause simulation state. This keeps behavior scoped to the current component.
 
@@ -200,6 +199,8 @@ class CreateProjectPage(tk.Frame):
         Returns:
             None.
         """
+        c1, c2 = coords
+
         self.random_spawn_section.set_collected_coords(c1, c2)
 
         if self.keyboard_controls_gui is not None:
