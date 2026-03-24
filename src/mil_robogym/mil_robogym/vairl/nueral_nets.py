@@ -7,16 +7,16 @@ class Encoder(nn.Module):
     Encoder that maps states into latent space.
     """
 
-    def __init__(self, input_size: int):
+    def __init__(self, input_size: int, z_size: int, e_hidden_size: int):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(input_size, E_HIDDEN_SIZE),
+            nn.Linear(input_size, e_hidden_size),
             nn.ReLU(),
-            nn.Linear(E_HIDDEN_SIZE, E_HIDDEN_SIZE),
+            nn.Linear(e_hidden_size, e_hidden_size),
             nn.ReLU(),
         )
-        self.mu = nn.Linear(E_HIDDEN_SIZE, Z_SIZE)
-        self.logvar = nn.Linear(E_HIDDEN_SIZE, Z_SIZE)
+        self.mu = nn.Linear(e_hidden_size, z_size)
+        self.logvar = nn.Linear(e_hidden_size, z_size)
 
     def forward(self, x: torch.Tensor):
         h = self.net(x)

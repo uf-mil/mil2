@@ -22,12 +22,12 @@ class ControllerClient(Node):
             "/pid_controller/reset",
         )
 
-        self._wait_for_services()
-
     def start_controller(self):
         """
         Sends an empty request to the enable service to start controller.
         """
+        self._wait_for_services()
+
         req = SetBool.Request()
         req.data = True
 
@@ -41,6 +41,8 @@ class ControllerClient(Node):
         """
         Sends an empty request to reset controller.
         """
+        self._wait_for_services()
+
         req = Empty.Request()
 
         future = self.reset_client.call_async(req)

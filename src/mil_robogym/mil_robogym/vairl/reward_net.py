@@ -22,6 +22,7 @@ class VAIRLRewardNet(RewardNet):
         observation_space: gym.Space,  # TODO: Figure out how to set this up with the bounds of gazebo.
         action_space: gym.Space,
         z_size: int,
+        e_hidden_size: int,
         gamma: float,
         normalize_input_layer=RunningNorm,
     ):
@@ -43,8 +44,16 @@ class VAIRLRewardNet(RewardNet):
             normalize_input_layer(action_space.shape) if normalize_input_layer else None
         )
 
-        self.enc_g = Encoder(self.obs_dim + self.act_dim)
-        self.enc_h = Encoder(self.obs_dim)
+        self.enc_g = Encoder(
+            input_size=self.obs_dim + self.act_dim,
+            z_size=z_size,
+            e_hidden_size=e_hidden_size,
+        )
+        self.enc_h = Encoder(
+            input_size=self.obs_dim,
+            z_size=z_size,
+            e_hidden_size=e_hidden_size,
+        )
         self.g = GNet(z_size)
         self.h = HNet(z_size)
 

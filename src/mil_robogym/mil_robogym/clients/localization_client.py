@@ -22,12 +22,12 @@ class LocalizationClient(Node):
             "/subjugator_localization/reset",
         )
 
-        self._wait_for_service()
-
     def start_localization(self):
         """
         Start localization.
         """
+        self._wait_for_service()
+
         req = Empty.Request()
 
         future = self.start_client.call_async(req)
@@ -40,6 +40,8 @@ class LocalizationClient(Node):
         """
         Start localization.
         """
+        self._wait_for_service()
+
         req = Empty.Request()
 
         future = self.reset_client.call_async(req)

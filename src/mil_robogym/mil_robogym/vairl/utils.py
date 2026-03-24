@@ -37,20 +37,20 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
             actions = actions_df.values
 
             # Align states and actions: (s_t, a_t+1)
-            states = states[:-1]
+            states_t = states[:-1]
             next_states = states[1:]
-            actions = actions[1:]
+            actions_t = actions[1:]
 
             # Add noise to actions
-            actions = [_add_noise(a, noise_std) for a in actions]
+            actions_t = [_add_noise(a, noise_std) for a in actions_t]
 
             # Check states and actions are the same length
             assert (
-                len(states) == len(actions) == len(next_states)
-            ), f"Mismatch in {demo_dir.name}: number of states and actions must match (s: {len(states)}, a: {len(actions)}, s_+1: {len(next_states)})"
+                len(states_t) == len(actions_t) == len(next_states)
+            ), f"Mismatch in {demo_dir.name}: number of states and actions must match (s: {len(states_t)}, a: {len(actions_t)}, s_+1: {len(next_states)})"
 
             # Build trajectory
-            trajectory = list(zip(states, actions, next_states))
+            trajectory = list(zip(states_t, actions_t, next_states))
 
             # Store trajectory
             trajectories.append(trajectory)

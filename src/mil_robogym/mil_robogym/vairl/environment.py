@@ -15,10 +15,10 @@ except ImportError:  # fallback for older gym
 
 from mil_robogym.data_collection.types import RandomSpawnSpace
 
-from ..client.controller_client import ControllerClient
-from ..client.data_collector_client import DataCollectorClient
-from ..client.localization_client import LocalizationClient
-from ..client.move_client import MoveClient
+from ..clients.controller_client import ControllerClient
+from ..clients.data_collector_client import DataCollectorClient
+from ..clients.localization_client import LocalizationClient
+from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
 
 
@@ -29,36 +29,46 @@ class Environment(gym.Env):
 
     def __init__(
         self,
-        seed: int,
-        max_step_count: int,
-        input_features: list[str],
-        random_spawn_space: RandomSpawnSpace,
-        data_collector_client: DataCollectorClient,
+        seed: int | None = None,
+        max_step_count: int = 40,
+        input_features: list[str] = [],
+        random_spawn_space: RandomSpawnSpace | None = None,
+        data_collector_client: DataCollectorClient | None = None,
         controller_client: ControllerClient | None = None,
         localization_client: LocalizationClient | None = None,
+        initialized: bool = False,
     ):
         super().__init__()
 
-        # Data Collector
-        self.data_collector_client = data_collector_client
-        self.data_collector_client.get_snapshot()  # Initialize service with request
+        self.initialized = initialized
 
-        # Clients
-        self.move_client = MoveClient()
-        self.set_pose_client = SetPoseClient()
-        self.controller_client = controller_client or ControllerClient()
-        self.localization_client = localization_client or LocalizationClient()
+        if initialized:
 
-        # Saved parameters
-        self.seed = seed
-        self.max_step_count = max_step_count
-        self.input_features = input_features
+            # Data Collector
+            self.data_collector_client = data_collector_client
+            self.data_collector_client.get_snapshot()  # Initialize service with request
 
-        # Configure random spawn space
-        c1 = random_spawn_space["coord1_4d"]
-        c2 = random_spawn_space["coord2_4d"]
-        self.min_coord = np.minimum(c1, c2)
-        self.max_coord = np.maximum(c1, c2)
+            # Clients
+            self.move_client = MoveClient()
+            self.set_pose_client = SetPoseClient()
+            self.controller_client = controller_client or ControllerClient()
+            self.localization_client = localization_client or LocalizationClient()
+
+            # Saved parameters
+            self.seed = seed
+            self.max_step_count = max_step_count
+            self.input_features = input_features
+
+            # Configure random spawn space
+            c1 = random_spawn_space["coord1_4d"]
+            c2 = random_spawn_space["coord2_4d"]
+            self.min_coord = np.minimum(c1, c2)
+            self.max_coord = np.maximum(c1, c2)
+
+            # Tracked values
+            self.state = None
+            self.t = 0
+            self.rng = np.random.default_rng(seed)
 
         # Configure observation space
         self.observation_space = gym.spaces.Box(
@@ -76,15 +86,15 @@ class Environment(gym.Env):
             dtype=np.float32,
         )
 
-        # Tracked values
-        self.state = None
-        self.t = 0
-        self.rng = np.random.default_rng(seed)
-
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         """
         Place sub in random position based on the random spawn space of the project.
         """
+        if not self.initialized:
+            raise ValueError(
+                "Environment not initialized, will not proceed to train...",
+            )
+
         if seed is not None:
             self.rng = np.random.default_rng(seed)
 
@@ -112,6 +122,11 @@ class Environment(gym.Env):
         """
         Move sub by sending a goal pose.
         """
+        if not self.initialized:
+            raise ValueError(
+                "Environment not initialized, will not proceed to train...",
+            )
+
         self.t += 1
 
         action = np.asarray(action, dtype=np.float32)
