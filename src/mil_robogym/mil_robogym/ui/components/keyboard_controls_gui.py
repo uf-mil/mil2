@@ -3,7 +3,7 @@ from typing import Callable, Dict, Optional
 
 from mil_robogym.nodes.teleop import TeleopNode
 
-PUBLISH_RATE: float = 0.1  # seconds (10 Hz)
+PUBLISH_RATE: float = 0.01  # seconds (10 Hz)
 
 
 class ToolTip:
@@ -161,6 +161,7 @@ class KeyboardControlsGUI:
         self.root.focus_set()
 
         self.buttons: Dict[str, KeyButton] = {}
+        self.currently_pressed = set()
         self.build_keyboard()
 
         self.update_loop()
@@ -198,7 +199,8 @@ class KeyboardControlsGUI:
         Handle physical keyboard key press.
         """
         key = event.keysym
-        if key in self.buttons:
+        if key in self.buttons and key not in self.currently_pressed:
+            self.currently_pressed.add(key)
             self.buttons[key].highlight(True)
             self.activate(key)
 
@@ -208,6 +210,7 @@ class KeyboardControlsGUI:
         """
         key = event.keysym
         if key in self.buttons:
+            self.currently_pressed.discard(key)
             self.buttons[key].highlight(False)
             self.deactivate(key)
 
@@ -232,6 +235,7 @@ class KeyboardControlsGUI:
             key: Key identifier.
         """
         self.node.active_keys.discard(key)
+        self.node.publish()
 
     def update_loop(self) -> None:
         """

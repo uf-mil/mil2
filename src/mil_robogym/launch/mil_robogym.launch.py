@@ -36,5 +36,17 @@ def generate_launch_description():
                 name="gz_pose_srv",
                 output="screen",
             ),
+            Node(
+                package="mil_robogym",
+                executable="data_collector_srv",
+                name="data_collector_srv",
+                output="screen",
+            ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="movement_server",
+                name="movement_server",
+                output="screen",
+            ),
         ],
     )

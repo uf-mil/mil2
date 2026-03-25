@@ -4,6 +4,10 @@ from typing import NotRequired, TypedDict
 
 Coord4D = tuple[float, float, float, float]
 Coord4DList = list[float]
+StateActionPair = tuple[
+    dict[str, int | float | complex],  # State
+    dict[str, int | float | complex],  # Action
+]
 
 
 class RandomSpawnSpace(TypedDict):

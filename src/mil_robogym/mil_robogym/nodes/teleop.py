@@ -11,8 +11,8 @@ class TeleopNode(Node):
     def __init__(self):
         super().__init__("tkinter_teleop")
 
-        self.pub = self.create_publisher(Wrench, "cmd_wrench", 10)
-        self.keypress_pub = self.create_publisher(String, "keypress", 10)
+        self.pub = self.create_publisher(Wrench, "cmd_wrench", 1)
+        self.keypress_pub = self.create_publisher(String, "keypress", 1)
 
         self.force = [0.0, 0.0, 0.0]
         self.torque = [0.0, 0.0, 0.0]
