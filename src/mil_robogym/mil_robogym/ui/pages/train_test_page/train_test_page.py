@@ -41,7 +41,7 @@ class TrainTestPage(tk.Frame):
         self.terminal_section = TerminalSection(self, "")
         self.buttons_section = ButtonsSection(
             self,
-            self._on_train_new_agent_click,
+            self.controller.start_training,
             self._on_test_selected_agent_click,
         )
 
@@ -106,10 +106,6 @@ class TrainTestPage(tk.Frame):
     def _on_download_click(self, _agent_name: str) -> None:
         """Placeholder action for downloading an agent."""
         print("download clicked")
-
-    def _on_train_new_agent_click(self) -> None:
-        """Placeholder action for starting a training run."""
-        print("clicked")
 
     def _on_test_selected_agent_click(self) -> None:
         """Placeholder action for running selected-agent test."""

@@ -15,10 +15,14 @@ def _add_noise(action: np.ndarray, noise_std: float) -> np.ndarray:
 def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
     """
     Go through all demo folders in project, compose trajectories as 3-tuple s.t. (s_t, a_t+1, s_t+1).
+
+    Returns the trajectories and the max number of steps and max step size taken from all demos.
     """
     demos_dir = get_project_dir_path(project) / "demos"
 
     trajectories = []
+    max_number_of_steps = 0
+    max_vals = np.zeros(4, dtype=np.float32)
 
     for demo_dir in demos_dir.iterdir():
 
@@ -30,7 +34,14 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
 
             # Load data
             numerical_df = pd.read_csv(numerical_csv)
-            actions_df = pd.read_csv(actions_csv)
+            actions_df = pd.read_csv(actions_csv).loc[
+                :,
+                ["delta_x", "delta_y", "delta_z", "delta_yaw"],
+            ]
+
+            # Collect max values per dimension
+            demo_max = np.abs(actions_df.values).max(axis=0)
+            max_vals = np.maximum(max_vals, demo_max)
 
             # Convert to numpy
             states = numerical_df.values
@@ -55,7 +66,10 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
             # Store trajectory
             trajectories.append(trajectory)
 
-    return trajectories
+            # Compute max number of steps
+            max_number_of_steps = max(max_number_of_steps, len(trajectory))
+
+    return trajectories, max_number_of_steps, max_vals
 
 
 def trajectories_to_batches(
