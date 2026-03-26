@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import csv
 import tkinter as tk
 from typing import Any, Mapping
 
+from mil_robogym.data_collection.filesystem import get_demo_dir_path
 from mil_robogym.data_collection.get_all_demo_config import get_all_demo_config
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
 from mil_robogym.ui.components.create_demo_popup import CreateDemoPopup
@@ -227,9 +229,6 @@ class ViewProjectPage(tk.Frame):
     def _render_demo_rows(self) -> None:
         """
         Render the list of demo rows for the active project.
-
-        Step counts are currently placeholders because project config loading
-        provides demo totals but not per-demo step metadata.
         """
         for child in self._list_area.winfo_children():
             child.destroy()
@@ -246,6 +245,7 @@ class ViewProjectPage(tk.Frame):
             return
 
         for index, (demo_name, demo) in enumerate(self._demos.items()):
+            step_count = self._get_demo_step_count(demo)
             row = tk.Frame(
                 self._list_area,
                 bg="#ECECEC",
@@ -273,7 +273,7 @@ class ViewProjectPage(tk.Frame):
 
             right_label = tk.Label(
                 row,
-                text="0 steps",
+                text=f"{step_count} steps",
                 bg="#ECECEC",
                 fg="black",
                 font=("Arial", 15),
@@ -317,6 +317,25 @@ class ViewProjectPage(tk.Frame):
                 widget.bind("<Button-1>", on_click)
                 widget.bind("<Enter>", on_enter)
                 widget.bind("<Leave>", on_leave)
+
+    def _get_demo_step_count(self, demo: Mapping[str, Any]) -> int:
+        """Return number of steps as (actions CSV rows - header row)."""
+        if not self.project_name:
+            return 0
+
+        try:
+            demo_cfg = demo.get("robogym_demo", {})
+            demo_dir = get_demo_dir_path({"name": self.project_name}, demo_cfg)
+            actions_csv = demo_dir / "data" / "actions" / "data.csv"
+            if not actions_csv.is_file():
+                return 0
+
+            with actions_csv.open("r", encoding="utf-8", newline="") as csv_file:
+                row_count = sum(1 for _ in csv.reader(csv_file))
+
+            return max(row_count - 1, 0)
+        except (KeyError, OSError, TypeError, ValueError, csv.Error):
+            return 0
 
     def _on_home_title_click(self, _event: tk.Event | None = None) -> None:
         """Navigate back to the start page."""
