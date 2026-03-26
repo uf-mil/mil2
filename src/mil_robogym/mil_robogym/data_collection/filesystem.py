@@ -176,6 +176,25 @@ def _write_yaml_config(
         yaml.safe_dump(cfg, f, sort_keys=False)
 
 
+def _build_agent_config(
+    *,
+    agent_name: str,
+    num_demos: int,
+    model_file_name: str,
+    checkpoint_episode: int | None,
+) -> dict[str, dict[str, object]]:
+    cfg: dict[str, dict[str, object]] = {
+        "robogym_agent": {
+            "name": agent_name,
+            "num_demos": num_demos,
+            "model_file": model_file_name,
+        },
+    }
+    if checkpoint_episode is not None:
+        cfg["robogym_agent"]["checkpoint_episode"] = checkpoint_episode
+    return cfg
+
+
 METADATA_CSV_HEADERS = ("topic", "relative_path")
 NUMERICAL_DATA_TOPIC = "/numerical"
 ACTIONS_DATA_TOPIC = "/actions"
@@ -554,13 +573,18 @@ def create_agent_folder(
     *,
     trained_model_path: Path,
     training_metrics: dict[str, list[float]],
+    num_demos: int = 0,
     created_at: datetime | None,
+    model_file_name: str = "weights.pt",
+    agent_name: str | None = None,
+    checkpoint_episode: int | None = None,
 ) -> Path:
     """
     Create a timestamped agent folder under <project_dir>/agents/
 
     Writes:
-      - weights.pt (copied from trained_model_path)
+      - config.yaml
+      - model artifact copied from trained_model_path
       - training_metrics.csv
       - metrics/*.png (one plot per metric series)
 
@@ -572,6 +596,9 @@ def create_agent_folder(
     if not trained_model_path.exists():
         raise FileNotFoundError(f"trained_model_path not found: {trained_model_path}")
 
+    if not model_file_name.strip():
+        raise ValueError("model_file_name must be a non-empty string")
+
     if not training_metrics:
         raise ValueError("training_metrics is empty")
 
@@ -582,20 +609,30 @@ def create_agent_folder(
     n = lengths.pop()
 
     dt = created_at or datetime.now()
-    agent_name = _format_agent_timestamp(dt)
+    resolved_agent_name = agent_name or _format_agent_timestamp(dt)
 
     agents_dir = project_dir / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
 
-    agent_dir = agents_dir / agent_name
+    agent_dir = agents_dir / resolved_agent_name
     if agent_dir.exists():
         raise FileExistsError(f"Agent folder already exists: {agent_dir}")
     agent_dir.mkdir(parents=True, exist_ok=False)
 
-    # 1) weights.pt
-    shutil.copyfile(trained_model_path, agent_dir / "weights.pt")
+    # 1) config.yaml
+    cfg = _build_agent_config(
+        agent_name=resolved_agent_name,
+        num_demos=num_demos,
+        model_file_name=model_file_name,
+        checkpoint_episode=checkpoint_episode,
+    )
+    with (agent_dir / "config.yaml").open("w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)
 
-    # 2) metrics CSV
+    # 2) model artifact
+    shutil.copyfile(trained_model_path, agent_dir / model_file_name)
+
+    # 3) metrics CSV
     csv_path = agent_dir / "training_metrics.csv"
     headers = ["index", *training_metrics.keys()]
     with csv_path.open("w", encoding="utf-8") as f:
@@ -604,7 +641,7 @@ def create_agent_folder(
             row = [str(i)] + [str(training_metrics[k][i]) for k in training_metrics]
             f.write(",".join(row) + "\n")
 
-    # 3) plots
+    # 4) plots
     # (Optional but matches issue: "images of graphs showing the metrics")
     metrics_dir = agent_dir / "metrics"
     metrics_dir.mkdir(parents=True, exist_ok=True)
@@ -713,3 +750,25 @@ def get_project_dir_path(project: RoboGymProjectYaml) -> Path:
     project_dir = projects_dir / project_name
 
     return project_dir
+
+
+def get_training_project_dir_paths(project: RoboGymProjectYaml) -> list[Path]:
+    """
+    Get project directory paths for generated training artifacts.
+
+    Prefers the source-tree project directory and mirrors to the installed share
+    directory when both roots are available.
+    """
+    roots = _project_roots()
+    project_name = to_lower_snake_case(project["name"])
+    project_dirs = [root / project_name for root in roots]
+    if len(project_dirs) == 1:
+        return project_dirs
+    return [*project_dirs[1:], project_dirs[0]]
+
+
+def get_training_project_dir_path(project: RoboGymProjectYaml) -> Path:
+    """
+    Get the preferred project directory for generated training artifacts.
+    """
+    return get_training_project_dir_paths(project)[0]

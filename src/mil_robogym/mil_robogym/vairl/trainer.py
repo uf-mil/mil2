@@ -1,3 +1,7 @@
+import tempfile
+from datetime import datetime
+from pathlib import Path
+
 import numpy as np
 import torch
 from imitation.data import rollout
@@ -5,6 +9,11 @@ from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
 from sb3_contrib import TRPO
 
+from mil_robogym.data_collection.filesystem import (
+    _format_agent_timestamp,
+    create_agent_folder,
+    get_training_project_dir_paths,
+)
 from mil_robogym.data_collection.types import RoboGymProjectYaml
 
 from ..clients.controller_client import ControllerClient
@@ -19,6 +28,8 @@ from .utils import (
     trajectories_to_imitations,
 )
 from .vairl import VAIRL
+
+GENERATOR_MODEL_FILE_NAME = "generator_model.zip"
 
 
 class Trainer:
@@ -107,6 +118,7 @@ class Trainer:
         Train the VAIRL algorithm.
         """
         self._ready_simulation()
+        training_metrics = self._initialize_training_metrics()
 
         # Create training environment
         train_venv = make_vec_env(
@@ -189,6 +201,104 @@ class Trainer:
                 )
             else:
                 _disc_stats = {"loss": 0.0, "kl": 0.0, "beta": float(vairl.beta)}
+
+            episode_number = episode + 1
+            self._record_training_metrics(
+                training_metrics,
+                episode=episode_number,
+                reward_mean=reward_mean,
+                reward_std=reward_std,
+                disc_stats=_disc_stats,
+            )
+            if self.save_every > 0 and episode_number % self.save_every == 0:
+                self._save_generator_model(
+                    generator,
+                    training_metrics,
+                    checkpoint_episode=episode_number,
+                )
+
+        self._save_generator_model(
+            generator,
+            training_metrics,
+            is_final=True,
+        )
+
+    def _initialize_training_metrics(self) -> dict[str, list[float]]:
+        return {
+            "episode": [],
+            "reward_mean": [],
+            "reward_std": [],
+            "disc_loss": [],
+            "disc_kl": [],
+            "disc_beta": [],
+        }
+
+    def _record_training_metrics(
+        self,
+        training_metrics: dict[str, list[float]],
+        *,
+        episode: int,
+        reward_mean: float,
+        reward_std: float,
+        disc_stats: dict[str, float],
+    ) -> None:
+        training_metrics["episode"].append(float(episode))
+        training_metrics["reward_mean"].append(float(reward_mean))
+        training_metrics["reward_std"].append(float(reward_std))
+        training_metrics["disc_loss"].append(float(disc_stats["loss"]))
+        training_metrics["disc_kl"].append(float(disc_stats["kl"]))
+        training_metrics["disc_beta"].append(float(disc_stats["beta"]))
+
+    def _build_agent_name(
+        self,
+        created_at: datetime,
+        *,
+        checkpoint_episode: int | None = None,
+        is_final: bool = False,
+    ) -> str:
+        base_name = _format_agent_timestamp(created_at)
+        if is_final:
+            return f"{base_name}_final"
+        if checkpoint_episode is not None:
+            return f"{base_name}_ep_{checkpoint_episode:04d}"
+        return base_name
+
+    def _save_generator_model(
+        self,
+        generator: TRPO,
+        training_metrics: dict[str, list[float]],
+        *,
+        checkpoint_episode: int | None = None,
+        is_final: bool = False,
+    ) -> list[Path]:
+        created_at = datetime.now()
+        agent_name = self._build_agent_name(
+            created_at,
+            checkpoint_episode=checkpoint_episode,
+            is_final=is_final,
+        )
+        num_demos = len(self.demo_trajectories)
+        saved_agent_dirs: list[Path] = []
+
+        with tempfile.TemporaryDirectory(prefix="mil_robogym_generator_") as temp_dir:
+            trained_model_path = Path(temp_dir) / GENERATOR_MODEL_FILE_NAME
+            generator.save(str(trained_model_path))
+
+            for project_dir in get_training_project_dir_paths(self.project):
+                saved_agent_dirs.append(
+                    create_agent_folder(
+                        project_dir,
+                        trained_model_path=trained_model_path,
+                        training_metrics=training_metrics,
+                        num_demos=num_demos,
+                        created_at=created_at,
+                        model_file_name=GENERATOR_MODEL_FILE_NAME,
+                        agent_name=agent_name,
+                        checkpoint_episode=checkpoint_episode,
+                    ),
+                )
+
+        return saved_agent_dirs
 
     def register_env(self) -> None:
         try:
