@@ -348,6 +348,7 @@ class Trainer:
         """
         trajectories = []
         rewards = []
+        reward_net_device = next(reward_net.parameters()).device
 
         for _ in range(n_trajs):
 
@@ -375,12 +376,26 @@ class Trainer:
                     )
 
                 with torch.no_grad():
-                    s_t = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-                    a_t = torch.tensor(action, dtype=torch.float32).unsqueeze(0)
-                    s_next_t = torch.tensor(next_state, dtype=torch.float32).unsqueeze(
-                        0,
-                    )
-                    d_t = torch.tensor([float(done)], dtype=torch.float32).unsqueeze(1)
+                    s_t = torch.as_tensor(
+                        state,
+                        dtype=torch.float32,
+                        device=reward_net_device,
+                    ).unsqueeze(0)
+                    a_t = torch.as_tensor(
+                        action,
+                        dtype=torch.float32,
+                        device=reward_net_device,
+                    ).unsqueeze(0)
+                    s_next_t = torch.as_tensor(
+                        next_state,
+                        dtype=torch.float32,
+                        device=reward_net_device,
+                    ).unsqueeze(0)
+                    d_t = torch.as_tensor(
+                        [float(done)],
+                        dtype=torch.float32,
+                        device=reward_net_device,
+                    ).unsqueeze(1)
                     reward = reward_net(s_t, a_t, s_next_t, d_t).item()
 
                 reward_accumulated += reward
