@@ -1,6 +1,5 @@
 import copy
 import math
-import time
 
 import numpy as np
 import rclpy
@@ -15,6 +14,7 @@ from subjugator_msgs.action import Move
 from tf2_ros import Buffer, TransformListener
 
 TIMEOUT_LENGTH = 0.5
+VELOCITY_TOLERANCE = 1e-2
 
 
 class MovementServer(Node):
@@ -104,11 +104,14 @@ class MovementServer(Node):
                 i_step_dist**2 + j_step_dist**2 + k_step_dist**2 + w_step_dist**2,
             )
 
-            has_not_moved = self.velocity < 1e-3 and self.angular_velocity < 1e-3
+            has_not_moved = (
+                self.velocity < VELOCITY_TOLERANCE
+                and self.angular_velocity < VELOCITY_TOLERANCE
+            )
 
             if self.start_timeout and has_not_moved:
                 self.get_logger().info(
-                    f"Terminating because {self.velocity:.8f} and {self.angular_velocity:.8f} are less than 0.001",
+                    f"Terminating because {self.velocity:.8f} and {self.angular_velocity:.8f} are less than {VELOCITY_TOLERANCE}",
                 )
                 self.terminate = True
 
@@ -206,7 +209,6 @@ class MovementServer(Node):
 
             if self.terminate:
                 self.get_logger().info("Oh no! I got stuck!")
-                self.last_pose = self.current_pose
                 goal_handle.abort()
                 result.success = False
                 result.message = "Got stuck..."
@@ -224,14 +226,12 @@ class MovementServer(Node):
                 ),
             )
 
-        self.last_pose = goal_pose
         self.get_logger().info("Arrived at goal pose!")
         self.get_logger().info("Completed movement!")
 
         goal_handle.succeed()
         result.success = True
         result.message = "Successfully moved to goal pose"
-        time.sleep(1.0)
         return result
 
 

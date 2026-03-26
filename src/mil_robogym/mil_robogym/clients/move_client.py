@@ -32,7 +32,7 @@ class MoveClient(Node):
 
         req.goal_pose.position.x = float(dx)
         req.goal_pose.position.y = float(dy)
-        req.goal_pose.position.z = float(dz)
+        req.goal_pose.position.z = 0.0  # float(dz)
 
         req.goal_pose.orientation.x = 0.0
         req.goal_pose.orientation.y = 0.0
