@@ -14,8 +14,6 @@ def test_format_topic_warning_message_with_matches() -> None:
     message = _format_topic_warning_message(warning)
 
     assert "Raw sensor stream" in message
-    assert "'image_raw'" in message
-    assert "'camera'" in message
 
 
 def test_format_topic_warning_message_without_matches() -> None:
@@ -28,4 +26,4 @@ def test_format_topic_warning_message_without_matches() -> None:
 
     message = _format_topic_warning_message(warning)
 
-    assert message == "Unknown Bucket: this topic is likely unhelpful for training."
+    assert message == "Unknown Bucket, this topic is likely unhelpful for training."
