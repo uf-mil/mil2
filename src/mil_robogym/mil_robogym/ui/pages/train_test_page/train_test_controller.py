@@ -37,3 +37,10 @@ class TrainTestViewController:
         Navigate to project page.
         """
         self.app.show_page("view_project", project=self.raw_project)
+
+    def start_training(self) -> None:
+        """
+        Start training loop.
+        """
+        self.trainer.num_episodes = 1
+        self.trainer.train()

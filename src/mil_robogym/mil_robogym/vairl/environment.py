@@ -31,9 +31,12 @@ class Environment(gym.Env):
         self,
         seed: int | None = None,
         max_step_count: int = 40,
+        max_vals: np.ndarray = np.zeros(4, dtype=np.float32),
         input_features: list[str] = [],
         random_spawn_space: RandomSpawnSpace | None = None,
         data_collector_client: DataCollectorClient | None = None,
+        move_client: MoveClient | None = None,
+        set_pose_client: SetPoseClient | None = None,
         controller_client: ControllerClient | None = None,
         localization_client: LocalizationClient | None = None,
         initialized: bool = False,
@@ -49,8 +52,8 @@ class Environment(gym.Env):
             self.data_collector_client.get_snapshot()  # Initialize service with request
 
             # Clients
-            self.move_client = MoveClient()
-            self.set_pose_client = SetPoseClient()
+            self.move_client = move_client or MoveClient()
+            self.set_pose_client = set_pose_client or SetPoseClient()
             self.controller_client = controller_client or ControllerClient()
             self.localization_client = localization_client or LocalizationClient()
 
@@ -80,8 +83,8 @@ class Environment(gym.Env):
 
         # TODO: adapt shape size when we start considering other output like shooting a torpedo.
         self.action_space = gym.spaces.Box(
-            low=-1.0,
-            high=1.0,
+            low=-max_vals,
+            high=max_vals,
             shape=(4,),
             dtype=np.float32,
         )
@@ -108,6 +111,9 @@ class Environment(gym.Env):
         self.controller_client.reset_controller()
         self.localization_client.reset_localization()
 
+        # Move to spawn position to ground movement client.
+        self.move_client.move((0, 0, 0, 0))
+
         # Record state
         self.state = self.data_collector_client.get_flattened_snapshot_values(
             self.input_features,
@@ -116,7 +122,7 @@ class Environment(gym.Env):
         if GYMNASIUM:
             return self.state.copy(), {}
 
-        return self.state.copy()
+        return np.array(self.state.copy())
 
     def step(self, action):
         """
@@ -135,10 +141,10 @@ class Environment(gym.Env):
         env_reward = 0.0
 
         # Publish a goal pose and wait for action to be completed
-        movement = self.move_client.move((dx, dy, dz, dyaw))
+        did_successful_movement = self.move_client.move((dx, dy, dz, dyaw))
 
         # Determine if it hits an obstacle and deduct points
-        if not movement.success:
+        if not did_successful_movement:
             env_reward -= 1.0
 
         # Record next state
