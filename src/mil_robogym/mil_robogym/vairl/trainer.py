@@ -1,3 +1,4 @@
+import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,8 @@ from mil_robogym.data_collection.types import RoboGymProjectYaml
 from ..clients.controller_client import ControllerClient
 from ..clients.data_collector_client import DataCollectorClient
 from ..clients.localization_client import LocalizationClient
+from ..clients.move_client import MoveClient
+from ..clients.set_pose_client import SetPoseClient
 from ..clients.world_control_client import WorldControlClient
 from .environment import GYMNASIUM, Environment
 from .reward_net import VAIRLRewardNet
@@ -40,8 +43,7 @@ class Trainer:
     def __init__(
         self,
         project: RoboGymProjectYaml,
-        max_step_count: int = 40,
-        max_step_size: int = 0.5,
+        max_step_count: int | None = None,
         num_episodes: int = 500,
         rollout_steps: int = 2048,
         generator_learning_rate: float = 1e-3,
@@ -59,7 +61,6 @@ class Trainer:
         # Save all parameters to class attributes
         self.project = project
         self.max_step_count = max_step_count
-        self.max_step_size = max_step_size
         self.num_episodes = num_episodes
         self.rollout_steps = rollout_steps
         self.generator_learning_rate = generator_learning_rate
@@ -75,6 +76,8 @@ class Trainer:
         self.expert_noise_std = expert_noise_std
 
         # ROS2 components
+        self.move_client = MoveClient()
+        self.set_pose_client = SetPoseClient()
         self.world_control_client = WorldControlClient()
         self.controller_client = ControllerClient()
         self.localization_client = LocalizationClient()
@@ -86,10 +89,18 @@ class Trainer:
         )
 
         # Fetch and process expert demonstrations
-        self.demo_trajectories = fetch_demo_trajectories(
-            self.project,
-            self.expert_noise_std,
+        self.demo_trajectories, determined_max_step_count, determined_max_vals = (
+            fetch_demo_trajectories(
+                self.project,
+                self.expert_noise_std,
+            )
         )
+        self.max_step_count = (
+            self.max_step_count
+            if self.max_step_count
+            else int(determined_max_step_count * 1.5)
+        )
+        self.max_vals = determined_max_vals
         self.demo_batches = trajectories_to_batches(self.demo_trajectories)
         self.demo_imitations = trajectories_to_imitations(self.demo_trajectories)
         self.flattened_demo_trajectories = rollout.flatten_trajectories(
@@ -99,11 +110,14 @@ class Trainer:
 
         # Environment set up
         self.eval_environment = Environment(
-            seed,
-            max_step_count,
-            project["tensor_spec"]["input_features"],
-            project["random_spawn_space"],
+            self.seed,
+            self.max_step_count,
+            self.max_vals,
+            self.project["tensor_spec"]["input_features"],
+            self.project["random_spawn_space"],
             self.data_collector_client,
+            self.move_client,
+            self.set_pose_client,
             self.controller_client,
             self.localization_client,
             True,
@@ -128,9 +142,12 @@ class Trainer:
             env_make_kwargs={
                 "seed": self.seed,
                 "max_step_count": self.max_step_count,
+                "max_vals": self.max_vals,
                 "input_features": self.project["tensor_spec"]["input_features"],
                 "random_spawn_space": self.project["random_spawn_space"],
                 "data_collector_client": self.data_collector_client,
+                "move_client": self.move_client,
+                "set_pose_client": self.set_pose_client,
                 "controller_client": self.controller_client,
                 "localization_client": self.localization_client,
                 "initialized": True,
@@ -222,6 +239,10 @@ class Trainer:
             training_metrics,
             is_final=True,
         )
+
+        # Finished training
+        self.data_collector_client.get_logger().info("FINISHED TRAINING")
+        self._stop_simulation()
 
     def _initialize_training_metrics(self) -> dict[str, list[float]]:
         return {
@@ -320,7 +341,7 @@ class Trainer:
         self,
         generator: TRPO,
         reward_net: VAIRLRewardNet,
-        n_trajs: int = 20,
+        n_trajs: int = 1,  # 20
     ):
         """
         Generate an array of trajectories and return the reward mean and standard deviation from the trajectories.
@@ -382,6 +403,7 @@ class Trainer:
         """
         Starts up simulation with controls and localization.
         """
+        self._ready_gazebo()
         self.world_control_client.play_simulation()
         self.localization_client.start_localization()
         self.controller_client.start_controller()
@@ -393,3 +415,18 @@ class Trainer:
         self.localization_client.reset_localization()
         self.controller_client.reset_controller()
         self.world_control_client.pause_simulation()
+
+    def _ready_gazebo(headless: bool = False):
+        """
+        Configure environment variables and hints for faster Gazebo RL training.
+        """
+        # Run as fast as possible
+        os.environ["GAZEBO_REAL_TIME_UPDATE_RATE"] = "0"
+
+        # Reduce rendering load
+        if headless:
+            os.environ["DISPLAY"] = ""  # disables GUI
+            os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
+        # Reduce sensor overhead (optional)
+        os.environ["GAZEBO_SENSOR_NOISE"] = "0"

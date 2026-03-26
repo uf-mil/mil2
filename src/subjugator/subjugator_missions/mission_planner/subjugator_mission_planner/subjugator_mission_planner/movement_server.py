@@ -1,3 +1,4 @@
+import copy
 import math
 import time
 
@@ -12,6 +13,8 @@ from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
 from subjugator_msgs.action import Move
 from tf2_ros import Buffer, TransformListener
+
+TIMEOUT_LENGTH = 0.5
 
 
 class MovementServer(Node):
@@ -39,6 +42,13 @@ class MovementServer(Node):
         self.current_pose = Pose()
         self.last_pose = None
 
+        # Timeout initializer
+        self.last_recorded_pose = None
+        self.velocity = 0.0
+        self.angular_velocity = 0.0
+        self.start_timeout = False
+        self.terminate = False
+
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
@@ -60,7 +70,7 @@ class MovementServer(Node):
     def odom_callback(self, msg):
         self.current_pose = msg.pose.pose
 
-    def check_at_goal_pose(self, currentPose, goalPose, acceptableDist=0.05):
+    def check_at_goal_pose(self, currentPose, goalPose, acceptableDist=0.5):
         x_dist = currentPose.position.x - goalPose.position.x
         y_dist = currentPose.position.y - goalPose.position.y
         z_dist = currentPose.position.z - goalPose.position.z
@@ -69,6 +79,42 @@ class MovementServer(Node):
         j_dist = currentPose.orientation.y - goalPose.orientation.y
         k_dist = currentPose.orientation.z - goalPose.orientation.z
         w_dist = currentPose.orientation.w - goalPose.orientation.w
+
+        if self.last_recorded_pose:
+
+            x_step_dist = currentPose.position.x - self.last_recorded_pose.position.x
+            y_step_dist = currentPose.position.y - self.last_recorded_pose.position.y
+            z_step_dist = currentPose.position.z - self.last_recorded_pose.position.z
+
+            i_step_dist = (
+                currentPose.orientation.x - self.last_recorded_pose.orientation.x
+            )
+            j_step_dist = (
+                currentPose.orientation.y - self.last_recorded_pose.orientation.y
+            )
+            k_step_dist = (
+                currentPose.orientation.z - self.last_recorded_pose.orientation.z
+            )
+            w_step_dist = (
+                currentPose.orientation.w - self.last_recorded_pose.orientation.w
+            )
+
+            self.velocity = math.sqrt(x_step_dist**2 + y_step_dist**2 + z_step_dist**2)
+            self.angular_velocity = math.sqrt(
+                i_step_dist**2 + j_step_dist**2 + k_step_dist**2 + w_step_dist**2,
+            )
+
+            has_not_moved = self.velocity < 1e-3 and self.angular_velocity < 1e-3
+
+            if self.start_timeout and has_not_moved:
+                self.get_logger().info(
+                    f"Terminating because {self.velocity:.8f} and {self.angular_velocity:.8f} are less than 0.001",
+                )
+                self.terminate = True
+
+            self.start_timeout = has_not_moved
+
+        self.last_recorded_pose = copy.deepcopy(currentPose)
 
         distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
         orientation_to_goal = math.sqrt(i_dist**2 + j_dist**2 + k_dist**2 + w_dist**2)
@@ -84,7 +130,9 @@ class MovementServer(Node):
             self.get_logger().info("Using last goal pose as reference")
         else:
             reference_pose = self.current_pose
-            self.get_logger().info("No previous goal, using current pose as reference")
+            self.get_logger().info(
+                "No previous goa.copy()l, using current pose as reference",
+            )
 
         # Generate goal poses for orbit
         if self.movementType == "Relative":
@@ -150,20 +198,37 @@ class MovementServer(Node):
 
         self.goal_pub.publish(goal_pose)
 
+        result = Move.Result()
+
         near_goal_pose = False
         while not near_goal_pose:
             near_goal_pose = self.check_at_goal_pose(self.current_pose, goal_pose, 0.2)
 
+            if self.terminate:
+                self.get_logger().info("Oh no! I got stuck!")
+                self.last_pose = self.current_pose
+                goal_handle.abort()
+                result.success = False
+                result.message = "Got stuck..."
+
+                # Reset flags
+                self.terminate = False
+                self.start_timeout = False
+
+                return result
+
             # slow down the loop
-            self.get_clock().sleep_for(rclpy.duration.Duration(seconds=0.05))
+            self.get_clock().sleep_for(
+                rclpy.duration.Duration(
+                    seconds=TIMEOUT_LENGTH if self.start_timeout else 0.05,
+                ),
+            )
 
         self.last_pose = goal_pose
         self.get_logger().info("Arrived at goal pose!")
-
         self.get_logger().info("Completed movement!")
 
         goal_handle.succeed()
-        result = Move.Result()
         result.success = True
         result.message = "Successfully moved to goal pose"
         time.sleep(1.0)
