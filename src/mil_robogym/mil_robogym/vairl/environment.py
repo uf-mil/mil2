@@ -116,6 +116,9 @@ class Environment(gym.Env):
         # Send zero movement
         # self.move_client.move((0.0, 0.0, 0.0, 0.0))
 
+        # Move to spawn position to ground movement client.
+        self.move_client.move((0, 0, 0, 0))
+
         # Record state
         self.state = self.data_collector_client.get_flattened_snapshot_values(
             self.input_features,

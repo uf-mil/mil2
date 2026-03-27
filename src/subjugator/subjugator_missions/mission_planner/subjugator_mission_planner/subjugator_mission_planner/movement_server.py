@@ -152,6 +152,8 @@ class MovementServer(Node):
 
         self.goal_pub.publish(goal_pose)
 
+        result = Move.Result()
+
         near_goal_pose = False
         while not near_goal_pose:
             near_goal_pose = self.check_at_goal_pose(self.current_pose, goal_pose, 0.2)
