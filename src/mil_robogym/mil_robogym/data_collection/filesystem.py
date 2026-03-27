@@ -7,12 +7,15 @@ from pathlib import Path
 
 import yaml
 
+from ..vairl.training_settings import get_default_training_settings
 from .types import (
     Coord4D,
+    RoboGymAgentConfig,
     RoboGymDemoConfig,
     RoboGymDemoYaml,
     RoboGymProjectConfig,
     RoboGymProjectYaml,
+    RoboGymTrainingYaml,
 )
 from .utils import (
     resolve_package_share_dir,
@@ -170,7 +173,7 @@ def _build_demo_config(
 
 def _write_yaml_config(
     config_path: Path,
-    cfg: RoboGymProjectConfig | RoboGymDemoConfig,
+    cfg: RoboGymProjectConfig | RoboGymDemoConfig | RoboGymAgentConfig,
 ) -> None:
     with config_path.open("w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
@@ -182,8 +185,9 @@ def _build_agent_config(
     num_demos: int,
     model_file_name: str,
     checkpoint_episode: int | None,
-) -> dict[str, dict[str, object]]:
-    cfg: dict[str, dict[str, object]] = {
+    training_settings: RoboGymTrainingYaml | None = None,
+) -> RoboGymAgentConfig:
+    cfg: RoboGymAgentConfig = {
         "robogym_agent": {
             "name": agent_name,
             "num_demos": num_demos,
@@ -192,7 +196,21 @@ def _build_agent_config(
     }
     if checkpoint_episode is not None:
         cfg["robogym_agent"]["checkpoint_episode"] = checkpoint_episode
+    if training_settings is not None:
+        cfg["robogym_agent"]["training_settings"] = dict(training_settings)
     return cfg
+
+
+def _read_yaml_mapping(config_path: Path) -> dict[str, object]:
+    if not config_path.is_file():
+        return {}
+
+    parsed = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    if parsed is None:
+        return {}
+    if not isinstance(parsed, dict):
+        raise ValueError(f"Config at {config_path} must be a mapping.")
+    return dict(parsed)
 
 
 METADATA_CSV_HEADERS = ("topic", "relative_path")
@@ -445,7 +463,10 @@ def create_project_folder(
         (project_dir / "demos").mkdir(exist_ok=True)
 
     _validate_project_config_payload(project)
-    cfg: RoboGymProjectConfig = {"robogym_project": project}
+    cfg: RoboGymProjectConfig = {
+        "robogym_project": project,
+        "robogym_training": get_default_training_settings(),
+    }
     for project_dir in project_dirs:
         _write_yaml_config(project_dir / "config.yaml", cfg)
 
@@ -512,7 +533,13 @@ def edit_project(
         (source_target_project_dir / "demos").mkdir(exist_ok=True)
 
     _validate_project_config_payload(project)
+    existing_cfg = _read_yaml_mapping(project_dir / "config.yaml")
+    preserved_training_settings = existing_cfg.get("robogym_training")
     cfg: RoboGymProjectConfig = {"robogym_project": project}
+    if isinstance(preserved_training_settings, dict):
+        cfg["robogym_training"] = preserved_training_settings
+    else:
+        cfg["robogym_training"] = get_default_training_settings()
     _write_yaml_config(project_dir / "config.yaml", cfg)
     if source_target_project_dir is not None:
         _write_yaml_config(source_target_project_dir / "config.yaml", cfg)
@@ -578,6 +605,7 @@ def create_agent_folder(
     model_file_name: str = "weights.pt",
     agent_name: str | None = None,
     checkpoint_episode: int | None = None,
+    training_settings: RoboGymTrainingYaml | None = None,
 ) -> Path:
     """
     Create a timestamped agent folder under <project_dir>/agents/
@@ -625,6 +653,7 @@ def create_agent_folder(
         num_demos=num_demos,
         model_file_name=model_file_name,
         checkpoint_episode=checkpoint_episode,
+        training_settings=training_settings,
     )
     with (agent_dir / "config.yaml").open("w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
@@ -772,3 +801,21 @@ def get_training_project_dir_path(project: RoboGymProjectYaml) -> Path:
     Get the preferred project directory for generated training artifacts.
     """
     return get_training_project_dir_paths(project)[0]
+
+
+def update_project_training_settings(
+    project: RoboGymProjectYaml,
+    training_settings: RoboGymTrainingYaml,
+) -> list[Path]:
+    """
+    Update the persisted training settings for a project across all project roots.
+    """
+    updated_paths: list[Path] = []
+    for project_dir in get_training_project_dir_paths(project):
+        config_path = project_dir / "config.yaml"
+        cfg = _read_yaml_mapping(config_path)
+        cfg["robogym_project"] = project
+        cfg["robogym_training"] = dict(training_settings)
+        _write_yaml_config(config_path, cfg)
+        updated_paths.append(config_path)
+    return updated_paths

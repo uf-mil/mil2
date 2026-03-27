@@ -188,6 +188,7 @@ def _build_trainer(
     trainer.num_episodes = num_episodes
     trainer.seed = 42
     trainer.env_id = "TrainerSaveTest-v0"
+    trainer.expert_noise_std = 1e-4
     trainer.max_vals = []
     trainer.data_collector_client = types.SimpleNamespace(
         get_logger=lambda: types.SimpleNamespace(info=lambda _message: None),
@@ -256,7 +257,10 @@ def test_train_saves_periodic_and_final_checkpoints(tmp_path: Path, monkeypatch)
     )
     assert checkpoint_cfg["robogym_agent"]["num_demos"] == 2
     assert checkpoint_cfg["robogym_agent"]["checkpoint_episode"] == 2
+    assert checkpoint_cfg["robogym_agent"]["training_settings"]["num_episodes"] == 3
+    assert checkpoint_cfg["robogym_agent"]["training_settings"]["rollout_steps"] == 32
     assert final_cfg["robogym_agent"]["num_demos"] == 2
+    assert final_cfg["robogym_agent"]["training_settings"]["save_every"] == 2
     assert "checkpoint_episode" not in final_cfg["robogym_agent"]
 
     assert (source_agents[0] / "generator_model.zip").is_file()

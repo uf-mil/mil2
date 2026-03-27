@@ -4,10 +4,7 @@ from typing import Any, Mapping
 
 from mil_robogym.data_collection.types import RoboGymProjectYaml
 from mil_robogym.vairl.trainer import Trainer
-
-UI_TEST_NUM_EPISODES = 1
-UI_TEST_ROLLOUT_STEPS = 8
-UI_TEST_MAX_STEP_COUNT = 3
+from mil_robogym.vairl.training_settings import normalize_training_settings
 
 
 class TrainTestViewController:
@@ -23,6 +20,7 @@ class TrainTestViewController:
         self.project: RoboGymProjectYaml | None = None
 
         self.trainer: Trainer | None = None
+        self.training_settings: dict[str, object] = {}
 
     def set_context(self, project: Mapping[str, Any] | None = None) -> None:
 
@@ -30,8 +28,11 @@ class TrainTestViewController:
         self.project = (
             project.get("robogym_project", {}) if project is not None else None
         )
-
-        self.trainer = Trainer(self.project) if self.project is not None else None
+        raw_training_settings = (
+            project.get("robogym_training", {}) if project is not None else {}
+        )
+        self.training_settings = normalize_training_settings(raw_training_settings)
+        self.trainer = None
 
     def navigate_to_home(self, _event=None) -> None:
         """
@@ -45,35 +46,29 @@ class TrainTestViewController:
         """
         self.app.show_page("view_project", project=self.raw_project)
 
+    def navigate_to_settings(self) -> None:
+        """
+        Navigate to the training settings page.
+        """
+        self.app.show_page("training_settings", project=self.raw_project)
+
     def start_training(self) -> None:
         """
         Start training loop.
         """
-        if self.trainer is None:
+        if self.project is None:
             self.view.set_terminal_text("Training unavailable: no project is loaded.")
             return
 
         self.view.set_training_enabled(False)
         self.view.set_terminal_text(
-            "Training agent for 1 very short episode...\n"
+            "Training agent with saved settings...\n"
             "The history and metrics panels will refresh when it finishes.",
         )
         self.view.flush_ui_updates()
 
-        self.trainer.num_episodes = UI_TEST_NUM_EPISODES
-        self.trainer.rollout_steps = min(
-            self.trainer.rollout_steps,
-            UI_TEST_ROLLOUT_STEPS,
-        )
-        current_max_step_count = self.trainer.max_step_count
-        if current_max_step_count is None:
-            self.trainer.max_step_count = UI_TEST_MAX_STEP_COUNT
-        else:
-            self.trainer.max_step_count = min(
-                current_max_step_count,
-                UI_TEST_MAX_STEP_COUNT,
-            )
         try:
+            self.trainer = Trainer(self.project, **self.training_settings)
             saved_agent_dirs = self.trainer.train()
             latest_agent_name = saved_agent_dirs[0].name if saved_agent_dirs else None
             self.view.refresh_project_artifacts(latest_agent_name)

@@ -31,6 +31,7 @@ class TrainTestPage(tk.Frame):
             self,
             self.controller.navigate_to_home,
             self.controller.navigate_to_project,
+            self.controller.navigate_to_settings,
         )
         self.history_section = HistorySection(
             self,

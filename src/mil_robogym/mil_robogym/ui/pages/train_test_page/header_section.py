@@ -12,6 +12,7 @@ class HeaderSection:
         parent: tk.Widget,
         on_home_click: Callable[[object], None],
         on_project_click: Callable[[object], None],
+        on_settings_click: Callable[[], None],
     ) -> None:
         """Render breadcrumb, last-session text, and modify button."""
         self.container = tk.Frame(parent, bg="#DADADA")
@@ -70,8 +71,29 @@ class HeaderSection:
         )
         self.last_training_label.grid(row=1, column=0, sticky="w", pady=(4, 0))
 
+        self.actions_frame = tk.Frame(self.container, bg="#DADADA")
+        self.actions_frame.grid(row=0, column=1, rowspan=2, sticky="ne")
+        self.actions_frame.grid_columnconfigure(0, weight=0)
+        self.actions_frame.grid_columnconfigure(1, weight=0)
+
+        self.settings_button = tk.Button(
+            self.actions_frame,
+            text="Settings",
+            command=on_settings_click,
+            bg="#ECECEC",
+            activebackground="#DFDFDF",
+            fg="black",
+            relief="solid",
+            bd=1,
+            font=("Arial", 10),
+            padx=10,
+            pady=2,
+            cursor="hand2",
+        )
+        self.settings_button.grid(row=0, column=0, sticky="e", padx=(0, 8))
+
         self.modify_layers_button = tk.Button(
-            self.container,
+            self.actions_frame,
             text="Modify Agent Layers",
             command=self._on_modify_layers_click,
             bg="#ECECEC",
@@ -84,7 +106,7 @@ class HeaderSection:
             pady=2,
             cursor="hand2",
         )
-        self.modify_layers_button.grid(row=0, column=1, rowspan=2, sticky="ne")
+        self.modify_layers_button.grid(row=0, column=1, sticky="e")
 
     def set_project_name(self, project_name: str) -> None:
         """Update breadcrumb project text."""

@@ -25,6 +25,7 @@ from ..clients.set_pose_client import SetPoseClient
 from ..clients.world_control_client import WorldControlClient
 from .environment import GYMNASIUM, Environment
 from .reward_net import VAIRLRewardNet
+from .training_settings import DEFAULT_TRAINING_SETTINGS
 from .utils import (
     fetch_demo_trajectories,
     trajectories_to_batches,
@@ -44,19 +45,23 @@ class Trainer:
         self,
         project: RoboGymProjectYaml,
         max_step_count: int | None = None,
-        num_episodes: int = 500,
-        rollout_steps: int = 2048,
-        generator_learning_rate: float = 1e-3,
-        discriminator_learning_rate: float = 3e-3,
-        z_size: int = 6,
-        e_hidden_size: int = 128,
-        i_c: int = 0.5,
-        beta_step_size: float = 1e-3,
-        gamma: float = 0.99,
-        save_every: int = 10,
-        seed: int = 42,
+        num_episodes: int = DEFAULT_TRAINING_SETTINGS["num_episodes"],
+        rollout_steps: int = DEFAULT_TRAINING_SETTINGS["rollout_steps"],
+        generator_learning_rate: float = DEFAULT_TRAINING_SETTINGS[
+            "generator_learning_rate"
+        ],
+        discriminator_learning_rate: float = DEFAULT_TRAINING_SETTINGS[
+            "discriminator_learning_rate"
+        ],
+        z_size: int = DEFAULT_TRAINING_SETTINGS["z_size"],
+        e_hidden_size: int = DEFAULT_TRAINING_SETTINGS["e_hidden_size"],
+        i_c: float = DEFAULT_TRAINING_SETTINGS["i_c"],
+        beta_step_size: float = DEFAULT_TRAINING_SETTINGS["beta_step_size"],
+        gamma: float = DEFAULT_TRAINING_SETTINGS["gamma"],
+        save_every: int = DEFAULT_TRAINING_SETTINGS["save_every"],
+        seed: int = DEFAULT_TRAINING_SETTINGS["seed"],
         env_id: str = "VairlROS2-v0",
-        expert_noise_std: float = 1e-4,
+        expert_noise_std: float = DEFAULT_TRAINING_SETTINGS["expert_noise_std"],
     ):
         # Save all parameters to class attributes
         self.project = project
@@ -342,6 +347,7 @@ class Trainer:
                         model_file_name=GENERATOR_MODEL_FILE_NAME,
                         agent_name=agent_name,
                         checkpoint_episode=checkpoint_episode,
+                        training_settings=self._resolved_training_settings(),
                     ),
                 )
 
@@ -439,6 +445,23 @@ class Trainer:
             trajectories.append(traj)
 
         return trajectories, float(np.mean(rewards)), float(np.std(rewards))
+
+    def _resolved_training_settings(self) -> dict[str, int | float | None]:
+        return {
+            "num_episodes": self.num_episodes,
+            "rollout_steps": self.rollout_steps,
+            "generator_learning_rate": self.generator_learning_rate,
+            "discriminator_learning_rate": self.discriminator_learning_rate,
+            "z_size": self.z_size,
+            "e_hidden_size": self.e_hidden_size,
+            "i_c": self.i_c,
+            "beta_step_size": self.beta_step_size,
+            "gamma": self.gamma,
+            "save_every": self.save_every,
+            "seed": self.seed,
+            "max_step_count": self.max_step_count,
+            "expert_noise_std": self.expert_noise_std,
+        }
 
     def _ready_simulation(self):
         """

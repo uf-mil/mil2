@@ -39,6 +39,21 @@ def test_create_agent_folder_creates_files(tmp_path: Path):
         created_at=dt,
         model_file_name="generator_model.zip",
         checkpoint_episode=10,
+        training_settings={
+            "num_episodes": 500,
+            "rollout_steps": 2048,
+            "generator_learning_rate": 1e-3,
+            "discriminator_learning_rate": 3e-3,
+            "z_size": 6,
+            "e_hidden_size": 128,
+            "i_c": 0.5,
+            "beta_step_size": 1e-3,
+            "gamma": 0.99,
+            "save_every": 10,
+            "seed": 42,
+            "max_step_count": None,
+            "expert_noise_std": 1e-4,
+        },
     )
 
     assert agent_dir.name == "2026_02_22_11_00_pm"
@@ -48,6 +63,8 @@ def test_create_agent_folder_creates_files(tmp_path: Path):
     assert config["robogym_agent"]["num_demos"] == 11
     assert config["robogym_agent"]["model_file"] == "generator_model.zip"
     assert config["robogym_agent"]["checkpoint_episode"] == 10
+    assert config["robogym_agent"]["training_settings"]["num_episodes"] == 500
+    assert config["robogym_agent"]["training_settings"]["max_step_count"] is None
     assert (agent_dir / "training_metrics.csv").exists()
 
 

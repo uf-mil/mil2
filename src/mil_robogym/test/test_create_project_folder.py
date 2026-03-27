@@ -44,6 +44,8 @@ def test_create_project_folder(tmp_path: Path, monkeypatch):
 
     parsed = yaml.safe_load(cfg)
     assert parsed["robogym_project"]["name"] == "Start Gate Agent"
+    assert parsed["robogym_training"]["num_episodes"] == 500
+    assert parsed["robogym_training"]["max_step_count"] is None
     assert parsed["robogym_project"]["input_topics"]["imu/processed"] == [
         "orientation.x",
         "orientation.y",
