@@ -3,8 +3,6 @@ from tkinter import ttk
 from typing import Callable
 
 from mil_robogym.data_collection.filesystem import create_demo_folder
-from mil_robogym.data_collection.get_all_project_config import find_projects_dir
-from mil_robogym.data_collection.utils import to_lower_snake_case
 
 
 class CreateDemoPopup:
@@ -48,8 +46,8 @@ class CreateDemoPopup:
 
         self.rate_var = tk.StringVar(value="10")
 
-        # allow only integers
-        vcmd = (self.win.register(self._validate_int), "%P")
+        # allow only number
+        vcmd = (self.win.register(self._validate_number), "%P")
         self.rate_entry = ttk.Entry(
             container,
             textvariable=self.rate_var,
@@ -74,19 +72,25 @@ class CreateDemoPopup:
         # Handle window close (same as cancel)
         self.win.protocol("WM_DELETE_WINDOW", self._cancel)
 
-    def _validate_int(self, value):
+    def _validate_number(self, value):
         """Allow empty string or digits only."""
-        return value.isdigit() or value == ""
+        if value == "":
+            return True
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
 
     def _create(self):
         """User clicked 'Create Demo', a demo folder is created, and user is brought to demo page."""
         name = self.name_var.get().strip()
         rate_text = self.rate_var.get().strip()
 
-        sampling_rate = int(rate_text) if rate_text else None
+        sampling_rate = float(rate_text) if rate_text else None
 
         _path, cfg = create_demo_folder(
-            find_projects_dir() / to_lower_snake_case(self.parent.project_name),
+            self.parent.project["robogym_project"],
             name=name,
             sampling_rate=sampling_rate,
         )

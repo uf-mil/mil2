@@ -99,7 +99,7 @@ void Hydrophone::GatherWorldInfo(gz::sim::Entity const &entity, std::shared_ptr<
             // std::cout << "Entity Name: " << entityName << std::endl;
 
             // If entity is hydrophone, store its entity
-            if (entityName == "hydrophone_sensor_link")
+            if (entityName == "sub9")
             {
                 this->hydrophoneEntity_ = ent;
             }
