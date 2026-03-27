@@ -5,6 +5,32 @@ from electrical_protocol import Packet
 
 
 @dataclass
+class TemperaturePacketRequest(
+    Packet,
+    class_id=0x02,
+    subclass_id=0x05,
+    payload_format="",
+):
+    """
+    Request data from all temperature sensors.
+    """
+
+
+@dataclass
+class TemperaturePacketRecieve(
+    Packet,
+    class_id=0x02,
+    subclass_id=0x06,
+    payload_format="<f",
+):
+    """
+    Receiving data from all temperature sensors.
+    """
+
+    t0: float
+
+
+@dataclass
 class HeartbeatSetPacket(Packet, class_id=0x02, subclass_id=0x00, payload_format=""):
     """
     Heartbeat packet sent by the motherboard to the thrust/kill board.

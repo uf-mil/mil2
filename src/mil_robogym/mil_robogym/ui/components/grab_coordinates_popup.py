@@ -1,0 +1,92 @@
+import tkinter as tk
+from typing import Callable
+
+
+class GrabCoordinatesPopup:
+    def __init__(
+        self,
+        parent: tk.Frame,
+        record_callback: Callable[[], None],
+        finish_callback: Callable | None = None,
+        num_coordinates: int = 2,
+    ):
+        """
+        parent                  : root Tk window
+        record_callback()       : function that calls your ROS2 service
+                                  and RETURNS a 4D coordinate (tuple/list)
+        finish_callback(coords[]) : function that receives the recorded coordinates.
+        """
+        self.parent = parent
+        self.record_callback = record_callback
+        self.finish_callback = finish_callback
+        self.num_coordinates = num_coordinates
+
+        self.coords = [None] * num_coordinates
+        self.index = 0  # which coordinate we are recording
+
+        # Build window
+        self.win = tk.Toplevel(parent)
+        self.win.title("Grabbing Coordinates From Simulation")
+        self.win.geometry("420x180")
+
+        container = tk.Frame(self.win, padx=20, pady=20)
+        container.pack(fill="both", expand=True)
+
+        self.labels = []
+
+        for i in range(num_coordinates):
+            label = tk.Label(
+                container,
+                text=f"4D-Coordinate {"" if num_coordinates == 1 else i+1}: Not Recorded",
+                anchor="w",
+                font=("Arial", 11),
+            )
+
+            label.pack(fill="x", pady=5)
+
+            self.labels.append(label)
+
+        self.record_btn = tk.Button(
+            container,
+            text="Record Coordinate",
+            command=self.record_coordinate,
+            height=2,
+            width=20,
+        )
+        self.record_btn.pack(pady=15)
+
+        self.win.protocol("WM_DELETE_WINDOW", self.finish)
+
+    def record_coordinate(self):
+        """Called when button is pressed."""
+
+        coord = self.record_callback()  # GetGZPose Response
+        if coord is None:
+            return
+
+        self.coords[self.index] = (coord.x, coord.y, coord.z, coord.yaw)
+
+        formatted = f"({coord.x:.2f}, {coord.y:.2f}, {coord.z:.2f}, {coord.yaw:.2f})"
+
+        self.labels[self.index].config(
+            text=(
+                f"4D-Coordinate: {formatted}"
+                if self.num_coordinates == 1
+                else f"4D-Coordinate {self.index + 1}: {formatted}"
+            ),
+        )
+
+        self.index += 1
+
+        # If we captured both → auto close
+        if self.index >= self.num_coordinates:
+            self.finish()
+
+    def finish(self):
+        """
+        Process coordinates through finish callback.
+        """
+        self.win.destroy()
+
+        if self.finish_callback:
+            self.finish_callback(self.coords)

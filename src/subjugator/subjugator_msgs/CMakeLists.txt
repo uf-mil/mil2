@@ -19,6 +19,7 @@ rosidl_generate_interfaces(
   "msg/Path.msg"
   "msg/PathPoint.msg"
   "msg/ThrusterEfforts.msg"
+  "msg/Temperature.msg"
   "msg/Trajectory.msg"
   "msg/Waypoint.msg"
   "msg/Centroid.msg"
