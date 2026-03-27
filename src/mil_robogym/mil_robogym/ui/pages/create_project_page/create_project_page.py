@@ -200,7 +200,6 @@ class CreateProjectPage(tk.Frame):
             None.
         """
         c1, c2 = coords
-
         self.random_spawn_section.set_collected_coords(c1, c2)
 
         if self.keyboard_controls_gui is not None:

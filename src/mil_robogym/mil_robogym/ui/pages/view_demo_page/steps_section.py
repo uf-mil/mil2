@@ -44,6 +44,8 @@ class StepsSection(tk.Frame):
         super().__init__(parent, bg="#CFCFCF", width=260)
         self.controller = controller
 
+        self.last_pose = None
+
         self.grid_propagate(False)
 
         tk.Label(
