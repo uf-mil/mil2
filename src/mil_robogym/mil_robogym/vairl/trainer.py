@@ -241,8 +241,8 @@ class Trainer:
         )
 
         # Finished training
-        self.data_collector_client.get_logger().info("FINISHED TRAINING")
         self._stop_simulation()
+        self.data_collector_client.get_logger().info("FINISHED TRAINING")
         return final_saved_agent_dirs
 
     def _initialize_training_metrics(self) -> dict[str, list[float]]:

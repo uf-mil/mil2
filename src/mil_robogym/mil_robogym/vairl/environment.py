@@ -70,6 +70,7 @@ class Environment(gym.Env):
 
             # Tracked values
             self.state = None
+            self.pose = np.zeros(4, dtype=np.float32)
             self.t = 0
             self.rng = np.random.default_rng(seed)
 
@@ -105,11 +106,15 @@ class Environment(gym.Env):
 
         # Set position
         x, y, z, yaw = np.random.uniform(low=self.min_coord, high=self.max_coord)
+        self.pose = np.array([x, y, z, yaw])
         self.set_pose_client.set_pose(x, y, z, yaw=yaw)
 
         # Reset controller and localization
-        self.controller_client.reset_controller()
-        self.localization_client.reset_localization()
+        # self.localization_client.reset_localization()
+        # self.controller_client.reset_controller()
+
+        # Send zero movement
+        # self.move_client.move((0.0, 0.0, 0.0, 0.0))
 
         # Move to spawn position to ground movement client.
         self.move_client.move((0, 0, 0, 0))
@@ -136,16 +141,21 @@ class Environment(gym.Env):
         self.t += 1
 
         action = np.asarray(action, dtype=np.float32)
+        self.pose += action
         dx, dy, dz, dyaw = action
+        x, y, z, yaw = self.pose
 
         env_reward = 0.0
 
+        # Fast move
+        self.set_pose_client.set_pose(x, y, z, yaw=yaw)
+
         # Publish a goal pose and wait for action to be completed
-        did_successful_movement = self.move_client.move((dx, dy, dz, dyaw))
+        # did_successful_movement = self.move_client.move((dx, dy, dz, dyaw))
 
         # Determine if it hits an obstacle and deduct points
-        if not did_successful_movement:
-            env_reward -= 1.0
+        # if not did_successful_movement:
+        #    env_reward -= 1.0
 
         # Record next state
         next_state = self.data_collector_client.get_flattened_snapshot_values(
