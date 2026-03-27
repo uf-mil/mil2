@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import torch
 from imitation.data import rollout
@@ -122,6 +120,24 @@ class Trainer:
         Train the VAIRL algorithm.
         """
         self._ready_simulation()
+
+        # LOCALIZATION TEST
+        self.set_pose_client.set_pose(0.0, 0.0, 0.0, yaw=0.0)
+
+        self.localization_client.reset_localization()
+        self.controller_client.reset_controller()
+
+        self.move_client.move((5.0, 5.0, 0.0, 0.0))
+        self.move_client.move((1.0, -1.0, 0.0, 0.0))
+
+        self.set_pose_client.set_pose(0.0, 0.0, 0.0, yaw=0.0)
+
+        self.localization_client.reset_localization()
+        self.controller_client.reset_controller()
+
+        self.move_client.move((-1.0, -1.0, 0.0, 0.0))
+
+        return
 
         # Create training environment
         train_venv = make_vec_env(
@@ -294,7 +310,6 @@ class Trainer:
         """
         Starts up simulation with controls and localization.
         """
-        self._ready_gazebo()
         self.world_control_client.play_simulation()
         self.localization_client.start_localization()
         self.controller_client.start_controller()
@@ -306,18 +321,3 @@ class Trainer:
         self.localization_client.reset_localization()
         self.controller_client.reset_controller()
         self.world_control_client.pause_simulation()
-
-    def _ready_gazebo(headless: bool = False):
-        """
-        Configure environment variables and hints for faster Gazebo RL training.
-        """
-        # Run as fast as possible
-        os.environ["GAZEBO_REAL_TIME_UPDATE_RATE"] = "0"
-
-        # Reduce rendering load
-        if headless:
-            os.environ["DISPLAY"] = ""  # disables GUI
-            os.environ["QT_QPA_PLATFORM"] = "offscreen"
-
-        # Reduce sensor overhead (optional)
-        os.environ["GAZEBO_SENSOR_NOISE"] = "0"

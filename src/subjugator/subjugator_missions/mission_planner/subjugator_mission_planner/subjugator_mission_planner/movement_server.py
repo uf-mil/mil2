@@ -1,7 +1,6 @@
 import copy
 import math
 
-import numpy as np
 import rclpy
 import rclpy.duration
 from geometry_msgs.msg import Pose
@@ -9,7 +8,6 @@ from nav_msgs.msg import Odometry
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from scipy.spatial.transform import Rotation as R
 from subjugator_msgs.action import Move
 from tf2_ros import Buffer, TransformListener
 
@@ -36,7 +34,7 @@ class MovementServer(Node):
         self.create_subscription(Odometry, "/odometry/filtered", self.odom_callback, 10)
 
         # Publisher for goal poses
-        self.goal_pub = self.create_publisher(Pose, "/goal_pose", 10)
+        self.goal_pub = self.create_publisher(Pose, "goal/trajectory_relative", 1)
 
         # initialize pose
         self.current_pose = Pose()
@@ -124,84 +122,35 @@ class MovementServer(Node):
         return distance_to_goal < acceptableDist and orientation_to_goal < 0.05
 
     def execute_callback(self, goal_handle):
+        result = Move.Result()
+
         self.get_logger().info(
             f"Executing move to {self.movementGoal}, {self.movementType}",
         )
-        # Choose reference pose if last pose is set
-        if self.last_pose is not None:
-            reference_pose = self.last_pose
-            self.get_logger().info("Using last goal pose as reference")
-        else:
-            reference_pose = self.current_pose
-            self.get_logger().info(
-                "No previous goa.copy()l, using current pose as reference",
-            )
 
         # Generate goal poses for orbit
-        if self.movementType == "Relative":
-            # Convert reference orientation to scipy Rotation object
-            ref_quat = [
-                reference_pose.orientation.x,
-                reference_pose.orientation.y,
-                reference_pose.orientation.z,
-                reference_pose.orientation.w,
-            ]
-            ref_rot = R.from_quat(ref_quat)
+        if self.movementType == "Reset":
+            self.get_logger().info("Resetting goal pose reference")
 
-            # Relative position from goal
-            rel_position = np.array(
-                [
-                    self.movementGoal.position.x,
-                    self.movementGoal.position.y,
-                    self.movementGoal.position.z,
-                ],
-            )
-
-            # Rotate relative position into world frame
-            rotated_position = ref_rot.apply(rel_position)
-
-            # Add to current position
-            goal_position = (
-                np.array(
-                    [
-                        reference_pose.position.x,
-                        reference_pose.position.y,
-                        reference_pose.position.z,
-                    ],
-                )
-                + rotated_position
-            )
-
-            # Relative orientation (as Rotation)
-            rel_quat = [
-                self.movementGoal.orientation.x,
-                self.movementGoal.orientation.y,
-                self.movementGoal.orientation.z,
-                self.movementGoal.orientation.w,
-            ]
-            rel_rot = R.from_quat(rel_quat)
-
-            # Compose rotations: world_rot * relative_rot
-            goal_rot = ref_rot * rel_rot
-            goal_quat = goal_rot.as_quat()  # [x, y, z, w]
-
-            # Create absolute Pose
             goal_pose = Pose()
-            goal_pose.position.x = goal_position[0]
-            goal_pose.position.y = goal_position[1]
-            goal_pose.position.z = goal_position[2]
-            goal_pose.orientation.x = goal_quat[0]
-            goal_pose.orientation.y = goal_quat[1]
-            goal_pose.orientation.z = goal_quat[2]
-            goal_pose.orientation.w = goal_quat[3]
+            goal_pose.position.x = 0.0
+            goal_pose.position.y = 0.0
+            goal_pose.position.z = 0.0
+            goal_pose.orientation.x = 0.0
+            goal_pose.orientation.y = 0.0
+            goal_pose.orientation.z = 0.0
+            goal_pose.orientation.w = 1.0
 
-            self.get_logger().info(f"Converted move to absolute: {goal_pose}")
+            self.last_pose = goal_pose
+
+            goal_handle.succeed()
+            result.success = True
+            result.message = "Reset reference"
+            return result
         else:
             goal_pose = self.movementGoal
 
         self.goal_pub.publish(goal_pose)
-
-        result = Move.Result()
 
         near_goal_pose = False
         while not near_goal_pose:
@@ -209,6 +158,7 @@ class MovementServer(Node):
 
             if self.terminate:
                 self.get_logger().info("Oh no! I got stuck!")
+                self.last_pose = self.current_pose
                 goal_handle.abort()
                 result.success = False
                 result.message = "Got stuck..."
@@ -230,6 +180,7 @@ class MovementServer(Node):
         self.get_logger().info("Completed movement!")
 
         goal_handle.succeed()
+        self.last_pose = goal_pose
         result.success = True
         result.message = "Successfully moved to goal pose"
         return result

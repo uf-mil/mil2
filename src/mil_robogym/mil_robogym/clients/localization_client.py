@@ -1,5 +1,7 @@
 import rclpy
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from rclpy.node import Node
+from robot_localization.srv import SetPose
 from std_srvs.srv import Empty
 
 
@@ -18,9 +20,26 @@ class LocalizationClient(Node):
         )
 
         self.reset_client = self.create_client(
-            Empty,
-            "/subjugator_localization/reset",
+            SetPose,
+            "subjugator_localization/set_pose",
         )
+
+        # Set up reset request
+        self.reset_request = SetPose.Request()
+        self.reset_request.pose = PoseWithCovarianceStamped()
+
+        self.reset_request.pose.header.frame_id = "odom"
+
+        self.reset_request.pose.pose.pose.position.x = 0.0
+        self.reset_request.pose.pose.pose.position.y = 0.0
+        self.reset_request.pose.pose.pose.position.z = 0.0
+
+        self.reset_request.pose.pose.pose.orientation.x = 0.0
+        self.reset_request.pose.pose.pose.orientation.y = 0.0
+        self.reset_request.pose.pose.pose.orientation.z = 0.0
+        self.reset_request.pose.pose.pose.orientation.w = 1.0
+
+        self.reset_request.pose.pose.covariance = [0.0] * 36
 
     def start_localization(self):
         """
@@ -42,9 +61,7 @@ class LocalizationClient(Node):
         """
         self._wait_for_service()
 
-        req = Empty.Request()
-
-        future = self.reset_client.call_async(req)
+        future = self.reset_client.call_async(self.reset_request)
 
         rclpy.spin_until_future_complete(self, future)
 
@@ -59,5 +76,5 @@ class LocalizationClient(Node):
 
         while not self.reset_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info(
-                "Waiting for /subjugator_localization/reset service...",
+                "Waiting for /subjugator_localization/set_pose service...",
             )

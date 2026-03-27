@@ -20,7 +20,6 @@ from ..clients.data_collector_client import DataCollectorClient
 from ..clients.localization_client import LocalizationClient
 from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
-from ..clients.world_control_client import WorldControlClient
 
 
 class Environment(gym.Env):
@@ -53,7 +52,6 @@ class Environment(gym.Env):
             self.data_collector_client.get_snapshot()  # Initialize service with request
 
             # Clients
-            self.world_control_client = WorldControlClient()
             self.move_client = move_client or MoveClient()
             self.set_pose_client = set_pose_client or SetPoseClient()
             self.controller_client = controller_client or ControllerClient()
@@ -106,19 +104,12 @@ class Environment(gym.Env):
         self.t = 0
 
         # Set position
-        self.world_control_client.pause_simulation()
-
         x, y, z, yaw = np.random.uniform(low=self.min_coord, high=self.max_coord)
         self.set_pose_client.set_pose(x, y, z, yaw=yaw)
-
-        self.world_control_client.play_simulation()
 
         # Reset controller and localization
         self.controller_client.reset_controller()
         self.localization_client.reset_localization()
-
-        # Move to spawn position to ground movement client.
-        self.move_client.move((0, 0, 0, 0))
 
         # Record state
         self.state = self.data_collector_client.get_flattened_snapshot_values(
