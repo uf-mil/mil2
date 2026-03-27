@@ -45,6 +45,9 @@ jobs:
       group: mala-lab-pre-commit
     if: needs.avoid-duplicate-ci.outputs.should_skip != 'true'
     steps:
+      - name: Clean repo
+        run: |
+          rm -rf .git
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
