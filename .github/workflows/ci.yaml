@@ -50,6 +50,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+          clean: true
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v5
         with:
