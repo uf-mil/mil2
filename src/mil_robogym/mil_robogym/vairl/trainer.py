@@ -209,8 +209,8 @@ class Trainer:
                 _disc_stats = {"loss": 0.0, "kl": 0.0, "beta": float(vairl.beta)}
 
         # Finished training
-        self.data_collector_client.get_logger().info("FINISHED TRAINING")
         self._stop_simulation()
+        self.data_collector_client.get_logger().info("FINISHED TRAINING")
 
     def register_env(self) -> None:
         try:

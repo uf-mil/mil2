@@ -41,6 +41,7 @@ class DataCollectorService(Node):
         """
 
         # Refresh available topics
+        self.latest_data = {}
         topic_map = dict(self.get_topic_names_and_types())
 
         # Find the union between existing subscribers and request and delete those that are not required.
