@@ -56,3 +56,9 @@ class ButtonsSection:
             cursor="hand2",
         )
         self.test_button.grid(row=0, column=1, sticky="ew", padx=(8, 0))
+
+    def set_training_enabled(self, enabled: bool) -> None:
+        """Enable or disable train/test actions while training is running."""
+        state = "normal" if enabled else "disabled"
+        self.train_button.configure(state=state)
+        self.test_button.configure(state=state)

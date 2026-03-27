@@ -103,6 +103,12 @@ def _install_trainer_import_stubs(monkeypatch) -> None:
         {},
     )
 
+    move_client_module = types.ModuleType("mil_robogym.clients.move_client")
+    move_client_module.MoveClient = type("MoveClient", (), {})
+
+    set_pose_client_module = types.ModuleType("mil_robogym.clients.set_pose_client")
+    set_pose_client_module.SetPoseClient = type("SetPoseClient", (), {})
+
     environment_module = types.ModuleType("mil_robogym.vairl.environment")
     environment_module.GYMNASIUM = True
     environment_module.Environment = type("Environment", (), {})
@@ -135,6 +141,8 @@ def _install_trainer_import_stubs(monkeypatch) -> None:
         "mil_robogym.clients.data_collector_client": data_collector_client_module,
         "mil_robogym.clients.localization_client": localization_client_module,
         "mil_robogym.clients.world_control_client": world_control_client_module,
+        "mil_robogym.clients.move_client": move_client_module,
+        "mil_robogym.clients.set_pose_client": set_pose_client_module,
         "mil_robogym.vairl.environment": environment_module,
         "mil_robogym.vairl.reward_net": reward_net_module,
         "mil_robogym.vairl.utils": utils_module,
@@ -180,7 +188,13 @@ def _build_trainer(
     trainer.num_episodes = num_episodes
     trainer.seed = 42
     trainer.env_id = "TrainerSaveTest-v0"
-    trainer.data_collector_client = object()
+    trainer.max_vals = []
+    trainer.data_collector_client = types.SimpleNamespace(
+        get_logger=lambda: types.SimpleNamespace(info=lambda _message: None),
+    )
+    trainer.move_client = object()
+    trainer.set_pose_client = object()
+    trainer.world_control_client = object()
     trainer.controller_client = object()
     trainer.localization_client = object()
     trainer.demo_trajectories = [{"name": "demo_1"}, {"name": "demo_2"}]
@@ -189,6 +203,7 @@ def _build_trainer(
     trainer.demos_batch_size = 1
     trainer.eval_environment = object()
     trainer._ready_simulation = lambda: None
+    trainer._stop_simulation = lambda: None
     trainer.generate_generator_trajectories = lambda generator, reward_net: (
         [["traj"]],
         1.25,
@@ -288,3 +303,29 @@ def test_train_saves_final_checkpoint_when_periodic_saving_disabled(
     assert len(source_agents) == 1
     assert source_agents[0].name.endswith("_final")
     assert (source_agents[0] / "generator_model.zip").is_file()
+
+
+def test_resolve_unique_agent_name_skips_existing_agent_folders(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Avoids colliding with existing agent folders during repeated UI runs."""
+    module = _load_trainer_module(monkeypatch)
+    trainer, source_project_dir, share_project_dir = _build_trainer(
+        module,
+        monkeypatch,
+        tmp_path,
+        num_episodes=1,
+        save_every=0,
+    )
+
+    existing_name = "2026_03_26_03_15_pm_final"
+    (source_project_dir / "agents" / existing_name).mkdir(parents=True)
+    (share_project_dir / "agents" / existing_name).mkdir(parents=True)
+
+    resolved_name = trainer._resolve_unique_agent_name(
+        existing_name,
+        [source_project_dir, share_project_dir],
+    )
+
+    assert resolved_name == "2026_03_26_03_15_pm_final_run_02"

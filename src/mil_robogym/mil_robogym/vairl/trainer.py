@@ -234,7 +234,7 @@ class Trainer:
                     checkpoint_episode=episode_number,
                 )
 
-        self._save_generator_model(
+        final_saved_agent_dirs = self._save_generator_model(
             generator,
             training_metrics,
             is_final=True,
@@ -243,6 +243,7 @@ class Trainer:
         # Finished training
         self.data_collector_client.get_logger().info("FINISHED TRAINING")
         self._stop_simulation()
+        return final_saved_agent_dirs
 
     def _initialize_training_metrics(self) -> dict[str, list[float]]:
         return {
@@ -284,6 +285,27 @@ class Trainer:
             return f"{base_name}_ep_{checkpoint_episode:04d}"
         return base_name
 
+    def _resolve_unique_agent_name(
+        self,
+        agent_name: str,
+        project_dirs: list[Path],
+    ) -> str:
+        def exists(candidate: str) -> bool:
+            return any(
+                (project_dir / "agents" / candidate).exists()
+                for project_dir in project_dirs
+            )
+
+        if not exists(agent_name):
+            return agent_name
+
+        suffix = 2
+        while True:
+            candidate = f"{agent_name}_run_{suffix:02d}"
+            if not exists(candidate):
+                return candidate
+            suffix += 1
+
     def _save_generator_model(
         self,
         generator: TRPO,
@@ -293,10 +315,14 @@ class Trainer:
         is_final: bool = False,
     ) -> list[Path]:
         created_at = datetime.now()
-        agent_name = self._build_agent_name(
-            created_at,
-            checkpoint_episode=checkpoint_episode,
-            is_final=is_final,
+        project_dirs = get_training_project_dir_paths(self.project)
+        agent_name = self._resolve_unique_agent_name(
+            self._build_agent_name(
+                created_at,
+                checkpoint_episode=checkpoint_episode,
+                is_final=is_final,
+            ),
+            project_dirs,
         )
         num_demos = len(self.demo_trajectories)
         saved_agent_dirs: list[Path] = []
@@ -305,7 +331,7 @@ class Trainer:
             trained_model_path = Path(temp_dir) / GENERATOR_MODEL_FILE_NAME
             generator.save(str(trained_model_path))
 
-            for project_dir in get_training_project_dir_paths(self.project):
+            for project_dir in project_dirs:
                 saved_agent_dirs.append(
                     create_agent_folder(
                         project_dir,
