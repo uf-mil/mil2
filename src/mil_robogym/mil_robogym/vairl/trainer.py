@@ -121,24 +121,6 @@ class Trainer:
         """
         self._ready_simulation()
 
-        # LOCALIZATION TEST
-        self.set_pose_client.set_pose(0.0, 0.0, 0.0, yaw=0.0)
-
-        self.localization_client.reset_localization()
-        self.controller_client.reset_controller()
-
-        self.move_client.move((5.0, 5.0, 0.0, 0.0))
-        self.move_client.move((1.0, -1.0, 0.0, 0.0))
-
-        self.set_pose_client.set_pose(0.0, 0.0, 0.0, yaw=0.0)
-
-        self.localization_client.reset_localization()
-        self.controller_client.reset_controller()
-
-        self.move_client.move((-1.0, -1.0, 0.0, 0.0))
-
-        return
-
         # Create training environment
         train_venv = make_vec_env(
             self.env_id,
@@ -225,8 +207,8 @@ class Trainer:
                 _disc_stats = {"loss": 0.0, "kl": 0.0, "beta": float(vairl.beta)}
 
         # Finished training
-        self.data_collector_client.get_logger().info("FINISHED TRAINING")
         self._stop_simulation()
+        self.data_collector_client.get_logger().info("FINISHED TRAINING")
 
     def register_env(self) -> None:
         try:

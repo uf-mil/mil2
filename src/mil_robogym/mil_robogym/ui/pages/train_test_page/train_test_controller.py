@@ -42,6 +42,5 @@ class TrainTestViewController:
         """
         Start training loop.
         """
-        self.trainer.num_episodes = 1
-        self.trainer.rollout_steps = 1
+        self.trainer.num_episodes = 100
         self.trainer.train()
