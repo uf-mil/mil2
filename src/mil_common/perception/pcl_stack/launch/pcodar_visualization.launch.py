@@ -1,13 +1,22 @@
-"""
-Launch pcodar (pcl_stack_node) for lidar processing.
+"""Launch pcodar (pcl_stack_node) for just he visualization of the lidar Scan.
 
-Subscribes to ``/velodyne/points`` and publishes
-intensity-filtered clouds on ``/persist_pcl`` in the same frame as the input
-(typically the Velodyne / lidar frame). In RViz, use that frame as fixed frame
-when displaying ``/velodyne/points`` or ``/persist_pcl``.
+Usage:
+    cb
+    ros2 launch pcl_stack pcodar_visualization.launch.py
 
-Optional ``publish_dummy_tf`` publishes identity ``enu`` -> ``lidar_frame`` if
-you need that link for other nodes; it defaults to off to avoid TF conflicts.
+Optional arguments::
+
+    ros2 launch pcl_stack pcodar_visualization.launch.py \\
+        pointcloud_topic:=/your/lidar/points \\
+        lidar_frame:=velodyne \\
+        publish_dummy_tf:=true
+
+Subscribes to a PointCloud2 (default ``/velodyne/points``) and publishes
+intensity-filtered clouds on ``/persist_pcl`` in the same frame as the input.
+In RViz, set fixed frame to that lidar frame when displaying the cloud.
+
+``publish_dummy_tf`` publishes identity ``enu`` -> ``lidar_frame`` if needed;
+it defaults to false to avoid TF conflicts.
 """
 
 import os
