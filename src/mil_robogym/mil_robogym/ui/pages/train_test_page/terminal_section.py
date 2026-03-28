@@ -43,3 +43,7 @@ class TerminalSection:
             pady=8,
         )
         self.output_label.grid(row=1, column=0, sticky="nsew")
+
+    def set_text(self, terminal_text: str) -> None:
+        """Update the terminal panel text."""
+        self.output_label.configure(text=terminal_text)

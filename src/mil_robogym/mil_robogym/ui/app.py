@@ -7,6 +7,9 @@ from mil_robogym.ui.pages.create_project_page.create_project_page import (
 from mil_robogym.ui.pages.edit_project_page.edit_project_page import EditProjectPage
 from mil_robogym.ui.pages.start_page.start_page import StartPage
 from mil_robogym.ui.pages.train_test_page.train_test_page import TrainTestPage
+from mil_robogym.ui.pages.training_settings_page.training_settings_page import (
+    TrainingSettingsPage,
+)
 from mil_robogym.ui.pages.view_demo_page.view_demo_page import ViewDemoPage
 from mil_robogym.ui.pages.view_project_page.view_project_page import ViewProjectPage
 
@@ -42,6 +45,7 @@ class App(tk.Tk):
         self._register_page("edit_project", EditProjectPage)
         self._register_page("view_project", ViewProjectPage)
         self._register_page("train_test", TrainTestPage)
+        self._register_page("training_settings", TrainingSettingsPage)
         self._register_page("view_demo", ViewDemoPage)
 
         self.show_page("start")

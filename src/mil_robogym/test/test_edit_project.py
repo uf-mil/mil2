@@ -53,7 +53,10 @@ def test_edit_project_updates_share_and_source(tmp_path: Path, monkeypatch):
         "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
         "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
         "  input_topics: {}\n"
-        "  output_topics: {}\n",
+        "  output_topics: {}\n"
+        "robogym_training:\n"
+        "  num_episodes: 77\n"
+        "  rollout_steps: 333\n",
         encoding="utf-8",
     )
     (source_old / "config.yaml").write_text(
@@ -66,7 +69,10 @@ def test_edit_project_updates_share_and_source(tmp_path: Path, monkeypatch):
         "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
         "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
         "  input_topics: {}\n"
-        "  output_topics: {}\n",
+        "  output_topics: {}\n"
+        "robogym_training:\n"
+        "  num_episodes: 77\n"
+        "  rollout_steps: 333\n",
         encoding="utf-8",
     )
 
@@ -93,6 +99,8 @@ def test_edit_project_updates_share_and_source(tmp_path: Path, monkeypatch):
     assert share_cfg["robogym_project"]["output_topics"]["trajectory/4_deg"] == [
         "yaw",
     ]
+    assert share_cfg["robogym_training"]["num_episodes"] == 77
+    assert share_cfg["robogym_training"]["rollout_steps"] == 333
     assert share_cfg == source_cfg
 
 

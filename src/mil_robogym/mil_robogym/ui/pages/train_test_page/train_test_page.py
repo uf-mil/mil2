@@ -31,6 +31,7 @@ class TrainTestPage(tk.Frame):
             self,
             self.controller.navigate_to_home,
             self.controller.navigate_to_project,
+            self.controller.navigate_to_settings,
         )
         self.history_section = HistorySection(
             self,
@@ -73,7 +74,10 @@ class TrainTestPage(tk.Frame):
 
         self.controller.set_context(project)
 
-    def _refresh_from_project_data(self) -> None:
+    def _refresh_from_project_data(
+        self,
+        preferred_agent_name: str | None = None,
+    ) -> None:
         """Reload history, selected agent, and metrics panel from project dir."""
         self.selected_agent_name = None
 
@@ -85,10 +89,34 @@ class TrainTestPage(tk.Frame):
             return
 
         agent_names = self.history_section.load_agents(self.project_dir)
-        latest_agent = agent_names[0] if agent_names else None
-        self.selected_agent_name = latest_agent
-        self.header_section.set_last_training_session(latest_agent)
+        selected_agent = (
+            preferred_agent_name if preferred_agent_name in agent_names else None
+        )
+        if selected_agent is None:
+            selected_agent = agent_names[0] if agent_names else None
+
+        self.selected_agent_name = selected_agent
+        self.header_section.set_last_training_session(selected_agent)
         self.metrics_section.load_metrics(self._get_selected_metrics_dir())
+
+    def refresh_project_artifacts(
+        self,
+        preferred_agent_name: str | None = None,
+    ) -> None:
+        """Reload the saved-agent history and metrics after training changes."""
+        self._refresh_from_project_data(preferred_agent_name)
+
+    def set_terminal_text(self, text: str) -> None:
+        """Render a status message in the train/test terminal panel."""
+        self.terminal_section.set_text(text)
+
+    def set_training_enabled(self, enabled: bool) -> None:
+        """Enable or disable train/test actions."""
+        self.buttons_section.set_training_enabled(enabled)
+
+    def flush_ui_updates(self) -> None:
+        """Force pending UI state changes to render before long-running work."""
+        self.update_idletasks()
 
     def _get_selected_metrics_dir(self) -> Path | None:
         """Resolve metrics directory for the selected agent."""

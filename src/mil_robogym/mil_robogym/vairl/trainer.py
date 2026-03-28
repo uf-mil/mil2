@@ -1,4 +1,7 @@
 import os
+import tempfile
+from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -7,6 +10,11 @@ from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
 from sb3_contrib import TRPO
 
+from mil_robogym.data_collection.filesystem import (
+    _format_agent_timestamp,
+    create_agent_folder,
+    get_training_project_dir_paths,
+)
 from mil_robogym.data_collection.types import RoboGymProjectYaml
 
 from ..clients.controller_client import ControllerClient
@@ -17,12 +25,15 @@ from ..clients.set_pose_client import SetPoseClient
 from ..clients.world_control_client import WorldControlClient
 from .environment import GYMNASIUM, Environment
 from .reward_net import VAIRLRewardNet
+from .training_settings import DEFAULT_TRAINING_SETTINGS
 from .utils import (
     fetch_demo_trajectories,
     trajectories_to_batches,
     trajectories_to_imitations,
 )
 from .vairl import VAIRL
+
+GENERATOR_MODEL_FILE_NAME = "generator_model.zip"
 
 
 class Trainer:
@@ -34,19 +45,23 @@ class Trainer:
         self,
         project: RoboGymProjectYaml,
         max_step_count: int | None = None,
-        num_episodes: int = 500,
-        rollout_steps: int = 2048,
-        generator_learning_rate: float = 1e-3,
-        discriminator_learning_rate: float = 3e-3,
-        z_size: int = 6,
-        e_hidden_size: int = 128,
-        i_c: int = 0.5,
-        beta_step_size: float = 1e-3,
-        gamma: float = 0.99,
-        save_every: int = 10,
-        seed: int = 42,
+        num_episodes: int = DEFAULT_TRAINING_SETTINGS["num_episodes"],
+        rollout_steps: int = DEFAULT_TRAINING_SETTINGS["rollout_steps"],
+        generator_learning_rate: float = DEFAULT_TRAINING_SETTINGS[
+            "generator_learning_rate"
+        ],
+        discriminator_learning_rate: float = DEFAULT_TRAINING_SETTINGS[
+            "discriminator_learning_rate"
+        ],
+        z_size: int = DEFAULT_TRAINING_SETTINGS["z_size"],
+        e_hidden_size: int = DEFAULT_TRAINING_SETTINGS["e_hidden_size"],
+        i_c: float = DEFAULT_TRAINING_SETTINGS["i_c"],
+        beta_step_size: float = DEFAULT_TRAINING_SETTINGS["beta_step_size"],
+        gamma: float = DEFAULT_TRAINING_SETTINGS["gamma"],
+        save_every: int = DEFAULT_TRAINING_SETTINGS["save_every"],
+        seed: int = DEFAULT_TRAINING_SETTINGS["seed"],
         env_id: str = "VairlROS2-v0",
-        expert_noise_std: float = 1e-4,
+        expert_noise_std: float = DEFAULT_TRAINING_SETTINGS["expert_noise_std"],
     ):
         # Save all parameters to class attributes
         self.project = project
@@ -122,6 +137,7 @@ class Trainer:
         Train the VAIRL algorithm.
         """
         self._ready_simulation()
+        training_metrics = self._initialize_training_metrics()
 
         # Create training environment
         train_venv = make_vec_env(
@@ -208,9 +224,134 @@ class Trainer:
             else:
                 _disc_stats = {"loss": 0.0, "kl": 0.0, "beta": float(vairl.beta)}
 
+            episode_number = episode + 1
+            self._record_training_metrics(
+                training_metrics,
+                episode=episode_number,
+                reward_mean=reward_mean,
+                reward_std=reward_std,
+                disc_stats=_disc_stats,
+            )
+            if self.save_every > 0 and episode_number % self.save_every == 0:
+                self._save_generator_model(
+                    generator,
+                    training_metrics,
+                    checkpoint_episode=episode_number,
+                )
+
+        final_saved_agent_dirs = self._save_generator_model(
+            generator,
+            training_metrics,
+            is_final=True,
+        )
+
         # Finished training
         self._stop_simulation()
         self.data_collector_client.get_logger().info("FINISHED TRAINING")
+        return final_saved_agent_dirs
+
+    def _initialize_training_metrics(self) -> dict[str, list[float]]:
+        return {
+            "episode": [],
+            "reward_mean": [],
+            "reward_std": [],
+            "disc_loss": [],
+            "disc_kl": [],
+            "disc_beta": [],
+        }
+
+    def _record_training_metrics(
+        self,
+        training_metrics: dict[str, list[float]],
+        *,
+        episode: int,
+        reward_mean: float,
+        reward_std: float,
+        disc_stats: dict[str, float],
+    ) -> None:
+        training_metrics["episode"].append(float(episode))
+        training_metrics["reward_mean"].append(float(reward_mean))
+        training_metrics["reward_std"].append(float(reward_std))
+        training_metrics["disc_loss"].append(float(disc_stats["loss"]))
+        training_metrics["disc_kl"].append(float(disc_stats["kl"]))
+        training_metrics["disc_beta"].append(float(disc_stats["beta"]))
+
+    def _build_agent_name(
+        self,
+        created_at: datetime,
+        *,
+        checkpoint_episode: int | None = None,
+        is_final: bool = False,
+    ) -> str:
+        base_name = _format_agent_timestamp(created_at)
+        if is_final:
+            return f"{base_name}_final"
+        if checkpoint_episode is not None:
+            return f"{base_name}_ep_{checkpoint_episode:04d}"
+        return base_name
+
+    def _resolve_unique_agent_name(
+        self,
+        agent_name: str,
+        project_dirs: list[Path],
+    ) -> str:
+        def exists(candidate: str) -> bool:
+            return any(
+                (project_dir / "agents" / candidate).exists()
+                for project_dir in project_dirs
+            )
+
+        if not exists(agent_name):
+            return agent_name
+
+        suffix = 2
+        while True:
+            candidate = f"{agent_name}_run_{suffix:02d}"
+            if not exists(candidate):
+                return candidate
+            suffix += 1
+
+    def _save_generator_model(
+        self,
+        generator: TRPO,
+        training_metrics: dict[str, list[float]],
+        *,
+        checkpoint_episode: int | None = None,
+        is_final: bool = False,
+    ) -> list[Path]:
+        created_at = datetime.now()
+        project_dirs = get_training_project_dir_paths(self.project)
+        agent_name = self._resolve_unique_agent_name(
+            self._build_agent_name(
+                created_at,
+                checkpoint_episode=checkpoint_episode,
+                is_final=is_final,
+            ),
+            project_dirs,
+        )
+        num_demos = len(self.demo_trajectories)
+        saved_agent_dirs: list[Path] = []
+
+        with tempfile.TemporaryDirectory(prefix="mil_robogym_generator_") as temp_dir:
+            trained_model_path = Path(temp_dir) / GENERATOR_MODEL_FILE_NAME
+            generator.save(str(trained_model_path))
+
+            for project_dir in project_dirs:
+                saved_agent_dirs.append(
+                    create_agent_folder(
+                        project_dir,
+                        trained_model_path=trained_model_path,
+                        training_metrics=training_metrics,
+                        num_demos=num_demos,
+                        created_at=created_at,
+                        model_file_name=GENERATOR_MODEL_FILE_NAME,
+                        agent_name=agent_name,
+                        checkpoint_episode=checkpoint_episode,
+                        training_settings=self._resolved_training_settings(),
+                    ),
+                )
+
+        return saved_agent_dirs
 
     def register_env(self) -> None:
         try:
@@ -239,6 +380,7 @@ class Trainer:
         """
         trajectories = []
         rewards = []
+        reward_net_device = next(reward_net.parameters()).device
 
         for _ in range(n_trajs):
 
@@ -266,12 +408,26 @@ class Trainer:
                     )
 
                 with torch.no_grad():
-                    s_t = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-                    a_t = torch.tensor(action, dtype=torch.float32).unsqueeze(0)
-                    s_next_t = torch.tensor(next_state, dtype=torch.float32).unsqueeze(
-                        0,
-                    )
-                    d_t = torch.tensor([float(done)], dtype=torch.float32).unsqueeze(1)
+                    s_t = torch.as_tensor(
+                        state,
+                        dtype=torch.float32,
+                        device=reward_net_device,
+                    ).unsqueeze(0)
+                    a_t = torch.as_tensor(
+                        action,
+                        dtype=torch.float32,
+                        device=reward_net_device,
+                    ).unsqueeze(0)
+                    s_next_t = torch.as_tensor(
+                        next_state,
+                        dtype=torch.float32,
+                        device=reward_net_device,
+                    ).unsqueeze(0)
+                    d_t = torch.as_tensor(
+                        [float(done)],
+                        dtype=torch.float32,
+                        device=reward_net_device,
+                    ).unsqueeze(1)
                     reward = reward_net(s_t, a_t, s_next_t, d_t).item()
 
                 reward_accumulated += reward
@@ -289,6 +445,23 @@ class Trainer:
             trajectories.append(traj)
 
         return trajectories, float(np.mean(rewards)), float(np.std(rewards))
+
+    def _resolved_training_settings(self) -> dict[str, int | float | None]:
+        return {
+            "num_episodes": self.num_episodes,
+            "rollout_steps": self.rollout_steps,
+            "generator_learning_rate": self.generator_learning_rate,
+            "discriminator_learning_rate": self.discriminator_learning_rate,
+            "z_size": self.z_size,
+            "e_hidden_size": self.e_hidden_size,
+            "i_c": self.i_c,
+            "beta_step_size": self.beta_step_size,
+            "gamma": self.gamma,
+            "save_every": self.save_every,
+            "seed": self.seed,
+            "max_step_count": self.max_step_count,
+            "expert_noise_std": self.expert_noise_std,
+        }
 
     def _ready_simulation(self):
         """
