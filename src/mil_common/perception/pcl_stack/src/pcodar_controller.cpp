@@ -232,9 +232,7 @@ bool Node::Reset(std::shared_ptr<std_srvs::srv::Trigger::Request> const req,
 void Node::velodyne_cb(sensor_msgs::msg::PointCloud2::SharedPtr const pcloud)
 {
     point_cloud_i_ptr pc = std::make_shared<point_cloud_i>();
-    // Transform new pointcloud to ENU
-    if (!transform_point_cloud(*pcloud, *pc))
-        return;
+    pcl::fromROSMsg(*pcloud, *pc);
 
     // Intensity filter
     pcl::PassThrough<pointi_t> intensity_filter;
@@ -253,7 +251,7 @@ void Node::velodyne_cb(sensor_msgs::msg::PointCloud2::SharedPtr const pcloud)
         pc_without_i->points[i].z = pc_i_filtered->points[i].z;
     }
 
-    // Basic lidar scan: publish transformed and intensity-filtered point cloud
+    // Basic lidar scan: publish intensity-filtered cloud in the sensor frame
     if (pc_without_i->empty())
     {
         RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
@@ -264,7 +262,7 @@ void Node::velodyne_cb(sensor_msgs::msg::PointCloud2::SharedPtr const pcloud)
     // Convert PCL to ROS2 message and publish
     sensor_msgs::msg::PointCloud2 cloud_msg;
     pcl::toROSMsg(*pc_without_i, cloud_msg);
-    cloud_msg.header.frame_id = "enu";
+    cloud_msg.header.frame_id = pcloud->header.frame_id.empty() ? "velodyne" : pcloud->header.frame_id;
     cloud_msg.header.stamp = pcloud->header.stamp;
     pub_pcl_->publish(cloud_msg);
 
