@@ -23,8 +23,9 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -50,6 +51,26 @@ def generate_launch_description():
         description="If true, publish identity static TF: parent enu, child lidar_frame.",
     )
 
+    sensor_ip_arg = DeclareLaunchArgument(
+        "sensor_ip",
+        default_value="192.168.37.51",  # propagator velodyne's IP
+        description="IP address of the Velodyne sensor.",
+    )
+
+    # launching the driver
+    velodyne_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("velodyne"),
+                "launch",
+                "velodyne-all-nodes-VLP16-composed-launch.py",
+            ),
+        ),
+        launch_arguments={
+            "sensor_ip": LaunchConfiguration("sensor_ip"),
+        }.items(),
+    )
+
     pcl_stack_node = Node(
         package="pcl_stack",
         executable="pcl_stack_node",
@@ -61,28 +82,37 @@ def generate_launch_description():
         ],
     )
 
-    # x y z yaw pitch roll parent_frame child_frame
+    # publishing transform for now
     static_tf = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         arguments=[
+            "--x",
             "0",
+            "--y",
             "0",
+            "--z",
             "0",
+            "--roll",
             "0",
+            "--pitch",
             "0",
+            "--yaw",
             "0",
+            "--frame-id",
             "enu",
+            "--child-frame-id",
             LaunchConfiguration("lidar_frame"),
         ],
         condition=IfCondition(LaunchConfiguration("publish_dummy_tf")),
     )
-
     return LaunchDescription(
         [
             pointcloud_topic_arg,
             lidar_frame_arg,
             publish_dummy_tf_arg,
+            sensor_ip_arg,
+            velodyne_launch,
             static_tf,
             pcl_stack_node,
         ],
