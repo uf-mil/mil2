@@ -84,14 +84,13 @@ def test_get_all_project_config_raises_on_project_name_key(tmp_path: Path, monke
 
 def test_find_projects_dir_creates_missing_projects_dir(tmp_path: Path, monkeypatch):
     """Creates the projects directory when it has been manually deleted."""
-    share_dir = tmp_path / "install" / "mil_robogym" / "share" / "mil_robogym"
-    share_dir.mkdir(parents=True, exist_ok=True)
+    source_projects = tmp_path / "src" / "mil_robogym" / "projects"
     monkeypatch.setattr(
-        "mil_robogym.data_collection.get_all_project_config.resolve_package_share_dir",
-        lambda _package_name="mil_robogym": share_dir,
+        "mil_robogym.data_collection.get_all_project_config.resolve_source_projects_dir",
+        lambda package_name="mil_robogym": source_projects,
     )
 
     projects_dir = find_projects_dir()
 
-    assert projects_dir == share_dir / "projects"
+    assert projects_dir == source_projects
     assert projects_dir.is_dir()

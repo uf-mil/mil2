@@ -18,7 +18,6 @@ from .types import (
     RoboGymTrainingYaml,
 )
 from .utils import (
-    resolve_package_share_dir,
     resolve_source_projects_dir,
     to_lower_snake_case,
     topic_to_data_folder_name,
@@ -32,18 +31,8 @@ def _format_agent_timestamp(dt: datetime) -> str:
     return f"{dt:%Y_%m_%d}_{hour_12}_{dt:%M}_{ampm}"
 
 
-def _project_roots() -> list[Path]:
-    share_dir = resolve_package_share_dir()
-    share_projects = share_dir / "projects"
-    source_projects = resolve_source_projects_dir(share_dir)
-
-    roots = [share_projects]
-    if (
-        source_projects is not None
-        and source_projects.resolve() != share_projects.resolve()
-    ):
-        roots.append(source_projects)
-    return roots
+def _projects_root() -> Path:
+    return resolve_source_projects_dir()
 
 
 def _validate_topic_subtopics(
@@ -313,8 +302,7 @@ def append_demo_numerical_row(
     """
 
     # Get path for demo
-    roots = _project_roots()
-    projects_dir = roots[0]
+    projects_dir = _projects_root()
     project_name = to_lower_snake_case(project["name"])
     demo_name = to_lower_snake_case(demo["name"])
     demo_dir = projects_dir / project_name / "demos" / demo_name
@@ -439,38 +427,28 @@ def create_project_folder(
 ) -> Path:
     """
     Creates:
-        <share_dir>/projects/<lower_snake_project_name>/config.yaml
+        <workspace_root>/src/mil_robogym/projects/<lower_snake_project_name>/config.yaml
 
-    Uses the ROS 2 package share directory for 'mil_robogym' as the root.
+    Uses the package source projects directory as the root.
     Returns the created project directory Path.
     """
     folder_name = to_lower_snake_case(project["name"])
-    project_roots = _project_roots()
-    project_dirs = [root / folder_name for root in project_roots]
-
-    for root in project_roots:
-        root.mkdir(parents=True, exist_ok=True)
-
-    existing = next(
-        (project_dir for project_dir in project_dirs if project_dir.exists()),
-        None,
-    )
-    if existing is not None:
-        raise FileExistsError(f"Project folder already exists: {existing}")
-
-    for project_dir in project_dirs:
-        project_dir.mkdir(parents=True, exist_ok=False)
-        (project_dir / "demos").mkdir(exist_ok=True)
+    projects_dir = _projects_root()
+    projects_dir.mkdir(parents=True, exist_ok=True)
+    project_dir = projects_dir / folder_name
+    if project_dir.exists():
+        raise FileExistsError(f"Project folder already exists: {project_dir}")
+    project_dir.mkdir(parents=True, exist_ok=False)
+    (project_dir / "demos").mkdir(exist_ok=True)
 
     _validate_project_config_payload(project)
     cfg: RoboGymProjectConfig = {
         "robogym_project": project,
         "robogym_training": get_default_training_settings(),
     }
-    for project_dir in project_dirs:
-        _write_yaml_config(project_dir / "config.yaml", cfg)
+    _write_yaml_config(project_dir / "config.yaml", cfg)
 
-    return project_dirs[0]
+    return project_dir
 
 
 def edit_project(
@@ -482,39 +460,21 @@ def edit_project(
     Edit an existing project's config.yaml using a RoboGymProjectYaml payload.
 
     Writes:
-        <share_dir>/projects/<lower_snake_project_name>/config.yaml
+        <workspace_root>/src/mil_robogym/projects/<lower_snake_project_name>/config.yaml
 
     Returns the existing project directory Path.
     """
-    project_roots = _project_roots()
-    share_projects_dir = project_roots[0]
-    source_projects_dir = project_roots[1] if len(project_roots) > 1 else None
+    projects_dir = _projects_root()
 
     current_name = original_project_name or project["name"]
     current_folder_name = to_lower_snake_case(current_name)
-    project_dir = share_projects_dir / current_folder_name
+    project_dir = projects_dir / current_folder_name
 
     if not project_dir.exists() or not project_dir.is_dir():
         raise FileNotFoundError(f"Project folder does not exist: {project_dir}")
 
     target_folder_name = to_lower_snake_case(project["name"])
-    target_project_dir = share_projects_dir / target_folder_name
-
-    source_project_dir: Path | None = None
-    source_target_project_dir: Path | None = None
-    if source_projects_dir is not None:
-        source_projects_dir.mkdir(parents=True, exist_ok=True)
-        source_project_dir = source_projects_dir / current_folder_name
-        source_target_project_dir = source_projects_dir / target_folder_name
-        if (
-            source_project_dir.exists()
-            and source_target_project_dir != source_project_dir
-            and source_target_project_dir.exists()
-        ):
-            raise FileExistsError(
-                "Cannot rename project in source tree; target folder already exists: "
-                f"{source_target_project_dir}",
-            )
+    target_project_dir = projects_dir / target_folder_name
 
     if target_project_dir != project_dir:
         if target_project_dir.exists():
@@ -523,14 +483,6 @@ def edit_project(
             )
         project_dir.rename(target_project_dir)
         project_dir = target_project_dir
-
-    if source_projects_dir is not None and source_target_project_dir is not None:
-        if source_project_dir is not None and source_project_dir.exists():
-            if source_target_project_dir != source_project_dir:
-                source_project_dir.rename(source_target_project_dir)
-        else:
-            source_target_project_dir.mkdir(parents=True, exist_ok=True)
-        (source_target_project_dir / "demos").mkdir(exist_ok=True)
 
     _validate_project_config_payload(project)
     existing_cfg = _read_yaml_mapping(project_dir / "config.yaml")
@@ -541,8 +493,6 @@ def edit_project(
     else:
         cfg["robogym_training"] = get_default_training_settings()
     _write_yaml_config(project_dir / "config.yaml", cfg)
-    if source_target_project_dir is not None:
-        _write_yaml_config(source_target_project_dir / "config.yaml", cfg)
 
     return project_dir
 
@@ -557,12 +507,11 @@ def edit_demo(
     Edit an existing demo's config.yaml using a RoboGymDemo payload.
 
     Writes:
-        <share_dir>/projects/<lower_snake_project_name>/demos/<lower_snake_demo_name>/config.yaml
+        <workspace_root>/src/mil_robogym/projects/<lower_snake_project_name>/demos/<lower_snake_demo_name>/config.yaml
 
     Returns the existing demo directory Path
     """
-    roots = _project_roots()
-    projects_dir = roots[0]
+    projects_dir = _projects_root()
     project_name = to_lower_snake_case(project["name"])
     demo_name = to_lower_snake_case(original_demo_name or demo["name"])
     demo_dir = projects_dir / project_name / "demos" / demo_name
@@ -719,8 +668,7 @@ def create_demo_folder(
     If start_position is None, defaults to (0.0, 0.0, 0.0, 0.0).
     Returns the created demo directory Path.
     """
-    roots = _project_roots()
-    projects_dir = roots[0]
+    projects_dir = _projects_root()
     project_name = to_lower_snake_case(project["name"])
     project_dir = projects_dir / project_name
 
@@ -760,8 +708,7 @@ def get_demo_dir_path(project: RoboGymProjectYaml, demo: RoboGymDemoYaml) -> Pat
     """
     Get the demo dir path based on the project and demo yamls.
     """
-    roots = _project_roots()
-    projects_dir = roots[0]
+    projects_dir = _projects_root()
     project_name = to_lower_snake_case(project["name"])
     demo_name = to_lower_snake_case(demo["name"])
     demo_dir = projects_dir / project_name / "demos" / demo_name
@@ -773,8 +720,7 @@ def get_project_dir_path(project: RoboGymProjectYaml) -> Path:
     """
     Get the project dir path based on the project yaml.
     """
-    roots = _project_roots()
-    projects_dir = roots[0]
+    projects_dir = _projects_root()
     project_name = to_lower_snake_case(project["name"])
     project_dir = projects_dir / project_name
 
@@ -785,15 +731,10 @@ def get_training_project_dir_paths(project: RoboGymProjectYaml) -> list[Path]:
     """
     Get project directory paths for generated training artifacts.
 
-    Prefers the source-tree project directory and mirrors to the installed share
-    directory when both roots are available.
+    Source-only mode returns a single project directory path.
     """
-    roots = _project_roots()
     project_name = to_lower_snake_case(project["name"])
-    project_dirs = [root / project_name for root in roots]
-    if len(project_dirs) == 1:
-        return project_dirs
-    return [*project_dirs[1:], project_dirs[0]]
+    return [_projects_root() / project_name]
 
 
 def get_training_project_dir_path(project: RoboGymProjectYaml) -> Path:
@@ -808,7 +749,7 @@ def update_project_training_settings(
     training_settings: RoboGymTrainingYaml,
 ) -> list[Path]:
     """
-    Update the persisted training settings for a project across all project roots.
+    Update the persisted training settings for a project.
     """
     updated_paths: list[Path] = []
     for project_dir in get_training_project_dir_paths(project):
