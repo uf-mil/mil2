@@ -12,6 +12,7 @@ from .header_section import HeaderSection
 from .history_section import HistorySection
 from .metrics_section import MetricsSection
 from .terminal_section import TerminalSection
+from .train_test_controller import TrainTestViewController
 
 
 class TrainTestPage(tk.Frame):
@@ -19,7 +20,7 @@ class TrainTestPage(tk.Frame):
 
     def __init__(self, parent: tk.Widget, controller: Any | None = None) -> None:
         super().__init__(parent, bg="#DADADA")
-        self.controller = controller
+        self.controller = TrainTestViewController(self, controller)
 
         self.project: Mapping[str, Any] | None = None
         self.project_name = "Project"
@@ -28,8 +29,8 @@ class TrainTestPage(tk.Frame):
 
         self.header_section = HeaderSection(
             self,
-            self._on_home_title_click,
-            self._on_project_title_click,
+            self.controller.navigate_to_home,
+            self.controller.navigate_to_project,
         )
         self.history_section = HistorySection(
             self,
@@ -40,7 +41,7 @@ class TrainTestPage(tk.Frame):
         self.terminal_section = TerminalSection(self, "")
         self.buttons_section = ButtonsSection(
             self,
-            self._on_train_new_agent_click,
+            self.controller.start_training,
             self._on_test_selected_agent_click,
         )
 
@@ -70,6 +71,8 @@ class TrainTestPage(tk.Frame):
 
         self._refresh_from_project_data()
 
+        self.controller.set_context(project)
+
     def _refresh_from_project_data(self) -> None:
         """Reload history, selected agent, and metrics panel from project dir."""
         self.selected_agent_name = None
@@ -93,16 +96,6 @@ class TrainTestPage(tk.Frame):
             return None
         return self.project_dir / "agents" / self.selected_agent_name / "metrics"
 
-    def _on_home_title_click(self, _event: tk.Event | None = None) -> None:
-        """Navigate to Start page."""
-        if self.controller is not None:
-            self.controller.show_page("start")
-
-    def _on_project_title_click(self, _event: tk.Event | None = None) -> None:
-        """Navigate back to current project page."""
-        if self.controller is not None:
-            self.controller.show_page("view_project", project=self.project)
-
     def _on_agent_row_click(self, agent_name: str) -> None:
         """Handle selecting an agent row in history."""
         self.selected_agent_name = agent_name
@@ -113,10 +106,6 @@ class TrainTestPage(tk.Frame):
     def _on_download_click(self, _agent_name: str) -> None:
         """Placeholder action for downloading an agent."""
         print("download clicked")
-
-    def _on_train_new_agent_click(self) -> None:
-        """Placeholder action for starting a training run."""
-        print("clicked")
 
     def _on_test_selected_agent_click(self) -> None:
         """Placeholder action for running selected-agent test."""

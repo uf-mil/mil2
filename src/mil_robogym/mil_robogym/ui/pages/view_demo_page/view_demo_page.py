@@ -1,10 +1,9 @@
 import tkinter as tk
-from typing import Any, Mapping
-
-from mil_robogym.clients.set_pose_client import SetPoseClient
+from typing import Any
 
 from .collected_data_section import CollectedDataSection
 from .controls_section import ControlsSection
+from .demo_view_controller import DemoViewController
 from .header import Header
 from .steps_section import StepsSection
 
@@ -16,20 +15,16 @@ class ViewDemoPage(tk.Frame):
 
     def __init__(self, parent: tk.Widget, controller) -> None:
         super().__init__(parent, bg="#DADADA")
-        self.app = controller
-
-        self.project: Mapping[str, Any] | None = None
-        self.demo: Mapping[str, Any] | None = None
+        self.controller = DemoViewController(self, controller)
 
         self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
+        # Bindings
+        self.bind("<space>", self.controller.pause_recording)
+
         # Header
-        self.header = Header(
-            self,
-            on_home_click=self._on_home_click,
-            on_project_click=self._on_project_click,
-        )
+        self.header = Header(self, self.controller)
         self.header.grid(row=0, column=0, sticky="ew", padx=14, pady=(14, 8))
         self.header.subtitle.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 8))
 
@@ -40,57 +35,16 @@ class ViewDemoPage(tk.Frame):
         self.content.grid_columnconfigure(1, weight=1)
 
         # Steps section
-        self.steps = StepsSection(self.content)
+        self.steps = StepsSection(self.content, self.controller)
         self.steps.grid(row=0, column=0, sticky="nsw", padx=(0, 10))
 
         # Data collected section
-        self.data_section = CollectedDataSection(self.content)
+        self.data_section = CollectedDataSection(self.content, self.controller)
         self.data_section.grid(row=0, column=1, sticky="nsew")
 
         # Controls
-        self.controls = ControlsSection(self)
+        self.controls = ControlsSection(self, self.controller)
         self.controls.grid(row=3, column=0, sticky="ew", padx=14, pady=(6, 14))
 
-    def set_context(
-        self,
-        project: Mapping[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> None:
-        self.project = project
-        self.demo = kwargs.get("demo", {}).get("robogym_demo", {})
-
-        demo_name = kwargs.get("demo_name", "")
-        project_name = ""
-
-        if project:
-            project_name = project.get("robogym_project", {}).get("name", "")
-            self.controls.enable_buttons(project["robogym_project"])
-
-        self.header.set_titles(project_name, demo_name)
-
-        if self.demo and project:
-            subtitle = (
-                f"Sampling rate: {self.demo['sampling_rate']} steps / sec | "
-                f"World: {project['robogym_project']['world_file']}"
-            )
-            self.header.set_subtitle(subtitle)
-
-            self.steps.clear()
-            x, y, z, yaw = self.demo["start_position"]
-            self.steps.add_step(self.demo["start_position"], is_origin=True)
-
-            set_pose_client = SetPoseClient()
-            set_pose_client.set_pose(x, y, z, yaw=yaw)
-            set_pose_client.destroy_node()
-
-    def _on_home_click(self) -> None:
-        self._clean_components()
-        self.app.show_page("start")
-
-    def _on_project_click(self) -> None:
-        self._clean_components()
-        self.app.show_page("view_project", project=self.project)
-
-    def _clean_components(self) -> None:
-        self.header.destroy()
-        self.content.destroy()
+    def set_context(self, project: dict[str, Any] | None = None, **kwargs: Any):
+        self.controller.set_context(project, demo=kwargs.get("demo", {}))

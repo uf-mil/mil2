@@ -710,6 +710,22 @@
       <self_collide>false</self_collide>
     </model>
 
+    <!-- Pinger -->
+    <model name='Pinger_A1_10000'>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <cylinder>
+              <radius>0.025</radius>
+              <length>0.185</length>
+            </cylinder>
+          </geometry>
+        </visual>
+      </link>
+      <pose>-1.65 23.80 -1.60 0 0 0</pose>
+      <static>true</static>
+    </model>
+
     <model name='Torpedo_Board'>
       <link name='link'>
         <visual name='visual'>

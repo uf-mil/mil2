@@ -7,7 +7,7 @@ from typing import Any
 
 from .get_ros2_topics import get_ros2_topics
 from .types import RoboGymProjectYaml, SampledTopics
-from .utils import canonical_topic_name
+from .utils import canonical_topic_name, flatten_value
 
 
 def _default_message_as_dict(msg_type: str) -> object:
@@ -30,39 +30,6 @@ def _default_message_as_dict(msg_type: str) -> object:
         raise RuntimeError(
             f"Failed to resolve default ROS 2 message for type '{msg_type}'.",
         ) from e
-
-
-def _flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
-    """
-    Flatten nested dictionaries/lists into dot and bracket notation keys.
-
-    Examples:
-        pose.position.x
-        covariance[0]
-    """
-    if isinstance(value, dict):
-        if not value and prefix:
-            out[prefix] = {}
-            return
-        for key in sorted(value, key=str):
-            key_str = str(key)
-            child_prefix = f"{prefix}.{key_str}" if prefix else key_str
-            _flatten_value(value[key], child_prefix, out)
-        return
-
-    if isinstance(value, list):
-        if not value and prefix:
-            out[prefix] = []
-            return
-        for index, item in enumerate(value):
-            child_prefix = f"{prefix}[{index}]" if prefix else f"[{index}]"
-            _flatten_value(item, child_prefix, out)
-        return
-
-    if prefix:
-        out[prefix] = value
-    else:
-        out["value"] = value
 
 
 def _dedupe_preserve_order(values: list[str]) -> list[str]:
@@ -309,7 +276,7 @@ def sample_topics(
 
         parsed = _default_message_as_dict(msg_type)
         flattened: dict[str, object] = {}
-        _flatten_value(parsed, "", flattened)
+        flatten_value(parsed, "", flattened)
         sampled_topics[topic] = flattened
 
     return sampled_topics
@@ -371,7 +338,7 @@ def collect_numeric_values_from_topic_subtopics(
     values: list[bool | int | float | None] = []
     for topic, message in zip(selected_topics, raw_messages):
         flattened: dict[str, object] = {}
-        _flatten_value(message, "", flattened)
+        flatten_value(message, "", flattened)
         for field in topic_subtopics[topic]:
             value = flattened.get(field)
             if isinstance(value, (bool, int, float)):
@@ -396,8 +363,25 @@ def sample_project_topics(
     output_topics = list(project["output_topics"])
     selected_topics = _dedupe_preserve_order([*input_topics, *output_topics])
     sampled_all = sample_topics(selected_topics, timeout_s=timeout_s)
-    sampled_inputs = {topic: sampled_all[topic] for topic in input_topics}
-    sampled_outputs = {topic: sampled_all[topic] for topic in output_topics}
+
+    sampled_inputs = {
+        topic: {
+            subfield: value
+            for subfield, value in sampled_all[topic].items()
+            if subfield in project["input_topics"][topic]
+        }
+        for topic in input_topics
+    }
+
+    sampled_outputs = {
+        topic: {
+            subfield: value
+            for subfield, value in sampled_all[topic].items()
+            if subfield in project["output_topics"][topic]
+        }
+        for topic in output_topics
+    }
+
     return sampled_inputs, sampled_outputs
 
 
@@ -428,4 +412,5 @@ def sample_input_topics(
         project,
         timeout_s=timeout_s,
     )
+
     return sampled_inputs
