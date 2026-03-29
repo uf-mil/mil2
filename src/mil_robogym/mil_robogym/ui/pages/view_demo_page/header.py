@@ -42,7 +42,12 @@ class Header(tk.Frame):
         )
         self.demo_title.pack(side="left", padx=(6, 0))
 
-        self.edit_btn = tk.Button(self, text="Edit", width=8)
+        self.edit_btn = tk.Button(
+            self,
+            text="Edit",
+            width=8,
+            command=controller.show_edit_demo,
+        )
         self.edit_btn.grid(row=0, column=1, sticky="e")
 
         self.subtitle = tk.Label(
