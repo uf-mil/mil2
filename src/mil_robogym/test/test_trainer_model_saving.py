@@ -309,6 +309,46 @@ def test_train_saves_final_checkpoint_when_periodic_saving_disabled(
     assert (source_agents[0] / "generator_model.zip").is_file()
 
 
+def test_train_abort_skips_final_save_and_keeps_latest_checkpoint(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Abort discards the final save and falls back to the most recent checkpoint."""
+    module = _load_trainer_module(monkeypatch)
+    trainer, source_project_dir, share_project_dir = _build_trainer(
+        module,
+        monkeypatch,
+        tmp_path,
+        num_episodes=2,
+        save_every=1,
+    )
+
+    trajectory_calls = 0
+
+    def _generate(generator, reward_net):
+        nonlocal trajectory_calls
+        trajectory_calls += 1
+        if trajectory_calls == 2:
+            trainer.request_abort()
+        return [["traj"]], 1.25, 0.5
+
+    trainer.generate_generator_trajectories = _generate
+
+    saved_agent_dirs = trainer.train()
+
+    source_agents = _list_agent_dirs(source_project_dir)
+    share_agents = _list_agent_dirs(share_project_dir)
+
+    assert [agent.name for agent in source_agents] == [
+        agent.name for agent in share_agents
+    ]
+    assert len(source_agents) == 1
+    assert source_agents[0].name.endswith("_ep_0001")
+    assert not source_agents[0].name.endswith("_final")
+    assert saved_agent_dirs[0].name == source_agents[0].name
+    assert (source_agents[0] / "generator_model.zip").is_file()
+
+
 def test_resolve_unique_agent_name_skips_existing_agent_folders(
     tmp_path: Path,
     monkeypatch,
