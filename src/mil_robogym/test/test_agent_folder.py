@@ -66,6 +66,8 @@ def test_create_agent_folder_creates_files(tmp_path: Path):
     assert config["robogym_agent"]["training_settings"]["num_episodes"] == 500
     assert config["robogym_agent"]["training_settings"]["max_step_count"] is None
     assert (agent_dir / "training_metrics.csv").exists()
+    assert (agent_dir / "metrics" / "reward.png").is_file()
+    assert (agent_dir / "metrics" / "loss.png").is_file()
 
 
 def test_create_agent_folder_raises_if_exists(tmp_path: Path):
