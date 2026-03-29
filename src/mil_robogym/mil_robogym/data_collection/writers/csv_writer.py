@@ -70,6 +70,24 @@ class AsyncCSVWriter:
         self._stop_event.set()
         self.thread.join
 
+    def clear_all_data(self, i_row: int | None = None) -> None:
+        """
+        Clear all data collected.
+        """
+        # TODO: Clear other folder data and reset metadata.csv
+        numerical_df = pd.read_csv(self.numerical_state_csv)
+        action_df = pd.read_csv(self.action_csv)
+
+        if i_row is not None:
+            new_numerical_df = numerical_df.iloc[:i_row].copy()
+            new_action_df = action_df.iloc[:i_row].copy()
+        else:
+            new_numerical_df = pd.DataFrame(columns=numerical_df.columns)
+            new_action_df = pd.DataFrame(columns=action_df.columns)
+
+        new_numerical_df.to_csv(self.numerical_state_csv, index=False)
+        new_action_df.to_csv(self.action_csv, index=False)
+
     def _worker(self) -> None:
         """
         Background thread that writes data in batches.
