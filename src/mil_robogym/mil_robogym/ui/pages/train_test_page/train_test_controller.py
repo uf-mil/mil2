@@ -28,6 +28,9 @@ class TrainTestViewController:
         self._training_event_queue: queue.Queue[dict[str, object]] = queue.Queue()
         self._training_thread: threading.Thread | None = None
         self._poll_after_id: str | None = None
+        self._stop_requested = threading.Event()
+        self._abort_requested = threading.Event()
+        self._latest_saved_agent_name: str | None = None
 
     def set_context(self, project: Mapping[str, Any] | None = None) -> None:
 
@@ -92,6 +95,9 @@ class TrainTestViewController:
         )
         self.view.show_live_metrics({})
         self.view.flush_ui_updates()
+        self._stop_requested.clear()
+        self._abort_requested.clear()
+        self._latest_saved_agent_name = None
         self._training_event_queue = queue.Queue()
         self._training_thread = threading.Thread(
             target=self._run_training_worker,
@@ -103,6 +109,37 @@ class TrainTestViewController:
 
     def is_training_running(self) -> bool:
         return self._training_thread is not None and self._training_thread.is_alive()
+
+    def stop_training(self) -> None:
+        """Request that the current training run stop at the next safe boundary."""
+        if not self.is_training_running():
+            self.view.set_terminal_text("Training is not currently running.")
+            return
+        if self._abort_requested.is_set():
+            self.view.set_terminal_text("Training abort is already in progress.")
+            return
+
+        self._stop_requested.set()
+        if self.trainer is not None:
+            self.trainer.request_stop()
+        self.view.set_terminal_text(
+            "Stopping training...\n" "Waiting for the current episode to finish.",
+        )
+
+    def abort_training(self) -> None:
+        """Abort training as quickly as the current worker state allows."""
+        if not self.is_training_running():
+            self.view.set_terminal_text("Training is not currently running.")
+            return
+
+        self._abort_requested.set()
+        self._stop_requested.set()
+        if self.trainer is not None:
+            self.trainer.request_abort()
+        self.view.set_terminal_text(
+            "Aborting training...\n"
+            "Unsaved progress from the current episode will be discarded.",
+        )
 
     def wait_for_training_completion(self, timeout: float | None = None) -> None:
         if self._training_thread is not None:
@@ -143,12 +180,18 @@ class TrainTestViewController:
                 **self.training_settings,
                 progress_callback=self._enqueue_training_event,
             )
+            if self._abort_requested.is_set():
+                self.trainer.request_abort()
+            elif self._stop_requested.is_set():
+                self.trainer.request_stop()
             saved_agent_dirs = self.trainer.train()
             latest_agent_name = saved_agent_dirs[0].name if saved_agent_dirs else None
             self._enqueue_training_event(
                 {
                     "type": "training_finished",
                     "latest_agent_name": latest_agent_name,
+                    "stopped": self.trainer.was_stopped(),
+                    "aborted": self.trainer.was_aborted(),
                 },
             )
         except Exception as e:
@@ -187,29 +230,49 @@ class TrainTestViewController:
             metrics = event.get("metrics", {})
             if isinstance(metrics, dict):
                 self.view.show_live_metrics(metrics)
-            self.view.set_terminal_text(
-                "Training agent with saved settings...\n"
-                f"Episode {episode}/{num_episodes}",
-            )
+            if not self._stop_requested.is_set():
+                self.view.set_terminal_text(
+                    "Training agent with saved settings...\n"
+                    f"Episode {episode}/{num_episodes}",
+                )
             return
 
         if event_type == "agent_saved":
             agent_name = event.get("agent_name")
             if isinstance(agent_name, str):
+                self._latest_saved_agent_name = agent_name
                 self.view.refresh_history(agent_name)
             return
 
         if event_type == "training_finished":
             latest_agent_name = event.get("latest_agent_name")
-            if isinstance(latest_agent_name, str):
-                self.view.refresh_project_artifacts(latest_agent_name)
+            resolved_agent_name = (
+                latest_agent_name
+                if isinstance(latest_agent_name, str)
+                else self._latest_saved_agent_name
+            )
+            if isinstance(resolved_agent_name, str):
+                self.view.refresh_project_artifacts(resolved_agent_name)
             else:
                 self.view.refresh_project_artifacts(None)
-            self.view.set_terminal_text(
-                "Training finished.\n"
-                f"Latest saved agent: {latest_agent_name or 'unknown'}",
-            )
+            if bool(event.get("aborted")):
+                self.view.set_terminal_text(
+                    "Training aborted.\n"
+                    f"Latest saved agent: {resolved_agent_name or 'none'}",
+                )
+            elif bool(event.get("stopped")):
+                self.view.set_terminal_text(
+                    "Training stopped.\n"
+                    f"Latest saved agent: {resolved_agent_name or 'unknown'}",
+                )
+            else:
+                self.view.set_terminal_text(
+                    "Training finished.\n"
+                    f"Latest saved agent: {resolved_agent_name or 'unknown'}",
+                )
             self.view.set_training_enabled(True)
+            self._stop_requested.clear()
+            self._abort_requested.clear()
             return
 
         if event_type == "training_failed":
@@ -219,3 +282,5 @@ class TrainTestViewController:
                 "Training failed.\n" f"{error_type}: {message}",
             )
             self.view.set_training_enabled(True)
+            self._stop_requested.clear()
+            self._abort_requested.clear()

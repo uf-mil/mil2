@@ -1,4 +1,5 @@
 import os
+import threading
 from concurrent.futures import Future
 from datetime import datetime
 from pathlib import Path
@@ -82,6 +83,10 @@ class Trainer:
         self.env_id = env_id
         self.expert_noise_std = expert_noise_std
         self.progress_callback = progress_callback
+        self._stop_requested = threading.Event()
+        self._abort_requested = threading.Event()
+        self._stopped_early = False
+        self._aborted = False
 
         # ROS2 components
         self.move_client = MoveClient()
@@ -139,11 +144,21 @@ class Trainer:
         """
         Train the VAIRL algorithm.
         """
+        if not hasattr(self, "_stop_requested"):
+            self._stop_requested = threading.Event()
+        if not hasattr(self, "_abort_requested"):
+            self._abort_requested = threading.Event()
+        if not hasattr(self, "_stopped_early"):
+            self._stopped_early = False
+        if not hasattr(self, "_aborted"):
+            self._aborted = False
+
         metrics_session = TrainingMetricsSession(
             save_callback=self._emit_progress_event,
         )
         session_closed = False
         caught_exception: Exception | None = None
+        last_checkpoint_save: Future[list[Path]] | None = None
         self._ready_simulation()
 
         try:
@@ -207,6 +222,13 @@ class Trainer:
             train_discriminator_flag = True
 
             for episode in range(self.num_episodes):
+                if self._abort_requested.is_set():
+                    self._stopped_early = True
+                    self._aborted = True
+                    break
+                if self._stop_requested.is_set():
+                    self._stopped_early = True
+                    break
 
                 reward_net.eval()
 
@@ -249,12 +271,27 @@ class Trainer:
                         "metrics": metrics_session.snapshot(),
                     },
                 )
+                if self._abort_requested.is_set():
+                    self._stopped_early = True
+                    self._aborted = True
+                    break
+                if self._stop_requested.is_set():
+                    self._stopped_early = True
+                    break
                 if self.save_every > 0 and episode_number % self.save_every == 0:
-                    self._save_generator_model(
+                    last_checkpoint_save = self._save_generator_model(
                         generator,
                         metrics_session,
                         checkpoint_episode=episode_number,
                     )
+
+            if self._abort_requested.is_set():
+                metrics_session.close()
+                session_closed = True
+                self.data_collector_client.get_logger().info("ABORTED TRAINING")
+                if last_checkpoint_save is not None:
+                    return last_checkpoint_save.result()
+                return []
 
             final_saved_agent_dirs = self._save_generator_model(
                 generator,
@@ -469,6 +506,29 @@ class Trainer:
         progress_callback = getattr(self, "progress_callback", None)
         if progress_callback is not None:
             progress_callback(event)
+
+    def request_stop(self) -> None:
+        """Ask the trainer to stop at the next safe boundary."""
+        if not hasattr(self, "_stop_requested"):
+            self._stop_requested = threading.Event()
+        self._stop_requested.set()
+
+    def request_abort(self) -> None:
+        """Abort the run and discard any unsaved final checkpoint."""
+        if not hasattr(self, "_abort_requested"):
+            self._abort_requested = threading.Event()
+        if not hasattr(self, "_stop_requested"):
+            self._stop_requested = threading.Event()
+        self._abort_requested.set()
+        self._stop_requested.set()
+
+    def was_stopped(self) -> bool:
+        """Report whether the loop exited early due to a stop request."""
+        return bool(getattr(self, "_stopped_early", False))
+
+    def was_aborted(self) -> bool:
+        """Report whether the run exited via the abort path."""
+        return bool(getattr(self, "_aborted", False))
 
     def _ready_simulation(self):
         """

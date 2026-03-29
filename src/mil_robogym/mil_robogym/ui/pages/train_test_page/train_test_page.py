@@ -44,6 +44,8 @@ class TrainTestPage(tk.Frame):
         self.buttons_section = ButtonsSection(
             self,
             self.controller.start_training,
+            self.controller.stop_training,
+            self.controller.abort_training,
             self._on_test_selected_agent_click,
         )
 
