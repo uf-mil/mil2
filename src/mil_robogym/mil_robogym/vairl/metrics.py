@@ -7,13 +7,14 @@ from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol, Sequence
+from typing import Callable, Protocol, Sequence
 from uuid import uuid4
 
 from mil_robogym.data_collection.filesystem import create_agent_folder
 from mil_robogym.data_collection.types import RoboGymTrainingYaml
 
 TrainingMetrics = dict[str, list[float]]
+MetricsEventCallback = Callable[[dict[str, object]], None]
 _STOP_WORKER = object()
 
 
@@ -38,7 +39,11 @@ class _AgentSaveRequest:
 class TrainingMetricsSession:
     """Collect training metrics and save metric artifacts on a worker thread."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        save_callback: MetricsEventCallback | None = None,
+    ) -> None:
         self._metrics: TrainingMetrics = {
             "episode": [],
             "reward_mean": [],
@@ -52,6 +57,7 @@ class TrainingMetricsSession:
         self._close_lock = threading.Lock()
         self._worker_failure: Exception | None = None
         self._closed = False
+        self._save_callback = save_callback
 
         self._temp_dir = tempfile.TemporaryDirectory(prefix="mil_robogym_metrics_")
         self._temp_dir_path = Path(self._temp_dir.name)
@@ -177,6 +183,15 @@ class TrainingMetricsSession:
                     request.future.set_exception(exc)
                 else:
                     request.future.set_result(saved_agent_dirs)
+                    if self._save_callback is not None:
+                        self._save_callback(
+                            {
+                                "type": "agent_saved",
+                                "agent_name": request.agent_name,
+                                "checkpoint_episode": request.checkpoint_episode,
+                                "is_final": request.checkpoint_episode is None,
+                            },
+                        )
             finally:
                 if item is not _STOP_WORKER:
                     item.trained_model_path.unlink(missing_ok=True)

@@ -2,6 +2,7 @@ import os
 from concurrent.futures import Future
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import torch
@@ -62,6 +63,7 @@ class Trainer:
         seed: int = DEFAULT_TRAINING_SETTINGS["seed"],
         env_id: str = "VairlROS2-v0",
         expert_noise_std: float = DEFAULT_TRAINING_SETTINGS["expert_noise_std"],
+        progress_callback: Callable[[dict[str, object]], None] | None = None,
     ):
         # Save all parameters to class attributes
         self.project = project
@@ -79,6 +81,7 @@ class Trainer:
         self.seed = seed
         self.env_id = env_id
         self.expert_noise_std = expert_noise_std
+        self.progress_callback = progress_callback
 
         # ROS2 components
         self.move_client = MoveClient()
@@ -136,7 +139,9 @@ class Trainer:
         """
         Train the VAIRL algorithm.
         """
-        metrics_session = TrainingMetricsSession()
+        metrics_session = TrainingMetricsSession(
+            save_callback=self._emit_progress_event,
+        )
         session_closed = False
         caught_exception: Exception | None = None
         self._ready_simulation()
@@ -235,6 +240,14 @@ class Trainer:
                     reward_mean=reward_mean,
                     reward_std=reward_std,
                     disc_stats=_disc_stats,
+                )
+                self._emit_progress_event(
+                    {
+                        "type": "metrics_updated",
+                        "episode": episode_number,
+                        "num_episodes": self.num_episodes,
+                        "metrics": metrics_session.snapshot(),
+                    },
                 )
                 if self.save_every > 0 and episode_number % self.save_every == 0:
                     self._save_generator_model(
@@ -451,6 +464,11 @@ class Trainer:
             "max_step_count": self.max_step_count,
             "expert_noise_std": self.expert_noise_std,
         }
+
+    def _emit_progress_event(self, event: dict[str, object]) -> None:
+        progress_callback = getattr(self, "progress_callback", None)
+        if progress_callback is not None:
+            progress_callback(event)
 
     def _ready_simulation(self):
         """

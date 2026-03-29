@@ -16,10 +16,32 @@ class DummyTrainer:
     def __init__(self, project, **kwargs):
         self.project = project
         self.settings = kwargs
+        self.progress_callback = kwargs.get("progress_callback")
         self.train_calls = 0
 
     def train(self):
         self.train_calls += 1
+        if self.progress_callback is not None:
+            self.progress_callback(
+                {
+                    "type": "metrics_updated",
+                    "episode": 1,
+                    "num_episodes": 7,
+                    "metrics": {
+                        "episode": [1.0],
+                        "reward_mean": [0.5],
+                        "disc_loss": [1.2],
+                    },
+                },
+            )
+            self.progress_callback(
+                {
+                    "type": "agent_saved",
+                    "agent_name": "2026_03_26_03_15_pm_ep_0003",
+                    "checkpoint_episode": 3,
+                    "is_final": False,
+                },
+            )
         if type(self).raise_on_train:
             raise RuntimeError("training exploded")
         return [Path("/tmp/2026_03_26_03_15_pm_final")]
@@ -33,7 +55,12 @@ class DummyView:
         self.terminal_messages: list[str] = []
         self.training_enabled_states: list[bool] = []
         self.refreshed_agent_names: list[str | None] = []
+        self.history_refreshes: list[str | None] = []
+        self.live_metrics_payloads: list[dict[str, list[float]]] = []
         self.flush_calls = 0
+        self.after_calls: list[int] = []
+        self._after_id = 0
+        self.scheduled_callbacks: dict[str, object] = {}
 
     def set_terminal_text(self, text: str) -> None:
         self.terminal_messages.append(text)
@@ -48,8 +75,24 @@ class DummyView:
         self.refreshed_agent_names.append(preferred_agent_name)
         self.selected_agent_name = preferred_agent_name
 
+    def refresh_history(self, preferred_agent_name: str | None = None) -> None:
+        self.history_refreshes.append(preferred_agent_name)
+
+    def show_live_metrics(self, metrics: dict[str, list[float]]) -> None:
+        self.live_metrics_payloads.append(metrics)
+
     def flush_ui_updates(self) -> None:
         self.flush_calls += 1
+
+    def after(self, delay_ms: int, callback) -> str:
+        self.after_calls.append(delay_ms)
+        self._after_id += 1
+        after_id = f"after-{self._after_id}"
+        self.scheduled_callbacks[after_id] = callback
+        return after_id
+
+    def after_cancel(self, after_id: str) -> None:
+        self.scheduled_callbacks.pop(after_id, None)
 
 
 class DummyApp:
@@ -89,18 +132,24 @@ def test_start_training_refreshes_history_with_saved_agent(monkeypatch):
         },
     )
     controller.start_training()
+    controller.wait_for_training_completion(timeout=2)
+    controller.process_pending_training_events()
 
     assert controller.trainer is not None
     assert controller.trainer.settings["num_episodes"] == 7
     assert controller.trainer.settings["rollout_steps"] == 512
     assert controller.trainer.settings["save_every"] == 3
     assert controller.trainer.settings["seed"] == 9
+    assert controller.trainer.progress_callback is not None
     assert controller.trainer.train_calls == 1
     assert view.training_enabled_states == [False, True]
+    assert view.history_refreshes == ["2026_03_26_03_15_pm_ep_0003"]
     assert view.refreshed_agent_names == ["2026_03_26_03_15_pm_final"]
     assert view.selected_agent_name == "2026_03_26_03_15_pm_final"
     assert "Training agent with saved settings" in view.terminal_messages[0]
     assert "Latest saved agent: 2026_03_26_03_15_pm_final" in view.terminal_messages[-1]
+    assert view.live_metrics_payloads[0] == {}
+    assert view.live_metrics_payloads[-1]["reward_mean"] == [0.5]
 
 
 def test_start_training_reports_failure_without_crashing(monkeypatch):
@@ -114,6 +163,8 @@ def test_start_training_reports_failure_without_crashing(monkeypatch):
 
     try:
         controller.start_training()
+        controller.wait_for_training_completion(timeout=2)
+        controller.process_pending_training_events()
     finally:
         DummyTrainer.raise_on_train = False
 
@@ -121,6 +172,7 @@ def test_start_training_reports_failure_without_crashing(monkeypatch):
     assert controller.trainer.train_calls == 1
     assert view.training_enabled_states == [False, True]
     assert view.refreshed_agent_names == []
+    assert view.history_refreshes == ["2026_03_26_03_15_pm_ep_0003"]
     assert (
         view.terminal_messages[-1]
         == "Training failed.\nRuntimeError: training exploded"
