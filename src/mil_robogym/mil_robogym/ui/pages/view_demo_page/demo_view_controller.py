@@ -361,6 +361,9 @@ class DemoViewController:
                 ),
             )
 
+            # Update CSV writer
+            self.csv_writer.set_new_paths(self.project, self.demo)
+
             self._cancel_edit_demo()
 
         except FileExistsError:

@@ -88,6 +88,20 @@ class AsyncCSVWriter:
         new_numerical_df.to_csv(self.numerical_state_csv, index=False)
         new_action_df.to_csv(self.action_csv, index=False)
 
+    def set_new_paths(self, project: RoboGymProjectYaml, demo: RoboGymDemoYaml) -> None:
+        """
+        Set new paths for the csv files.
+        """
+        self.project = project
+        self.demo = demo
+
+        self.demo_dir_path = get_demo_dir_path(project, demo)
+
+        self.numerical_state_csv = (
+            self.demo_dir_path / "data" / "numerical" / "data.csv"
+        )
+        self.action_csv = self.demo_dir_path / "data" / "actions" / "data.csv"
+
     def _worker(self) -> None:
         """
         Background thread that writes data in batches.
