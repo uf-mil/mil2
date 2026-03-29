@@ -100,8 +100,8 @@ Rotation::Rotation()
 
 Eigen::Vector3d Rotation::rot_vec(Axis const& first, Axis const& second, Axis const& third) const
 {
-    return quat_.toRotationMatrix().eulerAngles(static_cast<int>(first), static_cast<int>(second),
-                                                static_cast<int>(third));
+    return quat_.toRotationMatrix().canonicalEulerAngles(static_cast<int>(first), static_cast<int>(second),
+                                                         static_cast<int>(third));
 }
 
 std::tuple<double, double, double> Rotation::rot_vec_tuple(Axis const& first, Axis const& second,
