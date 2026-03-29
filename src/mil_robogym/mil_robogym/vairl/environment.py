@@ -47,6 +47,11 @@ class Environment(gym.Env):
 
         if initialized:
 
+            # Pool clamping boundaries
+            self.x_min, self.x_max = -11.0, 11.0
+            self.y_min, self.y_max = -25.0, 25.0
+            self.z_min, self.z_max = -1.0, 0.0
+
             # Data Collector
             self.data_collector_client = data_collector_client
             self.data_collector_client.get_snapshot()  # Initialize service with request
@@ -117,7 +122,7 @@ class Environment(gym.Env):
         # self.move_client.move((0.0, 0.0, 0.0, 0.0))
 
         # Move to spawn position to ground movement client.
-        self.move_client.move((0, 0, 0, 0))
+        # self.move_client.move((0, 0, 0, 0))
 
         # Record state
         self.state = self.data_collector_client.get_flattened_snapshot_values(
@@ -141,8 +146,10 @@ class Environment(gym.Env):
         self.t += 1
 
         action = np.asarray(action, dtype=np.float32)
-        self.pose += action
         dx, dy, dz, dyaw = action
+        next_pose, within_bounds = self._apply_action_with_bounds(self.pose, action)
+
+        self.pose = next_pose
         x, y, z, yaw = self.pose
 
         env_reward = 0.0
@@ -154,8 +161,8 @@ class Environment(gym.Env):
         # did_successful_movement = self.move_client.move((dx, dy, dz, dyaw))
 
         # Determine if it hits an obstacle and deduct points
-        # if not did_successful_movement:
-        #    env_reward -= 1.0
+        if not within_bounds:
+            env_reward -= 1.0
 
         # Record next state
         next_state = self.data_collector_client.get_flattened_snapshot_values(
@@ -186,3 +193,29 @@ class Environment(gym.Env):
 
         done = bool(terminated or truncated)
         return next_state.copy(), float(env_reward), done, {}
+
+    def _apply_action_with_bounds(self, pose, action):
+        """
+        Applies action to pose while enforcing pool bounds.
+
+        Returns:
+            new_pose (np.ndarray): bounded pose
+            within_bounds (bool): True if no clipping occurred
+        """
+        action = np.asarray(action, dtype=np.float32)
+        pose = np.asarray(pose, dtype=np.float32)
+
+        # Proposed new pose
+        proposed = pose + action
+
+        # Clamp to bounds
+        clamped = proposed.copy()
+        clamped[0] = np.clip(proposed[0], self.x_min, self.x_max)  # x
+        clamped[1] = np.clip(proposed[1], self.y_min, self.y_max)  # y
+        clamped[2] = np.clip(proposed[2], self.z_min, self.z_max)  # z
+        clamped[3] = proposed[3]  # yaw (no bounds unless you want wrap)
+
+        # Check if anything was clipped
+        within_bounds = np.allclose(proposed[:3], clamped[:3])
+
+        return clamped, within_bounds
