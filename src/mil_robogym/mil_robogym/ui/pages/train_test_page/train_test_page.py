@@ -73,7 +73,17 @@ class TrainTestPage(tk.Frame):
             projects_dir = find_projects_dir()
             self.project_dir = projects_dir / to_lower_snake_case(self.project_name)
 
-        self._refresh_history()
+        restored_state = self._restore_ui_state()
+        preferred_agent_name = restored_state.get("selected_agent_name")
+        selected_metrics = restored_state.get("selected_metrics")
+        if isinstance(selected_metrics, list):
+            self.metrics_section.set_selected_metrics(
+                [str(metric_name) for metric_name in selected_metrics],
+            )
+
+        self._refresh_history(
+            preferred_agent_name if isinstance(preferred_agent_name, str) else None,
+        )
         self._load_selected_agent_metrics()
 
         self.controller.set_context(project)
@@ -175,3 +185,30 @@ class TrainTestPage(tk.Frame):
     def _on_test_selected_agent_click(self) -> None:
         """Placeholder action for running selected-agent test."""
         print("clicked")
+
+    def persist_ui_state(self) -> None:
+        """Persist the current non-training UI state across page recreation."""
+        if self.controller is None or not hasattr(
+            self.controller.app,
+            "set_page_state",
+        ):
+            return
+        self.controller.app.set_page_state(
+            "train_test",
+            {
+                "project_name": self.project_name,
+                "selected_agent_name": self.selected_agent_name,
+                "selected_metrics": self.metrics_section.get_selected_metrics(),
+            },
+        )
+
+    def _restore_ui_state(self) -> dict[str, object]:
+        if self.controller is None or not hasattr(
+            self.controller.app,
+            "get_page_state",
+        ):
+            return {}
+        state = self.controller.app.get_page_state("train_test")
+        if state.get("project_name") != self.project_name:
+            return {}
+        return state

@@ -40,6 +40,7 @@ class App(tk.Tk):
         self.container.grid_columnconfigure(0, weight=1)
 
         self.pages: dict[str, tk.Frame] = {}
+        self.page_state: dict[str, dict[str, Any]] = {}
         self._register_page("start", StartPage)
         self._register_page("create_project", CreateProjectPage)
         self._register_page("edit_project", EditProjectPage)
@@ -85,3 +86,11 @@ class App(tk.Tk):
                 frame.set_context(**kwargs)
 
             frame.tkraise()
+
+    def set_page_state(self, name: str, state: dict[str, Any]) -> None:
+        """Persist small UI state across page recreation."""
+        self.page_state[name] = dict(state)
+
+    def get_page_state(self, name: str) -> dict[str, Any]:
+        """Return previously persisted UI state for a page."""
+        return dict(self.page_state.get(name, {}))

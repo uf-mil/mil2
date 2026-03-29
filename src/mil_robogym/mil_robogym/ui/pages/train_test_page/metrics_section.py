@@ -7,6 +7,7 @@ from pathlib import Path
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from matplotlib.ticker import MaxNLocator
 
 DEFAULT_METRIC_ORDER = (
     "reward_mean",
@@ -54,10 +55,10 @@ class MetricsSection:
         self.title_label.grid(row=0, column=0, sticky="w", pady=(0, 4))
 
         self.add_metric_menu = tk.Menu(header, tearoff=False)
-        self.add_metric_button = tk.Menubutton(
+        self.add_metric_button = tk.Button(
             header,
             text="+",
-            menu=self.add_metric_menu,
+            command=self._show_add_metric_menu,
             bg="#ECECEC",
             activebackground="#DFDFDF",
             fg="black",
@@ -69,7 +70,6 @@ class MetricsSection:
             cursor="hand2",
         )
         self.add_metric_button.grid(row=0, column=1, sticky="e", pady=(0, 4))
-        self.add_metric_button["menu"] = self.add_metric_menu
 
         self.selected_metrics_frame = tk.Frame(self.container, bg="#DADADA")
         self.selected_metrics_frame.grid(row=1, column=0, sticky="ew", pady=(0, 4))
@@ -113,6 +113,17 @@ class MetricsSection:
         self._placeholder_text = message
         self._render_metric_controls()
         self._render_plots()
+
+    def get_selected_metrics(self) -> list[str]:
+        """Return the current metric watchlist."""
+        return list(self._selected_metrics)
+
+    def set_selected_metrics(self, metric_names: Sequence[str]) -> None:
+        """Seed or restore a preferred watchlist."""
+        self._selected_metrics = list(dict.fromkeys(metric_names))
+        if self._metric_data:
+            self._render_metric_controls()
+            self._render_plots()
 
     def set_metrics_data(
         self,
@@ -171,21 +182,25 @@ class MetricsSection:
         self.set_metrics_data(metrics)
 
     def _available_metric_names(self) -> list[str]:
-        return [
+        metric_names = [
             metric_name
             for metric_name in self._metric_data
             if metric_name not in {"index", self._x_metric_name}
         ]
-
-    def _default_selected_metrics(self, available_metrics: Sequence[str]) -> list[str]:
-        selected = [
+        preferred_names = [
             metric_name
             for metric_name in DEFAULT_METRIC_ORDER
-            if metric_name in available_metrics
-        ][:2]
-        if selected:
-            return selected
-        return list(available_metrics[:2])
+            if metric_name in metric_names
+        ]
+        extra_names = sorted(
+            metric_name
+            for metric_name in metric_names
+            if metric_name not in preferred_names
+        )
+        return [*preferred_names, *extra_names]
+
+    def _default_selected_metrics(self, available_metrics: Sequence[str]) -> list[str]:
+        return list(available_metrics)
 
     def _render_metric_controls(self) -> None:
         for child in self.selected_metrics_frame.winfo_children():
@@ -242,6 +257,16 @@ class MetricsSection:
             state="normal" if remaining_metrics else "disabled",
         )
 
+    def _show_add_metric_menu(self) -> None:
+        if str(self.add_metric_button.cget("state")) == "disabled":
+            return
+
+        self.add_metric_menu.post(
+            self.add_metric_button.winfo_rootx(),
+            self.add_metric_button.winfo_rooty()
+            + self.add_metric_button.winfo_height(),
+        )
+
     def _add_metric(self, metric_name: str) -> None:
         if metric_name in self._selected_metrics:
             return
@@ -281,19 +306,75 @@ class MetricsSection:
         x_values = self._x_values()
         for axis, metric_name in zip(axes, self._selected_metrics):
             y_values = self._metric_data.get(metric_name, [])
+            axis.set_facecolor("#FFFFFF")
             axis.plot(
                 x_values[: len(y_values)],
                 y_values,
                 linewidth=2.0,
                 color="#2B5D83",
             )
-            axis.set_title(metric_name, fontsize=10, loc="left")
-            axis.grid(True, alpha=0.3)
-            axis.tick_params(labelsize=8)
-            axis.set_ylabel(metric_name, fontsize=8)
+            axis.grid(True, axis="y", alpha=0.24, color="#8C98A5", linewidth=0.7)
+            axis.grid(True, axis="x", alpha=0.18, color="#A6B0BA", linewidth=0.6)
+            axis.margins(x=0.025, y=0.18)
+            axis.yaxis.set_major_locator(MaxNLocator(nbins=4, min_n_ticks=3))
+            axis.tick_params(axis="y", labelsize=8, pad=2, colors="#4D5560")
+            axis.tick_params(
+                axis="x",
+                labelsize=8,
+                pad=-11,
+                length=0,
+                colors="#4D5560",
+            )
+            axis.spines["top"].set_visible(False)
+            axis.spines["right"].set_visible(False)
+            axis.spines["left"].set_color("#B7BEC6")
+            axis.spines["bottom"].set_color("#B7BEC6")
+            axis.spines["left"].set_linewidth(0.8)
+            axis.spines["bottom"].set_linewidth(0.8)
+            axis.text(
+                0.018,
+                0.94,
+                self._format_metric_label(metric_name),
+                transform=axis.transAxes,
+                ha="left",
+                va="top",
+                fontsize=8,
+                fontweight="bold",
+                color="#1F2A33",
+                bbox={
+                    "boxstyle": "round,pad=0.22",
+                    "facecolor": "#F6F8FA",
+                    "edgecolor": "#D7DDE3",
+                    "linewidth": 0.6,
+                },
+            )
+            axis.label_outer()
 
-        axes[-1].set_xlabel(self._x_metric_name or "index", fontsize=9)
-        self.figure.tight_layout(pad=1.1)
+        axes[-1].set_xlabel("")
+        axes[-1].text(
+            0.985,
+            0.055,
+            self._format_metric_label(self._x_metric_name or "index"),
+            transform=axes[-1].transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=8,
+            color="#4D5560",
+            bbox={
+                "boxstyle": "round,pad=0.18",
+                "facecolor": "#FFFFFF",
+                "edgecolor": "#D7DDE3",
+                "linewidth": 0.6,
+                "alpha": 0.96,
+            },
+        )
+        self.figure.subplots_adjust(
+            left=0.074,
+            right=0.985,
+            top=0.988,
+            bottom=0.06,
+            hspace=0.12,
+        )
         self.canvas.draw_idle()
 
     def _x_values(self) -> list[float]:
@@ -303,6 +384,9 @@ class MetricsSection:
             return []
         first_series = next(iter(self._metric_data.values()), [])
         return [float(index) for index in range(len(first_series))]
+
+    def _format_metric_label(self, metric_name: str) -> str:
+        return metric_name.replace("_", " ").upper()
 
     def _show_placeholder(self, text: str) -> None:
         self.placeholder_label.configure(text=text)

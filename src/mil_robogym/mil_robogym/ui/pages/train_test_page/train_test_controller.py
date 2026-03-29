@@ -48,6 +48,8 @@ class TrainTestViewController:
         if self.is_training_running():
             self.view.set_terminal_text("Training is still running.")
             return
+        if hasattr(self.view, "persist_ui_state"):
+            self.view.persist_ui_state()
         self.app.show_page("start")
 
     def navigate_to_project(self, _event=None) -> None:
@@ -57,6 +59,8 @@ class TrainTestViewController:
         if self.is_training_running():
             self.view.set_terminal_text("Training is still running.")
             return
+        if hasattr(self.view, "persist_ui_state"):
+            self.view.persist_ui_state()
         self.app.show_page("view_project", project=self.raw_project)
 
     def navigate_to_settings(self) -> None:
@@ -66,6 +70,8 @@ class TrainTestViewController:
         if self.is_training_running():
             self.view.set_terminal_text("Training is still running.")
             return
+        if hasattr(self.view, "persist_ui_state"):
+            self.view.persist_ui_state()
         self.app.show_page("training_settings", project=self.raw_project)
 
     def start_training(self) -> None:
