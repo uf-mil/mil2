@@ -179,7 +179,7 @@ def make_bridge_n_tf(context, *args, **kwargs):
     return bridge_nodes + tf_nodes
 
 
-def spwan_model(context, pkg_project_gazebo, pkg_project_bringup, *args, **kwargs):
+def spawn_model(context, pkg_project_gazebo, pkg_project_bringup, *args, **kwargs):
     model_name = LaunchConfiguration("model_name").perform(context)
     model_path = Path(LaunchConfiguration("model_file").perform(context))
     namespace = LaunchConfiguration("namespace").perform(context)
@@ -194,7 +194,7 @@ def spwan_model(context, pkg_project_gazebo, pkg_project_bringup, *args, **kwarg
         model_path = model_path.with_suffix("")
         model_path.write_text(model_xml)
 
-    spwan_navigator = IncludeLaunchDescription(
+    spawn_navigator = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
                 [pkg_project_gazebo, "launch", "spawn_navigator.launch.py"],
@@ -218,7 +218,7 @@ def spwan_model(context, pkg_project_gazebo, pkg_project_bringup, *args, **kwarg
         }.items(),
     )
 
-    return [spwan_navigator, navigator_setup]
+    return [spawn_navigator, navigator_setup]
 
 
 def generate_launch_description():
@@ -293,7 +293,7 @@ def generate_launch_description():
             # !!! Uncomment once navigator_controller is created !!!
             # set_sim_params,
             OpaqueFunction(
-                function=spwan_model,
+                function=spawn_model,
                 args=[pkg_project_gazebo, pkg_project_bringup],
             ),
             OpaqueFunction(function=make_bridge_n_tf),
