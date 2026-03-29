@@ -192,3 +192,7 @@ cython_debug/
 
 bag_files
 src/mil_common/perception/vision_stack/
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml

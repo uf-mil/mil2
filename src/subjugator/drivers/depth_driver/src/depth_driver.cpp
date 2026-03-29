@@ -109,12 +109,11 @@ void DepthDriver::odom_callback(nav_msgs::msg::Odometry::SharedPtr const ptr)
 
 boost::shared_ptr<tcp::socket> DepthDriver::connect()
 {
-    using ip_address = boost::asio::ip::address;
-    tcp::endpoint endpoint(ip_address::from_string(ip_), port_);
+    tcp::endpoint endpoint(boost::asio::ip::make_address(ip_), port_);
 
     RCLCPP_INFO(this->get_logger(), "Connecting to Depth Server");
-    boost::asio::io_service io_service;
-    boost::shared_ptr<tcp::socket> socket = boost::make_shared<tcp::socket>(io_service);
+    boost::asio::io_context io_ctx;
+    boost::shared_ptr<tcp::socket> socket = boost::make_shared<tcp::socket>(io_ctx);
     socket->connect(endpoint);
     RCLCPP_INFO(this->get_logger(), "Connection to Depth Server established");
 
