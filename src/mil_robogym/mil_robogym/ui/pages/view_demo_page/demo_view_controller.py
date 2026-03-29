@@ -1,5 +1,6 @@
 import json
 import tkinter as tk
+from tkinter import messagebox
 from typing import Any
 
 import numpy as np
@@ -18,6 +19,8 @@ from mil_robogym.data_collection.writers.csv_writer import AsyncCSVWriter
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 
+from .edit_demo_popup import EditDemoPopup
+
 
 class DemoViewController:
     """
@@ -33,6 +36,7 @@ class DemoViewController:
         self.steps: list[dict] = []
 
         self.coordinate_popup = None
+        self.edit_demo_popup = None
 
         self.is_recording = False
         self.last_pose = None
@@ -81,7 +85,7 @@ class DemoViewController:
 
             self.view.controls.random_position_button.config(
                 state=(
-                    tk.ACTIVE
+                    tk.NORMAL
                     if self.project["random_spawn_space"]["enabled"]
                     else tk.DISABLED
                 ),
@@ -120,11 +124,21 @@ class DemoViewController:
             self.set_pose_client.set_pose(x, y, z, yaw=yaw)
 
     def navigate_to_home(self, _event: tk.Event | None = None) -> None:
+
+        # Check if pose index is not last and override data
+        if self.view.steps.current_pose_index != len(self.view.steps.steps) - 1:
+            self.csv_writer.clear_all_data(self.view.steps.current_pose_index)
+
         self.csv_writer.close()
         self._clean_components()
         self.app.show_page("start")
 
     def navigate_to_project(self, _event: tk.Event | None = None) -> None:
+
+        # Check if pose index is not last and override data
+        if self.view.steps.current_pose_index != len(self.view.steps.steps) - 1:
+            self.csv_writer.clear_all_data(self.view.steps.current_pose_index)
+
         self.csv_writer.close()
         self._clean_components()
         self.app.show_page("view_project", project=self.raw_project)
@@ -145,6 +159,11 @@ class DemoViewController:
             x, y, z, yaw = self.last_pose
             self.set_pose_client.set_pose(x, y, z, yaw=yaw)
 
+        # Check if pose index is not last and override data
+        if self.view.steps.current_pose_index != len(self.view.steps.steps) - 1:
+            self.csv_writer.clear_all_data(self.view.steps.current_pose_index)
+            self.view.steps.destroy_undone_steps()
+
         # Enable keyboard controls
         self.keyboard_controls_gui.show()
 
@@ -152,12 +171,22 @@ class DemoViewController:
         self.world_control_client.play_simulation()
 
         # Disable the play button and enable the pause button
-        self.view.controls.pause_button.config(state=tk.ACTIVE)
+        self.view.controls.pause_button.config(state=tk.NORMAL)
+        self.view.controls.undo_button.config(state=tk.DISABLED)
+        self.view.controls.redo_button.config(state=tk.DISABLED)
         self.view.controls.play_button.config(state=tk.DISABLED)
+
+        # Buffer sampling by 1 sample
+        self.data_collector.buffer = True
 
         # Start sampling asynchronously
         self.is_recording = True
-        self._schedule_next_sample()
+
+        # Delay sampling if mid session
+        if len(self.view.steps.steps) > 1:
+            self.view.after(self.delay, self._schedule_next_sample)
+        else:
+            self._schedule_next_sample()
 
     def pause_recording(self) -> None:
         """
@@ -172,14 +201,16 @@ class DemoViewController:
 
         # Disable the pause button and enable the play button.
         self.view.controls.pause_button.config(state=tk.DISABLED)
-        self.view.controls.play_button.config(state=tk.ACTIVE)
+        self.view.controls.undo_button.config(state=tk.NORMAL)
+        self.view.controls.redo_button.config(state=tk.NORMAL)
+        self.view.controls.play_button.config(state=tk.NORMAL)
 
     def preposition(self) -> None:
         """
         Enable keyboard controls to move the sub without recording steps.
         """
         # Display coordinate popup
-        if self.coordinate_popup and self.popup.win.winfo_exists():
+        if self.coordinate_popup and self.coordinate_popup.win.winfo_exists():
             self.coordinate_popup.win.lift()
             self.coordinate_popup.win.focus_force()
         else:
@@ -220,7 +251,56 @@ class DemoViewController:
 
             self._save_coordinate([start_pose])
 
-    def update_graph(self, _event=None):
+    def undo_step(self) -> None:
+        """
+        Pushes the index of the current step back by 1.
+        """
+        from_i = self.view.steps.current_pose_index
+        to_i = max(0, self.view.steps.current_pose_index - 1)
+        self.view.steps.move_highlight(from_i, to_i)
+
+        self.view.steps.current_pose_index = to_i
+        self.view.steps.refresh_display()
+
+        if coord := self.view.steps.get_current_pose():
+            x, y, z, yaw = coord
+            self.last_pose = coord
+            self.set_pose_client.set_pose(x, y, z, yaw=yaw)
+
+    def redo_step(self) -> None:
+        """
+        Pushes the index of the current step up by 1.
+        """
+        from_i = self.view.steps.current_pose_index
+        to_i = min(
+            len(self.view.steps.steps) - 1,
+            self.view.steps.current_pose_index + 1,
+        )
+        self.view.steps.move_highlight(from_i, to_i)
+
+        self.view.steps.current_pose_index = to_i
+        self.view.steps.refresh_display()
+
+        if coord := self.view.steps.get_current_pose():
+            x, y, z, yaw = coord
+            self.last_pose = coord
+            self.set_pose_client.set_pose(x, y, z, yaw=yaw)
+
+    def reset_demo(self) -> None:
+        """
+        Displays pop up to confirm resetting of demo data.
+        """
+        should_reset = messagebox.askyesno(
+            title="Reset Demo",
+            message="You will lose all data collected for this demo. Are you sure you want to reset the demo?",
+            icon="warning",
+        )
+
+        if should_reset:
+            self._reset_demo()
+            self.update_graph()
+
+    def update_graph(self, _event=None) -> None:
         """
         Event function for updating the graph displayed in the data section.
         """
@@ -235,6 +315,85 @@ class DemoViewController:
         data_section.ax.plot(values)
 
         data_section.canvas.draw()
+
+    def show_edit_demo(self) -> None:
+        """
+        Allow editing of demo name and sampling rate.
+        """
+
+        # Show edit demo pop up
+        if self.edit_demo_popup and self.edit_demo_popup.win.winfo_exists():
+            self.edit_demo_popup.win.lift()
+            self.edit_demo_popup.win.focus_force()
+        else:
+            self.edit_demo_popup = EditDemoPopup(
+                self.view,
+                self.demo,
+                self._cancel_edit_demo,
+                self._save_changes,
+            )
+
+    def _cancel_edit_demo(self) -> None:
+        self.edit_demo_popup.win.destroy()
+        self.edit_demo_popup = None
+
+    def _save_changes(self) -> None:
+
+        name = self.edit_demo_popup.name_entry.get()
+        sampling_rate = float(self.edit_demo_popup.rate_entry.get())
+
+        demo = self.demo.copy()
+
+        demo["name"] = name
+        demo["sampling_rate"] = sampling_rate
+
+        try:
+            # Attempt to edit demo.
+            edit_demo(self.project, demo, original_demo_name=self.demo["name"])
+
+            self.demo = demo
+
+            self.view.header.demo_title.config(text=name)
+            self.view.header.subtitle.config(
+                text=(
+                    f"Sampling rate: {self.demo['sampling_rate']} steps / sec | "
+                    f"World: {self.project['world_file']}"
+                ),
+            )
+
+            # Update CSV writer
+            self.csv_writer.set_new_paths(self.project, self.demo)
+
+            self._cancel_edit_demo()
+
+        except FileExistsError:
+            # Display warning label
+            self.edit_demo_popup.warning_label.grid()
+
+    def _reset_demo(self) -> None:
+        """
+        Resets all recorded data of a demo.
+        """
+        # Clear collected data
+        self.csv_writer.clear_all_data()
+
+        # Clear UI
+        self.view.steps.clear()
+        x, y, z, yaw = self.demo["start_position"]
+        self.view.steps.add_step((x, y, z, yaw), True)
+
+        # Enable preposition and random position buttons
+        self.view.controls.preposition_button.config(state=tk.NORMAL)
+        self.view.controls.random_position_button.config(
+            state=(
+                tk.NORMAL
+                if self.project["random_spawn_space"]["enabled"]
+                else tk.DISABLED
+            ),
+        )
+
+        # Place sub in starting location
+        self.set_pose_client.set_pose(x, y, z, yaw=yaw)
 
     def _schedule_next_sample(self) -> None:
         """
@@ -279,6 +438,9 @@ class DemoViewController:
             self.view.steps.add_step((x, y, z, yaw))
             self.view.steps.canvas.yview_moveto(1.0)
 
+            if self.view.controls.preposition_button["state"] == "normal":
+                self.view.controls.preposition_button.config(state=tk.DISABLED)
+
     def _save_coordinate(self, coordinates: list[Coord4D]) -> None:
         """
         Save coordinate for the start position of the model.
@@ -307,7 +469,7 @@ class DemoViewController:
 
         # Enable play button
         self.view.controls.pause_button.config(state=tk.DISABLED)
-        self.view.controls.play_button.config(state=tk.ACTIVE)
+        self.view.controls.play_button.config(state=tk.NORMAL)
 
     def _clean_components(self) -> None:
         self.view.header.destroy()
