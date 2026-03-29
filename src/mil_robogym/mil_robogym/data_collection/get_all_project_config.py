@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from .utils import resolve_package_share_dir
+from .utils import resolve_source_projects_dir
 
 
 def count_demo_folders(demos_dir: Path) -> int:
@@ -34,31 +34,30 @@ def count_demo_folders(demos_dir: Path) -> int:
 
 def find_projects_dir() -> Path:
     """
-    Locate the 'projects' directory within the 'mil_robogym' ROS 2 package.
+    Locate the source-tree 'projects' directory for 'mil_robogym':
+        <workspace_root>/src/mil_robogym/projects
 
-    :raises RuntimeError: If the 'mil_robogym' package cannot be found (e.g.,
-        the code is run outside of a built and sourced ROS 2 workspace).
+    :raises RuntimeError: If the source package directory cannot be found.
     :raises FileNotFoundError: If the 'projects' path exists but is not a
         directory.
     :return: Absolute path to the 'projects' directory.
     :rtype: Path
     """
     try:
-        share_dir = resolve_package_share_dir("mil_robogym")
+        projects_dir = resolve_source_projects_dir(package_name="mil_robogym")
     except RuntimeError as e:
         raise RuntimeError(
-            "Projects directory could not be found because this code was ran without being built into a ROS 2 Package.",
+            "Projects directory could not be found in the source tree.",
         ) from e
 
-    share_projects = share_dir.joinpath("projects")
-    if not share_projects.exists():
-        share_projects.mkdir(parents=True, exist_ok=True)
-    elif not share_projects.is_dir():
+    if not projects_dir.exists():
+        projects_dir.mkdir(parents=True, exist_ok=True)
+    elif not projects_dir.is_dir():
         raise FileNotFoundError(
             "Projects path exists but is not a directory.",
         )
 
-    return share_projects
+    return projects_dir
 
 
 def get_all_project_config() -> list[dict]:

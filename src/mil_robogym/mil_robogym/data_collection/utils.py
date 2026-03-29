@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 SOURCE_PROJECTS_DIR_ENV = "MIL_ROBOGYM_SOURCE_PROJECTS_DIR"
+SOURCE_PACKAGE_DIR_ENV = "MIL_ROBOGYM_SOURCE_PACKAGE_DIR"
 
 
 def flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
@@ -40,61 +41,58 @@ def flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
         out["value"] = value
 
 
-def resolve_package_share_dir(package_name: str = "mil_robogym") -> Path:
+def resolve_source_package_dir(package_name: str = "mil_robogym") -> Path:
     """
-    Resolve a package share directory from the ROS 2 ament index.
-    """
-    try:
-        from ament_index_python.packages import (
-            PackageNotFoundError,
-            get_package_share_directory,
-        )
-    except ModuleNotFoundError as e:
-        raise RuntimeError(
-            "ament_index_python is required to resolve ROS 2 package share directories.",
-        ) from e
+    Resolve the package source directory:
+      <workspace_root>/src/<package_name>
 
-    try:
-        return Path(get_package_share_directory(package_name))
-    except PackageNotFoundError as e:
-        raise RuntimeError(
-            f"{package_name} package share directory could not be found. "
-            "Build and source the ROS 2 workspace first.",
-        ) from e
+    Resolution order:
+      1) MIL_ROBOGYM_SOURCE_PACKAGE_DIR override
+      2) Walk from this file location (supports running from source tree)
+      3) Infer from install tree (supports running installed code in same workspace)
+    """
+    override = os.environ.get(SOURCE_PACKAGE_DIR_ENV)
+    if override:
+        return Path(override).expanduser().resolve()
+
+    this_file = Path(__file__).resolve()
+    for parent in (this_file, *this_file.parents):
+        if parent.name == package_name and parent.parent.name == "src":
+            return parent
+
+    install_dir = next(
+        (
+            parent
+            for parent in (this_file, *this_file.parents)
+            if parent.name == "install"
+        ),
+        None,
+    )
+    if install_dir is not None:
+        workspace_root = install_dir.parent
+        candidate = workspace_root / "src" / package_name
+        if candidate.is_dir():
+            return candidate
+
+    raise RuntimeError(
+        f"Could not resolve source directory for package '{package_name}'. "
+        f"Set {SOURCE_PACKAGE_DIR_ENV} or {SOURCE_PROJECTS_DIR_ENV}.",
+    )
 
 
 def resolve_source_projects_dir(
-    share_dir: Path,
     *,
     package_name: str = "mil_robogym",
-) -> Path | None:
+) -> Path:
     """
     Resolve the workspace source projects directory:
       <workspace_root>/src/<package_name>/projects
-
-    Returns None when a source workspace cannot be inferred.
     """
     override = os.environ.get(SOURCE_PROJECTS_DIR_ENV)
     if override:
         return Path(override).expanduser().resolve()
 
-    resolved_share_dir = share_dir.resolve()
-    install_dir = next(
-        (
-            parent
-            for parent in (resolved_share_dir, *resolved_share_dir.parents)
-            if parent.name == "install"
-        ),
-        None,
-    )
-    if install_dir is None:
-        return None
-
-    workspace_root = install_dir.parent
-    package_dir = workspace_root / "src" / package_name
-    if not package_dir.is_dir():
-        return None
-
+    package_dir = resolve_source_package_dir(package_name=package_name)
     return package_dir / "projects"
 
 

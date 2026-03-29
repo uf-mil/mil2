@@ -183,9 +183,7 @@ class CreateProjectPage(tk.Frame):
         Returns:
             None.
         """
-        c1 = coords[0] if len(coords) > 0 else None
-        c2 = coords[1] if len(coords) > 1 else None
-        self._display_collected_coords(c1, c2)
+        self._display_collected_coords(coords)
 
     def _display_collected_coords(
         self,

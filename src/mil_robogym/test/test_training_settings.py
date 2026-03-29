@@ -52,8 +52,8 @@ def test_update_project_training_settings_writes_config_and_loader_returns_it(
 ):
     """Project config keeps a top-level robogym_training block after updates."""
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
-        lambda: tmp_path,
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: tmp_path / "projects",
     )
     monkeypatch.setattr(
         "mil_robogym.data_collection.get_all_project_config.find_projects_dir",

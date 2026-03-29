@@ -97,23 +97,15 @@ def test_create_agent_folder_raises_if_exists(tmp_path: Path):
 
 
 def test_get_training_project_dir_paths_prefers_source(tmp_path: Path, monkeypatch):
-    """Prefers the source project tree for generated training artifacts."""
-    share_dir = tmp_path / "install" / "mil_robogym" / "share" / "mil_robogym"
+    """Returns source project tree path for generated training artifacts."""
     source_projects = tmp_path / "src" / "mil_robogym" / "projects"
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
-        lambda: share_dir,
-    )
-    monkeypatch.setattr(
         "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
-        lambda _share_dir: source_projects,
+        lambda: source_projects,
     )
 
     project = {"name": "Start Gate Agent"}
     paths = get_training_project_dir_paths(project)
 
-    assert paths == [
-        source_projects / "start_gate_agent",
-        share_dir / "projects" / "start_gate_agent",
-    ]
+    assert paths == [source_projects / "start_gate_agent"]
     assert get_training_project_dir_path(project) == paths[0]
