@@ -118,6 +118,7 @@ void GripperControl::setOpen(std::shared_ptr<std_srvs::srv::SetBool::Request> co
     // Set response for Servo Client
     response->success = true;
     response->message = "Gripper open state: " + std::to_string(request->data);
+    std::cout << "[GripperControl] Service call received. Setting gripper status: " << request->data << std::endl;
 }
 
 void GripperControl::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)

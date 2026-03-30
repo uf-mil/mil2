@@ -16,10 +16,10 @@ setup(
     maintainer_email="c.chavez@ufl.edu",
     description="TODO: Package description",
     license="TODO: License declaration",
-    tests_require=["pytest"],
+    # tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "sim_actuator_client = subjugator_sim_actuator_client.main:main",
+            "sim_actuator_client = subjugator_sim_actuator_client.actuator_client:main",
         ],
     },
 )
