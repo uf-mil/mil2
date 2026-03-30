@@ -28,7 +28,8 @@ class SimActuatorClient(Node):
     def actuate_gripper(self, isOpen: bool):
         request = SetBool.Request()
         request.data = isOpen
-        self.gripper_client.call_async(request)
+        future = self.gripper_client.call_async(request)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
 
     def actuate_marble_dropper(self, isOpen: bool):
         request = SetBool.Request()
@@ -44,9 +45,13 @@ class SimActuatorClient(Node):
 def main():
     rclpy.init()
     clientNode = SimActuatorClient()
-    clientNode.actuate_gripper(True)
     # clientNode.actuate_marble_dropper(True)
     # clientNode.actuate_torpedo(True)
+    # for _ in range(5):
+    #     clientNode.actuate_gripper(True)
+    #     rclpy.spin_once(clientNode, timeout_sec=2.0)
+    #     clientNode.actuate_gripper(False)
+    #     rclpy.spin_once(clientNode, timeout_sec=2.0)
     rclpy.spin(clientNode)
     rclpy.shutdown()
 
