@@ -176,6 +176,7 @@ class TrainTestPage(tk.Frame):
     def _on_agent_row_click(self, agent_name: str) -> None:
         """Handle selecting an agent row in history."""
         self.selected_agent_name = agent_name
+        self.controller.clear_loaded_agent()
         self._following_live_metrics = False
         self.header_section.set_last_training_session(agent_name)
         self._load_selected_agent_metrics()
@@ -185,8 +186,8 @@ class TrainTestPage(tk.Frame):
         print("download clicked")
 
     def _on_test_selected_agent_click(self) -> None:
-        """Placeholder action for running selected-agent test."""
-        print("clicked")
+        """Load and validate the currently selected saved model."""
+        self.controller.load_selected_agent()
 
     def persist_ui_state(self) -> None:
         """Persist the current non-training UI state across page recreation."""

@@ -243,6 +243,58 @@ def test_stop_training_requests_worker_shutdown(monkeypatch):
     )
 
 
+def test_load_selected_agent_reports_success(monkeypatch):
+    """Loads the selected saved model through the dedicated helper."""
+    _reset_dummy_trainer_state()
+    module = _load_controller_module(monkeypatch)
+    view = DummyView()
+    controller = module.TrainTestViewController(view, DummyApp())
+    view.selected_agent_name = "2026_03_30_11_15_am_final"
+    loaded_agent = types.SimpleNamespace(
+        agent_name="2026_03_30_11_15_am_final",
+        checkpoint_episode=None,
+        num_demos=6,
+    )
+
+    monkeypatch.setattr(
+        module,
+        "load_saved_agent",
+        lambda project, agent_name: loaded_agent,
+    )
+
+    controller.set_context({"robogym_project": {"name": "Demo Project"}})
+    resolved_agent = controller.load_selected_agent()
+
+    assert resolved_agent is loaded_agent
+    assert controller.loaded_agent is loaded_agent
+    assert view.terminal_messages[-1] == (
+        "Loaded saved model.\n" "2026_03_30_11_15_am_final | final model | 6 demos"
+    )
+
+
+def test_load_selected_agent_reports_failure(monkeypatch):
+    """Surfaces saved-model load failures in the terminal panel."""
+    _reset_dummy_trainer_state()
+    module = _load_controller_module(monkeypatch)
+    view = DummyView()
+    controller = module.TrainTestViewController(view, DummyApp())
+    view.selected_agent_name = "missing_agent"
+
+    def _raise(_project, _agent_name):
+        raise FileNotFoundError("missing saved model")
+
+    monkeypatch.setattr(module, "load_saved_agent", _raise)
+
+    controller.set_context({"robogym_project": {"name": "Demo Project"}})
+    resolved_agent = controller.load_selected_agent()
+
+    assert resolved_agent is None
+    assert controller.loaded_agent is None
+    assert view.terminal_messages[-1] == (
+        "Failed to load saved model.\n" "FileNotFoundError: missing saved model"
+    )
+
+
 def test_abort_training_uses_latest_completed_checkpoint(monkeypatch):
     """Abort skips the final save and falls back to the last completed checkpoint."""
     _reset_dummy_trainer_state()
