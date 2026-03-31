@@ -40,15 +40,17 @@ void DepthSensor::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf:
             this->updatePeriod_ = 1.0 / rate;
         }
     }
-    if (_sdf->HasElement("noise_mean"))
-        this->noiseMean_ = _sdf->Get<double>("noise_mean");
 
-    if (_sdf->HasElement("noise_stddev"))
-        this->noiseStdDev_ = _sdf->Get<double>("noise_stddev");
+    double noiseMean = _sdf->Get<double>("noise_mean", 0.0).first;
+    this->noiseStdDev_ = _sdf->Get<double>("noise_stddev", 0.0).first;
 
-    // Initialize random engine and distribution
-    this->randomEngine_.seed(std::random_device{}());
-    this->noiseDist_ = std::normal_distribution<double>(this->noiseMean_, this->noiseStdDev_);
+    if (this->noiseStdDev_ > 0.0)
+    {
+        // Initialize random engine and distribution
+        this->randomEngine_.seed(std::random_device{}());
+        this->noiseDist_ = std::normal_distribution<double>(noiseMean, this->noiseStdDev_);
+    }
+
 
     if (!rclcpp::ok())
     {
