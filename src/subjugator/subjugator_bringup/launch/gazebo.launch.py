@@ -34,7 +34,7 @@ def generate_launch_description():
                     [pkg_project_gazebo, "worlds", LaunchConfiguration("world")],
                 ),
                 " --render-engine",
-                " ogre",
+                " ogre2",
             ],
         }.items(),
     )
