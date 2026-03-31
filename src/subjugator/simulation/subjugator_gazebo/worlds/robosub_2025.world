@@ -198,6 +198,49 @@
       <self_collide>false</self_collide>
     </model>
 
+    <!-- Cube (Gripper Testing)
+    <model name='Gripper Cube'>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/gripper_2025/gripper_base.dae
+              </uri>
+              <scale>1 3 1</scale>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package:://subjugator_description/models/gripper_2025/gripper_base.dae
+              </uri>
+              <scale>1 3 1</scale>
+            </mesh>
+          </geometry>
+        </collision>
+        <pose>0 0 0 0 0 0</pose>
+        <inertial>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
+        </inertial>
+        <enable_wind>false</enable_wind>
+      </link>
+      <pose>2.2 6.2 -1 0 0 0</pose>
+      <static>false</static>
+      <self_collide>false</self_collide>
+    </model> -->
+
     <!-- Path Marker (unchanged) -->
     <model name='PathMarker_A1'>
       <link name='link'>
@@ -665,6 +708,22 @@
       <pose>7.19226 20.8402724 -1.4 0 0 0</pose>
       <static>true</static>
       <self_collide>false</self_collide>
+    </model>
+
+    <!-- Pinger -->
+    <model name='Pinger_A1_10000'>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <cylinder>
+              <radius>0.025</radius>
+              <length>0.185</length>
+            </cylinder>
+          </geometry>
+        </visual>
+      </link>
+      <pose>-1.65 23.80 -1.60 0 0 0</pose>
+      <static>true</static>
     </model>
 
     <model name='Torpedo_Board'>

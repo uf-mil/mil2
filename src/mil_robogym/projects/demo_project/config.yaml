@@ -1,9 +1,36 @@
 robogym_project:
   name: "Demo Project"
   world_file: "src/default/world/file"
+  model_name: "sub9"
   random_spawn_space:
     enabled: false
-    coord_1: (0, 0, 0, 0)
-    coord_2: (0, 0, 0, 0)
-  input_topics: ["imu/processed", "dvl/processed"]
-  output_topics: ["trajectory/4_deg"]
+    coord1_4d: [0.0, 0.0, 0.0, 0.0]
+    coord2_4d: [0.0, 0.0, 0.0, 0.0]
+  input_topics:
+    imu/processed:
+      - orientation.x
+      - orientation.y
+      - angular_velocity.z
+    dvl/processed:
+      - velocity.x
+      - velocity.y
+  output_topics:
+    trajectory/4_deg:
+      - x
+      - y
+      - z
+      - yaw
+  tensor_spec:
+    input_features:
+      - imu/processed:orientation.x
+      - imu/processed:orientation.y
+      - imu/processed:angular_velocity.z
+      - dvl/processed:velocity.x
+      - dvl/processed:velocity.y
+    output_features:
+      - trajectory/4_deg:x
+      - trajectory/4_deg:y
+      - trajectory/4_deg:z
+      - trajectory/4_deg:yaw
+    input_dim: 5
+    output_dim: 4
