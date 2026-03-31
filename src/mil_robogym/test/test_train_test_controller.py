@@ -251,14 +251,17 @@ def test_load_selected_agent_reports_success(monkeypatch):
     controller = module.TrainTestViewController(view, DummyApp())
     view.selected_agent_name = "2026_03_30_11_15_am_final"
     loaded_agent = types.SimpleNamespace(
-        agent_name="2026_03_30_11_15_am_final",
-        checkpoint_episode=None,
-        num_demos=6,
+        handle=types.SimpleNamespace(
+            agent_name="2026_03_30_11_15_am_final",
+            checkpoint_episode=None,
+        ),
+        input_size=12,
+        output_size=4,
     )
 
     monkeypatch.setattr(
         module,
-        "load_saved_agent",
+        "load_saved_agent_model",
         lambda project, agent_name: loaded_agent,
     )
 
@@ -268,7 +271,8 @@ def test_load_selected_agent_reports_success(monkeypatch):
     assert resolved_agent is loaded_agent
     assert controller.loaded_agent is loaded_agent
     assert view.terminal_messages[-1] == (
-        "Loaded saved model.\n" "2026_03_30_11_15_am_final | final model | 6 demos"
+        "Loaded saved model.\n"
+        "2026_03_30_11_15_am_final | final model | in 12 -> out 4"
     )
 
 
@@ -283,7 +287,7 @@ def test_load_selected_agent_reports_failure(monkeypatch):
     def _raise(_project, _agent_name):
         raise FileNotFoundError("missing saved model")
 
-    monkeypatch.setattr(module, "load_saved_agent", _raise)
+    monkeypatch.setattr(module, "load_saved_agent_model", _raise)
 
     controller.set_context({"robogym_project": {"name": "Demo Project"}})
     resolved_agent = controller.load_selected_agent()

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, cast
 
+import numpy as np
 import yaml
 
 from .filesystem import get_training_project_dir_path
@@ -28,6 +29,45 @@ class SavedAgentHandle:
     @property
     def is_final(self) -> bool:
         return self.checkpoint_episode is None
+
+
+@dataclass(slots=True)
+class LoadedAgent:
+    """Callable saved-agent wrapper around a loaded generator model."""
+
+    handle: SavedAgentHandle
+    model: Any
+    input_size: int
+    output_size: int
+
+    def predict(
+        self,
+        observation: np.ndarray | list[float],
+        *,
+        deterministic: bool = True,
+    ) -> np.ndarray:
+        observation_array = np.asarray(observation, dtype=np.float32)
+        expected_shape = (self.input_size,)
+        if observation_array.shape != expected_shape:
+            raise ValueError(
+                "Saved agent observation shape does not match the expected size: "
+                f"{observation_array.shape} != {expected_shape}",
+            )
+
+        action, _state = self.model.predict(
+            observation_array,
+            deterministic=deterministic,
+        )
+        action_array = np.asarray(action, dtype=np.float32).reshape(-1)
+
+        expected_action_shape = (self.output_size,)
+        if action_array.shape != expected_action_shape:
+            raise ValueError(
+                "Saved agent action shape does not match the expected size: "
+                f"{action_array.shape} != {expected_action_shape}",
+            )
+
+        return action_array
 
 
 def load_saved_agent(project: Mapping[str, Any], agent_name: str) -> SavedAgentHandle:
@@ -115,6 +155,21 @@ def load_saved_agent(project: Mapping[str, Any], agent_name: str) -> SavedAgentH
     )
 
 
+def load_saved_agent_model(project: Mapping[str, Any], agent_name: str) -> LoadedAgent:
+    """Load a saved agent and return a callable predictor wrapper."""
+    handle = load_saved_agent(project, agent_name)
+    input_size = _resolve_input_size(project)
+    model = _load_policy_model(handle.model_path)
+    output_size = _resolve_output_size(project, model)
+
+    return LoadedAgent(
+        handle=handle,
+        model=model,
+        input_size=input_size,
+        output_size=output_size,
+    )
+
+
 def _coerce_project_yaml(project: Mapping[str, Any]) -> RoboGymProjectYaml:
     project_yaml_raw = project.get("robogym_project", project)
     if not isinstance(project_yaml_raw, Mapping):
@@ -160,3 +215,64 @@ def _read_yaml_mapping(config_path: Path) -> dict[str, object]:
     if not isinstance(parsed, dict):
         raise ValueError(f"Saved agent config must be a mapping: {config_path}")
     return dict(parsed)
+
+
+def _resolve_input_size(project: Mapping[str, Any]) -> int:
+    tensor_spec = _require_tensor_spec(project)
+    input_dim = tensor_spec.get("input_dim")
+    if input_dim is not None:
+        return _coerce_int(
+            field_name="robogym_project.tensor_spec.input_dim",
+            value=input_dim,
+        )
+
+    input_features = tensor_spec.get("input_features")
+    if isinstance(input_features, list):
+        return len(input_features)
+
+    raise ValueError("Project tensor_spec must define input_dim or input_features.")
+
+
+def _resolve_output_size(project: Mapping[str, Any], model: Any) -> int:
+    action_space = getattr(model, "action_space", None)
+    action_shape = getattr(action_space, "shape", None)
+    if (
+        isinstance(action_shape, tuple)
+        and len(action_shape) == 1
+        and isinstance(action_shape[0], (int, np.integer))
+        and int(action_shape[0]) > 0
+    ):
+        return int(action_shape[0])
+
+    tensor_spec = _require_tensor_spec(project)
+    output_dim = tensor_spec.get("output_dim")
+    if output_dim is not None:
+        return _coerce_int(
+            field_name="robogym_project.tensor_spec.output_dim",
+            value=output_dim,
+        )
+
+    output_features = tensor_spec.get("output_features")
+    if isinstance(output_features, list):
+        return len(output_features)
+
+    raise ValueError(
+        "Unable to determine saved agent output size from the model or tensor_spec.",
+    )
+
+
+def _require_tensor_spec(project: Mapping[str, Any]) -> Mapping[str, Any]:
+    project_yaml_raw = project.get("robogym_project", project)
+    if not isinstance(project_yaml_raw, Mapping):
+        raise ValueError("Project payload must be a mapping.")
+
+    tensor_spec = project_yaml_raw.get("tensor_spec")
+    if not isinstance(tensor_spec, Mapping):
+        raise ValueError("Project payload must include a tensor_spec mapping.")
+    return tensor_spec
+
+
+def _load_policy_model(model_path: Path) -> Any:
+    from sb3_contrib import TRPO
+
+    return TRPO.load(str(model_path))

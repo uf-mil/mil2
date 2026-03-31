@@ -5,8 +5,8 @@ import traceback
 from typing import Any, Mapping
 
 from mil_robogym.data_collection.load_saved_agent import (
-    SavedAgentHandle,
-    load_saved_agent,
+    LoadedAgent,
+    load_saved_agent_model,
 )
 from mil_robogym.data_collection.types import RoboGymProjectYaml
 from mil_robogym.vairl.trainer import Trainer
@@ -28,7 +28,7 @@ class TrainTestViewController:
         self.project: RoboGymProjectYaml | None = None
 
         self.trainer: Trainer | None = None
-        self.loaded_agent: SavedAgentHandle | None = None
+        self.loaded_agent: LoadedAgent | None = None
         self.training_settings: dict[str, object] = {}
         self._training_event_queue: queue.Queue[dict[str, object]] = queue.Queue()
         self._training_thread: threading.Thread | None = None
@@ -152,8 +152,8 @@ class TrainTestViewController:
         if self._training_thread is not None:
             self._training_thread.join(timeout)
 
-    def load_selected_agent(self) -> SavedAgentHandle | None:
-        """Load and validate the currently selected saved model."""
+    def load_selected_agent(self) -> LoadedAgent | None:
+        """Load the currently selected saved model as a callable agent."""
         if self.is_training_running():
             self.view.set_terminal_text(
                 "Cannot load a saved model while training runs.",
@@ -169,7 +169,7 @@ class TrainTestViewController:
             return None
 
         try:
-            loaded_agent = load_saved_agent(self.raw_project, agent_name)
+            loaded_agent = load_saved_agent_model(self.raw_project, agent_name)
         except (FileNotFoundError, ValueError) as e:
             self.loaded_agent = None
             self.view.set_terminal_text(
@@ -179,13 +179,14 @@ class TrainTestViewController:
 
         self.loaded_agent = loaded_agent
         agent_kind = (
-            f"checkpoint episode {loaded_agent.checkpoint_episode}"
-            if loaded_agent.checkpoint_episode is not None
+            f"checkpoint episode {loaded_agent.handle.checkpoint_episode}"
+            if loaded_agent.handle.checkpoint_episode is not None
             else "final model"
         )
         self.view.set_terminal_text(
             "Loaded saved model.\n"
-            f"{loaded_agent.agent_name} | {agent_kind} | {loaded_agent.num_demos} demos",
+            f"{loaded_agent.handle.agent_name} | {agent_kind} | "
+            f"in {loaded_agent.input_size} -> out {loaded_agent.output_size}",
         )
         return loaded_agent
 

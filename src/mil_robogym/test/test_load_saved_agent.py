@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import yaml
 
-from mil_robogym.data_collection.load_saved_agent import load_saved_agent
+from mil_robogym.data_collection.load_saved_agent import (
+    load_saved_agent,
+    load_saved_agent_model,
+)
 
 
 def _write_saved_agent(
@@ -121,3 +125,53 @@ def test_load_saved_agent_rejects_unsafe_model_paths(tmp_path: Path, monkeypatch
         assert "must stay inside the agent folder" in str(exc)
     else:
         raise AssertionError("Expected ValueError for unsafe model path.")
+
+
+def test_load_saved_agent_model_predicts_expected_output_size(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Loads a saved model and returns actions with the expected width."""
+    project_dir = tmp_path / "demo_project"
+    _write_saved_agent(
+        project_dir,
+        agent_name="saved_final",
+    )
+
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.load_saved_agent.get_training_project_dir_path",
+        lambda _project: project_dir,
+    )
+
+    class DummyPolicy:
+        def __init__(self):
+            self.action_space = type("ActionSpace", (), {"shape": (4,)})()
+
+        def predict(self, observation, deterministic=True):
+            assert observation.shape == (6,)
+            return np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32), None
+
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.load_saved_agent._load_policy_model",
+        lambda _path: DummyPolicy(),
+    )
+
+    loaded_agent = load_saved_agent_model(
+        {
+            "robogym_project": {
+                "name": "Demo Project",
+                "tensor_spec": {
+                    "input_dim": 6,
+                    "output_dim": 4,
+                },
+            },
+        },
+        "saved_final",
+    )
+
+    action = loaded_agent.predict(np.zeros(6, dtype=np.float32))
+
+    assert loaded_agent.handle.agent_name == "saved_final"
+    assert loaded_agent.input_size == 6
+    assert loaded_agent.output_size == 4
+    assert action.shape == (4,)
