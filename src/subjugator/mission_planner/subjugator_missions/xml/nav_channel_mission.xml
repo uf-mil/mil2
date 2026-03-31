@@ -15,7 +15,7 @@
                 <ForceSuccess>
                     <Timeout msec="35000">
                         <Action ID="TrackLargestPoles"
-                                min_conf="0.20" fov_deg="110.0" require_red_left="false"
+                                min_conf="0.20" fov_deg="64.18" require_red_left="false"
                                 reset_on_start="true" ctx="{ctx}"
                                 best_qx="{best_qx}" best_qy="{best_qy}" best_qz="{best_qz}" best_qw="{best_qw}"
                                 best_target_qx="{best_target_qx}" best_target_qy="{best_target_qy}"
@@ -125,7 +125,7 @@
                             <Fallback>
                                 <Timeout msec="35000">
                                     <Action ID="TrackLargestPoles"
-                                        min_conf="0.30" fov_deg="110.0" require_red_left="{require_red_left}"
+                                        min_conf="0.30" fov_deg="64.18" require_red_left="{require_red_left}"
                                         reset_on_start="true" ctx="{ctx}"
                                         best_qx="{best_qx}" best_qy="{best_qy}" best_qz="{best_qz}" best_qw="{best_qw}"
                                         best_target_qx="{best_target_qx}" best_target_qy="{best_target_qy}"
@@ -144,7 +144,7 @@
                                 <Repeat num_cycles="2">
                                     <Fallback>
                                         <SubTree ID="RelativeMove" _autoremap="true"
-                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3000" ctx="{ctx}"/>
                                         <AlwaysSuccess/>
                                     </Fallback>
                                 </Repeat>
@@ -152,7 +152,7 @@
                                 <Repeat num_cycles="4">
                                     <Fallback>
                                         <SubTree ID="RelativeMove" _autoremap="true"
-                                            yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                                            yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3000" ctx="{ctx}"/>
                                         <AlwaysSuccess/>
                                     </Fallback>
                                 </Repeat>
@@ -160,7 +160,7 @@
                                 <Repeat num_cycles="2">
                                     <Fallback>
                                         <SubTree ID="RelativeMove" _autoremap="true"
-                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3000" ctx="{ctx}"/>
                                         <AlwaysSuccess/>
                                     </Fallback>
                                 </Repeat>
