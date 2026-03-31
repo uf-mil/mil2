@@ -48,10 +48,9 @@ class DepthSensor : public gz::sim::System, public gz::sim::ISystemConfigure, pu
     double lastPubTime_{ 0.0 };
     double updatePeriod_{ 0.1 };  // default = 10 Hz
 
-    double noiseMean_ = 0.0;
-    double noiseStdDev_ = 0.0;  // default to 0 => no noise if not specified
+    double noiseStdDev_ = 0.0;  // defaults to 0 (disables noise)
     std::mt19937 randomEngine_;
-    std::normal_distribution<double> noiseDist_{ 0.0, 0.0 };
+    std::normal_distribution<double> noiseDist_{ 0.0, std::numeric_limits<double>::min() };
 };
 }  // namespace depth_sensor
 
