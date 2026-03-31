@@ -30,7 +30,7 @@ def generate_launch_description():
                     ],
                 ),
                 " --render-engine",
-                " ogre",
+                " ogre2",
             ],
         }.items(),
     )
