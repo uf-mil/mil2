@@ -1,0 +1,5 @@
+scripts
+
+projects/*
+!projects/demo_project
+!projects/src/demo/**

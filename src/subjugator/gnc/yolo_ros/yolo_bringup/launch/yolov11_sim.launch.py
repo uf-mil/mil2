@@ -7,6 +7,13 @@ from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
+
+    model_path = os.path.join(
+        get_package_share_directory("subjugator_vision"),
+        "models",
+        "start_gate_sim.pt",
+    )
+
     return LaunchDescription(
         [
             IncludeLaunchDescription(
@@ -20,7 +27,7 @@ def generate_launch_description():
                 launch_arguments={
                     "model": LaunchConfiguration(
                         "model",
-                        default="/home/carlos/mil2/src/subjugator/gnc/subjugator_vision/models/start_gate_sim.pt",
+                        default=model_path,
                     ),
                     "input_image_topic": LaunchConfiguration(
                         "input_image_topic", default="/front_cam/image_raw"
@@ -38,7 +45,6 @@ def generate_launch_description():
                         "use_tracking", default="False"
                     ),
                     "use_debug": LaunchConfiguration("use_debug", default="True"),
-                    # leave use_3d at default False
                 }.items(),
             ),
         ]

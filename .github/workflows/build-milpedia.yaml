@@ -1,0 +1,62 @@
+---
+name: Build MILpedia image
+
+on:
+  push:
+    paths:
+      - 'infra/services/milpedia'
+      - 'branding/mil_white.svg'
+      - '.github/workflows/build-milpedia.yaml'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *' # Daily at 4:00 AM UTC
+
+# Cancels this run if a new one referring to the same object and same workflow
+# is requested
+concurrency:
+  group: >
+    ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-milpedia:
+    name: Build MILpedia Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Login into ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Generates a useful and pretty ref_name:
+      #    * 'latest' for pushes to main
+      #    * 'branch-<branch_name>-<sha>' for pushes to other branches (with
+      #       slashes substituted)
+      - name: Generate ref name
+        id: ref_name
+        run: |
+          if [ "${GITHUB_REF##refs/heads/}" = "main" ]; then
+            echo "ref_name=latest" >> "$GITHUB_OUTPUT"
+          else
+            branch_name=$(echo "${GITHUB_REF##refs/heads/}" | tr '/' '-')
+            echo "ref_name=branch-${branch_name}-${GITHUB_SHA::7}" \
+              >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push MILpedia image
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64, linux/arm64
+          push: true
+          tags: ghcr.io/uf-mil/milpedia:${{ steps.ref_name.outputs.ref_name }}
+          file: infra/services/milpedia/Dockerfile

@@ -1,0 +1,112 @@
+from __future__ import annotations
+
+import tkinter as tk
+from pathlib import Path
+from typing import Any, Mapping
+
+from mil_robogym.data_collection.get_all_project_config import find_projects_dir
+from mil_robogym.data_collection.utils import to_lower_snake_case
+
+from .buttons_section import ButtonsSection
+from .header_section import HeaderSection
+from .history_section import HistorySection
+from .metrics_section import MetricsSection
+from .terminal_section import TerminalSection
+from .train_test_controller import TrainTestViewController
+
+
+class TrainTestPage(tk.Frame):
+    """Train/Test page for selecting agents, viewing metrics, and running actions."""
+
+    def __init__(self, parent: tk.Widget, controller: Any | None = None) -> None:
+        super().__init__(parent, bg="#DADADA")
+        self.controller = TrainTestViewController(self, controller)
+
+        self.project: Mapping[str, Any] | None = None
+        self.project_name = "Project"
+        self.project_dir: Path | None = None
+        self.selected_agent_name: str | None = None
+
+        self.header_section = HeaderSection(
+            self,
+            self.controller.navigate_to_home,
+            self.controller.navigate_to_project,
+        )
+        self.history_section = HistorySection(
+            self,
+            self._on_agent_row_click,
+            self._on_download_click,
+        )
+        self.metrics_section = MetricsSection(self)
+        self.terminal_section = TerminalSection(self, "")
+        self.buttons_section = ButtonsSection(
+            self,
+            self.controller.start_training,
+            self._on_test_selected_agent_click,
+        )
+
+        for col in range(6):
+            self.grid_columnconfigure(col, weight=1, uniform="half")
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
+
+    def set_context(
+        self,
+        project: Mapping[str, Any] | None = None,
+        **_kwargs: Any,
+    ) -> None:
+        """Set selected project context and refresh visible sections."""
+        self.project = project
+        self.project_name = (
+            project.get("robogym_project", {}).get("name", "Project")
+            if project is not None
+            else "Project"
+        )
+        self.header_section.set_project_name(self.project_name)
+
+        self.project_dir = None
+        if project is not None:
+            projects_dir = find_projects_dir()
+            self.project_dir = projects_dir / to_lower_snake_case(self.project_name)
+
+        self._refresh_from_project_data()
+
+        self.controller.set_context(project)
+
+    def _refresh_from_project_data(self) -> None:
+        """Reload history, selected agent, and metrics panel from project dir."""
+        self.selected_agent_name = None
+
+        if self.project_dir is None:
+            for child in self.history_section.rows_frame.winfo_children():
+                child.destroy()
+            self.header_section.set_last_training_session(None)
+            self.metrics_section.load_metrics(None)
+            return
+
+        agent_names = self.history_section.load_agents(self.project_dir)
+        latest_agent = agent_names[0] if agent_names else None
+        self.selected_agent_name = latest_agent
+        self.header_section.set_last_training_session(latest_agent)
+        self.metrics_section.load_metrics(self._get_selected_metrics_dir())
+
+    def _get_selected_metrics_dir(self) -> Path | None:
+        """Resolve metrics directory for the selected agent."""
+        if self.project_dir is None or self.selected_agent_name is None:
+            return None
+        return self.project_dir / "agents" / self.selected_agent_name / "metrics"
+
+    def _on_agent_row_click(self, agent_name: str) -> None:
+        """Handle selecting an agent row in history."""
+        self.selected_agent_name = agent_name
+        self.header_section.set_last_training_session(agent_name)
+        self.metrics_section.load_metrics(self._get_selected_metrics_dir())
+        print("clicked")
+
+    def _on_download_click(self, _agent_name: str) -> None:
+        """Placeholder action for downloading an agent."""
+        print("download clicked")
+
+    def _on_test_selected_agent_click(self) -> None:
+        """Placeholder action for running selected-agent test."""
+        print("clicked")
