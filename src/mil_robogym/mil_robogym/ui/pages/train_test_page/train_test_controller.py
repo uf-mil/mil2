@@ -4,6 +4,10 @@ import tkinter as tk
 import traceback
 from typing import Any, Mapping
 
+from mil_robogym.data_collection.load_saved_agent import (
+    LoadedAgent,
+    load_saved_agent_model,
+)
 from mil_robogym.data_collection.types import RoboGymProjectYaml
 from mil_robogym.vairl.trainer import Trainer
 from mil_robogym.vairl.training_settings import normalize_training_settings
@@ -24,6 +28,7 @@ class TrainTestViewController:
         self.project: RoboGymProjectYaml | None = None
 
         self.trainer: Trainer | None = None
+        self.loaded_agent: LoadedAgent | None = None
         self.training_settings: dict[str, object] = {}
         self._training_event_queue: queue.Queue[dict[str, object]] = queue.Queue()
         self._training_thread: threading.Thread | None = None
@@ -43,6 +48,7 @@ class TrainTestViewController:
         )
         self.training_settings = normalize_training_settings(raw_training_settings)
         self.trainer = None
+        self.loaded_agent = None
 
     def navigate_to_home(self, _event=None) -> None:
         """
@@ -93,6 +99,7 @@ class TrainTestViewController:
             "Training agent with saved settings...\n"
             "Live metrics will refresh while it runs.",
         )
+        self.loaded_agent = None
         self.view.show_live_metrics({})
         self.view.flush_ui_updates()
         self._stop_requested.clear()
@@ -144,6 +151,48 @@ class TrainTestViewController:
     def wait_for_training_completion(self, timeout: float | None = None) -> None:
         if self._training_thread is not None:
             self._training_thread.join(timeout)
+
+    def load_selected_agent(self) -> LoadedAgent | None:
+        """Load the currently selected saved model as a callable agent."""
+        if self.is_training_running():
+            self.view.set_terminal_text(
+                "Cannot load a saved model while training runs.",
+            )
+            return None
+        if self.raw_project is None:
+            self.view.set_terminal_text("Load unavailable: no project is loaded.")
+            return None
+
+        agent_name = getattr(self.view, "selected_agent_name", None)
+        if not isinstance(agent_name, str) or not agent_name.strip():
+            self.view.set_terminal_text("Load unavailable: no saved model is selected.")
+            return None
+
+        try:
+            loaded_agent = load_saved_agent_model(self.raw_project, agent_name)
+        except (FileNotFoundError, ValueError) as e:
+            self.loaded_agent = None
+            self.view.set_terminal_text(
+                "Failed to load saved model.\n" f"{type(e).__name__}: {e}",
+            )
+            return None
+
+        self.loaded_agent = loaded_agent
+        agent_kind = (
+            f"checkpoint episode {loaded_agent.handle.checkpoint_episode}"
+            if loaded_agent.handle.checkpoint_episode is not None
+            else "final model"
+        )
+        self.view.set_terminal_text(
+            "Loaded saved model.\n"
+            f"{loaded_agent.handle.agent_name} | {agent_kind} | "
+            f"in {loaded_agent.input_size} -> out {loaded_agent.output_size}",
+        )
+        return loaded_agent
+
+    def clear_loaded_agent(self) -> None:
+        """Discard any previously loaded saved-model handle."""
+        self.loaded_agent = None
 
     def process_pending_training_events(self) -> None:
         events_to_process: list[dict[str, object]] = []
