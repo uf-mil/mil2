@@ -1,7 +1,12 @@
+import os
 import queue
+import sys
+import tempfile
 import threading
 import tkinter as tk
 import traceback
+from contextlib import nullcontext, suppress
+from pathlib import Path
 from typing import Any, Mapping
 
 from mil_robogym.data_collection.load_saved_agent import (
@@ -36,6 +41,8 @@ class TrainTestViewController:
         self._stop_requested = threading.Event()
         self._abort_requested = threading.Event()
         self._latest_saved_agent_name: str | None = None
+        self._terminal_log_path: Path | None = None
+        self._terminal_log_streaming = False
 
     def set_context(self, project: Mapping[str, Any] | None = None) -> None:
 
@@ -94,10 +101,12 @@ class TrainTestViewController:
             self.view.set_terminal_text("Training is already running.")
             return
 
+        self._start_terminal_log_capture()
         self.view.set_training_enabled(False)
-        self.view.set_terminal_text(
+        self._render_terminal_status(
             "Training agent with saved settings...\n"
             "Live metrics will refresh while it runs.",
+            replace=not self._terminal_log_streaming,
         )
         self.loaded_agent = None
         self.view.show_live_metrics({})
@@ -129,7 +138,7 @@ class TrainTestViewController:
         self._stop_requested.set()
         if self.trainer is not None:
             self.trainer.request_stop()
-        self.view.set_terminal_text(
+        self._render_terminal_status(
             "Stopping training...\n" "Waiting for the current episode to finish.",
         )
 
@@ -143,7 +152,7 @@ class TrainTestViewController:
         self._stop_requested.set()
         if self.trainer is not None:
             self.trainer.request_abort()
-        self.view.set_terminal_text(
+        self._render_terminal_status(
             "Aborting training...\n"
             "Unsaved progress from the current episode will be discarded.",
         )
@@ -223,35 +232,43 @@ class TrainTestViewController:
         if self.project is None:
             return
 
-        try:
-            self.trainer = Trainer(
-                self.project,
-                **self.training_settings,
-                progress_callback=self._enqueue_training_event,
-            )
-            if self._abort_requested.is_set():
-                self.trainer.request_abort()
-            elif self._stop_requested.is_set():
-                self.trainer.request_stop()
-            saved_agent_dirs = self.trainer.train()
-            latest_agent_name = saved_agent_dirs[0].name if saved_agent_dirs else None
-            self._enqueue_training_event(
-                {
-                    "type": "training_finished",
-                    "latest_agent_name": latest_agent_name,
-                    "stopped": self.trainer.was_stopped(),
-                    "aborted": self.trainer.was_aborted(),
-                },
-            )
-        except Exception as e:
-            traceback.print_exc()
-            self._enqueue_training_event(
-                {
-                    "type": "training_failed",
-                    "error_type": type(e).__name__,
-                    "message": str(e),
-                },
-            )
+        capture_context = (
+            _ProcessOutputCapture(self._terminal_log_path)
+            if self._terminal_log_path is not None
+            else nullcontext()
+        )
+        with capture_context:
+            try:
+                self.trainer = Trainer(
+                    self.project,
+                    **self.training_settings,
+                    progress_callback=self._enqueue_training_event,
+                )
+                if self._abort_requested.is_set():
+                    self.trainer.request_abort()
+                elif self._stop_requested.is_set():
+                    self.trainer.request_stop()
+                saved_agent_dirs = self.trainer.train()
+                latest_agent_name = (
+                    saved_agent_dirs[0].name if saved_agent_dirs else None
+                )
+                self._enqueue_training_event(
+                    {
+                        "type": "training_finished",
+                        "latest_agent_name": latest_agent_name,
+                        "stopped": self.trainer.was_stopped(),
+                        "aborted": self.trainer.was_aborted(),
+                    },
+                )
+            except Exception as e:
+                traceback.print_exc()
+                self._enqueue_training_event(
+                    {
+                        "type": "training_failed",
+                        "error_type": type(e).__name__,
+                        "message": str(e),
+                    },
+                )
 
     def _enqueue_training_event(self, event: dict[str, object]) -> None:
         self._training_event_queue.put(event)
@@ -280,9 +297,10 @@ class TrainTestViewController:
             if isinstance(metrics, dict):
                 self.view.show_live_metrics(metrics)
             if not self._stop_requested.is_set():
-                self.view.set_terminal_text(
+                self._render_terminal_status(
                     "Training agent with saved settings...\n"
                     f"Episode {episode}/{num_episodes}",
+                    replace=not self._terminal_log_streaming,
                 )
             return
 
@@ -305,31 +323,200 @@ class TrainTestViewController:
             else:
                 self.view.refresh_project_artifacts(None)
             if bool(event.get("aborted")):
-                self.view.set_terminal_text(
+                self._render_terminal_status(
                     "Training aborted.\n"
                     f"Latest saved agent: {resolved_agent_name or 'none'}",
                 )
             elif bool(event.get("stopped")):
-                self.view.set_terminal_text(
+                self._render_terminal_status(
                     "Training stopped.\n"
                     f"Latest saved agent: {resolved_agent_name or 'unknown'}",
                 )
             else:
-                self.view.set_terminal_text(
+                self._render_terminal_status(
                     "Training finished.\n"
                     f"Latest saved agent: {resolved_agent_name or 'unknown'}",
                 )
             self.view.set_training_enabled(True)
             self._stop_requested.clear()
             self._abort_requested.clear()
+            self._stop_terminal_log_capture()
             return
 
         if event_type == "training_failed":
             error_type = event.get("error_type", "RuntimeError")
             message = event.get("message", "unknown error")
-            self.view.set_terminal_text(
+            self._render_terminal_status(
                 "Training failed.\n" f"{error_type}: {message}",
             )
             self.view.set_training_enabled(True)
             self._stop_requested.clear()
             self._abort_requested.clear()
+            self._stop_terminal_log_capture()
+
+    def _start_terminal_log_capture(self) -> None:
+        self._stop_terminal_log_capture()
+        if not hasattr(self.view, "start_terminal_log_stream"):
+            self._terminal_log_path = None
+            self._terminal_log_streaming = False
+            return
+
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix="mil_robogym_train_",
+            suffix=".log",
+            delete=False,
+        ) as temp_log:
+            temp_log_path = Path(temp_log.name)
+
+        self._terminal_log_path = temp_log_path
+        self._terminal_log_streaming = True
+        self.view.start_terminal_log_stream(temp_log_path)
+
+    def _stop_terminal_log_capture(self) -> None:
+        if hasattr(self.view, "stop_terminal_log_stream"):
+            self.view.stop_terminal_log_stream()
+        self._terminal_log_streaming = False
+
+        if self._terminal_log_path is not None:
+            with suppress(OSError):
+                self._terminal_log_path.unlink(missing_ok=True)
+            self._terminal_log_path = None
+
+    def _render_terminal_status(self, text: str, *, replace: bool = False) -> None:
+        if (
+            self._terminal_log_streaming
+            and not replace
+            and hasattr(self.view, "append_terminal_text")
+        ):
+            self.view.append_terminal_text(f"{text}\n")
+            return
+        self.view.set_terminal_text(text)
+
+
+class _ProcessOutputCapture:
+    """Mirror process stdout/stderr into a file while preserving console output."""
+
+    def __init__(self, destination: Path) -> None:
+        self._destination = destination
+        self._lock = threading.Lock()
+        self._saved_stdout = None
+        self._saved_stderr = None
+        self._saved_stdout_fd: int | None = None
+        self._saved_stderr_fd: int | None = None
+        self._stdout_pipe_r: int | None = None
+        self._stdout_pipe_w: int | None = None
+        self._stderr_pipe_r: int | None = None
+        self._stderr_pipe_w: int | None = None
+        self._stdout_reader: threading.Thread | None = None
+        self._stderr_reader: threading.Thread | None = None
+        self._log_file = None
+
+    def __enter__(self):
+        self._saved_stdout = sys.stdout
+        self._saved_stderr = sys.stderr
+        self._saved_stdout_fd = os.dup(1)
+        self._saved_stderr_fd = os.dup(2)
+        self._stdout_pipe_r, self._stdout_pipe_w = os.pipe()
+        self._stderr_pipe_r, self._stderr_pipe_w = os.pipe()
+        self._log_file = self._destination.open(
+            "a",
+            encoding="utf-8",
+            buffering=1,
+            errors="replace",
+        )
+
+        os.dup2(self._stdout_pipe_w, 1)
+        os.dup2(self._stderr_pipe_w, 2)
+        sys.stdout = os.fdopen(
+            os.dup(1),
+            "w",
+            encoding="utf-8",
+            buffering=1,
+            errors="replace",
+        )
+        sys.stderr = os.fdopen(
+            os.dup(2),
+            "w",
+            encoding="utf-8",
+            buffering=1,
+            errors="replace",
+        )
+
+        self._stdout_reader = threading.Thread(
+            target=self._pump_stream,
+            args=(self._stdout_pipe_r, self._saved_stdout_fd),
+            daemon=True,
+        )
+        self._stderr_reader = threading.Thread(
+            target=self._pump_stream,
+            args=(self._stderr_pipe_r, self._saved_stderr_fd),
+            daemon=True,
+        )
+        self._stdout_reader.start()
+        self._stderr_reader.start()
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        current_stdout = sys.stdout
+        current_stderr = sys.stderr
+        try:
+            current_stdout.flush()
+            current_stderr.flush()
+        except Exception:
+            pass
+        try:
+            current_stdout.close()
+            current_stderr.close()
+        except Exception:
+            pass
+
+        if self._saved_stdout_fd is not None:
+            os.dup2(self._saved_stdout_fd, 1)
+        if self._saved_stderr_fd is not None:
+            os.dup2(self._saved_stderr_fd, 2)
+        if self._saved_stdout is not None:
+            sys.stdout = self._saved_stdout
+        if self._saved_stderr is not None:
+            sys.stderr = self._saved_stderr
+
+        for fd in (self._stdout_pipe_w, self._stderr_pipe_w):
+            if fd is not None:
+                with suppress(OSError):
+                    os.close(fd)
+
+        if self._stdout_reader is not None:
+            self._stdout_reader.join(timeout=1.0)
+        if self._stderr_reader is not None:
+            self._stderr_reader.join(timeout=1.0)
+
+        for fd in (self._saved_stdout_fd, self._saved_stderr_fd):
+            if fd is not None:
+                with suppress(OSError):
+                    os.close(fd)
+
+        if self._log_file is not None:
+            try:
+                self._log_file.flush()
+            finally:
+                self._log_file.close()
+
+        return False
+
+    def _pump_stream(self, read_fd: int, passthrough_fd: int) -> None:
+        try:
+            with os.fdopen(read_fd, "rb", closefd=True) as stream:
+                while True:
+                    chunk = stream.read(4096)
+                    if not chunk:
+                        break
+                    with suppress(OSError):
+                        os.write(passthrough_fd, chunk)
+                    if self._log_file is not None:
+                        text = chunk.decode("utf-8", errors="replace")
+                        with self._lock:
+                            self._log_file.write(text)
+                            self._log_file.flush()
+        except OSError:
+            return
