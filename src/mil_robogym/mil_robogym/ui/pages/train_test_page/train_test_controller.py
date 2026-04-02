@@ -4,7 +4,10 @@ import tkinter as tk
 import traceback
 from typing import Any, Mapping
 
-from mil_robogym.data_collection.types import RoboGymProjectYaml
+import numpy as np
+
+from mil_robogym.data_collection.load_saved_agent import load_saved_agent_model
+from mil_robogym.data_collection.types import Coord4D, RoboGymProjectYaml
 from mil_robogym.vairl.trainer import Trainer
 from mil_robogym.vairl.training_settings import normalize_training_settings
 
@@ -22,6 +25,7 @@ class TrainTestViewController:
 
         self.raw_project = None
         self.project: RoboGymProjectYaml | None = None
+        self.agent = None
 
         self.trainer: Trainer | None = None
         self.training_settings: dict[str, object] = {}
@@ -43,6 +47,12 @@ class TrainTestViewController:
         )
         self.training_settings = normalize_training_settings(raw_training_settings)
         self.trainer = None
+
+    def set_agent(self, agent_name: str) -> None:
+        """
+        Create and record agent.
+        """
+        self.agent = load_saved_agent_model(self.project, agent_name)
 
     def navigate_to_home(self, _event=None) -> None:
         """
@@ -169,6 +179,66 @@ class TrainTestViewController:
 
         for event in events_to_process:
             self._handle_training_event(event)
+
+    def test_agent(self) -> None:
+        """
+        Run the testing loop for the model.
+        """
+
+        # Check if an agent exists
+        if not self.agent:
+            raise ValueError(
+                "No agent has been selected. Select an agent and try again.",
+            )
+            return
+
+        # Place the sub in a random position
+        random_spawn_space = self.project["random_spawn_space"]
+        c1 = random_spawn_space["coord1_4d"]
+        c2 = random_spawn_space["coord2_4d"]
+        self.min_coord = np.minimum(c1, c2)
+        self.max_coord = np.maximum(c1, c2)
+
+        x, y, z, yaw = np.random.uniform(low=self.min_coord, high=self.max_coord)
+        self.pose = np.array([x, y, z, yaw])
+        self.trainer.set_pose_client.set_pose(x, y, z, yaw=yaw)
+
+        # Get the max number of steps
+        num_steps = self.trainer.max_step_count
+
+        # Get input features
+        input_features = list(self.project["input_topics"].keys())
+
+        # Iterate and generate movement
+        for i in range(num_steps):
+
+            # Get state
+            state = self.trainer.data_collector_client.get_flattened_snapshot_values(
+                input_features,
+            )
+
+            # Generate action
+            action = self.agent.predict(state)
+
+            # Transform to sub reference frame
+            move_coord = self._world_to_body(action)
+
+            # Move sub
+            self.trainer.move_client(move_coord)
+
+        # Notify that the test has finished
+        self.trainer.move_client.get_logger().info("Testing finished!")
+
+    def _world_to_body(move_coord: Coord4D) -> Coord4D:
+        dx_w, dy_w, z, yaw = move_coord
+
+        cos_y = np.cos(yaw)
+        sin_y = np.sin(yaw)
+
+        dx_b = cos_y * dx_w + sin_y * dy_w
+        dy_b = -sin_y * dx_w + cos_y * dy_w
+
+        return (dx_b, dy_b, z, yaw)
 
     def _run_training_worker(self) -> None:
         if self.project is None:

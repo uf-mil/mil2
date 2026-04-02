@@ -179,6 +179,7 @@ class TrainTestPage(tk.Frame):
         self._following_live_metrics = False
         self.header_section.set_last_training_session(agent_name)
         self._load_selected_agent_metrics()
+        self.controller.selected_agent = agent_name
 
     def _on_download_click(self, _agent_name: str) -> None:
         """Placeholder action for downloading an agent."""

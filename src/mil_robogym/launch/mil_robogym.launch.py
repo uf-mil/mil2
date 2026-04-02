@@ -43,7 +43,7 @@ def generate_launch_description():
                 output="screen",
             ),
             Node(
-                package="subjugator_mission_planner",
+                package="mil_robogym",
                 executable="movement_server",
                 name="movement_server",
                 output="screen",
