@@ -1,4 +1,6 @@
 scripts
+logs
+.codex
 
 projects/*
 !projects/demo_project
