@@ -7,6 +7,10 @@ from tkinter import scrolledtext
 class TerminalSection:
     """Terminal output panel for train/test actions."""
 
+    _FILTERED_TERMINAL_PHRASES = [
+        "Pose set successfully",
+    ]
+
     def __init__(self, parent: tk.Widget, terminal_text: str) -> None:
         self.container = tk.Frame(parent, bg="#DADADA")
         self.container.grid(
@@ -41,14 +45,17 @@ class TerminalSection:
             height=10,
         )
         self.output_text.grid(row=1, column=0, sticky="nsew")
-        self.output_text.insert("1.0", terminal_text)
+        self._terminal_line_buffer = ""
+        self.output_text.insert("1.0", self._filter_terminal_text(terminal_text))
         self.output_text.configure(state="disabled")
 
     def set_text(self, terminal_text: str) -> None:
         """Replace terminal output text."""
+        self._terminal_line_buffer = ""
+        filtered_text = self._filter_terminal_text(terminal_text)
         self.output_text.configure(state="normal")
         self.output_text.delete("1.0", tk.END)
-        self.output_text.insert(tk.END, terminal_text)
+        self.output_text.insert(tk.END, filtered_text)
         self.output_text.see(tk.END)
         self.output_text.configure(state="disabled")
 
@@ -56,7 +63,30 @@ class TerminalSection:
         """Append new text and keep the view scrolled to the newest line."""
         if not terminal_text:
             return
+        combined_text = f"{self._terminal_line_buffer}{terminal_text}"
+        lines = combined_text.splitlines(keepends=True)
+        if lines and not lines[-1].endswith(("\n", "\r")):
+            self._terminal_line_buffer = lines.pop()
+        else:
+            self._terminal_line_buffer = ""
+        filtered_text = self._filter_terminal_text("".join(lines))
+        if not filtered_text:
+            return
         self.output_text.configure(state="normal")
-        self.output_text.insert(tk.END, terminal_text)
+        self.output_text.insert(tk.END, filtered_text)
         self.output_text.see(tk.END)
         self.output_text.configure(state="disabled")
+
+    def _filter_terminal_text(self, terminal_text: str) -> str:
+        filtered_lines: list[str] = []
+        for line in terminal_text.splitlines(keepends=True):
+            if not self._should_filter_line(line):
+                filtered_lines.append(line)
+        return "".join(filtered_lines)
+
+    def _should_filter_line(self, line: str) -> bool:
+        normalized_line = line.lower()
+        return any(
+            phrase.lower() in normalized_line
+            for phrase in self._FILTERED_TERMINAL_PHRASES
+        )
