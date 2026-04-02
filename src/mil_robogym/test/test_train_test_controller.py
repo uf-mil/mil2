@@ -299,6 +299,60 @@ def test_load_selected_agent_reports_failure(monkeypatch):
     )
 
 
+def test_delete_saved_agent_reports_success_and_clears_loaded_agent(monkeypatch):
+    """Deleting a loaded saved model clears the in-memory handle."""
+    _reset_dummy_trainer_state()
+    module = _load_controller_module(monkeypatch)
+    view = DummyView()
+    controller = module.TrainTestViewController(view, DummyApp())
+    controller.loaded_agent = types.SimpleNamespace(
+        handle=types.SimpleNamespace(agent_name="saved_final"),
+    )
+
+    monkeypatch.setattr(
+        module,
+        "delete_saved_agent_artifacts",
+        lambda project, agent_name: [Path("/tmp/source/agents/saved_final")],
+    )
+
+    controller.set_context({"robogym_project": {"name": "Demo Project"}})
+    controller.loaded_agent = types.SimpleNamespace(
+        handle=types.SimpleNamespace(agent_name="saved_final"),
+    )
+    deleted = controller.delete_saved_agent("saved_final")
+
+    assert deleted is True
+    assert controller.loaded_agent is None
+    assert view.terminal_messages[-1] == (
+        "Deleted saved model.\nsaved_final | removed 1 copy"
+    )
+
+
+def test_delete_saved_agent_is_blocked_while_training_runs(monkeypatch):
+    """The controller refuses deletes while the training worker is active."""
+    _reset_dummy_trainer_state()
+    DummyTrainer.block_on_train = True
+    module = _load_controller_module(monkeypatch)
+    view = DummyView()
+    controller = module.TrainTestViewController(view, DummyApp())
+
+    controller.set_context({"robogym_project": {"name": "Demo Project"}})
+    controller.start_training()
+    assert DummyTrainer.train_started.wait(timeout=2)
+
+    try:
+        deleted = controller.delete_saved_agent("saved_final")
+    finally:
+        controller.abort_training()
+        controller.wait_for_training_completion(timeout=2)
+        controller.process_pending_training_events()
+
+    assert deleted is False
+    assert view.terminal_messages[-3] == (
+        "Cannot delete saved models while training runs."
+    )
+
+
 def test_abort_training_uses_latest_completed_checkpoint(monkeypatch):
     """Abort skips the final save and falls back to the last completed checkpoint."""
     _reset_dummy_trainer_state()
