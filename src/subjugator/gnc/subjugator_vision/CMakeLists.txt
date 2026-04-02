@@ -12,9 +12,6 @@ find_package(mil_msgs REQUIRED)
 
 include_directories(include)
 
-# Headers
-install(DIRECTORY include/ DESTINATION include)
-
 # Python scripts
 install(PROGRAMS scripts/save_down_images.py scripts/save_front_images.py
                  scripts/swap_yolo_model.py DESTINATION lib/${PROJECT_NAME})
