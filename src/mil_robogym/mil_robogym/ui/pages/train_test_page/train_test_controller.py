@@ -9,6 +9,9 @@ from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any, Mapping
 
+from mil_robogym.data_collection.delete_saved_agent import (
+    delete_saved_agent_artifacts,
+)
 from mil_robogym.data_collection.load_saved_agent import (
     LoadedAgent,
     load_saved_agent_model,
@@ -202,6 +205,41 @@ class TrainTestViewController:
     def clear_loaded_agent(self) -> None:
         """Discard any previously loaded saved-model handle."""
         self.loaded_agent = None
+
+    def delete_saved_agent(self, agent_name: str) -> bool:
+        """Delete one saved model and clear stale in-memory handles."""
+        if self.is_training_running():
+            self.view.set_terminal_text(
+                "Cannot delete saved models while training runs.",
+            )
+            return False
+        if self.raw_project is None:
+            self.view.set_terminal_text("Delete unavailable: no project is loaded.")
+            return False
+
+        try:
+            deleted_paths = delete_saved_agent_artifacts(self.raw_project, agent_name)
+        except (FileNotFoundError, ValueError, OSError) as e:
+            self.view.set_terminal_text(
+                "Failed to delete saved model.\n" f"{type(e).__name__}: {e}",
+            )
+            return False
+
+        if (
+            self.loaded_agent is not None
+            and self.loaded_agent.handle.agent_name == agent_name
+        ):
+            self.loaded_agent = None
+        if self._latest_saved_agent_name == agent_name:
+            self._latest_saved_agent_name = None
+
+        deleted_count = len(deleted_paths)
+        copy_label = "copy" if deleted_count == 1 else "copies"
+        self.view.set_terminal_text(
+            "Deleted saved model.\n"
+            f"{agent_name} | removed {deleted_count} {copy_label}",
+        )
+        return True
 
     def process_pending_training_events(self) -> None:
         events_to_process: list[dict[str, object]] = []

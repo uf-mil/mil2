@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from pathlib import Path
+from tkinter import messagebox
 from typing import Any, Mapping
 
 from mil_robogym.data_collection.get_all_project_config import find_projects_dir
@@ -40,7 +41,7 @@ class TrainTestPage(tk.Frame):
         self.history_section = HistorySection(
             self,
             self._on_agent_row_click,
-            self._on_download_click,
+            self._on_delete_agent_click,
         )
         self.metrics_section = MetricsSection(self)
         self.terminal_section = TerminalSection(self, "")
@@ -221,9 +222,27 @@ class TrainTestPage(tk.Frame):
         self.header_section.set_last_training_session(agent_name)
         self._load_selected_agent_metrics()
 
-    def _on_download_click(self, _agent_name: str) -> None:
-        """Placeholder action for downloading an agent."""
-        print("download clicked")
+    def _on_delete_agent_click(self, agent_name: str) -> None:
+        """Delete one saved model after explicit confirmation."""
+        if self.controller.is_training_running():
+            self.set_terminal_text("Cannot delete saved models while training runs.")
+            return
+
+        should_delete = messagebox.askyesno(
+            title="Delete Model",
+            message=f"Delete model '{agent_name}'?\nThis action cannot be undone.",
+            icon="warning",
+        )
+        if not should_delete:
+            return
+
+        deleted_selected_agent = self.selected_agent_name == agent_name
+        if not self.controller.delete_saved_agent(agent_name):
+            return
+
+        if deleted_selected_agent:
+            self._following_live_metrics = False
+        self.refresh_history()
 
     def _on_test_selected_agent_click(self) -> None:
         """Load and validate the currently selected saved model."""
