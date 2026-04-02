@@ -39,8 +39,7 @@ class ViewDemoPage(tk.Frame):
         self.steps.grid(row=0, column=0, sticky="nsw", padx=(0, 10))
 
         # Data collected section
-        self.data_section = CollectedDataSection(self.content, self.controller)
-        self.data_section.grid(row=0, column=1, sticky="nsew")
+        self.data_section = CollectedDataSection(self.content)
 
         # Controls
         self.controls = ControlsSection(self, self.controller)
