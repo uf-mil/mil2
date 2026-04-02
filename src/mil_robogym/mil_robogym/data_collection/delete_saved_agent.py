@@ -9,7 +9,10 @@ from .load_saved_agent import load_saved_agent
 from .types import RoboGymProjectYaml
 
 
-def delete_saved_agent(project: Mapping[str, Any], agent_name: str) -> list[Path]:
+def delete_saved_agent_artifacts(
+    project: Mapping[str, Any],
+    agent_name: str,
+) -> list[Path]:
     """
     Delete a saved agent from every persisted training-artifact directory.
 

@@ -5,7 +5,7 @@ import traceback
 from typing import Any, Mapping
 
 from mil_robogym.data_collection.delete_saved_agent import (
-    delete_saved_agent as delete_saved_agent_artifacts,
+    delete_saved_agent_artifacts,
 )
 from mil_robogym.data_collection.load_saved_agent import (
     LoadedAgent,

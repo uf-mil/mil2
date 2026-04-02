@@ -6,7 +6,9 @@ from pathlib import Path
 
 import yaml
 
-from mil_robogym.data_collection.delete_saved_agent import delete_saved_agent
+from mil_robogym.data_collection.delete_saved_agent import (
+    delete_saved_agent_artifacts,
+)
 
 
 def _write_saved_agent(project_dir: Path, agent_name: str) -> Path:
@@ -29,7 +31,7 @@ def _write_saved_agent(project_dir: Path, agent_name: str) -> Path:
     return agent_dir
 
 
-def test_delete_saved_agent_removes_all_training_artifact_copies(
+def test_delete_saved_agent_artifacts_removes_all_training_artifact_copies(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -50,7 +52,7 @@ def test_delete_saved_agent_removes_all_training_artifact_copies(
         lambda _project: [source_project_dir, mirror_project_dir],
     )
 
-    deleted_paths = delete_saved_agent(
+    deleted_paths = delete_saved_agent_artifacts(
         {"robogym_project": {"name": "Demo Project"}},
         agent_name,
     )
