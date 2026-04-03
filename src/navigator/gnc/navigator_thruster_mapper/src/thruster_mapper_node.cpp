@@ -31,7 +31,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "navigator_thrust_mapper/thruster_map.h"
+#include "navigator_thruster_mapper/thruster_mapper.h"
 
 #include <geometry_msgs/msg/wrench_stamped.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
@@ -51,6 +51,10 @@ class ThrusterMapperNode : public rclcpp::Node
     {
         this->declare_parameter<std::string>("engine_link_suffix", "_engine_link");
         this->declare_parameter<std::string>("base_link_name", "base_link");
+        this->declare_parameter("max_force_pos", 0.0);
+        double max_force_pos = this->get_parameter("max_force_pos").as_double();
+        this->declare_parameter("max_force_neg", 0.0);
+        double max_force_neg = this->get_parameter("max_force_neg").as_double();
 
         std::string engine_link_suffix = this->get_parameter("engine_link_suffix").as_string();
         std::string base_link_name = this->get_parameter("base_link_name").as_string();
@@ -69,7 +73,7 @@ class ThrusterMapperNode : public rclcpp::Node
         auto params = client->get_parameters({ "robot_description" });
         if (params.empty())
         {
-            throw std::runtime_error("No robot_description");
+            throw std::runtime_error("No robot_description found");
         }
 
         RCLCPP_INFO(this->get_logger(), "Received robot description");
@@ -108,7 +112,7 @@ class ThrusterMapperNode : public rclcpp::Node
         }
 
         // Create the thruster map
-        std::array<double, 2> force_limit = { 250.0, -250.0 };
+        std::array<double, 2> force_limit = { max_force_pos, -max_force_neg };
         std::array<double, 2> center_of_mass = { 0.0, 0.0 };
         thruster_map_ = ThrusterMap(engine_link_names, engine_positions, engine_angles, force_limit, center_of_mass);
 
