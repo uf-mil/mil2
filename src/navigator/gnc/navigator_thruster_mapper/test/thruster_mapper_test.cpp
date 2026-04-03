@@ -18,13 +18,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include "navigator_thrust_mapper/thruster_map.h"
-
 #include <gtest/gtest.h>
 
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+
+#include "navigator_thrust_mapper/thruster_map.h"
 
 TEST(SimpleTest, ThrusterMap)
 {

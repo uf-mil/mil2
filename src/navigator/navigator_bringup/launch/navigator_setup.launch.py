@@ -7,6 +7,7 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     OpaqueFunction,
+    SetLaunchConfiguration,
 )
 from launch.conditions import IfCondition
 from launch.substitutions import (
@@ -14,9 +15,10 @@ from launch.substitutions import (
     PathJoinSubstitution,
 )
 from launch_ros.actions import Node
+from urdf_parser_py.urdf import URDF
 
 
-def make_robot_state(context, *args, **kwargs):
+def make_robot_state(context):
     model_path = Path(LaunchConfiguration("model_file").perform(context))
     use_sim_time = bool(LaunchConfiguration("use_sim_time").perform(context))
     namespace = LaunchConfiguration("namespace").perform(context)
@@ -33,18 +35,21 @@ def make_robot_state(context, *args, **kwargs):
     else:
         raise ValueError(f"Invalid model file {model_path}")
 
+    robot = URDF.from_xml_string(robot_desc)
+
     # Takes the description and joint angles as inputs and publishes the 3D poses of the robot links
     return [
         Node(
             package="robot_state_publisher",
             executable="robot_state_publisher",
             name="robot_state_publisher",
-            output="both",
+            output="screen",
             parameters=[
                 {"use_sim_time": use_sim_time},
                 {"robot_description": robot_desc},
             ],
         ),
+        SetLaunchConfiguration("base_link", robot.get_root()),
     ]
 
 
@@ -54,8 +59,7 @@ def generate_launch_description():
     pkg_project_bringup = get_package_share_directory("navigator_bringup")
     pkg_project_description = get_package_share_directory("navigator_description")
 
-    # !!! Uncomment once navigator_controller is created !!!
-    # pkg_thruster_manager = get_package_share_directory("navigator_thruster_manager")
+    # pkg_thruster_manager = get_package_share_directory("navigator_thruster_mapper")
     # pkg_localization = get_package_share_directory("navigator_localization")
     # pkg_controller = get_package_share_directory("navigator_controller")
 
@@ -92,14 +96,6 @@ def generate_launch_description():
         description="Namespace for generating the urdf file",
     )
 
-    # # Convert URDF to SDF using Gazebo's gz tool
-    # sdf_file = os.path.join(pkg_project_description, 'urdf', 'navigator.sdf')
-    # try:
-    #     subprocess.run(['gz', 'sdf', '-p', urdf_file], check=True, stdout=open(sdf_file, 'w'))
-    #     print(f"Successfully converted {urdf_file} to {sdf_file}")
-    # except subprocess.CalledProcessError as e:
-    #     print(f"Error converting URDF to SDF: {e}")
-
     # Visualize in RViz
     rviz = Node(
         package="rviz2",
@@ -112,12 +108,17 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("gui")),
     )
 
-    # !!! Uncomment once navigator_controller is created !!!
-    # thruster_manager = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(
-    #         os.path.join(pkg_thruster_manager, "launch", "thruster_manager.launch.py"),
-    #     ),
-    # )
+    thruster_mapper = Node(
+        package="navigator_thruster_mapper",
+        executable="thruster_mapper_node",
+        name="thruster_mapper_node",
+        output="screen",
+        parameters=[
+            {"use_sim_time": LaunchConfiguration("use_sim_time")},
+            {"base_link_name": LaunchConfiguration("base_link")},
+        ],
+    )
+
     # !!! Uncomment once navigator_localization is created !!!
     # localization = IncludeLaunchDescription(
     #     PythonLaunchDescriptionSource(
@@ -184,6 +185,7 @@ def generate_launch_description():
             namespace_arg,
             OpaqueFunction(function=make_robot_state),
             rviz,
+            thruster_mapper,
             # !!! Uncomment once navigator_localization is created !!!
             # thruster_manager,
             # localization,

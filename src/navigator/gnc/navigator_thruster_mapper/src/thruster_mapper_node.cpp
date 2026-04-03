@@ -36,7 +36,7 @@
 #include <geometry_msgs/msg/wrench_stamped.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/bool.hpp>
-#include <std_msgs/msg/float32.hpp>
+#include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/string.hpp>
 
 namespace navigator_thrust_mapper
@@ -104,7 +104,7 @@ class ThrusterMapperNode : public rclcpp::Node
         {
             std::string engine_name = engine_link_name.substr(0, engine_link_name.size() - engine_link_suffix.size());
             thrust_publishers_.push_back(
-                this->create_publisher<std_msgs::msg::Float32>("/thrusters/" + engine_name + "thrust", 10));
+                this->create_publisher<std_msgs::msg::Float64>("/thrusters/" + engine_name + "/thrust", 10));
         }
 
         // Create the thruster map
@@ -204,7 +204,7 @@ class ThrusterMapperNode : public rclcpp::Node
             auto thrusts = thruster_map_.wrench_to_thrusts(wrench_);
             for (size_t i = 0; i < thrusts.size(); ++i)
             {
-                std_msgs::msg::Float32 thrust_msg;
+                std_msgs::msg::Float64 thrust_msg;
                 thrust_msg.data = thrusts[i];
                 thrust_publishers_[i]->publish(thrust_msg);
             }
@@ -213,7 +213,7 @@ class ThrusterMapperNode : public rclcpp::Node
         {
             for (size_t i = 0; i < thrust_publishers_.size(); ++i)
             {
-                std_msgs::msg::Float32 thrust_msg;
+                std_msgs::msg::Float64 thrust_msg;
                 thrust_msg.data = 0;
                 thrust_publishers_[i]->publish(thrust_msg);
             }
@@ -225,7 +225,7 @@ class ThrusterMapperNode : public rclcpp::Node
     std::array<double, 3> wrench_{ { 0.0, 0.0, 0.0 } };
     ThrusterMap thruster_map_;
 
-    std::vector<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr> thrust_publishers_;
+    std::vector<rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr> thrust_publishers_;
 
     rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr wrench_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr kill_sub_;

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(navigator_thrust_mapper)
+project(navigator_thruster_mapper)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -21,12 +21,12 @@ find_package(Eigen3 REQUIRED)
 include_directories(include)
 
 # Build thruster_map library
-add_library(thruster_map src/thruster_map.cpp)
-target_link_libraries(thruster_map Eigen3::Eigen)
+add_library(thruster_mapper src/thruster_mapper.cpp)
+target_link_libraries(thruster_mapper Eigen3::Eigen)
 
 # Build thruster_mapper_node executable
 add_executable(thruster_mapper_node src/thruster_mapper_node.cpp)
-target_link_libraries(thruster_mapper_node thruster_map)
+target_link_libraries(thruster_mapper_node thruster_mapper)
 ament_target_dependencies(
   thruster_mapper_node
   rclcpp
@@ -49,8 +49,8 @@ if(BUILD_TESTING)
   # to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
-  ament_add_gtest(thruster_mapper_test test/thruster_map_test.cpp)
-  target_link_libraries(thruster_mapper_test Eigen3::Eigen thruster_map)
+  ament_add_gtest(thruster_mapper_test test/thruster_mapper_test.cpp)
+  target_link_libraries(thruster_mapper_test Eigen3::Eigen thruster_mapper)
 endif()
 
 ament_package()
