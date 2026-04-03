@@ -2,7 +2,7 @@
 
 namespace pcodar
 {
-PointCloudCircularBuffer::PointCloudCircularBuffer() : mega_cloud_(boost::make_shared<point_cloud>())
+PointCloudCircularBuffer::PointCloudCircularBuffer() : mega_cloud_(std::make_shared<point_cloud>())
 {
 }
 
@@ -36,6 +36,9 @@ void PointCloudCircularBuffer::update_config(Config const& config)
 
 point_cloud_ptr PointCloudCircularBuffer::get_point_cloud()
 {
+    // Only valid once the buffer has filled to capacity at least once
+    if (!prev_clouds_.full())
+        return nullptr;
     return mega_cloud_;
 }
 

@@ -135,8 +135,8 @@ class Node : public NodeBase
 
     // Model (It eventually will be object tracker, but for now just detections)
     // InputCloudFilter input_cloud_filter_;
-    // PersistentCloudFilter persistent_cloud_filter_;
-    // PointCloudCircularBuffer persistent_cloud_builder_;
+    PersistentCloudFilter persistent_cloud_filter_;
+    PointCloudCircularBuffer persistent_cloud_builder_;
     // ObjectDetector detector_;
 
     // uncomment later

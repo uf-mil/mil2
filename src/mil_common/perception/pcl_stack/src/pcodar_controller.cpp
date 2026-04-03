@@ -172,6 +172,19 @@ Node::Node() : NodeBase("pcl_stack_node")
     this->declare_parameter("intensity_filter_min_intensity", config_.intensity_filter_min_intensity);
     this->declare_parameter("intensity_filter_max_intensity", config_.intensity_filter_max_intensity);
 
+    // Read declared params into config_ (declare_parameter does not assign from YAML automatically)
+    (void)this->get_parameter("accumulator_number_persistant_clouds", config_.accumulator_number_persistant_clouds);
+    (void)this->get_parameter("persistant_cloud_filter_radius", config_.persistant_cloud_filter_radius);
+    (void)this->get_parameter("persistant_cloud_filter_min_neighbors", config_.persistant_cloud_filter_min_neighbors);
+    (void)this->get_parameter("cluster_tolerance_m", config_.cluster_tolerance_m);
+    (void)this->get_parameter("cluster_min_points", config_.cluster_min_points);
+    (void)this->get_parameter("intensity_filter_min_intensity", config_.intensity_filter_min_intensity);
+    (void)this->get_parameter("intensity_filter_max_intensity", config_.intensity_filter_max_intensity);
+
+    // Wire up persistent cloud components
+    persistent_cloud_builder_.update_config(config_);
+    persistent_cloud_filter_.update_config(config_);
+
     // Robot footprint filter
     double const HALF_LENGTH = 2.739625 * 1.2;
     double const HALF_WIDTH = 2.02589 * 1.2;
@@ -260,8 +273,22 @@ void Node::velodyne_cb(sensor_msgs::msg::PointCloud2::SharedPtr const pcloud)
     }
 
     // Convert PCL to ROS2 message and publish
+    // Accumulate N most recent scans, then apply persistent cloud filter
+    persistent_cloud_builder_.add_point_cloud(pc_without_i);
+    point_cloud_ptr const mega_cloud = persistent_cloud_builder_.get_point_cloud();
+    if (!mega_cloud)
+    {
+        // Not enough scans accumulated yet to publish a persistent cloud
+        return;
+    }
+
+    point_cloud filtered_mega;
+    persistent_cloud_filter_.filter(mega_cloud, filtered_mega);
+    if (filtered_mega.empty())
+        return;
+
     sensor_msgs::msg::PointCloud2 cloud_msg;
-    pcl::toROSMsg(*pc_without_i, cloud_msg);
+    pcl::toROSMsg(filtered_mega, cloud_msg);
     cloud_msg.header.frame_id = pcloud->header.frame_id.empty() ? "velodyne" : pcloud->header.frame_id;
     cloud_msg.header.stamp = pcloud->header.stamp;
     pub_pcl_->publish(cloud_msg);
