@@ -51,9 +51,9 @@ class ThrusterMapperNode : public rclcpp::Node
     {
         this->declare_parameter<std::string>("engine_link_suffix", "_engine_link");
         this->declare_parameter<std::string>("base_link_name", "base_link");
-        this->declare_parameter("max_force_pos", 0.0);
+        this->declare_parameter("max_force_pos", 250.0);
         double max_force_pos = this->get_parameter("max_force_pos").as_double();
-        this->declare_parameter("max_force_neg", 0.0);
+        this->declare_parameter("max_force_neg", 250.0);
         double max_force_neg = this->get_parameter("max_force_neg").as_double();
 
         std::string engine_link_suffix = this->get_parameter("engine_link_suffix").as_string();
