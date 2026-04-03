@@ -315,17 +315,6 @@ class TrainTestViewController:
         # Notify that the test has finished
         self.trainer.move_client.get_logger().info("Testing finished!")
 
-    def _world_to_body(move_coord: Coord4D) -> Coord4D:
-        dx_w, dy_w, z, yaw = move_coord
-
-        cos_y = np.cos(yaw)
-        sin_y = np.sin(yaw)
-
-        dx_b = cos_y * dx_w + sin_y * dy_w
-        dy_b = -sin_y * dx_w + cos_y * dy_w
-
-        return (dx_b, dy_b, z, yaw)
-
     def _run_training_worker(self) -> None:
         if self.project is None:
             return
