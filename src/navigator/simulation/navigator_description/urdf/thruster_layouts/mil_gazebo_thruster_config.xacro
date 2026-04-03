@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<plugin xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="mil_gazebo_thruster_config" params="prefix">
+    <gazebo>
+      <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+        <joint_name>${prefix}_engine_propeller_joint</joint_name>
+        <topic>${thruster_namespace}${prefix}/thrust</topic>
+      </plugin>
+
+      <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
+        <joint_name>${prefix}_chasis_engine_joint</joint_name>
+        <topic>${model_name}/${thruster_namespace}${prefix}/pos</topic>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</plugin>

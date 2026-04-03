@@ -2,13 +2,9 @@ from __future__ import annotations
 
 from collections import Counter
 
-from .sample_input_topics import sample_topics
-from .types import RoboGymProject, RoboGymTensorSpec
-
-
-def _canonical_topic_name(topic: str) -> str:
-    """Normalize a topic name by trimming whitespace and leading slashes."""
-    return topic.strip().lstrip("/")
+from .sample_input_topics import sample_project_topics
+from .types import RoboGymProjectYaml, RoboGymTensorSpec
+from .utils import canonical_topic_name
 
 
 def _validate_unique_topics(topics: list[str], *, side: str) -> None:
@@ -21,7 +17,7 @@ def _validate_unique_topics(topics: list[str], *, side: str) -> None:
     Raises:
       ValueError if duplicate normalized topic names are found.
     """
-    normalized = [_canonical_topic_name(topic) for topic in topics]
+    normalized = [canonical_topic_name(topic) for topic in topics]
     counts = Counter(name for name in normalized if name)
     duplicates = sorted(name for name, count in counts.items() if count > 1)
     if duplicates:
@@ -45,7 +41,7 @@ def _collect_features(
     *,
     side: str,
     strict_numeric: bool,
-) -> tuple[list[str], dict[str, list[str]]]:
+) -> list[str]:
     """
     Convert sampled topic fields into stable feature names.
 
@@ -53,16 +49,15 @@ def _collect_features(
       - topic order from the sampled topic mapping
       - field order from each flattened topic mapping
 
-    Non-numeric leaves are ignored by default and tracked per topic.
+    Non-numeric leaves are ignored by default.
 
     Raises:
       RuntimeError if `strict_numeric` is True and a non-numeric field appears.
 
     Returns:
-      A tuple of `(features, ignored_fields_by_topic)`.
+      A feature list in `<topic>:<field>` order.
     """
     features: list[str] = []
-    ignored: dict[str, list[str]] = {}
 
     for topic, flattened in sampled_topics.items():
         for field, value in flattened.items():
@@ -77,30 +72,11 @@ def _collect_features(
                     f"value_type='{type(value).__name__}'.",
                 )
 
-            ignored.setdefault(topic, []).append(field)
-
-    return features, ignored
-
-
-def _dedupe_preserve_order(values: list[str]) -> list[str]:
-    """
-    Remove duplicate strings while preserving first-seen order.
-
-    Returns:
-      A list with duplicate string values removed.
-    """
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for value in values:
-        if value in seen:
-            continue
-        seen.add(value)
-        deduped.append(value)
-    return deduped
+    return features
 
 
 def build_tensor_spec(
-    project: RoboGymProject,
+    project: RoboGymProjectYaml,
     *,
     timeout_s: float = 2.0,
     strict_numeric: bool = False,
@@ -109,12 +85,12 @@ def build_tensor_spec(
     Build a deterministic tensor specification for selected input/output topics.
 
     Reads:
-      - Topic schemas for selected input/output topics using `sample_topics`.
+      - Topic schemas for selected input/output topics using
+        `sample_project_topics`.
 
     Builds:
       - `input_features` and `output_features` in `<topic>:<field>` format.
       - `input_dim` and `output_dim` from numeric feature counts.
-      - ignored non-numeric fields by topic when `strict_numeric` is False.
 
     Raises:
       ValueError if `timeout_s` is not positive.
@@ -135,18 +111,17 @@ def build_tensor_spec(
     _validate_unique_topics(input_topics, side="input")
     _validate_unique_topics(output_topics, side="output")
 
-    combined_topics = _dedupe_preserve_order([*input_topics, *output_topics])
-    sampled_all = sample_topics(combined_topics, timeout_s=timeout_s)
+    sampled_inputs, sampled_outputs = sample_project_topics(
+        project,
+        timeout_s=timeout_s,
+    )
 
-    sampled_inputs = {topic: sampled_all[topic] for topic in input_topics}
-    sampled_outputs = {topic: sampled_all[topic] for topic in output_topics}
-
-    input_features, ignored_inputs = _collect_features(
+    input_features = _collect_features(
         sampled_inputs,
         side="input",
         strict_numeric=strict_numeric,
     )
-    output_features, ignored_outputs = _collect_features(
+    output_features = _collect_features(
         sampled_outputs,
         side="output",
         strict_numeric=strict_numeric,
@@ -169,6 +144,4 @@ def build_tensor_spec(
         "output_features": output_features,
         "input_dim": len(input_features),
         "output_dim": len(output_features),
-        "ignored_input_features": ignored_inputs,
-        "ignored_output_features": ignored_outputs,
     }

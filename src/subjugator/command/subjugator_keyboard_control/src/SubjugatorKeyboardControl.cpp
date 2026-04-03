@@ -21,6 +21,7 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
   , running_(true)
 {
     publisher_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", PUBLISH_RATE);
+    keypress_publisher_ = this->create_publisher<std_msgs::msg::String>("/keyboard/keypress", PUBLISH_RATE);
     this->declare_parameter("linear_speed", 100.0);
     this->declare_parameter("angular_speed", 100.0);
     base_linear_ = this->get_parameter("linear_speed").as_double();
@@ -48,6 +49,7 @@ SubjugatorKeyboardControl::SubjugatorKeyboardControl()
         e           : roll left  (-torque x)
         r           : roll right (+torque x)
         m           : Spawn marble
+        u           : Move gripper
         q           : Quit
     )");
 }
@@ -206,6 +208,16 @@ void SubjugatorKeyboardControl::keyboardLoop()
                         std::cout << "[SubjugatorKeyboardControl] Marble spawn request sent." << std::endl;
                         break;
                     }
+                    case 'u':
+                    {
+                        std::cout << "[SubjugatorKeyboardControl] Moving Gripper..." << std::endl;
+                        std_msgs::msg::String keypress_msg;
+                        keypress_msg.data = "u";
+                        keypress_publisher_->publish(keypress_msg);
+                        std::cout << "[SubjugatorKeyboardControl] Gripper move request sent." << std::endl;
+                        break;
+                    }
+
                     case 'q':
                         running_ = false;
                         rclcpp::shutdown();
