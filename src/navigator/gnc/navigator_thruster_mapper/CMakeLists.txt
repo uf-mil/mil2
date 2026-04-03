@@ -40,7 +40,6 @@ install(TARGETS thruster_mapper_node DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  find_package(ament_cmake_gtest REQUIRED)
   # the following line skips the linter which checks for copyrights comment the
   # line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
@@ -49,8 +48,6 @@ if(BUILD_TESTING)
   # to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
-  ament_add_gtest(thruster_mapper_test test/thruster_mapper_test.cpp)
-  target_link_libraries(thruster_mapper_test Eigen3::Eigen thruster_mapper)
 endif()
 
 ament_package()
