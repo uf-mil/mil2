@@ -55,8 +55,13 @@ def get_all_agent_config(project_dir: Path) -> dict[str, dict[str, int]]:
         if not agent_dir.is_dir() or agent_dir.name.startswith("."):
             continue
 
+        try:
+            num_demos = get_num_demos(agent_dir)
+        except (FileNotFoundError, ValueError):
+            continue
+
         configs[agent_dir.name] = {
-            "num_demos": get_num_demos(agent_dir),
+            "num_demos": num_demos,
         }
 
     return configs

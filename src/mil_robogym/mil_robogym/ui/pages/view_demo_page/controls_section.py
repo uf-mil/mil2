@@ -21,7 +21,7 @@ class ControlsSection(tk.Frame):
         self.play_button = tk.Button(
             self.btns,
             text="Play",
-            state="active",
+            state="normal",
             width=12,
             command=controller.start_recording,
         )
@@ -36,10 +36,37 @@ class ControlsSection(tk.Frame):
         )
         self.pause_button.pack(side="left", padx=4)
 
+        self.undo_button = tk.Button(
+            self.btns,
+            text="Undo",
+            state="normal",
+            width=12,
+            command=controller.undo_step,
+        )
+        self.undo_button.pack(side="left", padx=4)
+
+        self.redo_button = tk.Button(
+            self.btns,
+            text="Redo",
+            state="normal",
+            width=12,
+            command=controller.redo_step,
+        )
+        self.redo_button.pack(side="left", padx=4)
+
+        self.reset_demo_button = tk.Button(
+            self.btns,
+            text="Reset Demo",
+            state="normal",
+            width=12,
+            command=controller.reset_demo,
+        )
+        self.reset_demo_button.pack(side="left", padx=4)
+
         self.preposition_button = tk.Button(
             self.btns,
             text="Preposition",
-            state="active",
+            state="normal",
             width=12,
             command=controller.preposition,
         )
@@ -48,7 +75,7 @@ class ControlsSection(tk.Frame):
         self.random_position_button = tk.Button(
             self.btns,
             text="Rand. Pos.",
-            state="active",
+            state="normal",
             width=12,
             command=controller.set_random_origin,
         )

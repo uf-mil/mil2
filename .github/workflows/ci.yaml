@@ -51,9 +51,9 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
+          clean: true
           fetch-depth: 0
           submodules: recursive
-          clean: true
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v5
         with:

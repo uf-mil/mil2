@@ -7,6 +7,9 @@ from mil_robogym.ui.pages.create_project_page.create_project_page import (
 from mil_robogym.ui.pages.edit_project_page.edit_project_page import EditProjectPage
 from mil_robogym.ui.pages.start_page.start_page import StartPage
 from mil_robogym.ui.pages.train_test_page.train_test_page import TrainTestPage
+from mil_robogym.ui.pages.training_settings_page.training_settings_page import (
+    TrainingSettingsPage,
+)
 from mil_robogym.ui.pages.view_demo_page.view_demo_page import ViewDemoPage
 from mil_robogym.ui.pages.view_project_page.view_project_page import ViewProjectPage
 
@@ -37,11 +40,13 @@ class App(tk.Tk):
         self.container.grid_columnconfigure(0, weight=1)
 
         self.pages: dict[str, tk.Frame] = {}
+        self.page_state: dict[str, dict[str, Any]] = {}
         self._register_page("start", StartPage)
         self._register_page("create_project", CreateProjectPage)
         self._register_page("edit_project", EditProjectPage)
         self._register_page("view_project", ViewProjectPage)
         self._register_page("train_test", TrainTestPage)
+        self._register_page("training_settings", TrainingSettingsPage)
         self._register_page("view_demo", ViewDemoPage)
 
         self.show_page("start")
@@ -81,3 +86,11 @@ class App(tk.Tk):
                 frame.set_context(**kwargs)
 
             frame.tkraise()
+
+    def set_page_state(self, name: str, state: dict[str, Any]) -> None:
+        """Persist small UI state across page recreation."""
+        self.page_state[name] = dict(state)
+
+    def get_page_state(self, name: str) -> dict[str, Any]:
+        """Return previously persisted UI state for a page."""
+        return dict(self.page_state.get(name, {}))

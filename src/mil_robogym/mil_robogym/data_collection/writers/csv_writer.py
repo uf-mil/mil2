@@ -6,7 +6,7 @@ import pandas as pd
 
 from ..filesystem import get_demo_dir_path
 from ..types import Coord4D, RoboGymDemoYaml, RoboGymProjectYaml, StateActionPair
-from ..utils import flatten_value
+from ..utils import extract_selected_state_features
 
 
 class AsyncCSVWriter:
@@ -54,6 +54,22 @@ class AsyncCSVWriter:
         df = pd.read_csv(self.numerical_state_csv)
         return df[column].values
 
+    def fetch_state_series(self) -> dict[str, list[float]]:
+        """
+        Return all saved state columns as ordered numeric series.
+        """
+        try:
+            df = pd.read_csv(self.numerical_state_csv)
+        except pd.errors.EmptyDataError:
+            return {}
+
+        state_columns = self.project["tensor_spec"]["input_features"]
+        return {
+            column: [float(value) for value in df[column].dropna().tolist()]
+            for column in state_columns
+            if column in df.columns
+        }
+
     def fetch_steps(self) -> list[Coord4D]:
         """
         Retrieve the list of steps taken.
@@ -69,6 +85,38 @@ class AsyncCSVWriter:
         """
         self._stop_event.set()
         self.thread.join
+
+    def clear_all_data(self, i_row: int | None = None) -> None:
+        """
+        Clear all data collected.
+        """
+        # TODO: Clear other folder data and reset metadata.csv
+        numerical_df = pd.read_csv(self.numerical_state_csv)
+        action_df = pd.read_csv(self.action_csv)
+
+        if i_row is not None:
+            new_numerical_df = numerical_df.iloc[:i_row].copy()
+            new_action_df = action_df.iloc[:i_row].copy()
+        else:
+            new_numerical_df = pd.DataFrame(columns=numerical_df.columns)
+            new_action_df = pd.DataFrame(columns=action_df.columns)
+
+        new_numerical_df.to_csv(self.numerical_state_csv, index=False)
+        new_action_df.to_csv(self.action_csv, index=False)
+
+    def set_new_paths(self, project: RoboGymProjectYaml, demo: RoboGymDemoYaml) -> None:
+        """
+        Set new paths for the csv files.
+        """
+        self.project = project
+        self.demo = demo
+
+        self.demo_dir_path = get_demo_dir_path(project, demo)
+
+        self.numerical_state_csv = (
+            self.demo_dir_path / "data" / "numerical" / "data.csv"
+        )
+        self.action_csv = self.demo_dir_path / "data" / "actions" / "data.csv"
 
     def _worker(self) -> None:
         """
@@ -103,9 +151,13 @@ class AsyncCSVWriter:
         Write state and action data to CSVs.
         """
         state_buffer = [sa_pair[0] for sa_pair in buffer]
-        state_buffer = list(map(self._flatten_and_filter_state_fields, state_buffer))
+        feature_names = self.project["tensor_spec"]["input_features"]
+        state_buffer = [
+            extract_selected_state_features(state, feature_names)
+            for state in state_buffer
+        ]
 
-        state_fieldnames = self.project["tensor_spec"]["input_features"]
+        state_fieldnames = feature_names
 
         action_buffer = [sa_pair[1] for sa_pair in buffer]
 
@@ -124,23 +176,3 @@ class AsyncCSVWriter:
                 extrasaction="ignore",
             )
             writer.writerows(action_buffer)
-
-    def _flatten_and_filter_state_fields(self, state: dict) -> dict:
-        """
-        Flatten dict into column names and keep only desired column names.
-        """
-        flattened_states = {}
-
-        for topic, msg in state.items():
-
-            temp = {}
-            flatten_value(msg, "", temp)
-
-            for key, value in temp.items():
-
-                feature_name = f"{topic}:{key}"
-                flattened_states[feature_name] = value
-
-        features_allowed = set(self.project["tensor_spec"]["input_features"])
-
-        return {k: v for k, v in flattened_states.items() if k in features_allowed}
