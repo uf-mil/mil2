@@ -12,14 +12,20 @@
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL
 // THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/create_timer_ros.h>
+#include <tf2_ros/transform_listener.h>
+#include <urdf/model.h>
+
 #include <array>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,88 +37,136 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float32.hpp>
-
-using std::placeholders::_1;
+#include <std_msgs/msg/string.hpp>
 
 namespace navigator_thrust_mapper
 {
+
+using namespace std::chrono_literals;
 
 class ThrusterMapperNode : public rclcpp::Node
 {
   public:
     ThrusterMapperNode() : Node("thrust_mapper")
     {
-        this->declare_parameter<bool>("is_vrx", false);
-        this->declare_parameter<bool>("is_simulation", false);
-        this->declare_parameter<std::string>("robot_description", "");
+        this->declare_parameter<std::string>("engine_link_suffix", "_engine_link");
+        this->declare_parameter<std::string>("base_link_name", "base_link");
 
-        is_vrx_ = this->get_parameter("is_vrx").as_bool();
-        is_sim_ = this->get_parameter("is_simulation").as_bool();
-
-        std::string urdf = this->get_parameter("robot_description").as_string();
-        if (urdf.empty())
+        std::string engine_link_suffix = this->get_parameter("engine_link_suffix").as_string();
+        std::string base_link_name = this->get_parameter("base_link_name").as_string();
+        // Wait for the robot_state_publisher
+        auto client = std::make_shared<rclcpp::SyncParametersClient>(this, "/robot_state_publisher");
+        while (!client->wait_for_service(std::chrono::seconds(1)))
         {
-            RCLCPP_FATAL(this->get_logger(), "robot description not set or empty");
-            throw std::runtime_error("robot description not set or empty");
+            RCLCPP_INFO_ONCE(this->get_logger(), "Waiting for robot_state_publisher");
+        }
+        // Get the robot description
+        auto params = client->get_parameters({ "robot_description" });
+        if (params.empty())
+        {
+            throw std::runtime_error("No robot_description");
         }
 
-        // create thruster_map from URDF
-        if (is_vrx_ || is_sim_)
+        RCLCPP_INFO(this->get_logger(), "Received robot description");
+        std::string urdf = params[0].as_string();
+        // Parse the urdf and find all engine links
+        std::vector<std::string> engine_link_names = find_engine_links(urdf, engine_link_suffix);
+        if (engine_link_names.size() == 0)
         {
-            thruster_map_ = ThrusterMap::from_vrx_urdf(urdf);
-        }
-        else
-        {
-            thruster_map_ = ThrusterMap::from_urdf(urdf);
-        }
-
-        thruster_names_ = thruster_map_.names;
-        thrust_string_index_ = (is_vrx_ ? 5 : 0);
-
-        if (is_vrx_ || is_sim_)
-        {
-            for (auto const &name : thruster_names_)
-            {
-                std::string topic = "/wamv/thrusters/" + name.substr(thrust_string_index_) + "_thrust_cmd";
-                publishers_float_.push_back(this->create_publisher<std_msgs::msg::Float32>(topic, 1));
-            }
-        }
-        else
-        {
-            for (auto const &name : thruster_names_)
-            {
-                std::string topic = "/" + name + "_motor/cmd";
-                publishers_float_.push_back(this->create_publisher<std_msgs::msg::Float32>(topic, 1));
-            }
+            std::runtime_error("No engine link found. Exiting");
         }
 
-        if (!is_vrx_ && !is_sim_)
+        // Wait for transforms
+        std::vector<std::array<double, 2>> engine_positions;
+        std::vector<double> engine_angles;
+
+        tf2_ros::Buffer tf_buffer(this->get_clock());
+        tf2_ros::TransformListener tf_listener(tf_buffer);
+        tf2_ros::CreateTimerInterface::SharedPtr cti = std::make_shared<tf2_ros::CreateTimerROS>(
+            this->get_node_base_interface(), this->get_node_timers_interface());
+        tf_buffer.setCreateTimerInterface(cti);
+
+        for (auto const& engine_link_name : engine_link_names)
         {
-            joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/thruster_states", 1);
-            joint_state_msg_ = sensor_msgs::msg::JointState();
-            for (auto const &j : thruster_map_.joints)
-            {
-                joint_state_msg_.name.push_back(j);
-                joint_state_msg_.position.push_back(0.0);
-                joint_state_msg_.effort.push_back(0.0);
-            }
+            auto transform = wait_for_transfrom(engine_link_name, base_link_name, tf_buffer);
+            engine_positions.emplace_back(
+                std::array{ transform.transform.translation.x, transform.transform.translation.y });
+            engine_angles.emplace_back(transform.transform.rotation.z);
         }
 
-        wrench_sub_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
-            "/wrench/cmd", 1, std::bind(&ThrusterMapperNode::wrench_cb, this, _1));
+        // Create publishers
+        for (auto const& engine_link_name : engine_link_names)
+        {
+            std::string engine_name = engine_link_name.substr(0, engine_link_name.size() - engine_link_suffix.size());
+            thrust_publishers_.push_back(
+                this->create_publisher<std_msgs::msg::Float32>("/thrusters/" + engine_name + "thrust", 10));
+        }
 
-        // Subscribe to kill alarm
-        kill_sub_ = this->create_subscription<std_msgs::msg::Bool>("/kill", 1,
-                                                                   std::bind(&ThrusterMapperNode::kill_cb, this, _1));
+        // Create the thruster map
+        std::array<double, 2> force_limit = { 250.0, -250.0 };
+        std::array<double, 2> center_of_mass = { 0.0, 0.0 };
+        thruster_map_ = ThrusterMap(engine_link_names, engine_positions, engine_angles, force_limit, center_of_mass);
 
-        // timer to publish at 30 Hz
+        // Create a timer to publish thrusts
         timer_ = this->create_wall_timer(std::chrono::milliseconds(33),
                                          std::bind(&ThrusterMapperNode::publish_thrusts, this));
 
-        RCLCPP_INFO(this->get_logger(), "ThrusterMapperNode initialized with %zu thrusters", thruster_names_.size());
+        // Subscribe to the wrench
+        wrench_sub_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
+            "/wrench/cmd", 1, std::bind(&ThrusterMapperNode::wrench_cb, this, std::placeholders::_1));
+
+        // Subscribe to kill alarm
+        kill_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+            "/kill", 1, std::bind(&ThrusterMapperNode::kill_cb, this, std::placeholders::_1));
     }
 
   private:
+    std::vector<std::string> find_engine_links(std::string const& urdf, std::string const& engine_link_suffix)
+    {
+        if (urdf.empty())
+        {
+            throw std::runtime_error("Robot description is not set or empty");
+        }
+
+        // Parse the urdf
+        urdf::Model model;
+        if (!model.initString(urdf))
+        {
+            throw std::runtime_error("Failed to parse URDF. Exiting");
+        }
+
+        std::vector<std::string> engine_link_names;
+        // Find all engine links
+        for (auto const& pair : model.links_)
+        {
+            std::string const& engine_link_name = pair.first;
+            urdf::LinkSharedPtr const& engine_link = pair.second;
+            if (!engine_link)
+                continue;
+
+            if (pair.first.ends_with(engine_link_suffix))
+            {
+                RCLCPP_INFO_STREAM(this->get_logger(), "Found engine link " + engine_link_name);
+                engine_link_names.push_back(std::move(engine_link_name));
+            }
+        }
+
+        return engine_link_names;
+    }
+
+    geometry_msgs::msg::TransformStamped wait_for_transfrom(std::string const& source, std::string const& target,
+                                                            tf2_ros::Buffer& tf_buffer)
+    {
+        std::string err;
+        while (!tf_buffer.canTransform(target, source, tf2::TimePointZero, 100ms, &err) && rclcpp::ok())
+        {
+            RCLCPP_INFO_ONCE(this->get_logger(), "Waiting for %s->%s transform to become available", target.c_str(),
+                             source.c_str());
+        }
+        RCLCPP_INFO(get_logger(), "Transform %s->%s available", target.c_str(), source.c_str());
+        return tf_buffer.lookupTransform(target, source, tf2::TimePointZero);
+    }
+
     void wrench_cb(geometry_msgs::msg::WrenchStamped::SharedPtr const msg)
     {
         wrench_[0] = msg->wrench.force.x;
@@ -135,57 +189,33 @@ class ThrusterMapperNode : public rclcpp::Node
 
     void publish_thrusts()
     {
-        std::vector<float> commands(publishers_float_.size(), 0.0f);
-
         if (!kill_)
         {
-            auto thrusts_d = thruster_map_.wrench_to_thrusts(wrench_);
-            if (thrusts_d.size() != publishers_float_.size())
+            auto thrusts = thruster_map_.wrench_to_thrusts(wrench_);
+            for (size_t i = 0; i < thrusts.size(); ++i)
             {
-                RCLCPP_FATAL(this->get_logger(), "Number of thrusts does not equal number of publishers");
-                return;
+                std_msgs::msg::Float32 thrust_msg;
+                thrust_msg.data = thrusts[i];
+                thrust_publishers_[i]->publish(thrust_msg);
             }
-            for (size_t i = 0; i < thrusts_d.size(); ++i)
-            {
-                commands[i] = static_cast<float>(thrusts_d[i]);
-            }
-        }
-
-        if (!is_vrx_ && !is_sim_)
-        {
-            for (size_t i = 0; i < publishers_float_.size(); ++i)
-            {
-                joint_state_msg_.effort[i] = commands[i];
-                std_msgs::msg::Float32 m;
-                m.data = commands[i];
-                publishers_float_[i]->publish(m);
-            }
-            joint_state_pub_->publish(joint_state_msg_);
         }
         else
         {
-            for (size_t i = 0; i < publishers_float_.size(); ++i)
+            for (size_t i = 0; i < thrust_publishers_.size(); ++i)
             {
-                std_msgs::msg::Float32 m;
-                m.data = commands[i];
-                publishers_float_[i]->publish(m);
+                std_msgs::msg::Float32 thrust_msg;
+                thrust_msg.data = 0;
+                thrust_publishers_[i]->publish(thrust_msg);
             }
         }
     }
 
-    bool is_vrx_{ false };
-    bool is_sim_{ false };
     bool kill_{ false };
-    size_t thrust_string_index_{ 0 };
 
     std::array<double, 3> wrench_{ { 0.0, 0.0, 0.0 } };
-    std::vector<std::string> thruster_names_;
-
     ThrusterMap thruster_map_;
 
-    std::vector<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr> publishers_float_;
-    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
-    sensor_msgs::msg::JointState joint_state_msg_;
+    std::vector<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr> thrust_publishers_;
 
     rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr wrench_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr kill_sub_;
@@ -194,11 +224,20 @@ class ThrusterMapperNode : public rclcpp::Node
 
 }  // namespace navigator_thrust_mapper
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<navigator_thrust_mapper::ThrusterMapperNode>();
-    rclcpp::spin(node);
+    std::shared_ptr<navigator_thrust_mapper::ThrusterMapperNode> node;
+    try
+    {
+        node = std::make_shared<navigator_thrust_mapper::ThrusterMapperNode>();
+        rclcpp::spin(node);
+    }
+    catch (std::exception const& e)
+    {
+        RCLCPP_FATAL(rclcpp::get_logger("thruster_mapper"), "%s. Exiting", e.what());
+    }
+
     rclcpp::shutdown();
     return 0;
 }

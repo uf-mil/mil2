@@ -33,16 +33,6 @@
 namespace navigator_thrust_mapper
 {
 
-/// Convert force to command scalar for VRX simulation
-/// Implements the inverse thrust dynamics model for VRX
-double vrx_force_to_command_scalar(double force);
-
-/// Vectorized version of vrx_force_to_command_scalar
-Eigen::VectorXd vrx_force_to_command(Eigen::VectorXd const &forces);
-
-/// Generate a linear force-to-command conversion function with given ratio
-std::function<Eigen::VectorXd(Eigen::VectorXd const &)> generate_linear_force_to_command(double ratio);
-
 /// Helper class to map between body forces/torques and thruster outputs
 /// Implements least-squares thrust allocation as described in:
 /// Christiaan De With "Optimal Thrust Allocation Methods for Dynamic Positioning of Ships"
@@ -61,22 +51,8 @@ class ThrusterMap
     /// @param com Center of mass offset from base_link, defaults to (0, 0)
     /// @param joints Joint names corresponding to each thruster
     ThrusterMap(std::vector<std::string> const &names, std::vector<std::array<double, 2>> const &positions,
-                std::vector<double> const &angles,
-                std::function<Eigen::VectorXd(Eigen::VectorXd const &)> const &force_to_command,
-                std::array<double, 2> const &force_limit, std::array<double, 2> const &com = { 0.0, 0.0 },
-                std::vector<std::string> const &joints = {});
-
-    /// Create a ThrusterMap from a URDF string
-    /// Expects each thruster to be connected to a transmission ending in "_thruster_transmission"
-    /// @param urdf_string URDF XML as a string
-    /// @param transmission_suffix Suffix to identify thruster transmissions
-    static ThrusterMap from_urdf(std::string const &urdf_string, std::string const &transmission_suffix = "_thruster_"
-                                                                                                          "transmissio"
-                                                                                                          "n");
-
-    /// Create a ThrusterMap for VRX-style naming and force conversions
-    /// @param urdf_string URDF XML as a string
-    static ThrusterMap from_vrx_urdf(std::string const &urdf_string);
+                std::vector<double> const &angles, std::array<double, 2> const &force_limit,
+                std::array<double, 2> const &com = { 0.0, 0.0 });
 
     /// Convert body wrench to individual thruster thrusts using least-squares allocation
     /// @param wrench Array of [surge, sway, yaw] forces/torques in Newtons/N*m
@@ -85,10 +61,8 @@ class ThrusterMap
 
     // Public members for quick access
     std::vector<std::string> names;
-    std::vector<std::string> joints;
 
   private:
-    std::function<Eigen::VectorXd(Eigen::VectorXd const &)> force_to_command_;
     std::array<double, 2> force_limit_;
     Eigen::MatrixXd thruster_matrix_;
     Eigen::MatrixXd thruster_matrix_inv_;
