@@ -56,10 +56,15 @@ class ThrusterMapperNode : public rclcpp::Node
         std::string base_link_name = this->get_parameter("base_link_name").as_string();
         // Wait for the robot_state_publisher
         auto client = std::make_shared<rclcpp::SyncParametersClient>(this, "/robot_state_publisher");
-        while (!client->wait_for_service(std::chrono::seconds(1)))
+        while (!client->wait_for_service(100ms))
         {
             RCLCPP_INFO_ONCE(this->get_logger(), "Waiting for robot_state_publisher");
+            if (!rclcpp::ok())
+            {
+                throw std::runtime_error("Interrupted");
+            }
         }
+
         // Get the robot description
         auto params = client->get_parameters({ "robot_description" });
         if (params.empty())
@@ -163,6 +168,11 @@ class ThrusterMapperNode : public rclcpp::Node
             RCLCPP_INFO_ONCE(this->get_logger(), "Waiting for %s->%s transform to become available", target.c_str(),
                              source.c_str());
         }
+        if (!rclcpp::ok())
+        {
+            throw std::runtime_error("Interrupted");
+        }
+
         RCLCPP_INFO(get_logger(), "Transform %s->%s available", target.c_str(), source.c_str());
         return tf_buffer.lookupTransform(target, source, tf2::TimePointZero);
     }
