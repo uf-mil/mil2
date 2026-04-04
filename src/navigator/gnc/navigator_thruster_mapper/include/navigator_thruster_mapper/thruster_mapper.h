@@ -46,10 +46,8 @@ class ThrusterMap
     /// @param names List of thruster names
     /// @param positions List of (x, y) positions for each thruster in meters
     /// @param angles List of angles for each thruster in radians
-    /// @param force_to_command Function to convert forces to command units
     /// @param force_limit Tuple (MAX_FORWARD, MAX_REVERSE) maximum force in newtons
     /// @param com Center of mass offset from base_link, defaults to (0, 0)
-    /// @param joints Joint names corresponding to each thruster
     ThrusterMap(std::vector<std::string> const &names, std::vector<std::array<double, 2>> const &positions,
                 std::vector<double> const &angles, std::array<double, 2> const &force_limit,
                 std::array<double, 2> const &com = { 0.0, 0.0 });
