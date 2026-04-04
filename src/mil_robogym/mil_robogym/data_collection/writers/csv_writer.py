@@ -6,7 +6,7 @@ import pandas as pd
 
 from ..filesystem import get_demo_dir_path
 from ..types import Coord4D, RoboGymDemoYaml, RoboGymProjectYaml, StateActionPair
-from ..utils import flatten_value
+from ..utils import extract_selected_state_features
 
 
 class AsyncCSVWriter:
@@ -53,6 +53,22 @@ class AsyncCSVWriter:
         """
         df = pd.read_csv(self.numerical_state_csv)
         return df[column].values
+
+    def fetch_state_series(self) -> dict[str, list[float]]:
+        """
+        Return all saved state columns as ordered numeric series.
+        """
+        try:
+            df = pd.read_csv(self.numerical_state_csv)
+        except pd.errors.EmptyDataError:
+            return {}
+
+        state_columns = self.project["tensor_spec"]["input_features"]
+        return {
+            column: [float(value) for value in df[column].dropna().tolist()]
+            for column in state_columns
+            if column in df.columns
+        }
 
     def fetch_steps(self) -> list[Coord4D]:
         """
@@ -135,9 +151,13 @@ class AsyncCSVWriter:
         Write state and action data to CSVs.
         """
         state_buffer = [sa_pair[0] for sa_pair in buffer]
-        state_buffer = list(map(self._flatten_and_filter_state_fields, state_buffer))
+        feature_names = self.project["tensor_spec"]["input_features"]
+        state_buffer = [
+            extract_selected_state_features(state, feature_names)
+            for state in state_buffer
+        ]
 
-        state_fieldnames = self.project["tensor_spec"]["input_features"]
+        state_fieldnames = feature_names
 
         action_buffer = [sa_pair[1] for sa_pair in buffer]
 
@@ -156,23 +176,3 @@ class AsyncCSVWriter:
                 extrasaction="ignore",
             )
             writer.writerows(action_buffer)
-
-    def _flatten_and_filter_state_fields(self, state: dict) -> dict:
-        """
-        Flatten dict into column names and keep only desired column names.
-        """
-        flattened_states = {}
-
-        for topic, msg in state.items():
-
-            temp = {}
-            flatten_value(msg, "", temp)
-
-            for key, value in temp.items():
-
-                feature_name = f"{topic}:{key}"
-                flattened_states[feature_name] = value
-
-        features_allowed = set(self.project["tensor_spec"]["input_features"])
-
-        return {k: v for k, v in flattened_states.items() if k in features_allowed}

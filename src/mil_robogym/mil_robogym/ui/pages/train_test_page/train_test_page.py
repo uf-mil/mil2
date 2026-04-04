@@ -28,6 +28,9 @@ class TrainTestPage(tk.Frame):
         self.project_dir: Path | None = None
         self.selected_agent_name: str | None = None
         self._following_live_metrics = False
+        self._terminal_log_path: Path | None = None
+        self._terminal_log_offset = 0
+        self._tail_after_id: str | None = None
 
         self.header_section = HeaderSection(
             self,
@@ -149,6 +152,43 @@ class TrainTestPage(tk.Frame):
     def set_terminal_text(self, text: str) -> None:
         """Render a status message in the train/test terminal panel."""
         self.terminal_section.set_text(text)
+
+    def append_terminal_text(self, text: str) -> None:
+        """Append status text to the terminal panel."""
+        self.terminal_section.append_text(text)
+
+    def start_terminal_log_stream(self, log_path: Path) -> None:
+        """Begin polling log file and appending newly written lines."""
+        self.stop_terminal_log_stream()
+        self._terminal_log_path = log_path
+        self._terminal_log_offset = 0
+        self.terminal_section.set_text("")
+        self._poll_terminal_log_file()
+
+    def stop_terminal_log_stream(self) -> None:
+        """Stop polling terminal log file."""
+        if self._tail_after_id is not None:
+            self.after_cancel(self._tail_after_id)
+            self._tail_after_id = None
+        self._terminal_log_path = None
+
+    def _poll_terminal_log_file(self) -> None:
+        """Read newly appended log bytes and render them in the terminal."""
+        if self._terminal_log_path is None:
+            return
+
+        try:
+            with self._terminal_log_path.open("r", encoding="utf-8") as log_file:
+                log_file.seek(self._terminal_log_offset)
+                new_text = log_file.read()
+                self._terminal_log_offset = log_file.tell()
+        except FileNotFoundError:
+            new_text = ""
+
+        if new_text:
+            self.append_terminal_text(new_text)
+
+        self._tail_after_id = self.after(200, self._poll_terminal_log_file)
 
     def set_training_enabled(self, enabled: bool) -> None:
         """Enable or disable train/test actions."""

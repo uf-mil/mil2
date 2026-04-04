@@ -177,6 +177,7 @@ sudo apt install -y \
 	python3-colcon-common-extensions \
 	python3-gz-transport13 \
 	python3-rosdep \
+	python3-sdformat14 \
 	ros-jazzy-backward-ros \
 	ros-jazzy-behaviortree-cpp \
 	ros-jazzy-control-toolbox \
