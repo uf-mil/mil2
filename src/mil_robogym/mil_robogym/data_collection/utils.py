@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 SOURCE_PROJECTS_DIR_ENV = "MIL_ROBOGYM_SOURCE_PROJECTS_DIR"
