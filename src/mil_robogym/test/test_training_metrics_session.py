@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import datetime
 from pathlib import Path
 
@@ -45,6 +46,7 @@ def _record_episode(
     *,
     episode: int,
     reward_mean: float,
+    extra_metrics: dict[str, float] | None = None,
 ) -> None:
     session.record_episode(
         episode=episode,
@@ -55,6 +57,7 @@ def _record_episode(
             "kl": 0.05 * episode,
             "beta": 0.01 * episode,
         },
+        extra_metrics=extra_metrics,
     )
 
 
@@ -67,8 +70,18 @@ def test_training_metrics_session_snapshots_checkpoint_and_final_artifacts(
     source_project_dir = tmp_path / "source_project"
     share_project_dir = tmp_path / "share_project"
 
-    _record_episode(session, episode=1, reward_mean=1.0)
-    _record_episode(session, episode=2, reward_mean=2.0)
+    _record_episode(
+        session,
+        episode=1,
+        reward_mean=1.0,
+        extra_metrics={"gen_time_fps": 166.0},
+    )
+    _record_episode(
+        session,
+        episode=2,
+        reward_mean=2.0,
+        extra_metrics={"gen_time_fps": 167.0},
+    )
     checkpoint_future = session.enqueue_agent_save(
         generator=generator,
         project_dirs=[source_project_dir, share_project_dir],
@@ -80,7 +93,12 @@ def test_training_metrics_session_snapshots_checkpoint_and_final_artifacts(
         training_settings=_build_training_settings(),
     )
 
-    _record_episode(session, episode=3, reward_mean=3.0)
+    _record_episode(
+        session,
+        episode=3,
+        reward_mean=3.0,
+        extra_metrics={"gen_time_fps": 168.0},
+    )
     final_future = session.enqueue_agent_save(
         generator=generator,
         project_dirs=[source_project_dir, share_project_dir],
@@ -129,6 +147,9 @@ def test_training_metrics_session_snapshots_checkpoint_and_final_artifacts(
         .splitlines()
     )
 
+    assert "gen_time_fps" in checkpoint_rows[0]
+    assert checkpoint_rows[-1].endswith(",167.0")
+    assert final_rows[-1].endswith(",168.0")
     assert len(checkpoint_rows) == 3
     assert len(final_rows) == 4
     assert (
@@ -173,3 +194,23 @@ def test_training_metrics_session_surfaces_worker_failures_on_close(
 
     with pytest.raises(ValueError, match="save exploded"):
         future.result()
+
+
+def test_training_metrics_session_backfills_missing_dynamic_metric_values() -> None:
+    """Dynamic metric columns stay aligned when later episodes omit a value."""
+    session = TrainingMetricsSession()
+
+    _record_episode(
+        session,
+        episode=1,
+        reward_mean=1.0,
+        extra_metrics={"gen_time_fps": 166.0},
+    )
+    _record_episode(session, episode=2, reward_mean=2.0)
+
+    snapshot = session.snapshot()
+    session.close()
+
+    assert snapshot["episode"] == [1.0, 2.0]
+    assert snapshot["gen_time_fps"][0] == 166.0
+    assert math.isnan(snapshot["gen_time_fps"][1])
