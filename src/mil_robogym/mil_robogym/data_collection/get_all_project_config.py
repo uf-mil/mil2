@@ -138,6 +138,41 @@ def get_all_project_config() -> list[dict]:
                         f"Project config for '{project_dir}' has non-list subtopics in {list_name}.",
                     )
 
+        for list_name in ("input_non_numeric_topics", "output_non_numeric_topics"):
+            topic_map = robogym_project.get(list_name, {})
+            if topic_map in ({}, None):
+                continue
+            if not isinstance(topic_map, dict):
+                raise ValueError(
+                    f"Project config for '{project_dir}' has invalid {list_name}.",
+                )
+            for topic, fields in topic_map.items():
+                if not isinstance(topic, str):
+                    raise ValueError(
+                        f"Project config for '{project_dir}' has a non-string topic in {list_name}.",
+                    )
+                if not isinstance(fields, list):
+                    raise ValueError(
+                        f"Project config for '{project_dir}' has non-list entries in {list_name}.",
+                    )
+                for field in fields:
+                    if not isinstance(field, dict):
+                        raise ValueError(
+                            f"Project config for '{project_dir}' has non-mapping selections in {list_name}.",
+                        )
+                    if not isinstance(field.get("field_path"), str):
+                        raise ValueError(
+                            f"Project config for '{project_dir}' has invalid field_path values in {list_name}.",
+                        )
+                    if field.get("data_type") not in {"unordered_set", "image"}:
+                        raise ValueError(
+                            f"Project config for '{project_dir}' has invalid data_type values in {list_name}.",
+                        )
+                    if not isinstance(field.get("ros_type"), str):
+                        raise ValueError(
+                            f"Project config for '{project_dir}' has invalid ros_type values in {list_name}.",
+                        )
+
         project_config = dict(parsed)
         project_config["num_demos"] = count_demo_folders(project_dir / "demos")
         configs.append(project_config)

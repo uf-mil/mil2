@@ -210,3 +210,63 @@ def test_create_project_folder_writes_source_only(tmp_path: Path, monkeypatch):
 
     assert created_project_dir == source_project_dir
     assert (source_project_dir / "config.yaml").is_file()
+
+
+def test_create_project_folder_writes_non_numeric_topic_selections(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Persists supported non-numeric topic selections alongside numeric topic maps."""
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: tmp_path / "projects",
+    )
+
+    proj = {
+        "name": "Typed Topics Project",
+        "world_file": "src/default/world/file",
+        "model_name": "weights.pt",
+        "random_spawn_space": {
+            "enabled": False,
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
+        },
+        "input_topics": {"camera/image_raw": []},
+        "output_topics": {"detections": []},
+        "input_non_numeric_topics": {
+            "camera/image_raw": [
+                {
+                    "field_path": "data",
+                    "data_type": "image",
+                    "ros_type": "sensor_msgs/msg/Image",
+                },
+            ],
+        },
+        "output_non_numeric_topics": {
+            "detections": [
+                {
+                    "field_path": "detections",
+                    "data_type": "unordered_set",
+                    "ros_type": "sequence<vision_msgs/msg/Detection2D>",
+                },
+            ],
+        },
+    }
+
+    project_dir = create_project_folder(proj)
+    cfg = yaml.safe_load((project_dir / "config.yaml").read_text(encoding="utf-8"))
+
+    assert cfg["robogym_project"]["input_non_numeric_topics"]["camera/image_raw"] == [
+        {
+            "field_path": "data",
+            "data_type": "image",
+            "ros_type": "sensor_msgs/msg/Image",
+        },
+    ]
+    assert cfg["robogym_project"]["output_non_numeric_topics"]["detections"] == [
+        {
+            "field_path": "detections",
+            "data_type": "unordered_set",
+            "ros_type": "sequence<vision_msgs/msg/Detection2D>",
+        },
+    ]
