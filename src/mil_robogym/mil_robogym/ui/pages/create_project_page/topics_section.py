@@ -102,23 +102,25 @@ class TopicsSection:
 
         self.refresh_topics_button = tk.Button(
             parent,
-            text="Refresh Topics",
+            text="↻",
             command=self._on_refresh_topics,
             bg="#ECECEC",
             activebackground="#DFDFDF",
             fg="black",
             relief="solid",
             bd=1,
-            font=("Arial", 11),
-            padx=8,
-            pady=2,
+            font=("Arial", 15, "bold"),
+            width=2,
+            padx=0,
+            pady=0,
+            cursor="hand2",
         )
         self.refresh_topics_button.grid(
             row=6,
             column=2,
-            sticky="nsew",
-            padx=4,
-            pady=(6, 2),
+            sticky="e",
+            padx=(0, 8),
+            pady=(4, 2),
         )
 
         self.output_topics_label = tk.Label(
@@ -279,6 +281,20 @@ class TopicsSection:
 
         self._build_topic_checkboxes("input")
         self._build_topic_checkboxes("output")
+
+    def set_selected_topics(
+        self,
+        *,
+        input_topics: list[str],
+        output_topics: list[str],
+    ) -> None:
+        input_selected = set(input_topics)
+        output_selected = set(output_topics)
+
+        for topic, var in self.input_topic_vars.items():
+            var.set(topic in input_selected)
+        for topic, var in self.output_topic_vars.items():
+            var.set(topic in output_selected)
 
     def selected_topics(self, list_type: TopicListType) -> list[str]:
         if list_type == "input":

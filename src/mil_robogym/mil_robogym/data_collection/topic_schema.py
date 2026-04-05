@@ -79,6 +79,10 @@ def _is_image_message_type(type_expr: str) -> bool:
     return _normalize_type_expr(type_expr) in _IMAGE_MESSAGE_TYPES
 
 
+def is_image_message_type(type_expr: str) -> bool:
+    return _is_image_message_type(type_expr)
+
+
 def _sequence_element_type(type_expr: str) -> str | None:
     match = _SEQUENCE_TYPE_RE.fullmatch(type_expr.strip())
     if match is None:

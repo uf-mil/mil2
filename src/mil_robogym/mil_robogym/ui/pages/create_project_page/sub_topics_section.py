@@ -4,10 +4,14 @@ import threading
 import tkinter as tk
 from typing import Callable, Literal
 
-from mil_robogym.data_collection.sample_input_topics import sample_topics
+from mil_robogym.data_collection.sample_input_topics import (
+    resolve_topic_message_types,
+    sample_topics,
+)
 from mil_robogym.data_collection.topic_schema import (
     SupportedNonNumericFieldOption,
-    supported_non_numeric_fields_for_topic,
+    is_image_message_type,
+    supported_non_numeric_fields_for_message_type,
 )
 from mil_robogym.data_collection.types import (
     FlattenedTopic,
@@ -109,6 +113,10 @@ class SubTopicsSection:
         self.output_subtopic_load_errors: dict[str, str] = {}
         self.input_subtopic_summary_labels: dict[str, tk.Label] = {}
         self.output_subtopic_summary_labels: dict[str, tk.Label] = {}
+        self._desired_input_numeric_fields: dict[str, set[str]] = {}
+        self._desired_output_numeric_fields: dict[str, set[str]] = {}
+        self._desired_input_non_numeric_fields: dict[str, set[str]] = {}
+        self._desired_output_non_numeric_fields: dict[str, set[str]] = {}
 
         self._refresh_subtopic_sections("input")
         self._refresh_subtopic_sections("output")
@@ -121,6 +129,39 @@ class SubTopicsSection:
     ) -> None:
         self._selected_input_topics = list(input_topics)
         self._selected_output_topics = list(output_topics)
+        self._refresh_subtopic_sections("input")
+        self._refresh_subtopic_sections("output")
+
+    def set_selected_fields(
+        self,
+        *,
+        input_numeric_fields: dict[str, list[str]] | None = None,
+        output_numeric_fields: dict[str, list[str]] | None = None,
+        input_non_numeric_fields: (
+            dict[str, list[NonNumericTopicFieldSelection]] | None
+        ) = None,
+        output_non_numeric_fields: (
+            dict[str, list[NonNumericTopicFieldSelection]] | None
+        ) = None,
+    ) -> None:
+        self._desired_input_numeric_fields = {
+            topic: set(fields) for topic, fields in (input_numeric_fields or {}).items()
+        }
+        self._desired_output_numeric_fields = {
+            topic: set(fields)
+            for topic, fields in (output_numeric_fields or {}).items()
+        }
+        self._desired_input_non_numeric_fields = {
+            topic: {field["field_path"] for field in fields}
+            for topic, fields in (input_non_numeric_fields or {}).items()
+        }
+        self._desired_output_non_numeric_fields = {
+            topic: {field["field_path"] for field in fields}
+            for topic, fields in (output_non_numeric_fields or {}).items()
+        }
+
+        self._apply_desired_selection_to_loaded_topics("input")
+        self._apply_desired_selection_to_loaded_topics("output")
         self._refresh_subtopic_sections("input")
         self._refresh_subtopic_sections("output")
 
@@ -212,6 +253,22 @@ class SubTopicsSection:
             return self.input_subtopic_summary_labels
         return self.output_subtopic_summary_labels
 
+    def _desired_numeric_fields_map(
+        self,
+        list_type: TopicListType,
+    ) -> dict[str, set[str]]:
+        if list_type == "input":
+            return self._desired_input_numeric_fields
+        return self._desired_output_numeric_fields
+
+    def _desired_non_numeric_fields_map(
+        self,
+        list_type: TopicListType,
+    ) -> dict[str, set[str]]:
+        if list_type == "input":
+            return self._desired_input_non_numeric_fields
+        return self._desired_output_non_numeric_fields
+
     def _is_numeric_subtopic_value(self, value: object) -> bool:
         return isinstance(value, (bool, int, float))
 
@@ -225,18 +282,26 @@ class SubTopicsSection:
         str | None,
     ]:
         try:
+            topic_message_types = resolve_topic_message_types([topic])
+            topic_message_type = topic_message_types[topic]
             sampled: SampledTopics = sample_topics([topic])
             flattened: FlattenedTopic = sampled[topic]
-            non_numeric_fields = supported_non_numeric_fields_for_topic(topic)
+            non_numeric_fields = supported_non_numeric_fields_for_message_type(
+                topic_message_type,
+            )
         except (RuntimeError, ValueError, KeyError) as exc:
             return [], set(), [], str(exc) or type(exc).__name__
 
-        field_order = list(flattened.keys())
-        numeric_fields = {
-            field
-            for field, value in flattened.items()
-            if self._is_numeric_subtopic_value(value)
-        }
+        if is_image_message_type(topic_message_type):
+            field_order: list[str] = []
+            numeric_fields: set[str] = set()
+        else:
+            field_order = list(flattened.keys())
+            numeric_fields = {
+                field
+                for field, value in flattened.items()
+                if self._is_numeric_subtopic_value(value)
+            }
         return field_order, numeric_fields, non_numeric_fields, None
 
     def _start_subtopic_load(self, topic: str, list_type: TopicListType) -> None:
@@ -336,6 +401,18 @@ class SubTopicsSection:
             if field.field_path not in non_numeric_topic_vars:
                 non_numeric_topic_vars[field.field_path] = tk.BooleanVar(value=True)
 
+        desired_numeric_fields = self._desired_numeric_fields_map(list_type).get(topic)
+        if desired_numeric_fields is not None:
+            for field, var in numeric_topic_vars.items():
+                var.set(field in desired_numeric_fields)
+
+        desired_non_numeric_fields = self._desired_non_numeric_fields_map(
+            list_type,
+        ).get(topic)
+        if desired_non_numeric_fields is not None:
+            for field_path, var in non_numeric_topic_vars.items():
+                var.set(field_path in desired_non_numeric_fields)
+
     def _subtopic_summary_text(self, topic: str, list_type: TopicListType) -> str:
         field_order_map = self._subtopic_field_order_map(list_type)
         numeric_fields_map = self._subtopic_numeric_fields_map(list_type)
@@ -402,6 +479,33 @@ class SubTopicsSection:
     def _on_subtopic_toggled(self, topic: str, list_type: TopicListType) -> None:
         self._update_subtopic_summary(topic, list_type)
         self._on_selection_change()
+
+    def _apply_desired_selection_to_loaded_topics(
+        self,
+        list_type: TopicListType,
+    ) -> None:
+        numeric_vars_map = self._subtopic_vars_map(list_type)
+        non_numeric_vars_map = self._non_numeric_subtopic_vars_map(list_type)
+
+        for topic, desired_fields in self._desired_numeric_fields_map(
+            list_type,
+        ).items():
+            for field, var in numeric_vars_map.get(topic, {}).items():
+                var.set(field in desired_fields)
+
+        for topic, desired_fields in self._desired_non_numeric_fields_map(
+            list_type,
+        ).items():
+            for field_path, var in non_numeric_vars_map.get(topic, {}).items():
+                var.set(field_path in desired_fields)
+
+    def _special_field_display_text(
+        self,
+        field: SupportedNonNumericFieldOption,
+    ) -> str:
+        if field.data_type == "image":
+            return f"{field.label} image"
+        return f"{field.label} (unordered set)"
 
     def _refresh_subtopic_sections(self, list_type: TopicListType) -> None:
         frame = self._subtopic_frame(list_type)
@@ -508,7 +612,8 @@ class SubTopicsSection:
                 loading_label.pack(anchor="w")
                 continue
 
-            if not field_order:
+            non_numeric_fields = non_numeric_fields_map.get(topic, [])
+            if not field_order and not non_numeric_fields:
                 no_subtopics_label = tk.Label(
                     fields_container,
                     text="No subtopics available.",
@@ -521,7 +626,6 @@ class SubTopicsSection:
                 continue
 
             numeric_fields = numeric_fields_map.get(topic, set())
-            non_numeric_fields = non_numeric_fields_map.get(topic, [])
             topic_vars = vars_map.setdefault(topic, {})
             non_numeric_topic_vars = non_numeric_vars_map.setdefault(topic, {})
             special_fields_by_path = {
@@ -557,10 +661,7 @@ class SubTopicsSection:
                     )
                     field_checkbox = tk.Checkbutton(
                         fields_container,
-                        text=(
-                            f"{special_field.label} "
-                            f"({special_field.data_type.replace('_', ' ')})"
-                        ),
+                        text=self._special_field_display_text(special_field),
                         variable=field_var,
                         command=lambda t=topic, lt=list_type: self._on_subtopic_toggled(
                             t,
@@ -595,7 +696,7 @@ class SubTopicsSection:
                 )
                 field_checkbox = tk.Checkbutton(
                     fields_container,
-                    text=f"{field.label} ({field.data_type.replace('_', ' ')})",
+                    text=self._special_field_display_text(field),
                     variable=field_var,
                     command=lambda t=topic, lt=list_type: self._on_subtopic_toggled(
                         t,

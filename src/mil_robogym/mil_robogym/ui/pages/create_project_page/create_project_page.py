@@ -325,8 +325,9 @@ class CreateProjectPage(tk.Frame):
 
         if self._has_any_numeric_topic_selection():
             tensor_spec = self.tensor_spec_section.compute_tensor_spec()
-            if tensor_spec is not None:
-                project_cfg["tensor_spec"] = tensor_spec
+            if tensor_spec is None:
+                return
+            project_cfg["tensor_spec"] = tensor_spec
 
         try:
             create_project_folder(project_cfg)
