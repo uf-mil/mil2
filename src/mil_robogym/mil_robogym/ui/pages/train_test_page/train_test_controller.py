@@ -9,8 +9,6 @@ from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any, Mapping
 
-import numpy as np
-
 from mil_robogym.data_collection.delete_saved_agent import (
     delete_saved_agent_artifacts,
 )
@@ -18,7 +16,8 @@ from mil_robogym.data_collection.load_saved_agent import (
     LoadedAgent,
     load_saved_agent_model,
 )
-from mil_robogym.data_collection.types import Coord4D, RoboGymProjectYaml
+from mil_robogym.data_collection.types import RoboGymProjectYaml
+from mil_robogym.vairl.tester import Tester
 from mil_robogym.vairl.trainer import Trainer
 from mil_robogym.vairl.training_settings import normalize_training_settings
 
@@ -39,6 +38,8 @@ class TrainTestViewController:
         self.agent = None
 
         self.trainer: Trainer | None = None
+        self.tester: Tester | None = None
+
         self.loaded_agent: LoadedAgent | None = None
         self.training_settings: dict[str, object] = {}
         self._training_event_queue: queue.Queue[dict[str, object]] = queue.Queue()
@@ -50,7 +51,11 @@ class TrainTestViewController:
         self._terminal_log_path: Path | None = None
         self._terminal_log_streaming = False
 
-    def set_context(self, project: Mapping[str, Any] | None = None) -> None:
+    def set_context(
+        self,
+        project: Mapping[str, Any] | None = None,
+        preferred_agent_name: str | None = None,
+    ) -> None:
 
         self.raw_project = project
         self.project = (
@@ -61,13 +66,18 @@ class TrainTestViewController:
         )
         self.training_settings = normalize_training_settings(raw_training_settings)
         self.trainer = None
-        self.loaded_agent = None
+        self.tester = Tester(self.project)
+
+        if preferred_agent_name:
+            self.set_agent(preferred_agent_name)
+
+        self.loaded_agent = preferred_agent_name
 
     def set_agent(self, agent_name: str) -> None:
         """
         Create and record agent.
         """
-        self.agent = load_saved_agent_model(self.project, agent_name)
+        self.tester.set_agent(load_saved_agent_model(self.project, agent_name))
 
     def navigate_to_home(self, _event=None) -> None:
         """
@@ -173,6 +183,19 @@ class TrainTestViewController:
         if self._training_thread is not None:
             self._training_thread.join(timeout)
 
+    def test_agent(self) -> None:
+        """
+        Start testing agent.
+        """
+        try:
+            self.tester.test_agent()
+        except ValueError as e:
+            tk.messagebox.showinfo(
+                title="No Agent Selected",
+                message=str(e),
+                icon="warning",
+            )
+
     def load_selected_agent(self) -> LoadedAgent | None:
         """Load the currently selected saved model as a callable agent."""
         if self.is_training_running():
@@ -274,55 +297,6 @@ class TrainTestViewController:
 
         for event in events_to_process:
             self._handle_training_event(event)
-
-    def test_agent(self) -> None:
-        """
-        Run the testing loop for the model.
-        """
-
-        # Check if an agent exists
-        if not self.agent:
-            raise ValueError(
-                "No agent has been selected. Select an agent and try again.",
-            )
-            return
-
-        # Place the sub in a random position
-        random_spawn_space = self.project["random_spawn_space"]
-        c1 = random_spawn_space["coord1_4d"]
-        c2 = random_spawn_space["coord2_4d"]
-        self.min_coord = np.minimum(c1, c2)
-        self.max_coord = np.maximum(c1, c2)
-
-        x, y, z, yaw = np.random.uniform(low=self.min_coord, high=self.max_coord)
-        self.pose = np.array([x, y, z, yaw])
-        self.trainer.set_pose_client.set_pose(x, y, z, yaw=yaw)
-
-        # Get the max number of steps
-        num_steps = self.trainer.max_step_count
-
-        # Get input features
-        input_features = list(self.project["input_topics"].keys())
-
-        # Iterate and generate movement
-        for i in range(num_steps):
-
-            # Get state
-            state = self.trainer.data_collector_client.get_flattened_snapshot_values(
-                input_features,
-            )
-
-            # Generate action
-            action = self.agent.predict(state)
-
-            # Transform to sub reference frame
-            move_coord = self._world_to_body(action)
-
-            # Move sub
-            self.trainer.move_client(move_coord)
-
-        # Notify that the test has finished
-        self.trainer.move_client.get_logger().info("Testing finished!")
 
     def _run_training_worker(self) -> None:
         if self.project is None:
