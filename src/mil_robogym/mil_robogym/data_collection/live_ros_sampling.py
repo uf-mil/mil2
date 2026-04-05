@@ -255,7 +255,7 @@ def _launch_publisher_subprocess(
     command = [
         sys.executable,
         "-m",
-        "mil_robogym.data_collection.live_ros_sampling_test",
+        "mil_robogym.data_collection.live_ros_sampling",
         "--publisher-mode",
         "--numeric-topic",
         numeric_topic,
