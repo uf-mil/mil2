@@ -122,7 +122,7 @@ def start_topic_hz_lookup(
 
     def worker() -> None:
         client = WorldControlClient()
-        client.play_simulation()
+        client.acquire_simulation_hold()
         valid_topics = [topic for topic in topics if topic != "No topics found"]
 
         context = rclpy.context.Context()
@@ -179,7 +179,7 @@ def start_topic_hz_lookup(
 
         finally:
             _cleanup_ros(node, executor, subscriptions, context)
-            client.pause_simulation()
+            client.release_simulation_hold()
             done.set()
 
     threading.Thread(target=worker, daemon=True).start()
