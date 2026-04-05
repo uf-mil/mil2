@@ -10,6 +10,9 @@ from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
 from mil_robogym.data_collection.filesystem import edit_project
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
 from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
+from mil_robogym.data_collection.non_numeric_topic_fields import (
+    filter_populated_non_numeric_topic_fields,
+)
 from mil_robogym.data_collection.types import (
     Coord4D,
     NonNumericTopicFieldSelection,
@@ -676,18 +679,25 @@ class EditProjectPage(tk.Frame):
             },
         }
 
-        if any(self.input_non_numeric_topics.values()):
-            project_cfg["input_non_numeric_topics"] = {
-                topic: [dict(field) for field in fields]
+        input_non_numeric_topics = filter_populated_non_numeric_topic_fields(
+            {
+                topic: fields
                 for topic, fields in self.input_non_numeric_topics.items()
                 if topic in self.input_topics_selected
-            }
-        if any(self.output_non_numeric_topics.values()):
-            project_cfg["output_non_numeric_topics"] = {
-                topic: [dict(field) for field in fields]
+            },
+        )
+        output_non_numeric_topics = filter_populated_non_numeric_topic_fields(
+            {
+                topic: fields
                 for topic, fields in self.output_non_numeric_topics.items()
                 if topic in self.output_topics_selected
-            }
+            },
+        )
+
+        if input_non_numeric_topics:
+            project_cfg["input_non_numeric_topics"] = input_non_numeric_topics
+        if output_non_numeric_topics:
+            project_cfg["output_non_numeric_topics"] = output_non_numeric_topics
 
         if self._topic_selection_changed():
             if self._has_any_numeric_topic_selection():

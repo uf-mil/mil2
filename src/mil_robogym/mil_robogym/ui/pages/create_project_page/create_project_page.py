@@ -5,9 +5,13 @@ from typing import Any
 
 from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
+from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
 from mil_robogym.data_collection.filesystem import create_project_folder
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
 from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
+from mil_robogym.data_collection.non_numeric_topic_fields import (
+    filter_populated_non_numeric_topic_fields,
+)
 from mil_robogym.data_collection.types import (
     Coord4D,
     NonNumericTopicFieldSelection,
@@ -21,7 +25,6 @@ from .header_section import HeaderSection
 from .project_fields_section import ProjectFieldsSection
 from .random_spawn_section import RandomSpawnSection
 from .sub_topics_section import SubTopicsSection
-from .tensor_spec_section import TensorSpecSection
 from .topics_section import TopicsSection
 
 
@@ -102,17 +105,6 @@ class CreateProjectPage(tk.Frame):
         self.sub_topics_section = SubTopicsSection(
             self,
             self._on_subtopics_selection_changed,
-        )
-
-        self.tensor_spec_section = TensorSpecSection(
-            self,
-            lambda: self._build_project_config(ensure_subtopics_loaded=True),
-            self._get_selected_input_topics,
-            self._get_selected_output_topics,
-            self._get_selected_input_topic_subtopics,
-            self._get_selected_output_topic_subtopics,
-            self.controls_section.show_error_tooltip,
-            self.controls_section.hide_error_tooltip,
         )
 
         self._sync_subtopics_with_topics()
@@ -297,9 +289,16 @@ class CreateProjectPage(tk.Frame):
             ensure_loaded=ensure_subtopics_loaded,
         )
 
-        if any(input_non_numeric_topics.values()):
+        input_non_numeric_topics = filter_populated_non_numeric_topic_fields(
+            input_non_numeric_topics,
+        )
+        output_non_numeric_topics = filter_populated_non_numeric_topic_fields(
+            output_non_numeric_topics,
+        )
+
+        if input_non_numeric_topics:
             project_cfg["input_non_numeric_topics"] = input_non_numeric_topics
-        if any(output_non_numeric_topics.values()):
+        if output_non_numeric_topics:
             project_cfg["output_non_numeric_topics"] = output_non_numeric_topics
         return project_cfg
 
@@ -324,10 +323,13 @@ class CreateProjectPage(tk.Frame):
         project_name = project_cfg["name"]
 
         if self._has_any_numeric_topic_selection():
-            tensor_spec = self.tensor_spec_section.compute_tensor_spec()
-            if tensor_spec is None:
+            try:
+                project_cfg["tensor_spec"] = build_tensor_spec(project_cfg)
+            except (RuntimeError, ValueError, KeyError) as exc:
+                self.controls_section.show_error_tooltip(
+                    str(exc) or type(exc).__name__,
+                )
                 return
-            project_cfg["tensor_spec"] = tensor_spec
 
         try:
             create_project_folder(project_cfg)
@@ -443,19 +445,16 @@ class CreateProjectPage(tk.Frame):
         self._sync_subtopics_with_topics()
         self.sub_topics_section.reload_selected_topics()
         self._sync_selected_topic_subtopics_from_section()
-        self.tensor_spec_section.invalidate_tensor_spec()
         self._on_form_state_changed()
 
     def _on_topics_selection_changed(self) -> None:
         """Handle topic list selection changes from TopicsSection."""
         self._sync_subtopics_with_topics()
-        self.tensor_spec_section.invalidate_tensor_spec()
         self._on_form_state_changed()
 
     def _on_subtopics_selection_changed(self) -> None:
         """Handle subtopic selection changes from SubTopicsSection."""
         self._sync_selected_topic_subtopics_from_section()
-        self.tensor_spec_section.invalidate_tensor_spec()
         self._on_form_state_changed()
 
     def _sync_selected_topic_subtopics_from_section(
@@ -500,24 +499,6 @@ class CreateProjectPage(tk.Frame):
     ) -> dict[str, list[str]]:
         self._sync_selected_topic_subtopics_from_section(ensure_loaded=ensure_loaded)
         return self.selected_output_topic_subtopics
-
-    def _get_selected_input_topics(self) -> list[str]:
-        return list(self.selected_input_topics)
-
-    def _get_selected_output_topics(self) -> list[str]:
-        return list(self.selected_output_topics)
-
-    def _get_selected_input_topic_subtopics(self) -> dict[str, list[str]]:
-        return {
-            topic: list(fields)
-            for topic, fields in self.selected_input_topic_subtopics.items()
-        }
-
-    def _get_selected_output_topic_subtopics(self) -> dict[str, list[str]]:
-        return {
-            topic: list(fields)
-            for topic, fields in self.selected_output_topic_subtopics.items()
-        }
 
     def _selected_input_non_numeric_topic_fields(
         self,

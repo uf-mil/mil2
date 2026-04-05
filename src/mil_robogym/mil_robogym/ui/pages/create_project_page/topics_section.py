@@ -134,10 +134,33 @@ class TopicsSection:
         self.output_topics_label.grid(
             row=6,
             column=3,
-            columnspan=3,
+            columnspan=2,
             sticky="w",
             padx=(8, 14),
             pady=(6, 2),
+        )
+
+        self.output_refresh_topics_button = tk.Button(
+            parent,
+            text="↻",
+            command=self._on_refresh_topics,
+            bg="#ECECEC",
+            activebackground="#DFDFDF",
+            fg="black",
+            relief="solid",
+            bd=1,
+            font=("Arial", 15, "bold"),
+            width=2,
+            padx=0,
+            pady=0,
+            cursor="hand2",
+        )
+        self.output_refresh_topics_button.grid(
+            row=6,
+            column=5,
+            sticky="e",
+            padx=(0, 14),
+            pady=(4, 2),
         )
 
         self.outer = tk.Frame(parent, bg="#DADADA")

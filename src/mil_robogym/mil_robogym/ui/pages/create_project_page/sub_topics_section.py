@@ -4,6 +4,9 @@ import threading
 import tkinter as tk
 from typing import Callable, Literal
 
+from mil_robogym.data_collection.non_numeric_topic_fields import (
+    filter_populated_non_numeric_topic_fields,
+)
 from mil_robogym.data_collection.sample_input_topics import (
     resolve_topic_message_types,
     sample_topics,
@@ -777,7 +780,6 @@ class SubTopicsSection:
                 )
                 if error_text is not None:
                     load_errors_map[topic] = error_text
-                    selected_topic_fields[topic] = []
                     continue
 
                 load_errors_map.pop(topic, None)
@@ -791,7 +793,7 @@ class SubTopicsSection:
 
             available_fields = non_numeric_fields_map.get(topic, [])
             non_numeric_topic_vars = non_numeric_vars_map.setdefault(topic, {})
-            selected_topic_fields[topic] = [
+            selected_fields = [
                 {
                     "field_path": field.field_path,
                     "data_type": field.data_type,
@@ -801,8 +803,10 @@ class SubTopicsSection:
                 if field.field_path not in non_numeric_topic_vars
                 or non_numeric_topic_vars[field.field_path].get()
             ]
+            if selected_fields:
+                selected_topic_fields[topic] = selected_fields
 
-        return selected_topic_fields
+        return filter_populated_non_numeric_topic_fields(selected_topic_fields)
 
     def get_selected_input_topic_subtopics(
         self,
