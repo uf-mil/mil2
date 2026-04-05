@@ -116,36 +116,43 @@ class DataCollectorService(Node):
 
         for topic, msg in self.latest_data.items():
 
-            if type(msg) is Image and demo_path:
+            if type(msg) is Image:
 
-                # Convert ROS image to OpenCV
-                cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+                if demo_path:  # Save data to location
 
-                # Create folder if not already made
-                topic_dir = (
-                    Path(demo_path) / "data" / (topic.strip("/").replace("/", "_"))
-                )
-                topic_dir.mkdir(parents=True, exist_ok=True)
+                    # Convert ROS image to OpenCV
+                    cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
-                # Create file_path
-                if topic not in self.abstract_data_counters:
-                    try:
-                        self.abstract_data_counters[topic] = len(
-                            list(topic_dir.iterdir()),
-                        )
-                    except FileNotFoundError:
-                        self.abstract_data_counters[topic] = 0
+                    # Create folder if not already made
+                    topic_dir = (
+                        Path(demo_path) / "data" / (topic.strip("/").replace("/", "_"))
+                    )
+                    topic_dir.mkdir(parents=True, exist_ok=True)
 
-                img_index = self.abstract_data_counters[topic]
+                    # Create file_path
+                    if topic not in self.abstract_data_counters:
+                        try:
+                            self.abstract_data_counters[topic] = len(
+                                list(topic_dir.iterdir()),
+                            )
+                        except FileNotFoundError:
+                            self.abstract_data_counters[topic] = 0
 
-                filepath = topic_dir / f"img_{img_index}.jpg"
+                    img_index = self.abstract_data_counters[topic]
 
-                self.abstract_data_counters[topic] += 1
+                    filepath = topic_dir / f"img_{img_index}.jpg"
 
-                # Save image
-                self.save_queue.put((filepath, cv_img))
+                    self.abstract_data_counters[topic] += 1
 
-                mapped_data[topic] = img_index
+                    # Save image
+                    self.save_queue.put((filepath, cv_img))
+
+                    mapped_data[topic] = img_index
+
+                else:
+                    # Return the image message in response
+                    response.image_topics.append(topic)
+                    response.image_data.append(msg)
 
             else:
                 mapped_data[topic] = message_to_ordereddict(msg)
