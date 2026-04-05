@@ -1,2 +1,3 @@
+string demo_path # Location to store non-numerical data
 ---
 string data # JSON

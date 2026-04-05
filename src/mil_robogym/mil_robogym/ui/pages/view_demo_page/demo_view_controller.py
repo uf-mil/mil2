@@ -412,7 +412,9 @@ class DemoViewController:
         dx, dy, dz, dyaw = (x - last_x, y - last_y, z - last_z, yaw - last_yaw)
 
         # Get input topic state data.
-        data = json.loads(self.data_collector.get_snapshot().data)
+        data = json.loads(
+            self.data_collector.get_snapshot(str(self.csv_writer.demo_dir_path)).data,
+        )
 
         if data:
             feature_values = extract_selected_state_features(

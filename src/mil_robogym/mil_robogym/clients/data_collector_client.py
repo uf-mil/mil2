@@ -42,9 +42,10 @@ class DataCollectorClient(Node):
 
         return future.result()
 
-    def get_snapshot(self):
+    def get_snapshot(self, demo_path: str | None = None):
 
         req = GetSnapshot.Request()
+        req.demo_path = demo_path or ""
 
         future = self.snapshot_client.call_async(req)
 

@@ -1,10 +1,16 @@
 import json
+import queue
+import threading
+from pathlib import Path
 
+import cv2
 import rclpy
+from cv_bridge import CvBridge
 from mil_msgs.srv import EstablishSubscriptions, GetSnapshot
 from rclpy.node import Node
 from rosidl_runtime_py.convert import message_to_ordereddict
 from rosidl_runtime_py.utilities import get_message
+from sensor_msgs.msg import Image
 
 
 class DataCollectorService(Node):
@@ -19,6 +25,8 @@ class DataCollectorService(Node):
         self.subscribers = {}
         self.latest_data = {}
 
+        self.bridge = CvBridge()
+
         self.establish_subscriptions_srv = self.create_service(
             EstablishSubscriptions,
             "establish_subscriptions",
@@ -30,6 +38,17 @@ class DataCollectorService(Node):
             "get_snapshot",
             self.get_snapshot,
         )
+
+        # Count number of files in folders for abstract data
+        self.abstract_data_counters = {}
+
+        # Image data saving attributes
+        self.save_queue = queue.Queue()
+        self.worker_thread = threading.Thread(
+            target=self._image_saver_worker,
+            daemon=True,
+        )
+        self.worker_thread.start()
 
     def establish_subscriptions(
         self,
@@ -92,11 +111,63 @@ class DataCollectorService(Node):
         """
         Return a serialized snapshot of the latest data.
         """
-        response.data = json.dumps(self.latest_data)
+        mapped_data = {}
+        demo_path = request.demo_path
+
+        for topic, msg in self.latest_data.items():
+
+            if type(msg) is Image and demo_path:
+
+                # Convert ROS image to OpenCV
+                cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+
+                # Create folder if not already made
+                topic_dir = (
+                    Path(demo_path) / "data" / (topic.strip("/").replace("/", "_"))
+                )
+                topic_dir.mkdir(parents=True, exist_ok=True)
+
+                # Create file_path
+                if topic not in self.abstract_data_counters:
+                    try:
+                        self.abstract_data_counters[topic] = len(
+                            list(topic_dir.iterdir()),
+                        )
+                    except FileNotFoundError:
+                        self.abstract_data_counters[topic] = 0
+
+                img_index = self.abstract_data_counters[topic]
+
+                filepath = topic_dir / f"img_{img_index}.jpg"
+
+                self.abstract_data_counters[topic] += 1
+
+                # Save image
+                self.save_queue.put((filepath, cv_img))
+
+                mapped_data[topic] = img_index
+
+            else:
+                mapped_data[topic] = message_to_ordereddict(msg)
+
+        response.data = json.dumps(mapped_data)
+
         return response
 
     def _callback(self, msg, topic) -> None:
-        self.latest_data[topic] = message_to_ordereddict(msg)
+        self.latest_data[topic] = msg
+
+    def _image_saver_worker(self) -> None:
+        while True:
+
+            filepath, cv_img = self.save_queue.get()
+
+            try:
+                cv2.imwrite(str(filepath), cv_img)
+            except Exception as e:
+                self.get_logger().error(f"Failed to save image: {e}")
+            finally:
+                self.save_queue.task_done()
 
 
 def main():
