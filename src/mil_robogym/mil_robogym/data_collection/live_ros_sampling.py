@@ -7,6 +7,7 @@ import signal
 import subprocess
 import sys
 import time
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -107,16 +108,8 @@ def _preflight_ros_environment() -> None:
             "before running this smoke test.",
         ) from e
 
-    try:
+    with suppress(RuntimeError):
         get_ros2_topics()
-    except FileNotFoundError as e:
-        raise RuntimeError(
-            "No ROS 2 CLI found ('ros2' not in PATH). Source your ROS 2 environment first.",
-        ) from e
-    except RuntimeError:
-        # Topic listing can fail transiently while discovery starts. The live
-        # wait phase handles retries.
-        pass
 
 
 def _wait_for_topics(
@@ -135,7 +128,7 @@ def _wait_for_topics(
             )
         try:
             available = set(get_ros2_topics())
-        except (RuntimeError, FileNotFoundError):
+        except RuntimeError:
             time.sleep(0.1)
             continue
         if expected.issubset(available):
