@@ -55,13 +55,20 @@ class DataCollectorClient(Node):
 
     def get_flattened_snapshot_values(self, input_features: list[str]) -> list[any]:
 
-        data = json.loads(self.get_snapshot().data)
+        snapshot = self.get_snapshot()
+
+        data = json.loads(snapshot.data)
+        _images = []
+
+        flattened_data = []
 
         if data:
             filtered_data = self._flatten_and_filter_state_fields(data, input_features)
-            return [filtered_data[key] for key in input_features]  # Maintain order
+            flattened_data = [
+                filtered_data[key] for key in input_features
+            ]  # Maintain order
 
-        return []
+        return flattened_data
 
     # TODO: This is inefficient, implement a fast mapper on the server side.
     def _flatten_and_filter_state_fields(
