@@ -3,6 +3,7 @@ from __future__ import annotations
 import tkinter as tk
 from typing import Callable, Literal
 
+from mil_robogym.data_collection.get_topic_hertz import start_topic_hz_lookup
 from mil_robogym.data_collection.topic_warnings import warn_for_unhelpful_topics
 from mil_robogym.data_collection.types import TopicWarning
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
@@ -21,9 +22,10 @@ _CATEGORY_LABELS: dict[str, str] = {
 class _HoverToolTip:
     """Show warning text while the pointer is over a widget."""
 
-    def __init__(self, widget: tk.Widget, text: str) -> None:
+    def __init__(self, widget: tk.Widget, text: str, color: str) -> None:
         self._widget = widget
         self._text = text
+        self._color = color
         self._tip: tk.Toplevel | None = None
 
         self._widget.bind("<Enter>", self._show)
@@ -45,7 +47,7 @@ class _HoverToolTip:
             tip,
             text=self._text,
             bg="#2B2B2B",
-            fg="white",
+            fg=self._color,
             font=("Arial", 10),
             justify="left",
             wraplength=420,
@@ -68,6 +70,12 @@ def _format_topic_warning_message(warning: TopicWarning) -> str:
     if matches:
         return f"{label}"
     return f"{label}, this topic is likely unhelpful for training."
+
+
+def _format_topic_hz(hz: float) -> str:
+    if hz.is_integer():
+        return str(int(hz))
+    return f"{hz:.2f}".rstrip("0").rstrip(".")
 
 
 class TopicsSection:
@@ -97,6 +105,21 @@ class TopicsSection:
             padx=14,
             pady=(6, 2),
         )
+        self.input_topics_status_label = tk.Label(
+            parent,
+            text="Getting data rates...",
+            bg="#DADADA",
+            fg="#6E6E6E",
+            font=("Arial", 11),
+            anchor="e",
+        )
+        self.input_topics_status_label.grid(
+            row=6,
+            column=2,
+            sticky="e",
+            padx=(0, 14),
+            pady=(6, 2),
+        )
 
         self.output_topics_label = tk.Label(
             parent,
@@ -109,9 +132,24 @@ class TopicsSection:
         self.output_topics_label.grid(
             row=6,
             column=3,
-            columnspan=3,
+            columnspan=2,
             sticky="w",
             padx=(8, 14),
+            pady=(6, 2),
+        )
+        self.output_topics_status_label = tk.Label(
+            parent,
+            text="Getting data rates...",
+            bg="#DADADA",
+            fg="#6E6E6E",
+            font=("Arial", 11),
+            anchor="e",
+        )
+        self.output_topics_status_label.grid(
+            row=6,
+            column=5,
+            sticky="e",
+            padx=(0, 14),
             pady=(6, 2),
         )
 
@@ -142,6 +180,8 @@ class TopicsSection:
             for warning in warnings
         }
         self._warning_tooltips: list[_HoverToolTip] = []
+        self._topic_hz_containers: dict[str, list[tk.Frame]] = {}
+        self._topic_hz_queue, self._topic_hz_done = start_topic_hz_lookup(safe_topics)
 
         self.input_topic_order = safe_topics.copy()
         self.output_topic_order = safe_topics.copy()
@@ -155,6 +195,7 @@ class TopicsSection:
 
         self._build_topic_checkboxes("input")
         self._build_topic_checkboxes("output")
+        self._drain_topic_hz_results()
 
     def _build_topic_checkboxes(self, list_type: TopicListType) -> None:
         if list_type == "input":
@@ -189,6 +230,10 @@ class TopicsSection:
             )
             button.pack(side="left", anchor="w")
 
+            topic_hz_container = tk.Frame(row, bg="#DADADA")
+            topic_hz_container.pack(side="left", anchor="w")
+            self._topic_hz_containers.setdefault(topic, []).append(topic_hz_container)
+
             if topic in self._warned_topics:
                 warning_icon = tk.Label(
                     row,
@@ -205,12 +250,72 @@ class TopicsSection:
                     "This topic may be unhelpful for training.",
                 )
                 self._warning_tooltips.append(
-                    _HoverToolTip(warning_icon, warning_message),
+                    _HoverToolTip(warning_icon, warning_message, "red"),
                 )
 
             row.pack(anchor="w")
             topic_rows[topic] = row
             topic_buttons[topic] = button
+
+    def _drain_topic_hz_results(self) -> None:
+        if not self.outer.winfo_exists():
+            return
+
+        while not self._topic_hz_queue.empty():
+            topic, hz = self._topic_hz_queue.get_nowait()
+            try:
+                self._render_topic_hz(topic, hz)
+            except tk.TclError:
+                return
+
+        if not self._topic_hz_done.is_set():
+            try:
+                self.outer.after(100, self._drain_topic_hz_results)
+            except tk.TclError:
+                return
+        else:
+            try:
+                self.input_topics_status_label.config(text="")
+                self.output_topics_status_label.config(text="")
+            except tk.TclError:
+                return
+
+    def _render_topic_hz(self, topic: str, hz: float | None) -> None:
+        for container in self._topic_hz_containers.get(topic, []):
+            if not container.winfo_exists():
+                continue
+
+            for child in container.winfo_children():
+                child.destroy()
+
+            if hz is None:
+                hz_warning_icon = tk.Label(
+                    container,
+                    text=" \u26a0",
+                    bg="#DADADA",
+                    fg="#C99700",
+                    font=("Arial", 14, "bold"),
+                    anchor="w",
+                    cursor="hand2",
+                )
+                hz_warning_icon.pack(side="left", anchor="w")
+                self._warning_tooltips.append(
+                    _HoverToolTip(
+                        hz_warning_icon,
+                        "This topic is not receiving any messages",
+                        "yellow",
+                    ),
+                )
+            else:
+                hz_label = tk.Label(
+                    container,
+                    text=f" ({_format_topic_hz(hz)} Hz)",
+                    bg="#DADADA",
+                    fg="black",
+                    font=("Arial", 14),
+                    anchor="w",
+                )
+                hz_label.pack(side="left", anchor="w")
 
     def _on_topic_clicked(self, topic: str, list_type: TopicListType) -> None:
         if list_type == "input":
