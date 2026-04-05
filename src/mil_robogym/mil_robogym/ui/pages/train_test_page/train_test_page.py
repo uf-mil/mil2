@@ -50,7 +50,7 @@ class TrainTestPage(tk.Frame):
             self.controller.start_training,
             self.controller.stop_training,
             self.controller.abort_training,
-            self._on_test_selected_agent_click,
+            self.controller.test_agent,
         )
 
         for col in range(6):
@@ -92,7 +92,7 @@ class TrainTestPage(tk.Frame):
         )
         self._load_selected_agent_metrics()
 
-        self.controller.set_context(project)
+        self.controller.set_context(project, preferred_agent_name)
 
     def _refresh_history(
         self,
@@ -221,6 +221,7 @@ class TrainTestPage(tk.Frame):
         self._following_live_metrics = False
         self.header_section.set_last_training_session(agent_name)
         self._load_selected_agent_metrics()
+        self.controller.set_agent(agent_name)
 
     def _on_delete_agent_click(self, agent_name: str) -> None:
         """Delete one saved model after explicit confirmation."""
