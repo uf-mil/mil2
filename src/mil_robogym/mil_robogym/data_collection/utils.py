@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 SOURCE_PROJECTS_DIR_ENV = "MIL_ROBOGYM_SOURCE_PROJECTS_DIR"
@@ -39,6 +40,28 @@ def flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
         out[prefix] = value
     else:
         out["value"] = value
+
+
+def extract_selected_state_features(
+    state: dict[str, object],
+    feature_names: Sequence[str],
+) -> dict[str, object]:
+    """
+    Flatten collected topic messages and return only the requested features.
+    """
+    flattened_states: dict[str, object] = {}
+
+    for topic, msg in state.items():
+        temp: dict[str, object] = {}
+        flatten_value(msg, "", temp)
+        for key, value in temp.items():
+            flattened_states[f"{topic}:{key}"] = value
+
+    return {
+        feature_name: flattened_states[feature_name]
+        for feature_name in feature_names
+        if feature_name in flattened_states
+    }
 
 
 def resolve_source_package_dir(package_name: str = "mil_robogym") -> Path:

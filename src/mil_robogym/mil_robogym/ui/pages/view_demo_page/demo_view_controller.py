@@ -15,6 +15,7 @@ from mil_robogym.data_collection.types import (
     RoboGymDemoYaml,
     RoboGymProjectYaml,
 )
+from mil_robogym.data_collection.utils import extract_selected_state_features
 from mil_robogym.data_collection.writers.csv_writer import AsyncCSVWriter
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
@@ -101,11 +102,8 @@ class DemoViewController:
                 self.view.steps.add_step(step)
 
             # Configure data section graphs
-            self.view.data_section.dropdown.config(
-                values=self.project["tensor_spec"]["input_features"],
-            )
-            self.view.data_section.selected_column.set(
-                self.project["tensor_spec"]["input_features"][0],
+            self.view.data_section.set_metric_order(
+                self.project["tensor_spec"]["input_features"],
             )
             self.update_graph()
 
@@ -163,6 +161,7 @@ class DemoViewController:
         if self.view.steps.current_pose_index != len(self.view.steps.steps) - 1:
             self.csv_writer.clear_all_data(self.view.steps.current_pose_index)
             self.view.steps.destroy_undone_steps()
+            self.update_graph()
 
         # Enable keyboard controls
         self.keyboard_controls_gui.show()
@@ -304,17 +303,14 @@ class DemoViewController:
         """
         Event function for updating the graph displayed in the data section.
         """
-        data_section = self.view.data_section
+        if self.csv_writer is None or self.project is None:
+            self.view.data_section.clear_metrics("No collected data available.")
+            return
 
-        # Fetch values
-        column = data_section.selected_column.get()
-        values = self.csv_writer.fetch_state_column_values(column)
-
-        # Update plot
-        data_section.ax.clear()
-        data_section.ax.plot(values)
-
-        data_section.canvas.draw()
+        self.view.data_section.set_metric_order(
+            self.project["tensor_spec"]["input_features"],
+        )
+        self.view.data_section.set_metrics_data(self.csv_writer.fetch_state_series())
 
     def show_edit_demo(self) -> None:
         """
@@ -419,6 +415,11 @@ class DemoViewController:
         data = json.loads(self.data_collector.get_snapshot().data)
 
         if data:
+            feature_values = extract_selected_state_features(
+                data,
+                self.project["tensor_spec"]["input_features"],
+            )
+
             # Record data into persistent CSV files.
             self.csv_writer.record(
                 state=data,
@@ -437,6 +438,13 @@ class DemoViewController:
             # Display step in GUI
             self.view.steps.add_step((x, y, z, yaw))
             self.view.steps.canvas.yview_moveto(1.0)
+            self.view.data_section.append_metric_point(
+                {
+                    metric_name: float(value)
+                    for metric_name, value in feature_values.items()
+                    if isinstance(value, (int, float))
+                },
+            )
 
             if self.view.controls.preposition_button["state"] == "normal":
                 self.view.controls.preposition_button.config(state=tk.DISABLED)
