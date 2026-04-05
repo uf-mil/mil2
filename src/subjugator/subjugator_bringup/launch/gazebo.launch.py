@@ -76,6 +76,19 @@ def generate_launch_description():
         output="screen",
     )
 
+    # Pinger heading transformer: converts world-frame pinger direction
+    # from the Gazebo Hydrophone plugin (/ping) into body-frame direction
+    # and publishes on hydrophones/solved for the mission planner.
+    # This replaces the real-world ping_publisher.py which reads from
+    # actual hydrophone hardware.
+    pinger_heading = Node(
+        package="subjugator_gazebo",
+        executable="pinger_heading_node.py",
+        name="pinger_heading_node",
+        output="screen",
+        parameters=[{"use_sim_time": True}],
+    )
+
     return LaunchDescription(
         [
             gz_sim_world,
@@ -83,5 +96,6 @@ def generate_launch_description():
             set_sim_params,
             subjugator_setup,
             bridge,
+            pinger_heading,
         ],
     )
