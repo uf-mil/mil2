@@ -1,6 +1,7 @@
 import tkinter as tk
 from typing import Any, Type
 
+from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.ui.pages.create_project_page.create_project_page import (
     CreateProjectPage,
 )
@@ -50,6 +51,11 @@ class App(tk.Tk):
         self._register_page("view_demo", ViewDemoPage)
 
         self.show_page("start")
+
+        # Start and stop simulation to get all topics
+        world_control_client = WorldControlClient()
+        world_control_client.play_simulation()
+        world_control_client.pause_simulation()
 
     def _register_page(self, name: str, page_cls: Type[tk.Frame]) -> None:
         """
