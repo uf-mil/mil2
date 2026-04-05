@@ -59,6 +59,7 @@ class CreateProjectPage(tk.Frame):
 
         self.keyboard_controls_gui: KeyboardControlsGUI | None = None
         self.popup: GrabCoordinatesPopup | None = None
+        self._has_grab_simulation_hold = False
 
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
@@ -160,7 +161,9 @@ class CreateProjectPage(tk.Frame):
         Returns:
             None.
         """
-        self.world_control_client.play_simulation()
+        if not self._has_grab_simulation_hold:
+            self.world_control_client.acquire_simulation_hold()
+            self._has_grab_simulation_hold = True
 
         self.keyboard_controls_gui = self.keyboard_controls_gui or KeyboardControlsGUI(
             self,
@@ -207,9 +210,15 @@ class CreateProjectPage(tk.Frame):
 
         if self.keyboard_controls_gui is not None:
             self.keyboard_controls_gui.hide()
-        self.world_control_client.pause_simulation()
+        self._release_grab_simulation_hold()
         self.popup = None
         self._update_create_project_button_state()
+
+    def _release_grab_simulation_hold(self) -> None:
+        if not self._has_grab_simulation_hold:
+            return
+        self.world_control_client.release_simulation_hold()
+        self._has_grab_simulation_hold = False
 
     def _on_close_of_keyboard_controls(self) -> None:
         """Handle close events from the keyboard-controls popup. This keeps behavior scoped to the current component.
@@ -230,6 +239,7 @@ class CreateProjectPage(tk.Frame):
         Returns:
             None.
         """
+        self._release_grab_simulation_hold()
         if self.controller is not None:
             self.controller.show_page("start")
 
@@ -241,6 +251,7 @@ class CreateProjectPage(tk.Frame):
         Returns:
             None.
         """
+        self._release_grab_simulation_hold()
         if self.controller is not None:
             self.controller.show_page("start")
 
