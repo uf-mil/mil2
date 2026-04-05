@@ -113,6 +113,7 @@ class TopicsSection:
             text="Getting data rates...",
             bg="#DADADA",
             fg="#6E6E6E",
+            padx=30,
             font=("Arial", 11),
             anchor="e",
         )
@@ -168,6 +169,7 @@ class TopicsSection:
             text="Getting data rates...",
             bg="#DADADA",
             fg="#6E6E6E",
+            padx=30,
             font=("Arial", 11),
             anchor="e",
         )
@@ -230,7 +232,8 @@ class TopicsSection:
         }
         self._warning_tooltips: list[_HoverToolTip] = []
         self._topic_hz_containers: dict[str, list[tk.Frame]] = {}
-        self._topic_hz_queue, self._topic_hz_done = start_topic_hz_lookup(safe_topics)
+        self._topic_hz_queue = None
+        self._topic_hz_done = None
 
         self.input_topic_order = safe_topics.copy()
         self.output_topic_order = safe_topics.copy()
@@ -248,7 +251,6 @@ class TopicsSection:
 
         self._build_topic_checkboxes("input")
         self._build_topic_checkboxes("output")
-        self._drain_topic_hz_results()
         self.set_topics(topics)
 
     def _topic_control_state(self) -> str:
@@ -346,6 +348,9 @@ class TopicsSection:
             topic_buttons[topic] = button
 
     def _drain_topic_hz_results(self) -> None:
+        if self._topic_hz_queue is None or self._topic_hz_done is None:
+            return
+
         if not self.outer.winfo_exists():
             return
 
@@ -367,6 +372,25 @@ class TopicsSection:
                 self.output_topics_status_label.config(text="")
             except tk.TclError:
                 return
+
+    def _start_topic_hz_lookup(self) -> None:
+        if not self.outer.winfo_exists():
+            return
+
+        for containers in self._topic_hz_containers.values():
+            for container in containers:
+                if not container.winfo_exists():
+                    continue
+                for child in container.winfo_children():
+                    child.destroy()
+
+        self.input_topics_status_label.config(text="Getting data rates...")
+        self.output_topics_status_label.config(text="Getting data rates...")
+
+        self._topic_hz_queue, self._topic_hz_done = start_topic_hz_lookup(
+            self._available_topics,
+        )
+        self._drain_topic_hz_results()
 
     def _render_topic_hz(self, topic: str, hz: float | None) -> None:
         for container in self._topic_hz_containers.get(topic, []):
@@ -441,9 +465,11 @@ class TopicsSection:
             for topic in available_topics
         }
 
+        self._topic_hz_containers.clear()
         self._build_topic_checkboxes("input")
         self._build_topic_checkboxes("output")
         self._apply_selection_enabled_state()
+        self._start_topic_hz_lookup()
 
     def set_selected_topics(
         self,
