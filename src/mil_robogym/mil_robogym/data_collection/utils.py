@@ -5,6 +5,8 @@ import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from .types import NonNumericTopicFieldSelection
+
 SOURCE_PROJECTS_DIR_ENV = "MIL_ROBOGYM_SOURCE_PROJECTS_DIR"
 SOURCE_PACKAGE_DIR_ENV = "MIL_ROBOGYM_SOURCE_PACKAGE_DIR"
 
@@ -43,27 +45,24 @@ def flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
 
 
 def extract_selected_state_features(
-    state: Mapping[str, object],
+    state: dict[str, object],
     feature_names: Sequence[str],
 ) -> dict[str, object]:
     """
-    Flatten a state snapshot and return only the requested feature names.
-
-    The returned mapping preserves the order given by ``feature_names``.
+    Flatten collected topic messages and return only the requested features.
     """
-    flattened_state: dict[str, object] = {}
+    flattened_states: dict[str, object] = {}
 
-    for topic, message in state.items():
+    for topic, msg in state.items():
         temp: dict[str, object] = {}
-        flatten_value(message, "", temp)
-
+        flatten_value(msg, "", temp)
         for key, value in temp.items():
-            flattened_state[f"{topic}:{key}"] = value
+            flattened_states[f"{topic}:{key}"] = value
 
     return {
-        feature_name: flattened_state[feature_name]
+        feature_name: flattened_states[feature_name]
         for feature_name in feature_names
-        if feature_name in flattened_state
+        if feature_name in flattened_states
     }
 
 
@@ -151,3 +150,16 @@ def topic_to_data_folder_name(topic: str) -> str:
     normalized = re.sub(r"[^\w.-]", "_", normalized)
     normalized = re.sub(r"_+", "_", normalized).strip("_")
     return normalized or "topic"
+
+
+def filter_populated_non_numeric_topic_fields(
+    topic_fields: Mapping[str, Sequence[NonNumericTopicFieldSelection]],
+) -> dict[str, list[NonNumericTopicFieldSelection]]:
+    """Return only topic entries that still have at least one selected field."""
+
+    filtered: dict[str, list[NonNumericTopicFieldSelection]] = {}
+    for topic, fields in topic_fields.items():
+        normalized_fields = [dict(field) for field in fields]
+        if normalized_fields:
+            filtered[topic] = normalized_fields
+    return filtered

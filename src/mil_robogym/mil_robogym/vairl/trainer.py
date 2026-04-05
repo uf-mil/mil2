@@ -25,6 +25,7 @@ from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
 from ..clients.world_control_client import WorldControlClient
 from .environment import GYMNASIUM, Environment
+from .generator_metrics import extract_latest_generator_metrics
 from .metrics import TrainingMetricsSession
 from .reward_net import VAIRLRewardNet
 from .training_settings import DEFAULT_TRAINING_SETTINGS
@@ -243,6 +244,7 @@ class Trainer:
 
                 # Train Generator
                 vairl.train_gen(total_timesteps=self.rollout_steps)
+                generator_stats = extract_latest_generator_metrics(vairl.logger)
 
                 # Train Reward Net
                 reward_net.train()
@@ -262,6 +264,7 @@ class Trainer:
                     reward_mean=reward_mean,
                     reward_std=reward_std,
                     disc_stats=_disc_stats,
+                    extra_metrics=generator_stats,
                 )
                 self._emit_progress_event(
                     {

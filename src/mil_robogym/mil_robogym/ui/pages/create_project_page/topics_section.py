@@ -78,8 +78,11 @@ class TopicsSection:
         parent: tk.Widget,
         topics: list[str],
         on_selection_change: Callable[[], None],
+        on_refresh_topics: Callable[[], None],
     ) -> None:
         self._on_selection_change = on_selection_change
+        self._on_refresh_topics = on_refresh_topics
+        self._selection_enabled = True
 
         self.input_topics_label = tk.Label(
             parent,
@@ -98,6 +101,29 @@ class TopicsSection:
             pady=(6, 2),
         )
 
+        self.refresh_topics_button = tk.Button(
+            parent,
+            text="↻",
+            command=self._on_refresh_topics,
+            bg="#ECECEC",
+            activebackground="#DFDFDF",
+            fg="black",
+            relief="solid",
+            bd=1,
+            font=("Arial", 15, "bold"),
+            width=2,
+            padx=0,
+            pady=0,
+            cursor="hand2",
+        )
+        self.refresh_topics_button.grid(
+            row=6,
+            column=2,
+            sticky="e",
+            padx=(0, 8),
+            pady=(4, 2),
+        )
+
         self.output_topics_label = tk.Label(
             parent,
             text="Output Topics",
@@ -109,10 +135,33 @@ class TopicsSection:
         self.output_topics_label.grid(
             row=6,
             column=3,
-            columnspan=3,
+            columnspan=2,
             sticky="w",
             padx=(8, 14),
             pady=(6, 2),
+        )
+
+        self.output_refresh_topics_button = tk.Button(
+            parent,
+            text="↻",
+            command=self._on_refresh_topics,
+            bg="#ECECEC",
+            activebackground="#DFDFDF",
+            fg="black",
+            relief="solid",
+            bd=1,
+            font=("Arial", 15, "bold"),
+            width=2,
+            padx=0,
+            pady=0,
+            cursor="hand2",
+        )
+        self.output_refresh_topics_button.grid(
+            row=6,
+            column=5,
+            sticky="e",
+            padx=(0, 14),
+            pady=(4, 2),
         )
 
         self.outer = tk.Frame(parent, bg="#DADADA")
@@ -134,43 +183,66 @@ class TopicsSection:
         self.output_topic_frame = ScrollableFrame(self.outer, bg="#DADADA")
         self.output_topic_frame.grid(row=0, column=1, sticky="nsew")
 
-        safe_topics = topics if topics else ["No topics found"]
-        warnings = warn_for_unhelpful_topics(safe_topics)
-        self._warned_topics = {warning["topic"] for warning in warnings}
-        self._topic_warning_messages = {
-            warning["topic"]: _format_topic_warning_message(warning)
-            for warning in warnings
-        }
-        self._warning_tooltips: list[_HoverToolTip] = []
-
-        self.input_topic_order = safe_topics.copy()
-        self.output_topic_order = safe_topics.copy()
-
         self.input_topic_vars: dict[str, tk.BooleanVar] = {}
         self.output_topic_vars: dict[str, tk.BooleanVar] = {}
         self.input_topic_buttons: dict[str, tk.Checkbutton] = {}
         self.output_topic_buttons: dict[str, tk.Checkbutton] = {}
         self.input_topic_rows: dict[str, tk.Frame] = {}
         self.output_topic_rows: dict[str, tk.Frame] = {}
+        self._warning_tooltips: list[_HoverToolTip] = []
+        self._warned_topics: set[str] = set()
+        self._topic_warning_messages: dict[str, str] = {}
+        self._available_topics: list[str] = []
 
-        self._build_topic_checkboxes("input")
-        self._build_topic_checkboxes("output")
+        self.set_topics(topics)
+
+    def _topic_control_state(self) -> str:
+        return tk.NORMAL if self._selection_enabled else tk.DISABLED
+
+    def _apply_selection_enabled_state(self) -> None:
+        button_state = self._topic_control_state()
+        self.refresh_topics_button.configure(state=button_state)
+        self.output_refresh_topics_button.configure(state=button_state)
+
+        for button in self.input_topic_buttons.values():
+            button.configure(state=button_state)
+        for button in self.output_topic_buttons.values():
+            button.configure(state=button_state)
+
+    def set_selection_enabled(self, enabled: bool) -> None:
+        self._selection_enabled = enabled
+        self._apply_selection_enabled_state()
 
     def _build_topic_checkboxes(self, list_type: TopicListType) -> None:
         if list_type == "input":
             frame = self.input_topic_frame.content
-            topic_order = self.input_topic_order
             topic_vars = self.input_topic_vars
             topic_buttons = self.input_topic_buttons
             topic_rows = self.input_topic_rows
         else:
             frame = self.output_topic_frame.content
-            topic_order = self.output_topic_order
             topic_vars = self.output_topic_vars
             topic_buttons = self.output_topic_buttons
             topic_rows = self.output_topic_rows
 
-        for topic in topic_order:
+        for child in frame.winfo_children():
+            child.destroy()
+        topic_rows.clear()
+        topic_buttons.clear()
+
+        if not self._available_topics:
+            empty_label = tk.Label(
+                frame,
+                text="No topics found.",
+                bg="#DADADA",
+                fg="#666666",
+                font=("Arial", 12),
+                anchor="w",
+            )
+            empty_label.pack(anchor="w")
+            return
+
+        for topic in self._available_topics:
             topic_var = topic_vars.get(topic, tk.BooleanVar(value=False))
             topic_vars[topic] = topic_var
 
@@ -179,10 +251,12 @@ class TopicsSection:
                 row,
                 text=topic,
                 variable=topic_var,
-                command=lambda t=topic, lt=list_type: self._on_topic_clicked(t, lt),
+                command=self._on_selection_change,
+                state=self._topic_control_state(),
                 bg="#DADADA",
                 fg="black",
                 activebackground="#DADADA",
+                disabledforeground="#666666",
                 font=("Arial", 14),
                 anchor="w",
                 highlightthickness=0,
@@ -212,36 +286,67 @@ class TopicsSection:
             topic_rows[topic] = row
             topic_buttons[topic] = button
 
-    def _on_topic_clicked(self, topic: str, list_type: TopicListType) -> None:
-        if list_type == "input":
-            topic_order = self.input_topic_order
-            topic_rows = self.input_topic_rows
-        else:
-            topic_order = self.output_topic_order
-            topic_rows = self.output_topic_rows
+    def set_topics(self, topics: list[str]) -> None:
+        available_topics = list(dict.fromkeys(topics))
 
-        if topic not in topic_order:
-            return
+        previous_input_selection = {
+            topic: var.get()
+            for topic, var in self.input_topic_vars.items()
+            if topic in available_topics
+        }
+        previous_output_selection = {
+            topic: var.get()
+            for topic, var in self.output_topic_vars.items()
+            if topic in available_topics
+        }
 
-        topic_order.remove(topic)
-        topic_order.insert(0, topic)
+        self._available_topics = available_topics
 
-        for ordered_topic in topic_order:
-            row = topic_rows[ordered_topic]
-            row.pack_forget()
-            row.pack(anchor="w")
+        warnings = warn_for_unhelpful_topics(available_topics)
+        self._warned_topics = {warning["topic"] for warning in warnings}
+        self._topic_warning_messages = {
+            warning["topic"]: _format_topic_warning_message(warning)
+            for warning in warnings
+        }
 
-        self._on_selection_change()
+        for tooltip in self._warning_tooltips:
+            tooltip._hide()
+        self._warning_tooltips.clear()
+
+        self.input_topic_vars = {
+            topic: tk.BooleanVar(value=previous_input_selection.get(topic, False))
+            for topic in available_topics
+        }
+        self.output_topic_vars = {
+            topic: tk.BooleanVar(value=previous_output_selection.get(topic, False))
+            for topic in available_topics
+        }
+
+        self._build_topic_checkboxes("input")
+        self._build_topic_checkboxes("output")
+        self._apply_selection_enabled_state()
+
+    def set_selected_topics(
+        self,
+        *,
+        input_topics: list[str],
+        output_topics: list[str],
+    ) -> None:
+        input_selected = set(input_topics)
+        output_selected = set(output_topics)
+
+        for topic, var in self.input_topic_vars.items():
+            var.set(topic in input_selected)
+        for topic, var in self.output_topic_vars.items():
+            var.set(topic in output_selected)
 
     def selected_topics(self, list_type: TopicListType) -> list[str]:
         if list_type == "input":
-            topic_order = self.input_topic_order
             topic_vars = self.input_topic_vars
         else:
-            topic_order = self.output_topic_order
             topic_vars = self.output_topic_vars
 
-        return [topic for topic in topic_order if topic_vars[topic].get()]
+        return [topic for topic in self._available_topics if topic_vars[topic].get()]
 
     def get_selected_input_topics(self) -> list[str]:
         return self.selected_topics("input")

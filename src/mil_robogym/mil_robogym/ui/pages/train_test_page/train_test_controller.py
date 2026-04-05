@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import queue
 import sys
@@ -7,7 +9,7 @@ import tkinter as tk
 import traceback
 from contextlib import nullcontext, suppress
 from pathlib import Path
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping
 
 from mil_robogym.data_collection.delete_saved_agent import (
     delete_saved_agent_artifacts,
@@ -17,9 +19,11 @@ from mil_robogym.data_collection.load_saved_agent import (
     load_saved_agent_model,
 )
 from mil_robogym.data_collection.types import RoboGymProjectYaml
-from mil_robogym.vairl.tester import Tester
 from mil_robogym.vairl.trainer import Trainer
 from mil_robogym.vairl.training_settings import normalize_training_settings
+
+if TYPE_CHECKING:
+    from mil_robogym.vairl.tester import Tester
 
 
 class TrainTestViewController:
@@ -66,7 +70,7 @@ class TrainTestViewController:
         )
         self.training_settings = normalize_training_settings(raw_training_settings)
         self.trainer = None
-        self.tester = Tester(self.project)
+        self.tester = None
 
         if preferred_agent_name:
             self.set_agent(preferred_agent_name)
@@ -77,7 +81,10 @@ class TrainTestViewController:
         """
         Create and record agent.
         """
-        self.tester.set_agent(load_saved_agent_model(self.project, agent_name))
+        tester = self._ensure_tester()
+        if tester is None:
+            return
+        tester.set_agent(load_saved_agent_model(self.project, agent_name))
 
     def navigate_to_home(self, _event=None) -> None:
         """
@@ -188,13 +195,28 @@ class TrainTestViewController:
         Start testing agent.
         """
         try:
-            self.tester.test_agent()
+            tester = self._ensure_tester()
+            if tester is None:
+                return
+            tester.test_agent()
         except ValueError as e:
             tk.messagebox.showinfo(
                 title="No Agent Selected",
                 message=str(e),
                 icon="warning",
             )
+
+    def _ensure_tester(self) -> Tester | None:
+        if self.tester is not None:
+            return self.tester
+        if self.project is None:
+            self.view.set_terminal_text("Testing unavailable: no project is loaded.")
+            return None
+
+        from mil_robogym.vairl.tester import Tester
+
+        self.tester = Tester(self.project)
+        return self.tester
 
     def load_selected_agent(self) -> LoadedAgent | None:
         """Load the currently selected saved model as a callable agent."""

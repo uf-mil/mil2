@@ -43,8 +43,6 @@ class SeriesPlotsSection:
         self._no_selection_message = no_selection_message
         self._label_formatter = label_formatter or self._default_label_formatter
         self._resize_after_id: str | None = None
-        self._section_bg = section_bg
-        self._content_bg = content_bg
 
         self.container = tk.Frame(parent, bg=section_bg)
         self.container.grid_columnconfigure(0, weight=1)
@@ -65,6 +63,8 @@ class SeriesPlotsSection:
         self.title_label.grid(row=0, column=0, sticky="w", pady=(0, 4))
 
         self.add_metric_menu = tk.Menu(header, tearoff=False)
+        self.add_metric_menu.bind("<FocusOut>", self._dismiss_add_metric_menu)
+        self.add_metric_menu.bind("<Escape>", self._dismiss_add_metric_menu)
         self.add_metric_button = tk.Button(
             header,
             text="+",
@@ -151,11 +151,10 @@ class SeriesPlotsSection:
             self.clear_metrics(self._pending_data_message)
             return
 
-        normalized: dict[str, list[float]] = {
+        self._metric_data = {
             name: [float(value) for value in series] for name, series in metrics.items()
         }
-        self._metric_data = normalized
-        self._x_metric_name = "episode" if "episode" in normalized else None
+        self._x_metric_name = "episode" if "episode" in self._metric_data else None
         self._sync_selected_metrics()
         self._placeholder_text = self._no_selection_message
         self._render_metric_controls()
@@ -300,15 +299,21 @@ class SeriesPlotsSection:
             state="normal" if remaining_metrics else "disabled",
         )
 
+    def _dismiss_add_metric_menu(self, _event: tk.Event | None = None) -> None:
+        self.add_metric_menu.unpost()
+
     def _show_add_metric_menu(self) -> None:
         if str(self.add_metric_button.cget("state")) == "disabled":
             return
 
-        self.add_metric_menu.post(
-            self.add_metric_button.winfo_rootx(),
-            self.add_metric_button.winfo_rooty()
-            + self.add_metric_button.winfo_height(),
-        )
+        try:
+            self.add_metric_menu.tk_popup(
+                self.add_metric_button.winfo_rootx(),
+                self.add_metric_button.winfo_rooty()
+                + self.add_metric_button.winfo_height(),
+            )
+        finally:
+            self.add_metric_menu.grab_release()
 
     def _add_metric(self, metric_name: str) -> None:
         if metric_name in self._selected_metrics:

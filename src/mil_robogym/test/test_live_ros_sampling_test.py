@@ -2,7 +2,7 @@
 
 import pytest
 
-from mil_robogym.data_collection.live_ros_sampling_test import (
+from mil_robogym.data_collection.live_ros_sampling import (
     _build_test_topics,
     _image_message_dict_to_png_bytes,
 )
