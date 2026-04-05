@@ -46,6 +46,8 @@ class EditProjectPage(tk.Frame):
         self.output_topics_selected: list[str] = []
         self.input_topic_subtopics: dict[str, list[str]] = {}
         self.output_topic_subtopics: dict[str, list[str]] = {}
+        self.input_non_numeric_topics: dict[str, list[dict[str, str]]] = {}
+        self.output_non_numeric_topics: dict[str, list[dict[str, str]]] = {}
 
         title_row = tk.Frame(self, bg="#DADADA")
         title_row.grid(row=0, column=0, columnspan=6, sticky="w", padx=14, pady=(14, 8))
@@ -384,6 +386,8 @@ class EditProjectPage(tk.Frame):
             self.output_topics_selected = []
             self.input_topic_subtopics = {}
             self.output_topic_subtopics = {}
+            self.input_non_numeric_topics = {}
+            self.output_non_numeric_topics = {}
             self._render_topics(list_type="input", topics=self.input_topics_selected)
             self._render_topics(list_type="output", topics=self.output_topics_selected)
             self._toggle_random_spawn()
@@ -433,6 +437,13 @@ class EditProjectPage(tk.Frame):
             }
         else:
             self.output_topic_subtopics = {}
+
+        self.input_non_numeric_topics = self._normalize_non_numeric_topics(
+            details.get("input_non_numeric_topics", {}),
+        )
+        self.output_non_numeric_topics = self._normalize_non_numeric_topics(
+            details.get("output_non_numeric_topics", {}),
+        )
         self.input_topics_selected = list(self.input_topic_subtopics)
         self.output_topics_selected = list(self.output_topic_subtopics)
         self._render_topics(list_type="input", topics=self.input_topics_selected)
@@ -626,6 +637,17 @@ class EditProjectPage(tk.Frame):
             },
         }
 
+        if any(self.input_non_numeric_topics.values()):
+            project_cfg["input_non_numeric_topics"] = {
+                topic: [dict(field) for field in fields]
+                for topic, fields in self.input_non_numeric_topics.items()
+            }
+        if any(self.output_non_numeric_topics.values()):
+            project_cfg["output_non_numeric_topics"] = {
+                topic: [dict(field) for field in fields]
+                for topic, fields in self.output_non_numeric_topics.items()
+            }
+
         if self._current_tensor_spec is not None:
             project_cfg["tensor_spec"] = dict(self._current_tensor_spec)
 
@@ -671,3 +693,43 @@ class EditProjectPage(tk.Frame):
             return tuple(float(p) for p in parts)
         except ValueError:
             return None
+
+    def _normalize_non_numeric_topics(
+        self,
+        value: object,
+    ) -> dict[str, list[dict[str, str]]]:
+        if not isinstance(value, Mapping):
+            return {}
+
+        normalized: dict[str, list[dict[str, str]]] = {}
+        for topic, fields in value.items():
+            if not isinstance(topic, str) or not isinstance(fields, list):
+                continue
+
+            normalized_fields: list[dict[str, str]] = []
+            for field in fields:
+                if not isinstance(field, Mapping):
+                    continue
+                field_path = field.get("field_path")
+                data_type = field.get("data_type")
+                ros_type = field.get("ros_type")
+                if (
+                    not isinstance(field_path, str)
+                    or not field_path
+                    or data_type not in {"unordered_set", "image"}
+                    or not isinstance(ros_type, str)
+                    or not ros_type
+                ):
+                    continue
+                normalized_fields.append(
+                    {
+                        "field_path": field_path,
+                        "data_type": data_type,
+                        "ros_type": ros_type,
+                    },
+                )
+
+            if normalized_fields:
+                normalized[topic] = normalized_fields
+
+        return normalized

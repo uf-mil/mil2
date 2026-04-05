@@ -60,6 +60,46 @@ def _validate_topic_subtopics(
                 )
 
 
+def _validate_non_numeric_topic_fields(
+    *,
+    field_name: str,
+    topic_fields: object,
+) -> None:
+    if not isinstance(topic_fields, dict):
+        raise ValueError(
+            f"project['{field_name}'] must be a mapping of topic -> list[mapping].",
+        )
+    for topic, fields in topic_fields.items():
+        if not isinstance(topic, str) or not topic.strip():
+            raise ValueError(
+                f"project['{field_name}'] contains an invalid topic name.",
+            )
+        if not isinstance(fields, list):
+            raise ValueError(
+                f"project['{field_name}'][{topic!r}] must be a list[mapping].",
+            )
+        for field in fields:
+            if not isinstance(field, dict):
+                raise ValueError(
+                    f"project['{field_name}'][{topic!r}] must contain mappings.",
+                )
+            field_path = field.get("field_path")
+            data_type = field.get("data_type")
+            ros_type = field.get("ros_type")
+            if not isinstance(field_path, str) or not field_path.strip():
+                raise ValueError(
+                    f"project['{field_name}'][{topic!r}] contains an invalid field_path.",
+                )
+            if data_type not in {"unordered_set", "image"}:
+                raise ValueError(
+                    f"project['{field_name}'][{topic!r}] contains an invalid data_type.",
+                )
+            if not isinstance(ros_type, str) or not ros_type.strip():
+                raise ValueError(
+                    f"project['{field_name}'][{topic!r}] contains an invalid ros_type.",
+                )
+
+
 def _validate_project_config_payload(project: RoboGymProjectYaml) -> None:
     required_fields = (
         "name",
@@ -105,6 +145,18 @@ def _validate_project_config_payload(project: RoboGymProjectYaml) -> None:
         field_name="output_topics",
         topic_subtopics=project["output_topics"],
     )
+
+    if "input_non_numeric_topics" in project:
+        _validate_non_numeric_topic_fields(
+            field_name="input_non_numeric_topics",
+            topic_fields=project["input_non_numeric_topics"],
+        )
+
+    if "output_non_numeric_topics" in project:
+        _validate_non_numeric_topic_fields(
+            field_name="output_non_numeric_topics",
+            topic_fields=project["output_non_numeric_topics"],
+        )
 
     tensor_spec = project.get("tensor_spec")
     if tensor_spec is None:

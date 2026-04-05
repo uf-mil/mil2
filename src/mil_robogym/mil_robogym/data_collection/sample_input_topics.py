@@ -75,6 +75,82 @@ def _resolve_topics_in_graph(
     return [available_lookup[canonical_topic_name(topic)] for topic in topics]
 
 
+def _resolve_topic_type_via_cli(
+    topic: str,
+    *,
+    timeout_s: float,
+) -> str:
+    command = (
+        "ros2",
+        "topic",
+        "type",
+        topic,
+    )
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout_s,
+        )
+    except FileNotFoundError as e:
+        raise RuntimeError(
+            "No ROS 2 CLI found. Ensure 'ros2' is installed and in PATH.",
+        ) from e
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(
+            f"Timed out after {timeout_s}s while resolving type for topic '{topic}'.",
+        ) from e
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Failed to resolve topic type for "
+            f"'{topic}' with '{' '.join(command)}': {result.stderr.strip()}",
+        )
+
+    if not result.stdout.strip():
+        raise RuntimeError(
+            f"Received empty topic type output for topic '{topic}'.",
+        )
+
+    msg_type = result.stdout.strip().splitlines()[0].strip()
+    if not msg_type:
+        raise RuntimeError(
+            f"Resolved an invalid topic type for topic '{topic}'.",
+        )
+
+    return msg_type
+
+
+def resolve_topic_message_types(
+    topics: list[str],
+    *,
+    timeout_s: float = 2.0,
+) -> dict[str, str]:
+    """
+    Resolve each topic to its ROS 2 message type.
+
+    Returns:
+        Mapping from the original topic string to the resolved message type.
+    """
+    if timeout_s <= 0:
+        raise ValueError("timeout_s must be positive.")
+
+    selected_topics = list(topics)
+    if not selected_topics:
+        return {}
+
+    resolved_topics = _resolve_topics_in_graph(
+        selected_topics,
+        operation="resolve topic types",
+    )
+    return {
+        topic: _resolve_topic_type_via_cli(resolved_topic, timeout_s=timeout_s)
+        for topic, resolved_topic in zip(selected_topics, resolved_topics)
+    }
+
+
 def _collect_topic_messages_once_via_subscriptions(
     topics: list[str],
     *,
@@ -227,53 +303,14 @@ def sample_topics(
     selected_topics = list(topics)
     if not selected_topics:
         return {}
-    resolved_topics = _resolve_topics_in_graph(
+    topic_message_types = resolve_topic_message_types(
         selected_topics,
-        operation="sample topics",
+        timeout_s=timeout_s,
     )
 
     sampled_topics: SampledTopics = {}
-    for topic, resolved_topic in zip(selected_topics, resolved_topics):
-        command = (
-            "ros2",
-            "topic",
-            "type",
-            resolved_topic,
-        )
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=timeout_s,
-            )
-        except FileNotFoundError as e:
-            raise RuntimeError(
-                "No ROS 2 CLI found. Ensure 'ros2' is installed and in PATH.",
-            ) from e
-        except subprocess.TimeoutExpired as e:
-            raise RuntimeError(
-                f"Timed out after {timeout_s}s while resolving type for topic '{resolved_topic}'.",
-            ) from e
-
-        if result.returncode != 0:
-            raise RuntimeError(
-                "Failed to resolve topic type for "
-                f"'{resolved_topic}' with '{' '.join(command)}': {result.stderr.strip()}",
-            )
-
-        if not result.stdout.strip():
-            raise RuntimeError(
-                f"Received empty topic type output for topic '{resolved_topic}'.",
-            )
-
-        msg_type = result.stdout.strip().splitlines()[0].strip()
-        if not msg_type:
-            raise RuntimeError(
-                f"Resolved an invalid topic type for topic '{resolved_topic}'.",
-            )
-
+    for topic in selected_topics:
+        msg_type = topic_message_types[topic]
         parsed = _default_message_as_dict(msg_type)
         flattened: dict[str, object] = {}
         flatten_value(parsed, "", flattened)
