@@ -4,9 +4,6 @@ import threading
 import tkinter as tk
 from typing import Callable, Literal
 
-from mil_robogym.data_collection.non_numeric_topic_fields import (
-    filter_populated_non_numeric_topic_fields,
-)
 from mil_robogym.data_collection.sample_input_topics import (
     resolve_topic_message_types,
     sample_topics,
@@ -20,6 +17,9 @@ from mil_robogym.data_collection.types import (
     FlattenedTopic,
     NonNumericTopicFieldSelection,
     SampledTopics,
+)
+from mil_robogym.data_collection.utils import (
+    filter_populated_non_numeric_topic_fields,
 )
 from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
@@ -35,6 +35,7 @@ class SubTopicsSection:
         on_selection_change: Callable[[], None],
     ) -> None:
         self._on_selection_change = on_selection_change
+        self._selection_enabled = True
 
         self._selected_input_topics: list[str] = []
         self._selected_output_topics: list[str] = []
@@ -121,6 +122,14 @@ class SubTopicsSection:
         self._desired_input_non_numeric_fields: dict[str, set[str]] = {}
         self._desired_output_non_numeric_fields: dict[str, set[str]] = {}
 
+        self._refresh_subtopic_sections("input")
+        self._refresh_subtopic_sections("output")
+
+    def _subtopic_control_state(self) -> str:
+        return tk.NORMAL if self._selection_enabled else tk.DISABLED
+
+    def set_selection_enabled(self, enabled: bool) -> None:
+        self._selection_enabled = enabled
         self._refresh_subtopic_sections("input")
         self._refresh_subtopic_sections("output")
 
@@ -480,6 +489,8 @@ class SubTopicsSection:
         self._refresh_subtopic_sections(list_type)
 
     def _on_subtopic_toggled(self, topic: str, list_type: TopicListType) -> None:
+        if not self._selection_enabled:
+            return
         self._update_subtopic_summary(topic, list_type)
         self._on_selection_change()
 
@@ -646,9 +657,11 @@ class SubTopicsSection:
                             t,
                             lt,
                         ),
+                        state=self._subtopic_control_state(),
                         bg="#DADADA",
                         fg="black",
                         activebackground="#DADADA",
+                        disabledforeground="#666666",
                         font=("Arial", 10),
                         anchor="w",
                         highlightthickness=0,
@@ -670,9 +683,11 @@ class SubTopicsSection:
                             t,
                             lt,
                         ),
+                        state=self._subtopic_control_state(),
                         bg="#DADADA",
                         fg="#1E4B7A",
                         activebackground="#DADADA",
+                        disabledforeground="#5A7694",
                         font=("Arial", 10),
                         anchor="w",
                         highlightthickness=0,
@@ -705,9 +720,11 @@ class SubTopicsSection:
                         t,
                         lt,
                     ),
+                    state=self._subtopic_control_state(),
                     bg="#DADADA",
                     fg="#1E4B7A",
                     activebackground="#DADADA",
+                    disabledforeground="#5A7694",
                     font=("Arial", 10),
                     anchor="w",
                     highlightthickness=0,

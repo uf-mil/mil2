@@ -1,4 +1,4 @@
-from mil_robogym.data_collection.non_numeric_topic_fields import (
+from mil_robogym.data_collection.utils import (
     filter_populated_non_numeric_topic_fields,
 )
 

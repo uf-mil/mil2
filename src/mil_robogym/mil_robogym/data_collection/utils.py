@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+
+from .types import NonNumericTopicFieldSelection
 
 SOURCE_PROJECTS_DIR_ENV = "MIL_ROBOGYM_SOURCE_PROJECTS_DIR"
 SOURCE_PACKAGE_DIR_ENV = "MIL_ROBOGYM_SOURCE_PACKAGE_DIR"
@@ -148,3 +150,16 @@ def topic_to_data_folder_name(topic: str) -> str:
     normalized = re.sub(r"[^\w.-]", "_", normalized)
     normalized = re.sub(r"_+", "_", normalized).strip("_")
     return normalized or "topic"
+
+
+def filter_populated_non_numeric_topic_fields(
+    topic_fields: Mapping[str, Sequence[NonNumericTopicFieldSelection]],
+) -> dict[str, list[NonNumericTopicFieldSelection]]:
+    """Return only topic entries that still have at least one selected field."""
+
+    filtered: dict[str, list[NonNumericTopicFieldSelection]] = {}
+    for topic, fields in topic_fields.items():
+        normalized_fields = [dict(field) for field in fields]
+        if normalized_fields:
+            filtered[topic] = normalized_fields
+    return filtered

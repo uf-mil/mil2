@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .filesystem import write_demo_topic_png
-from .get_ros2_topics import get_ros2_topics
+from .ros_graph import get_topic_names
 from .sample_input_topics import (
     collect_numeric_values_from_topic_subtopics,
     collect_topic_payloads_once,
@@ -109,7 +109,7 @@ def _preflight_ros_environment() -> None:
         ) from e
 
     with suppress(RuntimeError):
-        get_ros2_topics()
+        get_topic_names()
 
 
 def _wait_for_topics(
@@ -127,7 +127,7 @@ def _wait_for_topics(
                 f"(exit_code={publisher.returncode}).",
             )
         try:
-            available = set(get_ros2_topics())
+            available = set(get_topic_names())
         except RuntimeError:
             time.sleep(0.1)
             continue

@@ -82,6 +82,7 @@ class TopicsSection:
     ) -> None:
         self._on_selection_change = on_selection_change
         self._on_refresh_topics = on_refresh_topics
+        self._selection_enabled = True
 
         self.input_topics_label = tk.Label(
             parent,
@@ -195,6 +196,23 @@ class TopicsSection:
 
         self.set_topics(topics)
 
+    def _topic_control_state(self) -> str:
+        return tk.NORMAL if self._selection_enabled else tk.DISABLED
+
+    def _apply_selection_enabled_state(self) -> None:
+        button_state = self._topic_control_state()
+        self.refresh_topics_button.configure(state=button_state)
+        self.output_refresh_topics_button.configure(state=button_state)
+
+        for button in self.input_topic_buttons.values():
+            button.configure(state=button_state)
+        for button in self.output_topic_buttons.values():
+            button.configure(state=button_state)
+
+    def set_selection_enabled(self, enabled: bool) -> None:
+        self._selection_enabled = enabled
+        self._apply_selection_enabled_state()
+
     def _build_topic_checkboxes(self, list_type: TopicListType) -> None:
         if list_type == "input":
             frame = self.input_topic_frame.content
@@ -234,9 +252,11 @@ class TopicsSection:
                 text=topic,
                 variable=topic_var,
                 command=self._on_selection_change,
+                state=self._topic_control_state(),
                 bg="#DADADA",
                 fg="black",
                 activebackground="#DADADA",
+                disabledforeground="#666666",
                 font=("Arial", 14),
                 anchor="w",
                 highlightthickness=0,
@@ -304,6 +324,7 @@ class TopicsSection:
 
         self._build_topic_checkboxes("input")
         self._build_topic_checkboxes("output")
+        self._apply_selection_enabled_state()
 
     def set_selected_topics(
         self,

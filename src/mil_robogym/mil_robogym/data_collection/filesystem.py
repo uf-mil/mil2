@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import csv
 import shutil
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 
 import yaml
 
 from ..vairl.training_settings import get_default_training_settings
+from .get_all_project_config import count_demo_folders
 from .types import (
     Coord4D,
+    NonNumericTopicFieldSelection,
     RoboGymAgentConfig,
     RoboGymDemoConfig,
     RoboGymDemoYaml,
@@ -18,6 +21,7 @@ from .types import (
     RoboGymTrainingYaml,
 )
 from .utils import (
+    filter_populated_non_numeric_topic_fields,
     resolve_source_projects_dir,
     to_lower_snake_case,
     topic_to_data_folder_name,
@@ -196,6 +200,83 @@ def _validate_project_config_payload(project: RoboGymProjectYaml) -> None:
         raise ValueError(
             "project['tensor_spec']['output_dim'] must match len(output_features).",
         )
+
+
+def _normalized_topic_subtopics_for_compare(
+    topic_subtopics: object,
+) -> dict[str, list[str]]:
+    if not isinstance(topic_subtopics, Mapping):
+        return {}
+
+    normalized: dict[str, list[str]] = {}
+    for topic, fields in topic_subtopics.items():
+        if not isinstance(topic, str) or not isinstance(fields, list):
+            continue
+        normalized[topic] = [str(field) for field in fields]
+    return normalized
+
+
+def _normalized_non_numeric_topic_fields_for_compare(
+    topic_fields: object,
+) -> dict[str, list[NonNumericTopicFieldSelection]]:
+    if not isinstance(topic_fields, Mapping):
+        return {}
+
+    normalized: dict[str, list[NonNumericTopicFieldSelection]] = {}
+    for topic, fields in topic_fields.items():
+        if not isinstance(topic, str) or not isinstance(fields, list):
+            continue
+
+        normalized_fields: list[NonNumericTopicFieldSelection] = []
+        for field in fields:
+            if not isinstance(field, Mapping):
+                continue
+
+            field_path = field.get("field_path")
+            data_type = field.get("data_type")
+            ros_type = field.get("ros_type")
+            if (
+                not isinstance(field_path, str)
+                or not isinstance(ros_type, str)
+                or data_type not in {"unordered_set", "image"}
+            ):
+                continue
+
+            normalized_fields.append(
+                {
+                    "field_path": field_path,
+                    "data_type": data_type,
+                    "ros_type": ros_type,
+                },
+            )
+
+        if normalized_fields:
+            normalized[topic] = normalized_fields
+
+    return filter_populated_non_numeric_topic_fields(normalized)
+
+
+def _project_topic_selection_signature(
+    project_cfg: object,
+) -> tuple[
+    dict[str, list[str]],
+    dict[str, list[str]],
+    dict[str, list[NonNumericTopicFieldSelection]],
+    dict[str, list[NonNumericTopicFieldSelection]],
+]:
+    if not isinstance(project_cfg, Mapping):
+        return ({}, {}, {}, {})
+
+    return (
+        _normalized_topic_subtopics_for_compare(project_cfg.get("input_topics", {})),
+        _normalized_topic_subtopics_for_compare(project_cfg.get("output_topics", {})),
+        _normalized_non_numeric_topic_fields_for_compare(
+            project_cfg.get("input_non_numeric_topics", {}),
+        ),
+        _normalized_non_numeric_topic_fields_for_compare(
+            project_cfg.get("output_non_numeric_topics", {}),
+        ),
+    )
 
 
 def _build_demo_config(
@@ -525,6 +606,19 @@ def edit_project(
     if not project_dir.exists() or not project_dir.is_dir():
         raise FileNotFoundError(f"Project folder does not exist: {project_dir}")
 
+    _validate_project_config_payload(project)
+    existing_cfg = _read_yaml_mapping(project_dir / "config.yaml")
+
+    if count_demo_folders(project_dir / "demos") > 0:
+        existing_project_cfg = existing_cfg.get("robogym_project", {})
+        if _project_topic_selection_signature(existing_project_cfg) != (
+            _project_topic_selection_signature(project)
+        ):
+            raise ValueError(
+                "Cannot change project topic selections while demos already exist. "
+                "Delete existing demos before editing topics or subtopics.",
+            )
+
     target_folder_name = to_lower_snake_case(project["name"])
     target_project_dir = projects_dir / target_folder_name
 
@@ -536,8 +630,6 @@ def edit_project(
         project_dir.rename(target_project_dir)
         project_dir = target_project_dir
 
-    _validate_project_config_payload(project)
-    existing_cfg = _read_yaml_mapping(project_dir / "config.yaml")
     preserved_training_settings = existing_cfg.get("robogym_training")
     cfg: RoboGymProjectConfig = {"robogym_project": project}
     if isinstance(preserved_training_settings, dict):

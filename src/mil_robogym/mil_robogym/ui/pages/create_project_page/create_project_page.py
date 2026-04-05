@@ -8,14 +8,14 @@ from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
 from mil_robogym.data_collection.filesystem import create_project_folder
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
-from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
-from mil_robogym.data_collection.non_numeric_topic_fields import (
-    filter_populated_non_numeric_topic_fields,
-)
+from mil_robogym.data_collection.ros_graph import get_topic_names
 from mil_robogym.data_collection.types import (
     Coord4D,
     NonNumericTopicFieldSelection,
     RoboGymProjectYaml,
+)
+from mil_robogym.data_collection.utils import (
+    filter_populated_non_numeric_topic_fields,
 )
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
@@ -125,8 +125,8 @@ class CreateProjectPage(tk.Frame):
             List of discovered ROS topic names.
         """
         try:
-            return get_ros2_topics()
-        except (RuntimeError, FileNotFoundError) as exc:
+            return get_topic_names()
+        except RuntimeError as exc:
             raise RuntimeError(
                 "Getting ROS 2 topics on create projects page failed",
             ) from exc

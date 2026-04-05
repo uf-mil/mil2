@@ -160,3 +160,79 @@ def test_edit_project_preserves_non_numeric_topic_selections(
             },
         ],
     }
+
+
+def test_edit_project_rejects_topic_changes_when_demos_exist(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Rejects topic edits once a project already has recorded demos."""
+    source_projects = tmp_path / "src" / "mil_robogym" / "projects"
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: source_projects,
+    )
+
+    source_project = source_projects / "locked_project"
+    (source_project / "demos" / "demo_1").mkdir(parents=True)
+    (source_project / "config.yaml").write_text(
+        "robogym_project:\n"
+        "  name: Locked Project\n"
+        "  world_file: src/default/world/file\n"
+        "  model_name: weights.pt\n"
+        "  random_spawn_space:\n"
+        "    enabled: false\n"
+        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "  input_topics:\n"
+        "    imu/processed: [orientation.x]\n"
+        "  output_topics:\n"
+        "    trajectory/4_deg: [yaw]\n",
+        encoding="utf-8",
+    )
+
+    updated = _project_payload("Locked Project")
+    updated["input_topics"] = {"imu/processed": ["orientation.y"]}
+
+    with pytest.raises(
+        ValueError,
+        match="Cannot change project topic selections while demos already exist",
+    ):
+        edit_project(updated, original_project_name="Locked Project")
+
+
+def test_edit_project_allows_non_topic_changes_when_demos_exist(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Allows renames when topic selections stay unchanged, even with demos."""
+    source_projects = tmp_path / "src" / "mil_robogym" / "projects"
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: source_projects,
+    )
+
+    source_project = source_projects / "stable_project"
+    (source_project / "demos" / "demo_1").mkdir(parents=True)
+    (source_project / "config.yaml").write_text(
+        "robogym_project:\n"
+        "  name: Stable Project\n"
+        "  world_file: src/default/world/file\n"
+        "  model_name: weights.pt\n"
+        "  random_spawn_space:\n"
+        "    enabled: false\n"
+        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "  input_topics:\n"
+        "    imu/processed: [orientation.x]\n"
+        "  output_topics:\n"
+        "    trajectory/4_deg: [yaw]\n",
+        encoding="utf-8",
+    )
+
+    updated = _project_payload("Stable Project Renamed")
+
+    edited_dir = edit_project(updated, original_project_name="Stable Project")
+
+    assert edited_dir == source_projects / "stable_project_renamed"
+    assert (edited_dir / "demos" / "demo_1").is_dir()

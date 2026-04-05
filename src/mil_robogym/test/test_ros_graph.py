@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
 from mil_robogym.data_collection.ros_graph import (
     get_topic_names,
     resolve_topics_in_graph,
@@ -118,15 +117,6 @@ def test_resolve_topics_in_graph_raises_when_topic_missing(
             timeout_s=0.1,
             operation="collect topic payloads",
         )
-
-
-def test_get_ros2_topics_uses_shared_graph_helper(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "mil_robogym.data_collection.get_ros2_topics.get_topic_names",
-        lambda: ["/foo", "/bar"],
-    )
-
-    assert get_ros2_topics() == ["/foo", "/bar"]
 
 
 def test_resolve_topic_message_types_uses_first_reported_type(

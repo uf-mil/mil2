@@ -9,14 +9,14 @@ from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
 from mil_robogym.data_collection.filesystem import edit_project
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
-from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
-from mil_robogym.data_collection.non_numeric_topic_fields import (
-    filter_populated_non_numeric_topic_fields,
-)
+from mil_robogym.data_collection.ros_graph import get_topic_names
 from mil_robogym.data_collection.types import (
     Coord4D,
     NonNumericTopicFieldSelection,
     RoboGymProjectYaml,
+)
+from mil_robogym.data_collection.utils import (
+    filter_populated_non_numeric_topic_fields,
 )
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
@@ -49,6 +49,7 @@ class EditProjectPage(tk.Frame):
         self._current_project_name = "Project"
         self._original_project_name = "Project"
         self._current_tensor_spec: Mapping[str, Any] | None = None
+        self._topic_edit_locked = False
 
         self.input_topics_selected: list[str] = []
         self.output_topics_selected: list[str] = []
@@ -353,6 +354,35 @@ class EditProjectPage(tk.Frame):
         self.grid_rowconfigure(7, weight=1)
         self.grid_rowconfigure(9, weight=1)
 
+    def _apply_topic_edit_lock_state(self) -> None:
+        topics_enabled = not self._topic_edit_locked
+        self.topics_section.set_selection_enabled(topics_enabled)
+        self.sub_topics_section.set_selection_enabled(topics_enabled)
+
+        if self._topic_edit_locked:
+            label_suffix = " (locked: existing demos)"
+            label_color = "#666666"
+        else:
+            label_suffix = ""
+            label_color = "black"
+
+        self.topics_section.input_topics_label.configure(
+            text=f"Input Topics{label_suffix}",
+            fg=label_color,
+        )
+        self.topics_section.output_topics_label.configure(
+            text=f"Output Topics{label_suffix}",
+            fg=label_color,
+        )
+        self.sub_topics_section.input_subtopics_label.configure(
+            text=f"Input Subtopics{label_suffix}",
+            fg=label_color,
+        )
+        self.sub_topics_section.output_subtopics_label.configure(
+            text=f"Output Subtopics{label_suffix}",
+            fg=label_color,
+        )
+
     def set_context(
         self,
         project: Mapping[str, Any] | None = None,
@@ -373,6 +403,7 @@ class EditProjectPage(tk.Frame):
             self.coordinate2 = None
             self._original_project_name = "Project"
             self._current_tensor_spec = None
+            self._topic_edit_locked = False
             self.input_topics_selected = []
             self.output_topics_selected = []
             self.input_topic_subtopics = {}
@@ -392,6 +423,7 @@ class EditProjectPage(tk.Frame):
                 input_non_numeric_fields={},
                 output_non_numeric_fields={},
             )
+            self._apply_topic_edit_lock_state()
             self._toggle_random_spawn()
             return
 
@@ -442,12 +474,19 @@ class EditProjectPage(tk.Frame):
             list(self.output_non_numeric_topics),
         )
         self._snapshot_original_topic_selection()
+        self._topic_edit_locked = int(project.get("num_demos", 0)) > 0
 
-        editable_topics = self._ordered_union(
-            self.input_topics_selected,
-            self.output_topics_selected,
-            self._available_topics,
-        )
+        if self._topic_edit_locked:
+            editable_topics = self._ordered_union(
+                self.input_topics_selected,
+                self.output_topics_selected,
+            )
+        else:
+            editable_topics = self._ordered_union(
+                self.input_topics_selected,
+                self.output_topics_selected,
+                self._available_topics,
+            )
         self.topics_section.set_topics(editable_topics)
         self.topics_section.set_selected_topics(
             input_topics=self.input_topics_selected,
@@ -463,11 +502,12 @@ class EditProjectPage(tk.Frame):
             input_non_numeric_fields=self.input_non_numeric_topics,
             output_non_numeric_fields=self.output_non_numeric_topics,
         )
+        self._apply_topic_edit_lock_state()
 
     def _safe_get_topics(self) -> list[str]:
         try:
-            return get_ros2_topics()
-        except (RuntimeError, FileNotFoundError) as exc:
+            return get_topic_names()
+        except RuntimeError as exc:
             raise RuntimeError(
                 "Getting ROS 2 topics on edit project page failed",
             ) from exc
@@ -544,6 +584,8 @@ class EditProjectPage(tk.Frame):
             self.popup.finish()
 
     def _on_topics_selection_changed(self) -> None:
+        if self._topic_edit_locked:
+            return
         self.input_topics_selected = self.topics_section.get_selected_input_topics()
         self.output_topics_selected = self.topics_section.get_selected_output_topics()
         self.sub_topics_section.set_selected_topics(
@@ -553,9 +595,13 @@ class EditProjectPage(tk.Frame):
         self._sync_selected_topic_fields_from_section()
 
     def _on_subtopics_selection_changed(self) -> None:
+        if self._topic_edit_locked:
+            return
         self._sync_selected_topic_fields_from_section()
 
     def _on_refresh_topics(self) -> None:
+        if self._topic_edit_locked:
+            return
         self._available_topics = self._safe_get_topics()
         self.topics_section.set_topics(self._available_topics)
         self.input_topics_selected = self.topics_section.get_selected_input_topics()
@@ -642,9 +688,55 @@ class EditProjectPage(tk.Frame):
             messagebox.showerror("Save Changes", "Project name cannot be empty.")
             return None
 
-        self.input_topics_selected = self.topics_section.get_selected_input_topics()
-        self.output_topics_selected = self.topics_section.get_selected_output_topics()
-        self._sync_selected_topic_fields_from_section(ensure_loaded=True)
+        if self._topic_edit_locked:
+            input_topics_selected = self._ordered_union(
+                list(self._original_input_topic_subtopics),
+                list(self._original_input_non_numeric_topics),
+            )
+            output_topics_selected = self._ordered_union(
+                list(self._original_output_topic_subtopics),
+                list(self._original_output_non_numeric_topics),
+            )
+            input_topic_subtopics = {
+                topic: list(fields)
+                for topic, fields in self._original_input_topic_subtopics.items()
+            }
+            output_topic_subtopics = {
+                topic: list(fields)
+                for topic, fields in self._original_output_topic_subtopics.items()
+            }
+            input_non_numeric_topics = {
+                topic: [dict(field) for field in fields]
+                for topic, fields in self._original_input_non_numeric_topics.items()
+            }
+            output_non_numeric_topics = {
+                topic: [dict(field) for field in fields]
+                for topic, fields in self._original_output_non_numeric_topics.items()
+            }
+        else:
+            self.input_topics_selected = self.topics_section.get_selected_input_topics()
+            self.output_topics_selected = (
+                self.topics_section.get_selected_output_topics()
+            )
+            self._sync_selected_topic_fields_from_section(ensure_loaded=True)
+            input_topics_selected = list(self.input_topics_selected)
+            output_topics_selected = list(self.output_topics_selected)
+            input_topic_subtopics = {
+                topic: list(fields)
+                for topic, fields in self.input_topic_subtopics.items()
+            }
+            output_topic_subtopics = {
+                topic: list(fields)
+                for topic, fields in self.output_topic_subtopics.items()
+            }
+            input_non_numeric_topics = {
+                topic: [dict(field) for field in fields]
+                for topic, fields in self.input_non_numeric_topics.items()
+            }
+            output_non_numeric_topics = {
+                topic: [dict(field) for field in fields]
+                for topic, fields in self.output_non_numeric_topics.items()
+            }
 
         random_enabled = bool(self.random_spawn_var.get())
         if random_enabled:
@@ -670,27 +762,27 @@ class EditProjectPage(tk.Frame):
                 "coord2_4d": [float(v) for v in coord2],
             },
             "input_topics": {
-                topic: list(self.input_topic_subtopics.get(topic, []))
-                for topic in self.input_topics_selected
+                topic: list(input_topic_subtopics.get(topic, []))
+                for topic in input_topics_selected
             },
             "output_topics": {
-                topic: list(self.output_topic_subtopics.get(topic, []))
-                for topic in self.output_topics_selected
+                topic: list(output_topic_subtopics.get(topic, []))
+                for topic in output_topics_selected
             },
         }
 
         input_non_numeric_topics = filter_populated_non_numeric_topic_fields(
             {
                 topic: fields
-                for topic, fields in self.input_non_numeric_topics.items()
-                if topic in self.input_topics_selected
+                for topic, fields in input_non_numeric_topics.items()
+                if topic in input_topics_selected
             },
         )
         output_non_numeric_topics = filter_populated_non_numeric_topic_fields(
             {
                 topic: fields
-                for topic, fields in self.output_non_numeric_topics.items()
-                if topic in self.output_topics_selected
+                for topic, fields in output_non_numeric_topics.items()
+                if topic in output_topics_selected
             },
         )
 
@@ -715,6 +807,8 @@ class EditProjectPage(tk.Frame):
         return project_cfg
 
     def _topic_selection_changed(self) -> bool:
+        if self._topic_edit_locked:
+            return False
         return (
             self.input_topic_subtopics != self._original_input_topic_subtopics
             or self.output_topic_subtopics != self._original_output_topic_subtopics
