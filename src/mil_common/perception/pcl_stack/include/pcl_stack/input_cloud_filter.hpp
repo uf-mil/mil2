@@ -16,6 +16,8 @@ class InputCloudFilter
 {
   public:
     InputCloudFilter();
+    /// Apply footprint limits from PCODAR config (set by the node via declare_parameter / config_).
+    void update_config(Config const& config);
     /// Filters @in, storing resulting pointcloud into @pc
     void filter(point_cloud_const_ptr in, point_cloud& pc);
     /// Sets the bounds with a pointcloud where each point is a verticie of the bounds polygon
@@ -28,6 +30,7 @@ class InputCloudFilter
 
   private:
     point_cloud robot_footprint_;
+    bool bounds_configured_{ false };
     pcl::CropHull<pcl::PointXYZ> bounds_filter_;
     pcl::CropBox<pcl::PointXYZ> robot_filter_;
 };

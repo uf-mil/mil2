@@ -86,7 +86,7 @@ bool NodeBase::transform_to_global(std::string const& frame, rclcpp::Time const&
     geometry_msgs::msg::TransformStamped transform;
     try
     {
-        transform = tf_buffer_.lookupTransform("enu", frame, time, tf2::durationFromSec(1.0));
+        transform = tf_buffer_.lookupTransform(global_frame_, frame, time, tf2::durationFromSec(1.0));
     }
     catch (tf2::TransformException& ex)
     {
@@ -171,6 +171,10 @@ Node::Node() : NodeBase("pcl_stack_node")
     this->declare_parameter("cluster_min_points", config_.cluster_min_points);
     this->declare_parameter("intensity_filter_min_intensity", config_.intensity_filter_min_intensity);
     this->declare_parameter("intensity_filter_max_intensity", config_.intensity_filter_max_intensity);
+    this->declare_parameter("robot_footprint_half_length_m", config_.robot_footprint_half_length_m);
+    this->declare_parameter("robot_footprint_half_width_m", config_.robot_footprint_half_width_m);
+    this->declare_parameter("robot_footprint_min_z_m", config_.robot_footprint_min_z_m);
+    this->declare_parameter("robot_footprint_max_z_m", config_.robot_footprint_max_z_m);
 
     // Read declared params into config_ (declare_parameter does not assign from YAML automatically)
     (void)this->get_parameter("accumulator_number_persistant_clouds", config_.accumulator_number_persistant_clouds);
@@ -180,25 +184,37 @@ Node::Node() : NodeBase("pcl_stack_node")
     (void)this->get_parameter("cluster_min_points", config_.cluster_min_points);
     (void)this->get_parameter("intensity_filter_min_intensity", config_.intensity_filter_min_intensity);
     (void)this->get_parameter("intensity_filter_max_intensity", config_.intensity_filter_max_intensity);
+    (void)this->get_parameter("robot_footprint_half_length_m", config_.robot_footprint_half_length_m);
+    (void)this->get_parameter("robot_footprint_half_width_m", config_.robot_footprint_half_width_m);
+    (void)this->get_parameter("robot_footprint_min_z_m", config_.robot_footprint_min_z_m);
+    (void)this->get_parameter("robot_footprint_max_z_m", config_.robot_footprint_max_z_m);
 
-    // Wire up persistent cloud components
+    this->declare_parameter("use_input_cloud_filter", use_input_cloud_filter_);
+    this->declare_parameter("use_object_detector", use_object_detector_);
+    this->declare_parameter("robot_frame", robot_frame_);
+    this->declare_parameter<std::string>("global_frame", global_frame_);
+    use_input_cloud_filter_ = this->get_parameter("use_input_cloud_filter").as_bool();
+    use_object_detector_ = this->get_parameter("use_object_detector").as_bool();
+    robot_frame_ = this->get_parameter("robot_frame").as_string();
+    global_frame_ = this->get_parameter("global_frame").as_string();
+
+    // Wire up components from config_
     persistent_cloud_builder_.update_config(config_);
     persistent_cloud_filter_.update_config(config_);
-
-    // Robot footprint filter
-    double const HALF_LENGTH = 2.739625 * 1.2;
-    double const HALF_WIDTH = 2.02589 * 1.2;
-    double const BOTTOM = -5.;
-    double const TOP = 5.;
-    Eigen::Vector4f min(-HALF_LENGTH, -HALF_WIDTH, BOTTOM, 1.);
-    Eigen::Vector4f max(HALF_LENGTH, HALF_WIDTH, TOP, 1.);
-    // input_cloud_filter_.set_robot_footprint(min, max);
+    input_cloud_filter_.update_config(config_);
+    detector_.update_config(config_);
 }
 
 void Node::update_config(Config const& config)
 {
-    this->intensity_filter_min_intensity = config.intensity_filter_min_intensity;
-    this->intensity_filter_max_intensity = config.intensity_filter_max_intensity;
+    // Full snapshot (e.g. future dynamic reconfigure); constructor loads config_ from parameters separately
+    config_ = config;
+    this->intensity_filter_min_intensity = config_.intensity_filter_min_intensity;
+    this->intensity_filter_max_intensity = config_.intensity_filter_max_intensity;
+    persistent_cloud_builder_.update_config(config_);
+    persistent_cloud_filter_.update_config(config_);
+    input_cloud_filter_.update_config(config_);
+    detector_.update_config(config_);
 }
 
 void Node::ConfigCallback(Config const& config, uint32_t level)
@@ -237,7 +253,7 @@ bool Node::Reset(std::shared_ptr<std_srvs::srv::Trigger::Request> const req,
 {
     if (!NodeBase::Reset(req, res))
         return false;
-    // persistent_cloud_builder_.clear();  // uncomment when persistent cloud is enabled
+    persistent_cloud_builder_.clear();
     res->success = true;
     return true;
 }
@@ -264,7 +280,6 @@ void Node::velodyne_cb(sensor_msgs::msg::PointCloud2::SharedPtr const pcloud)
         pc_without_i->points[i].z = pc_i_filtered->points[i].z;
     }
 
-    // Basic lidar scan: publish intensity-filtered cloud in the sensor frame
     if (pc_without_i->empty())
     {
         RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
@@ -272,24 +287,75 @@ void Node::velodyne_cb(sensor_msgs::msg::PointCloud2::SharedPtr const pcloud)
         return;
     }
 
-    // Convert PCL to ROS2 message and publish
-    // Accumulate N most recent scans, then apply persistent cloud filter
-    persistent_cloud_builder_.add_point_cloud(pc_without_i);
+    std::string output_frame_id = pcloud->header.frame_id.empty() ? "velodyne" : pcloud->header.frame_id;
+    point_cloud_ptr cloud_for_buffer = pc_without_i;
+
+    if (use_input_cloud_filter_)
+    {
+        Eigen::Affine3d T_enu_sensor;
+        if (!transform_to_global(pcloud->header.frame_id, pcloud->header.stamp, T_enu_sensor))
+        {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                                 "input_cloud_filter: TF %s -> %s failed; skipping scan",
+                                 pcloud->header.frame_id.c_str(), global_frame_.c_str());
+            return;
+        }
+
+        point_cloud global_xyz;
+        pcl::transformPointCloud(*pc_without_i, global_xyz, T_enu_sensor.cast<float>());
+        point_cloud_ptr const gptr = std::make_shared<point_cloud>(global_xyz);
+
+        geometry_msgs::msg::TransformStamped tf_enu_robot;
+        try
+        {
+            tf_enu_robot = tf_buffer_.lookupTransform(global_frame_, robot_frame_, pcloud->header.stamp,
+                                                      tf2::durationFromSec(1.0));
+        }
+        catch (tf2::TransformException& ex)
+        {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                                 "input_cloud_filter: TF %s -> %s failed (%s); skipping scan", robot_frame_.c_str(),
+                                 global_frame_.c_str(), ex.what());
+            return;
+        }
+
+        Eigen::Affine3d const T_enu_robot = tf2::transformToEigen(tf_enu_robot);
+        input_cloud_filter_.set_robot_pose(T_enu_robot);
+
+        point_cloud footprint_filtered;
+        input_cloud_filter_.filter(gptr, footprint_filtered);
+        if (footprint_filtered.empty())
+        {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                                 "input_cloud_filter removed all points (check footprint / bounds).");
+            return;
+        }
+
+        cloud_for_buffer = std::make_shared<point_cloud>(footprint_filtered);
+        output_frame_id = global_frame_;
+    }
+
+    persistent_cloud_builder_.add_point_cloud(cloud_for_buffer);
     point_cloud_ptr const mega_cloud = persistent_cloud_builder_.get_point_cloud();
     if (!mega_cloud)
-    {
-        // Not enough scans accumulated yet to publish a persistent cloud
         return;
-    }
 
     point_cloud filtered_mega;
     persistent_cloud_filter_.filter(mega_cloud, filtered_mega);
     if (filtered_mega.empty())
         return;
 
+    if (use_object_detector_)
+    {
+        point_cloud_ptr const mega_ptr = std::make_shared<point_cloud>(filtered_mega);
+        clusters_t const clusters = detector_.get_clusters(mega_ptr);
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "object_detector: %zu clusters",
+                             clusters.size());
+    }
+
     sensor_msgs::msg::PointCloud2 cloud_msg;
     pcl::toROSMsg(filtered_mega, cloud_msg);
-    cloud_msg.header.frame_id = pcloud->header.frame_id.empty() ? "velodyne" : pcloud->header.frame_id;
+    cloud_msg.header.frame_id = output_frame_id;
     cloud_msg.header.stamp = pcloud->header.stamp;
     pub_pcl_->publish(cloud_msg);
 

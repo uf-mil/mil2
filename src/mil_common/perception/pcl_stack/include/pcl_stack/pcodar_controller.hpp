@@ -5,6 +5,8 @@
 
 #include "nav_msgs/msg/odometry.hpp"
 // #include <roboteq_msgs/Command.h>
+#include <string>
+
 #include <boost/circular_buffer.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -17,11 +19,11 @@
 #include <tf2_ros/transform_listener.hpp>
 
 // Uncomment later for more than vision stuff
-// #include "input_cloud_filter.hpp"
+#include "input_cloud_filter.hpp"
 // #include "marker_manager.hpp"
 // #include "mil_msgs/msg/object_db_query.hpp"
 // #include "object_associator.hpp"
-// #include "object_detector.hpp"
+#include "object_detector.hpp"
 // #include "object_map.hpp"
 // #include "ogrid_manager.hpp"
 
@@ -134,10 +136,14 @@ class Node : public NodeBase
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;  // for reset requests
 
     // Model (It eventually will be object tracker, but for now just detections)
-    // InputCloudFilter input_cloud_filter_;
+    InputCloudFilter input_cloud_filter_;
     PersistentCloudFilter persistent_cloud_filter_;
     PointCloudCircularBuffer persistent_cloud_builder_;
-    // ObjectDetector detector_;
+    ObjectDetector detector_;
+
+    bool use_input_cloud_filter_{ false };
+    bool use_object_detector_{ false };
+    std::string robot_frame_{ "base_link" };
 
     // uncomment later
     // Associator ass;

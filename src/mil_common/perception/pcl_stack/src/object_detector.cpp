@@ -1,7 +1,5 @@
 #include "pcl_stack/object_detector.hpp"
 
-#include <tf2/transform_datatypes.h>
-
 namespace pcodar
 {
 clusters_t ObjectDetector::get_clusters(point_cloud_const_ptr pc)

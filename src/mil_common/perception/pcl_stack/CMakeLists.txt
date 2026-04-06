@@ -42,9 +42,8 @@ include_directories(include ${PCL_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
 # CHANGE - just for testing for now - will change to all later
 set(SOURCES
-    # src/input_cloud_filter.cpp
-    src/persistent_cloud_filter.cpp src/point_cloud_builder.cpp
-    # src/object_detector.cpp src/object.cpp
+    src/input_cloud_filter.cpp src/persistent_cloud_filter.cpp
+    src/point_cloud_builder.cpp src/object_detector.cpp
     src/pcodar_controller.cpp)
 
 # creating library called pcl_stack

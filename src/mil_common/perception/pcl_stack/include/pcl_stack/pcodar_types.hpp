@@ -18,11 +18,19 @@ struct Config
     // Point cloud builder - How many consectuive lidar scans to stakc before processing them together at once.
     int accumulator_number_persistant_clouds = 10;
 
+    // Input cloud filter: robot crop box half-extents in robot frame (meters); z window for CropBox
+    // CHANGE these later for propaGator
+    double robot_footprint_half_length_m = 2.739625 * 1.2;
+    double robot_footprint_half_width_m = 2.02589 * 1.2;
+    double robot_footprint_min_z_m = -5.0;
+    double robot_footprint_max_z_m = 5.0;
+
     // Filter - radius (meters) for utlier removal
     double persistant_cloud_filter_radius = 0.5;
     int persistant_cloud_filter_min_neighbors = 20;
 
     // Clusterer -max distance between points to be considered as cluster
+    // CHANGE THESE AS WELL
     double cluster_tolerance_m = 4.4;
     int cluster_min_points = 2;  // min points to be considered a cluster
 
