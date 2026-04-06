@@ -7,6 +7,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "actuate_servo.hpp"
 #include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
 #include "check_yolo_model.hpp"

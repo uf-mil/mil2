@@ -39,46 +39,68 @@ BT::NodeStatus ActuateServo::tick()
     }
 
     // Choose what ports to read from based on servo ID
+    // Then actuate corresponding servo and set status output based on success of actuation and desired state
     switch (servo_id_)
     {
         case 1:  // Gripper
+            // Get gripper_is_open input
             if (!getInput("gripper_is_open", gripper_is_open_))
             {
                 setOutput("status", "Failed to get gripper_is_open input");
                 return BT::NodeStatus::FAILURE;
             }
-
+            // Actuate gripper and set status output based on gripper_is_open value
+            if (actuateServo(ctx_->node, ctx_->gripper_client, gripper_is_open_))
+            {
+                setOutput("status", gripper_is_open_ ? true : false);
+                return BT::NodeStatus::SUCCESS;
+            }
+            else
+            {
+                setOutput("status", gripper_is_open_ ? true : false);
+                return BT::NodeStatus::FAILURE;
+            }
             break;
         case 2:  // Marble Dropper
+            // Get marble_is_drop input
             if (!getInput("marble_is_drop", marble_is_drop_))
             {
                 setOutput("status", "Failed to get marble_is_drop input");
                 return BT::NodeStatus::FAILURE;
             }
+            // Actuate marble dropper and set status output based on marble_is_drop value
+            if (actuateServo(ctx_->node, ctx_->marble_client, marble_is_drop_))
+            {
+                setOutput("status", marble_is_drop_ ? true : false);
+                return BT::NodeStatus::SUCCESS;
+            }
+            else
+            {
+                setOutput("status", marble_is_drop_ ? true : false);
+                return BT::NodeStatus::FAILURE;
+            }
             break;
         case 3:  // Torpedo Launcher
+            // Get torp_is_launch input
             if (!getInput("torp_is_launch", torp_is_launch_))
             {
                 setOutput("status", "Failed to get torp_is_launch input");
+                return BT::NodeStatus::FAILURE;
+            }
+            // Actuate torpedo launcher and set status output based on torp_is_launch value
+            if (actuateServo(ctx_->node, ctx_->torpedo_client, torp_is_launch_))
+            {
+                setOutput("status", torp_is_launch_ ? true : false);
+                return BT::NodeStatus::SUCCESS;
+            }
+            else
+            {
+                setOutput("status", torp_is_launch_ ? true : false);
                 return BT::NodeStatus::FAILURE;
             }
             break;
         default:
             setOutput("status", "Invalid servo_id input");
             return BT::NodeStatus::FAILURE;
-    }
-
-    //
-
-    // Call actuateServo function and set status output based on result
-    if (actuateServo(ctx_->node, ctx_->gripper_client, is_open_))
-    {
-        setOutput("status", is_open_ ? true : false);
-        return BT::NodeStatus::SUCCESS;
-    }
-    else
-    {
-        setOutput("status", is_open_ ? true : false);
-        return BT::NodeStatus::FAILURE;
     }
 }
