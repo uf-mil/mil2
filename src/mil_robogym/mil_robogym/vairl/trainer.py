@@ -101,13 +101,17 @@ class Trainer:
         self.data_collector_client.establish_subscriptions(project)
 
         # Fetch and process expert demonstrations
-        self.does_contain_abstract_data = self.project["input_non_numeric_topics"] != {}
+        self.does_contain_abstract_data = self.project.get("input_non_numeric_topics", {}) != {} 
         self.demo_trajectories, determined_max_step_count, determined_max_vals = (
             fetch_demo_trajectories(
                 self.project,
                 self.expert_noise_std,
             )
         )
+        self.demos_batch_size = int(
+            min(2048, len(self.demo_trajectories)),
+        )
+        
         self.max_step_count = (
             self.max_step_count
             if self.max_step_count
@@ -122,9 +126,13 @@ class Trainer:
             self.flattened_demo_trajectories = rollout.flatten_trajectories(
                 self.demo_imitations,
             )
-            self.demos_batch_size = int(
-                min(2048, len(self.flattened_demo_trajectories)),
-            )
+        else:
+            self.demo_batches = None
+            self.demo_imitations = None
+            self.flattened_demo_trajectories = None
+
+            # Load in external architectures for abstract data types
+
 
         # Environment set up
         self.eval_environment = Environment(
@@ -192,7 +200,7 @@ class Trainer:
                 policy="MlpPolicy",
                 env=train_venv,
                 learning_rate=self.generator_learning_rate,
-                batch_size=2048,
+                batch_size=self.demos_batch_size,
                 gamma=0.99,
                 gae_lambda=0.95,
                 target_kl=0.01,
@@ -245,6 +253,7 @@ class Trainer:
                     self.generate_generator_trajectories(
                         generator,
                         reward_net,
+                        self.demos_batch_size,
                     )
                 )
 

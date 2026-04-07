@@ -140,24 +140,27 @@ def trajectories_to_imitations(
     return trajs
 
 
-def _get_relative_abstract_directories(project: RoboGymProjectYaml) -> list(Path):
+def _get_relative_abstract_directories(project: RoboGymProjectYaml) -> list[Path]:
 
-    input_non_numeric_topics = project["input_non_numeric_topics"]
+    input_non_numeric_topics = project.get("input_non_numeric_topics", {})
 
     relative_paths = []
 
     for topic, data_list in input_non_numeric_topics:
 
         parsed_topic = topic.strip("/").replace("/", "_")
-        parsed_field = (
-            ""
-            if data_list[0]["field_path"] == "data"
-            and data_list[0]["data_type"] == "image"
-            else data_list[0]["field_path"]
-        )
+        
+        for data in data_list:
+            
+            parsed_field = (
+                ""
+                if data["field_path"] == "data"
+                and data["data_type"] == "image"
+                else data["field_path"]
+            )
 
-        relative_paths.append(
-            Path(parsed_topic + (f"_{parsed_field}" if parsed_field else "")),
-        )
+            relative_paths.append(
+                Path(parsed_topic + (f"_{parsed_field}" if parsed_field else "")),
+            )
 
     return relative_paths

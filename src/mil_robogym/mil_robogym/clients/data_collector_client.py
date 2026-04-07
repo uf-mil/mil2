@@ -95,19 +95,21 @@ class DataCollectorClient(Node):
         """
         Outputs a string of data paths in the form: /topic:parent_field.child_field OR /topic
         """
-        input_non_numeric_topics = project["input_non_numeric_topics"]
+        input_non_numeric_topics = project.get("input_non_numeric_topics", {})
 
         image_data_paths = []
 
-        for topic, metadata in input_non_numeric_topics.items():
+        for topic, data_list in input_non_numeric_topics.items():
 
-            if metadata[0]["data_type"] == "image":
+            for data in data_list:
+                
+                if data["data_type"] == "image":
 
-                field_path = metadata[0]["field_path"]
+                    field_path = data["field_path"]
 
-                data_path = topic + (f":{field_path}" if field_path != "data" else "")
+                    data_path = topic + (f":{field_path}" if field_path != "data" else "")
 
-                image_data_paths.append(data_path)
+                    image_data_paths.append(data_path)
 
         return image_data_paths
 

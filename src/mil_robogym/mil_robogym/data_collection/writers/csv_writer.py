@@ -170,23 +170,25 @@ class AsyncCSVWriter:
         """
         Retrieves the path to all the unordered sets.
         """
-        input_non_numeric_topics = self.project["input_non_numeric_topics"]
+        input_non_numeric_topics = self.project.get("input_non_numeric_topics", {})
 
         paths = {}
 
-        for topic, metadata in input_non_numeric_topics.items():
+        for topic, data_list in input_non_numeric_topics.items():
 
-            if metadata[0]["data_type"] == "unordered_set":
+            for data in data_list:
+                
+                if data["data_type"] == "unordered_set":
 
-                paths[f"{topic}:{metadata[0]['field_path']}"] = (
-                    self.demo_dir_path
-                    / "data"
-                    / (
-                        topic.strip("/").replace("/", "_")
-                        + "_"
-                        + metadata[0]["field_path"].replace(".", "_")
+                    paths[f"{topic}:{data['field_path']}"] = (
+                        self.demo_dir_path
+                        / "data"
+                        / (
+                            topic.strip("/").replace("/", "_")
+                            + "_"
+                            + data["field_path"].replace(".", "_")
+                        )
                     )
-                )
 
         return paths
 
@@ -194,30 +196,32 @@ class AsyncCSVWriter:
         """
         Retrieves the path to all image folders.
         """
-        input_non_numeric_topics = self.project["input_non_numeric_topics"]
+        input_non_numeric_topics = self.project.get("input_non_numeric_topics", {})
 
         paths = {}
 
-        for topic, metadata in input_non_numeric_topics.items():
+        for topic, data_list in input_non_numeric_topics.items():
 
-            if metadata[0]["data_type"] == "image":
+            for data in data_list:
 
-                field_path = metadata[0]["field_path"]
+                if data["data_type"] == "image":
 
-                data_path = topic if field_path == "data" else f"{topic}:{field_path}"
+                    field_path = data["field_path"]
 
-                paths[data_path] = (
-                    self.demo_dir_path
-                    / "data"
-                    / (
-                        topic.strip("/").replace("/", "_")
-                        + (
-                            ("_" + metadata[0]["field_path"].replace(".", "_"))
-                            if metadata[0]["field_path"] != "data"
-                            else ""
+                    data_path = topic if field_path == "data" else f"{topic}:{field_path}"
+
+                    paths[data_path] = (
+                        self.demo_dir_path
+                        / "data"
+                        / (
+                            topic.strip("/").replace("/", "_")
+                            + (
+                                ("_" + data["field_path"].replace(".", "_"))
+                                if data["field_path"] != "data"
+                                else ""
+                            )
                         )
                     )
-                )
 
         return paths
 
@@ -268,9 +272,10 @@ class AsyncCSVWriter:
 
         # Extract unordered set data
         unordered_set_feature_names = [
-            f"{topic}:{data[0]['field_path']}"
-            for topic, data in self.project["input_non_numeric_topics"].items()
-            if data[0]["data_type"] == "unordered_set"
+            f"{topic}:{data['field_path']}"
+            for topic, data_list in self.project.get("input_non_numeric_topics", {}).items()
+            for data in data_list
+            if data["data_type"] == "unordered_set"
         ]
         unordered_set_state_buffer = [
             extract_selected_state_features(state, unordered_set_feature_names)
