@@ -24,13 +24,16 @@ from ..clients.localization_client import LocalizationClient
 from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
 from ..clients.world_control_client import WorldControlClient
+from .deep_set import DeepSet
 from .environment import GYMNASIUM, Environment
 from .generator_metrics import extract_latest_generator_metrics
+from .image_encoder import CNNEncoder
 from .metrics import TrainingMetricsSession
 from .reward_net import VAIRLRewardNet
 from .training_settings import DEFAULT_TRAINING_SETTINGS
 from .utils import (
     fetch_demo_trajectories,
+    interpret_abstract_data,
     trajectories_to_batches,
     trajectories_to_imitations,
 )
@@ -101,7 +104,9 @@ class Trainer:
         self.data_collector_client.establish_subscriptions(project)
 
         # Fetch and process expert demonstrations
-        self.does_contain_abstract_data = self.project.get("input_non_numeric_topics", {}) != {} 
+        self.does_contain_abstract_data = (
+            self.project.get("input_non_numeric_topics", {}) != {}
+        )
         self.demo_trajectories, determined_max_step_count, determined_max_vals = (
             fetch_demo_trajectories(
                 self.project,
@@ -111,7 +116,7 @@ class Trainer:
         self.demos_batch_size = int(
             min(2048, len(self.demo_trajectories)),
         )
-        
+
         self.max_step_count = (
             self.max_step_count
             if self.max_step_count
@@ -126,13 +131,14 @@ class Trainer:
             self.flattened_demo_trajectories = rollout.flatten_trajectories(
                 self.demo_imitations,
             )
+            self.external_architecure = []
         else:
             self.demo_batches = None
             self.demo_imitations = None
             self.flattened_demo_trajectories = None
 
             # Load in external architectures for abstract data types
-
+            self.external_architecture = self._create_external_architecture()
 
         # Environment set up
         self.eval_environment = Environment(
@@ -247,6 +253,22 @@ class Trainer:
                     # Recalculate values for abstract data
                     pass
 
+                # Interpret abstract data if any
+                if self.does_contain_abstract_data:
+                    interpreted_trajectories = interpret_abstract_data(
+                        self.demo_trajectories,
+                        self.external_architecture,
+                    )
+                    self.demo_batches = trajectories_to_batches(
+                        interpreted_trajectories,
+                    )
+                    self.demo_imitations = trajectories_to_imitations(
+                        self.demo_trajectories,
+                    )
+                    self.flattened_demo_trajectories = rollout.flatten_trajectories(
+                        self.demo_imitations,
+                    )
+
                 reward_net.eval()
 
                 gen_data, reward_mean, reward_std = (
@@ -346,6 +368,26 @@ class Trainer:
                     raise close_error
                 if stop_error is not None:
                     raise stop_error
+
+    def _create_external_architecture(self):
+        """
+        Iterate through project yaml and set up CNN or DeepSet accordingly.
+        """
+
+        external_architecture = []
+        input_non_numeric_topics = self.project.get("input_non_numeric_topics", {})
+
+        for topic, data_list in input_non_numeric_topics.items():
+
+            for data in data_list:
+
+                if data["data_type"] == "image":
+                    external_architecture.append(CNNEncoder())
+
+                elif data["data_type"] == "unordered_set":
+                    external_architecture.append(DeepSet())
+
+        return external_architecture
 
     def _build_agent_name(
         self,

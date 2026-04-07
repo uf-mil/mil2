@@ -1,11 +1,15 @@
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pandas as pd
 from imitation.data.types import Trajectory
 
 from mil_robogym.data_collection.filesystem import get_project_dir_path
 from mil_robogym.data_collection.types import RoboGymProjectYaml
+
+from .deep_set import DeepSet
+from .image_encoder import CNNEncoder
 
 
 def _add_noise(action: np.ndarray, noise_std: float) -> np.ndarray:
@@ -96,6 +100,112 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
     return trajectories, max_number_of_steps, max_vals
 
 
+def load_file(path):
+    if path.endswith(".jpg"):
+        img = cv2.imread(path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return img
+    elif path.endswith(".npy"):
+        return np.load(path)
+    else:
+        raise ValueError(f"Unsupported file type: {path}")
+
+
+def interpret_abstract_data(
+    trajs: list[
+        list[tuple[np.ndarray, np.ndarray, np.ndarray]]
+    ],  # state, action, next_state
+    models: list[DeepSet | CNNEncoder],
+) -> list[list[tuple[np.ndarray, np.ndarray, np.ndarray]]]:
+    """
+    Maps the data to its values by passing it through their respective neural net.
+    """
+    num_abstract_columns = len(models)
+
+    # Flatten states
+    flat_states = []
+    flat_next_states = []
+    traj_lengths = []
+
+    for traj in trajs:
+        traj_lengths.append(len(traj))
+        for s, a, ns in traj:
+            flat_states.append(s)
+            flat_next_states.append(ns)
+
+    flat_states = np.array(flat_states, dtype=object)
+    flat_next_states = np.array(flat_next_states, dtype=object)
+
+    # Split numeric vs abstract paths
+    state_numeric = np.stack([s[:-num_abstract_columns] for s in flat_states])
+    next_numeric = np.stack([s[:-num_abstract_columns] for s in flat_next_states])
+
+    # Cache: {model_index: {path: embedding}}
+    caches = [{} for _ in range(num_abstract_columns)]
+
+    encoded_states = []
+    encoded_next_states = []
+
+    for i, model in enumerate(models):
+        # Collect all paths
+        state_paths = [s[-num_abstract_columns + i] for s in flat_states]
+        next_paths = [s[-num_abstract_columns + i] for s in flat_next_states]
+
+        all_paths = list(set(state_paths + next_paths))  # deduplicate
+
+        # Load data
+        loaded_data = []
+        valid_paths = []
+
+        for path in all_paths:
+            try:
+                data = load_file(path)
+                loaded_data.append(data)
+                valid_paths.append(path)
+            except Exception as e:
+                print(f"Skipping {path}: {e}")
+
+        # Batch inference
+        if len(loaded_data) > 0:
+            batch = np.stack(loaded_data)
+            embeddings = model(batch)
+
+            # Store in cache
+            for path, emb in zip(valid_paths, embeddings):
+                caches[i][path] = emb
+
+        # Map back
+        state_embeds = np.stack([caches[i][p] for p in state_paths])
+        next_embeds = np.stack([caches[i][p] for p in next_paths])
+
+        encoded_states.append(state_embeds)
+        encoded_next_states.append(next_embeds)
+
+    # Concatenate all encoded features
+    encoded_states = np.concatenate(encoded_states, axis=1)
+    encoded_next_states = np.concatenate(encoded_next_states, axis=1)
+
+    # Rebuild states
+    new_states = np.concatenate([state_numeric, encoded_states], axis=1)
+    new_next_states = np.concatenate([next_numeric, encoded_next_states], axis=1)
+
+    # Reconstruct trajectories
+    result = []
+    idx = 0
+
+    for traj_len, traj in zip(traj_lengths, trajs):
+        new_traj = []
+        for j in range(traj_len):
+            _, action, _ = traj[j]
+
+            new_traj.append((new_states[idx], action, new_next_states[idx]))
+            idx += 1
+
+        result.append(new_traj)
+
+    return result
+
+
 def trajectories_to_batches(
     trajs: list[list[tuple[np.ndarray, np.ndarray, np.ndarray]]],
 ):
@@ -149,13 +259,12 @@ def _get_relative_abstract_directories(project: RoboGymProjectYaml) -> list[Path
     for topic, data_list in input_non_numeric_topics:
 
         parsed_topic = topic.strip("/").replace("/", "_")
-        
+
         for data in data_list:
-            
+
             parsed_field = (
                 ""
-                if data["field_path"] == "data"
-                and data["data_type"] == "image"
+                if data["field_path"] == "data" and data["data_type"] == "image"
                 else data["field_path"]
             )
 
