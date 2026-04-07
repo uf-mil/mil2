@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from imitation.data.types import Trajectory
@@ -24,6 +26,8 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
     max_number_of_steps = 0
     max_vals = np.zeros(4, dtype=np.float32)
 
+    relative_abstract_directories = _get_relative_abstract_directories(project)
+
     for demo_dir in demos_dir.iterdir():
 
         if demo_dir.is_dir():
@@ -46,6 +50,26 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
             # Convert to numpy
             states = numerical_df.values
             actions = actions_df.values
+
+            num_steps = len(states)
+
+            # Get paths to abstract data
+            abstract_data_per_feature = []
+
+            for rel_path in relative_abstract_directories:
+
+                absolute_path = demo_dir / "data" / rel_path
+
+                files = sorted(absolute_path.iterdir())
+                file_paths = [str(f) for f in files]
+
+                abstract_data_per_feature.append(file_paths[:num_steps])
+
+            if abstract_data_per_feature:
+
+                abstract_matrix = np.array(abstract_data_per_feature, dtype=object).T
+
+                states = np.concatenate([states, abstract_matrix], axis=1)
 
             # Align states and actions: (s_t, a_t+1)
             states_t = states[:-1]
@@ -114,3 +138,26 @@ def trajectories_to_imitations(
             ),
         )
     return trajs
+
+
+def _get_relative_abstract_directories(project: RoboGymProjectYaml) -> list(Path):
+
+    input_non_numeric_topics = project["input_non_numeric_topics"]
+
+    relative_paths = []
+
+    for topic, data_list in input_non_numeric_topics:
+
+        parsed_topic = topic.strip("/").replace("/", "_")
+        parsed_field = (
+            ""
+            if data_list[0]["field_path"] == "data"
+            and data_list[0]["data_type"] == "image"
+            else data_list[0]["field_path"]
+        )
+
+        relative_paths.append(
+            Path(parsed_topic + (f"_{parsed_field}" if parsed_field else "")),
+        )
+
+    return relative_paths

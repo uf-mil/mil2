@@ -70,9 +70,7 @@ class DemoViewController:
 
             # Create and start services
             self.csv_writer = AsyncCSVWriter(self.project, self.demo)
-            self.data_collector.establish_subscriptions(
-                list(self.project["input_topics"].keys()),
-            )
+            self.data_collector.establish_subscriptions(self.project)
 
             # Configure UI Components
             self.view.header.project_title.config(text=f"{self.project['name']} >")
@@ -180,6 +178,9 @@ class DemoViewController:
 
         # Start sampling asynchronously
         self.is_recording = True
+
+        # Reset image data counters
+        self.data_collector.reset_image_counters()
 
         # Delay sampling if mid session
         if len(self.view.steps.steps) > 1:
@@ -390,6 +391,9 @@ class DemoViewController:
 
         # Place sub in starting location
         self.set_pose_client.set_pose(x, y, z, yaw=yaw)
+
+        # Reset image data counters
+        self.data_collector.reset_image_counters()
 
     def _schedule_next_sample(self) -> None:
         """

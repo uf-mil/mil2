@@ -98,11 +98,10 @@ class Trainer:
 
         # Start up data collector client
         self.data_collector_client = DataCollectorClient()
-        self.data_collector_client.establish_subscriptions(
-            list(project["input_topics"].keys()),
-        )
+        self.data_collector_client.establish_subscriptions(project)
 
         # Fetch and process expert demonstrations
+        self.does_contain_abstract_data = self.project["input_non_numeric_topics"] != {}
         self.demo_trajectories, determined_max_step_count, determined_max_vals = (
             fetch_demo_trajectories(
                 self.project,
@@ -115,12 +114,17 @@ class Trainer:
             else int(determined_max_step_count * 1.5)
         )
         self.max_vals = determined_max_vals
-        self.demo_batches = trajectories_to_batches(self.demo_trajectories)
-        self.demo_imitations = trajectories_to_imitations(self.demo_trajectories)
-        self.flattened_demo_trajectories = rollout.flatten_trajectories(
-            self.demo_imitations,
-        )
-        self.demos_batch_size = int(min(2048, len(self.flattened_demo_trajectories)))
+
+        # Only fetch this data if no abstract data is being used to train the agent
+        if not self.does_contain_abstract_data:
+            self.demo_batches = trajectories_to_batches(self.demo_trajectories)
+            self.demo_imitations = trajectories_to_imitations(self.demo_trajectories)
+            self.flattened_demo_trajectories = rollout.flatten_trajectories(
+                self.demo_imitations,
+            )
+            self.demos_batch_size = int(
+                min(2048, len(self.flattened_demo_trajectories)),
+            )
 
         # Environment set up
         self.eval_environment = Environment(
@@ -139,9 +143,7 @@ class Trainer:
 
         self.register_env()
 
-        # TODO: Configure metric outputs
-
-    def train(self):  # TODO: Incorporate metrics into training loop.
+    def train(self):
         """
         Train the VAIRL algorithm.
         """
@@ -172,7 +174,9 @@ class Trainer:
                     "seed": self.seed,
                     "max_step_count": self.max_step_count,
                     "max_vals": self.max_vals,
-                    "input_features": self.project["tensor_spec"]["input_features"],
+                    "input_features": self.project["tensor_spec"][
+                        "input_features"
+                    ],  # TODO: Might be best to pass in project
                     "random_spawn_space": self.project["random_spawn_space"],
                     "data_collector_client": self.data_collector_client,
                     "move_client": self.move_client,
@@ -230,6 +234,10 @@ class Trainer:
                 if self._stop_requested.is_set():
                     self._stopped_early = True
                     break
+
+                if self.does_contain_abstract_data:
+                    # Recalculate values for abstract data
+                    pass
 
                 reward_net.eval()
 

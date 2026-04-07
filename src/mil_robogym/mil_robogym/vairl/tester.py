@@ -22,9 +22,7 @@ class Tester:
 
         # Create clients
         self.data_collector_client = DataCollectorClient()
-        self.data_collector_client.establish_subscriptions(
-            list(project["input_topics"].keys()),
-        )
+        self.data_collector_client.establish_subscriptions(project)
 
         self.controller_client = ControllerClient()
         self.localization_client = LocalizationClient()

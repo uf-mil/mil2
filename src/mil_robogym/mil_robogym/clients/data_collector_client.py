@@ -3,7 +3,9 @@ import json
 import rclpy
 from mil_msgs.srv import EstablishSubscriptions, GetSnapshot
 from rclpy.node import Node
+from std_srvs.srv import Empty
 
+from mil_robogym.data_collection.types import RoboGymProjectYaml
 from mil_robogym.data_collection.utils import flatten_value
 
 
@@ -22,6 +24,11 @@ class DataCollectorClient(Node):
 
         self.snapshot_client = self.create_client(GetSnapshot, "get_snapshot")
 
+        self.reset_image_counters_client = self.create_client(
+            Empty,
+            "reset_image_counters",
+        )
+
         self._wait_for_services()
 
     def _wait_for_services(self):
@@ -31,10 +38,11 @@ class DataCollectorClient(Node):
         while not self.snapshot_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Waiting for get_snapshot service...")
 
-    def establish_subscriptions(self, topics: list[str]):
+    def establish_subscriptions(self, project: RoboGymProjectYaml):
 
         req = EstablishSubscriptions.Request()
-        req.topics = topics
+        req.topics = list(project["input_topics"].keys())
+        req.image_fields = self._extract_image_data_paths_from_project(project)
 
         future = self.establish_client.call_async(req)
 
@@ -53,13 +61,23 @@ class DataCollectorClient(Node):
 
         return future.result()
 
+    def reset_image_counters(self):
+
+        req = Empty.Request()
+
+        future = self.reset_image_counters_client.call_async(req)
+
+        rclpy.spin_until_future_complete(self, future)
+
+        return future.result()
+
     def get_flattened_snapshot_values(self, input_features: list[str]) -> list[any]:
 
         snapshot = self.get_snapshot()
 
         data = json.loads(snapshot.data)
-        _images = []
 
+        images = []
         flattened_data = []
 
         if data:
@@ -69,6 +87,29 @@ class DataCollectorClient(Node):
             ]  # Maintain order
 
         return flattened_data
+
+    def _extract_image_data_paths_from_project(
+        self,
+        project: RoboGymProjectYaml,
+    ) -> list[str]:
+        """
+        Outputs a string of data paths in the form: /topic:parent_field.child_field OR /topic
+        """
+        input_non_numeric_topics = project["input_non_numeric_topics"]
+
+        image_data_paths = []
+
+        for topic, metadata in input_non_numeric_topics.items():
+
+            if metadata[0]["data_type"] == "image":
+
+                field_path = metadata[0]["field_path"]
+
+                data_path = topic + (f":{field_path}" if field_path != "data" else "")
+
+                image_data_paths.append(data_path)
+
+        return image_data_paths
 
     # TODO: This is inefficient, implement a fast mapper on the server side.
     def _flatten_and_filter_state_fields(
