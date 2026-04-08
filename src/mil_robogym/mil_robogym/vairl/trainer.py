@@ -385,6 +385,9 @@ class Trainer:
                     external_architecture.append(CNNEncoder())
 
                 elif data["data_type"] == "unordered_set":
+                    # Configure with the structure of the ros message type
+                    ros_msg_type = data["ros_type"]
+
                     external_architecture.append(DeepSet())
 
         return external_architecture

@@ -3,6 +3,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pandas as pd
+import torch
 from imitation.data.types import Trajectory
 
 from mil_robogym.data_collection.filesystem import get_project_dir_path
@@ -100,13 +101,27 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
     return trajectories, max_number_of_steps, max_vals
 
 
-def load_file(path):
+def load_file(path, device="cpu"):  # TODO: Pass in correct device
     if path.endswith(".jpg"):
         img = cv2.imread(path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        return img
+
+        # Convert image to tensor
+        img = torch.from_numpy(img).float()
+        img = img.permute(2, 0, 1)  # (C, H, W)
+
+        # Normalize
+        img = img / 255.0
+
+        return img.to(device)
+
     elif path.endswith(".npy"):
-        return np.load(path)
+
+        arr = np.load(path)
+        tensor = torch.from_numpy(arr).float()
+
+        return tensor.to(device)
+
     else:
         raise ValueError(f"Unsupported file type: {path}")
 
@@ -167,7 +182,7 @@ def interpret_abstract_data(
 
         # Batch inference
         if len(loaded_data) > 0:
-            batch = np.stack(loaded_data)
+            batch = torch.stack(loaded_data)
             embeddings = model(batch)
 
             # Store in cache
