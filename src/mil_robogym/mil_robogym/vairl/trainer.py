@@ -10,6 +10,7 @@ import torch
 from imitation.data import rollout
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
+from rosidl_runtime_py.utilities import get_message
 from sb3_contrib import TRPO
 
 from mil_robogym.data_collection.filesystem import (
@@ -385,10 +386,38 @@ class Trainer:
                     external_architecture.append(CNNEncoder())
 
                 elif data["data_type"] == "unordered_set":
-                    # Configure with the structure of the ros message type
-                    ros_msg_type = data["ros_type"]
+                    ros_type = data["ros_type"]
 
-                    external_architecture.append(DeepSet())
+                    try:
+                        # Extract inner type from sequence<...>
+                        if "sequence<" in ros_type:
+                            inner_type = ros_type.replace("sequence<", "").replace(
+                                ">",
+                                "",
+                            )
+                        else:
+                            inner_type = ros_type
+
+                        # Get ROS message class
+                        msg_class = get_message(inner_type)
+
+                        # Create dummy instance
+                        dummy_obj = msg_class()
+
+                        # Define output shape (can later move to YAML)
+                        output_dim = data.get("output_dim", 32)
+
+                        external_architecture.append(
+                            DeepSet(obj=dummy_obj, output_shape=output_dim),
+                        )
+
+                    except Exception as e:
+                        raise RuntimeError(
+                            f"Failed to initialize DeepSet for topic '{topic}' with type '{ros_type}': {e}",
+                        )
+
+                else:
+                    raise ValueError(f"Unsupported data_type: {data['data_type']}")
 
         return external_architecture
 
