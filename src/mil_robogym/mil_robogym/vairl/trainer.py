@@ -132,7 +132,7 @@ class Trainer:
             self.flattened_demo_trajectories = rollout.flatten_trajectories(
                 self.demo_imitations,
             )
-            self.external_architecure = []
+            self.external_architecture = []
         else:
             self.demo_batches = None
             self.demo_imitations = None
@@ -146,13 +146,13 @@ class Trainer:
             self.seed,
             self.max_step_count,
             self.max_vals,
-            self.project["tensor_spec"]["input_features"],
-            self.project["random_spawn_space"],
+            self.project,
             self.data_collector_client,
             self.move_client,
             self.set_pose_client,
             self.controller_client,
             self.localization_client,
+            self.external_architecture,
             True,
         )
 
@@ -189,15 +189,13 @@ class Trainer:
                     "seed": self.seed,
                     "max_step_count": self.max_step_count,
                     "max_vals": self.max_vals,
-                    "input_features": self.project["tensor_spec"][
-                        "input_features"
-                    ],  # TODO: Might be best to pass in project
-                    "random_spawn_space": self.project["random_spawn_space"],
+                    "project": self.project,
                     "data_collector_client": self.data_collector_client,
                     "move_client": self.move_client,
                     "set_pose_client": self.set_pose_client,
                     "controller_client": self.controller_client,
                     "localization_client": self.localization_client,
+                    "external_architecture": self.external_architecture,
                     "initialized": True,
                 },
             )

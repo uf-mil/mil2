@@ -126,6 +126,27 @@ def load_file(path, device="cpu"):  # TODO: Pass in correct device
         raise ValueError(f"Unsupported file type: {path}")
 
 
+def interpret_state_data(
+    state: list[any],
+    models: list[DeepSet, CNNEncoder],
+) -> list[int | float | complex]:
+    """
+    Passes strictly ordered state data and passes non numerical data through encoder models.
+    """
+    num_abstract_values = len(models)
+    index = len(state) - num_abstract_values
+
+    abstract_data = state[-num_abstract_values:]
+
+    for data, model in zip(abstract_data, models):
+
+        state[index] = model(data)
+
+        index += 1
+
+    return state
+
+
 def interpret_abstract_data(
     trajs: list[
         list[tuple[np.ndarray, np.ndarray, np.ndarray]]

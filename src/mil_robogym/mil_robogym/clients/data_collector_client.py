@@ -1,11 +1,15 @@
 import json
 
 import rclpy
+from cv_bridge import CvBridge
 from mil_msgs.srv import EstablishSubscriptions, GetSnapshot
 from rclpy.node import Node
 from std_srvs.srv import Empty
 
-from mil_robogym.data_collection.types import RoboGymProjectYaml
+from mil_robogym.data_collection.types import (
+    NonNumericTopicFieldSelection,
+    RoboGymProjectYaml,
+)
 from mil_robogym.data_collection.utils import flatten_value
 
 
@@ -16,6 +20,8 @@ class DataCollectorClient(Node):
 
     def __init__(self):
         super().__init__("data_collector_client")
+
+        self.bridge = CvBridge()
 
         self.establish_client = self.create_client(
             EstablishSubscriptions,
@@ -71,20 +77,31 @@ class DataCollectorClient(Node):
 
         return future.result()
 
-    def get_flattened_snapshot_values(self, input_features: list[str]) -> list[any]:
+    def get_flattened_snapshot_values(self, project: RoboGymProjectYaml) -> list[any]:
+
+        input_features = project["tensor_spec"]["input_features"]
+        non_numeric_features = project["input_non_numeric_topics"]
+
+        # Compose full list of input features
+        input_features = input_features.concat(
+            self._get_abstract_data_feature_list(non_numeric_features),
+        )
 
         snapshot = self.get_snapshot()
 
         data = json.loads(snapshot.data)
+        img_msgs = zip(snapshot.image_topics, snapshot.image_data)
 
-        images = []
         flattened_data = []
 
         if data:
-            filtered_data = self._flatten_and_filter_state_fields(data, input_features)
-            flattened_data = [
-                filtered_data[key] for key in input_features
-            ]  # Maintain order
+            # Extract numerical data
+            filtered_data = self._flatten_and_filter_state_fields(
+                data,
+                img_msgs,
+                input_features,
+            )
+            flattened_data = [filtered_data[key] for key in input_features]
 
         return flattened_data
 
@@ -102,21 +119,42 @@ class DataCollectorClient(Node):
         for topic, data_list in input_non_numeric_topics.items():
 
             for data in data_list:
-                
+
                 if data["data_type"] == "image":
 
                     field_path = data["field_path"]
 
-                    data_path = topic + (f":{field_path}" if field_path != "data" else "")
+                    data_path = topic + (
+                        f":{field_path}" if field_path != "data" else ""
+                    )
 
                     image_data_paths.append(data_path)
 
         return image_data_paths
 
+    def _get_abstract_data_feature_list(
+        self,
+        topics: dict[str, list[NonNumericTopicFieldSelection]],
+    ) -> list[str]:
+        data_paths = []
+
+        for topic, data_list in topics:
+
+            for data in data_list:
+
+                if data["data_type"] == "image":
+                    data_paths.append(topic)
+
+                else:
+                    data_paths.append(f"{topic}:{data['field_path']}")
+
+        return data_paths
+
     # TODO: This is inefficient, implement a fast mapper on the server side.
     def _flatten_and_filter_state_fields(
         self,
         data: dict,
+        img_msgs: zip,  # image_topic, image_msg
         input_features: list[str],
     ) -> dict:
         """
@@ -129,11 +167,18 @@ class DataCollectorClient(Node):
             temp = {}
             flatten_value(msg, "", temp)
 
+            # Iterate through numeric and set data
             for key, value in temp.items():
 
                 feature_name = f"{topic}:{key}"
                 flattened_states[feature_name] = value
 
+            # Iterate through image data
+            for topic, img_msg in img_msgs:
+                cv_img = self.bridge.imgmsg_to_cv2(img_msg, desired_encoding="bgr8")
+                flattened_states[topic] = cv_img
+
         features_allowed = set(input_features)
 
+        # Compose dict for features
         return {k: v for k, v in flattened_states.items() if k in features_allowed}

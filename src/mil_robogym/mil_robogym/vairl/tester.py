@@ -21,6 +21,9 @@ class Tester:
 
     def __init__(self, project: RoboGymProjectYaml):
 
+        # Save project
+        self.project = project
+
         # Create clients
         self.data_collector_client = DataCollectorClient()
         self.data_collector_client.establish_subscriptions(project)
@@ -74,8 +77,9 @@ class Tester:
             for i in range(self.max_step_count):
 
                 # Get state
+                # NOTE: We do not need to interpret the data because the agent should be saved with external architecture
                 state = self.data_collector_client.get_flattened_snapshot_values(
-                    self.input_features,
+                    self.project,
                 )
 
                 # Generate action
