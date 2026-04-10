@@ -143,7 +143,6 @@ def interpret_state_data(
         # Run model
         with torch.no_grad():
             output = model(data)
-            exit(str(output))
 
         # Ensure NumPy output
         if isinstance(output, torch.Tensor):

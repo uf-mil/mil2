@@ -94,7 +94,7 @@ class DataCollectorClient(Node):
 
         flattened_data = []
 
-        if data:
+        if data or img_msgs:
             # Extract data
             filtered_data = self._flatten_and_filter_state_fields(
                 data,
@@ -102,6 +102,8 @@ class DataCollectorClient(Node):
                 input_features,
             )
             flattened_data = [filtered_data[key] for key in input_features]
+
+        raise Exception(flattened_data)
 
         return flattened_data
 

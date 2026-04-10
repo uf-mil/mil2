@@ -59,8 +59,13 @@ class DeepSet(nn.Module):
         n: feature size of object determined by convert_object_to_tensor
         """
         # Convert raw input into tensor
-        x = torch.from_numpy(x).float()
-        x = x.reshape(-1, self.input_dim)
+        x_transformed = [self.convert_object_to_tensor(obj) for obj in x]
+
+        # Stack into a single tensor
+        if isinstance(x_transformed[0], torch.Tensor):
+            x = torch.stack(x_transformed).float()
+        else:
+            x = torch.from_numpy(np.array(x_transformed)).float()
 
         # Single input
         if x.dim() == 2:  # [m, n]
