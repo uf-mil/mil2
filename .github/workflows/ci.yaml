@@ -96,6 +96,10 @@ jobs:
     runs-on:
       group: mala-lab-noble
     steps:
+      - name: Ensure clean git state
+        run: |
+          git reset --hard
+          git clean -fdx
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
