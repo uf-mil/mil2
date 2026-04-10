@@ -10,6 +10,7 @@
       <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
         <joint_name>${prefix}_chasis_engine_joint</joint_name>
         <topic>${model_name}/${thruster_namespace}${prefix}/pos</topic>
+        <use_velocity_commands>true</use_velocity_commands>
       </plugin>
     </gazebo>
   </xacro:macro>
