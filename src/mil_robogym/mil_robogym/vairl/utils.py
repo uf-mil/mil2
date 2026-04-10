@@ -140,7 +140,16 @@ def interpret_state_data(
         if isinstance(data, list):
             data = np.array(data)
 
-        state[index] = model(data)
+        # Run model
+        with torch.no_grad():
+            output = model(data)
+            exit(str(output))
+
+        # Ensure NumPy output
+        if isinstance(output, torch.Tensor):
+            output = output.detach().cpu().numpy()
+
+        state[index] = output.flatten()
 
         index += 1
 

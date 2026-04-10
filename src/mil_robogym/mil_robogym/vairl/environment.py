@@ -49,6 +49,7 @@ class Environment(gym.Env):
         self.initialized = initialized
         self.external_architecture = external_architecture
         self.input_features = []
+        self.input_size = 0
 
         if initialized:
             # Save project
@@ -87,11 +88,16 @@ class Environment(gym.Env):
             self.t = 0
             self.rng = np.random.default_rng(seed)
 
+            # Get observation space size
+            self.input_size = len(self.input_features)
+            for model in self.external_architecture:
+                self.input_size += model.output_dim
+
         # Configure observation space
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(self.input_features),),
+            shape=(self.input_size,),
             dtype=np.float32,
         )
 

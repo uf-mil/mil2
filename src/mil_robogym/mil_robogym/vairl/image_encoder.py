@@ -40,7 +40,7 @@ class CNNEncoder(nn.Module):
         if any(value <= 0 for value in std):
             raise ValueError("std values must be positive.")
 
-        self.latent_dim = latent_dim
+        self.output_dim = latent_dim
         self.resize_shape = tuple(int(size) for size in resize_shape)
 
         self.register_buffer(

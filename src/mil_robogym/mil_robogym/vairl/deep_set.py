@@ -60,6 +60,7 @@ class DeepSet(nn.Module):
         """
         # Convert raw input into tensor
         x = torch.from_numpy(x).float()
+        x = x.reshape(-1, self.input_dim)
 
         # Single input
         if x.dim() == 2:  # [m, n]
@@ -84,7 +85,7 @@ class DeepSet(nn.Module):
             return out.view(x.size(0), *self.output_shape)
 
         raise ValueError(
-            f"forward expects x with shape [m, n] or [b, m, n], instead got dimension: {x.dim()} for tensor: {x}",
+            f"forward expects x with shape [m, n] or [b, m, n], instead got dimension: {x.dim()} for tensor of shape: {x.shape}",
         )
 
     def convert_object_to_tensor(self, obj: any) -> torch.Tensor:
