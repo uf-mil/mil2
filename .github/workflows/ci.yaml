@@ -99,6 +99,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           submodules: recursive
           fetch-depth: 0
           clean: true
