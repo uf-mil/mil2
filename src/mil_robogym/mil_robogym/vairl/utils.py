@@ -42,7 +42,11 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
             actions_csv = demo_dir / "data" / "actions" / "data.csv"
 
             # Load data
-            numerical_df = pd.read_csv(numerical_csv)
+            try:
+                numerical_df = pd.read_csv(numerical_csv)
+            except pd.errors.EmptyDataError:
+                numerical_df = pd.DataFrame()
+
             actions_df = pd.read_csv(actions_csv).loc[
                 :,
                 ["delta_x", "delta_y", "delta_z", "delta_yaw"],
@@ -56,7 +60,7 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
             states = numerical_df.values
             actions = actions_df.values
 
-            num_steps = len(states)
+            num_steps = len(actions)
 
             # Get paths to abstract data
             abstract_data_per_feature = []
@@ -74,7 +78,10 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
 
                 abstract_matrix = np.array(abstract_data_per_feature, dtype=object).T
 
-                states = np.concatenate([states, abstract_matrix], axis=1)
+                if states:
+                    states = np.concatenate([states, abstract_matrix], axis=1)
+                else:
+                    states = abstract_matrix
 
             # Align states and actions: (s_t, a_t+1)
             states_t = states[:-1]
@@ -101,26 +108,16 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
     return trajectories, max_number_of_steps, max_vals
 
 
-def load_file(path, device="cpu"):  # TODO: Pass in correct device
+def load_file(path, device="cpu") -> np.ndarray:  # TODO: Pass in correct device
     if path.endswith(".jpg"):
         img = cv2.imread(path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        # Convert image to tensor
-        img = torch.from_numpy(img).float()
-        img = img.permute(2, 0, 1)  # (C, H, W)
-
-        # Normalize
-        img = img / 255.0
-
-        return img.to(device)
+        return img
 
     elif path.endswith(".npy"):
 
-        arr = np.load(path)
-        tensor = torch.from_numpy(arr).float()
-
-        return tensor.to(device)
+        return np.load(path)
 
     else:
         raise ValueError(f"Unsupported file type: {path}")
@@ -139,6 +136,9 @@ def interpret_state_data(
     abstract_data = state[-num_abstract_values:]
 
     for data, model in zip(abstract_data, models):
+
+        if isinstance(data, list):
+            data = np.array(data)
 
         state[index] = model(data)
 
@@ -292,7 +292,7 @@ def _get_relative_abstract_directories(project: RoboGymProjectYaml) -> list[Path
 
     relative_paths = []
 
-    for topic, data_list in input_non_numeric_topics:
+    for topic, data_list in input_non_numeric_topics.items():
 
         parsed_topic = topic.strip("/").replace("/", "_")
 

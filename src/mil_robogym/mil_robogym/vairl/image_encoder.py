@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -66,7 +67,9 @@ class CNNEncoder(nn.Module):
 
     def _prepare_input(self, image: torch.Tensor) -> torch.Tensor:
         if not isinstance(image, torch.Tensor):
-            raise TypeError("image must be a torch.Tensor.")
+            raise TypeError(
+                f"image must be a torch.Tensor. Instead got type: {type(image)}",
+            )
 
         if image.ndim == 3:
             if image.shape[0] not in (1, 3) and image.shape[-1] in (1, 3):
@@ -105,7 +108,14 @@ class CNNEncoder(nn.Module):
         image = (image - self.mean) / self.std
         return image
 
-    def forward(self, image: torch.Tensor) -> torch.Tensor:
+    def forward(self, image: np.ndarray) -> torch.Tensor:
+        # Convert image to tensor
+        image = torch.from_numpy(image).float()
+        image = image.permute(2, 0, 1)  # (C, H, W)
+
+        # Normalize
+        image = image / 255.0
+
         image = self._prepare_input(image)
         features = self.backbone(image)
         pooled = self.pool(features).flatten(start_dim=1)

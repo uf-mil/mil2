@@ -1,5 +1,6 @@
 import numbers
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -47,16 +48,19 @@ class DeepSet(nn.Module):
             nn.Linear(hidden_dim, self.output_dim),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: np.ndarray) -> torch.Tensor:
         """
         Forward function for deepset class.
 
-        x: tensor of a single unordered set or tensor of a batch of unordered sets
+        x: array of a single unordered set or batch of unordered sets
 
         b: batch size
         m: number of objects in each unordered set
         n: feature size of object determined by convert_object_to_tensor
         """
+        # Convert raw input into tensor
+        x = torch.from_numpy(x).float()
+
         # Single input
         if x.dim() == 2:  # [m, n]
             if x.size(-1) != self.input_dim:
@@ -79,7 +83,9 @@ class DeepSet(nn.Module):
             out = self.outer_network(pooled)  # [b, output_dim]
             return out.view(x.size(0), *self.output_shape)
 
-        raise ValueError("forward expects x with shape [m, n] or [b, m, n]")
+        raise ValueError(
+            f"forward expects x with shape [m, n] or [b, m, n], instead got dimension: {x.dim()} for tensor: {x}",
+        )
 
     def convert_object_to_tensor(self, obj: any) -> torch.Tensor:
         """
@@ -105,9 +111,7 @@ class DeepSet(nn.Module):
                 continue
 
             if isinstance(curr_obj, str):
-                raise TypeError(
-                    "String values are not supported by convert_object_to_tensor",
-                )
+                continue
 
             # Object id for reference objects, check if seen before to skip
             obj_id = id(curr_obj)

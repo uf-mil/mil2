@@ -10,6 +10,7 @@ import torch
 from imitation.data import rollout
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
+from rosidl_runtime_py.convert import message_to_ordereddict
 from rosidl_runtime_py.utilities import get_message
 from sb3_contrib import TRPO
 
@@ -401,9 +402,11 @@ class Trainer:
 
                         # Create dummy instance
                         dummy_obj = msg_class()
+                        dummy_obj = message_to_ordereddict(dummy_obj)
 
                         # Define output shape (can later move to YAML)
                         output_dim = data.get("output_dim", 32)
+                        self.move_client.get_logger().info(f"{dummy_obj}")
 
                         external_architecture.append(
                             DeepSet(obj=dummy_obj, output_shape=output_dim),

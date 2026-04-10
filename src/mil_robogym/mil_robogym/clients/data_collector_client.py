@@ -83,7 +83,7 @@ class DataCollectorClient(Node):
         non_numeric_features = project["input_non_numeric_topics"]
 
         # Compose full list of input features
-        input_features = input_features.concat(
+        input_features.extend(
             self._get_abstract_data_feature_list(non_numeric_features),
         )
 
@@ -95,7 +95,7 @@ class DataCollectorClient(Node):
         flattened_data = []
 
         if data:
-            # Extract numerical data
+            # Extract data
             filtered_data = self._flatten_and_filter_state_fields(
                 data,
                 img_msgs,
@@ -138,7 +138,7 @@ class DataCollectorClient(Node):
     ) -> list[str]:
         data_paths = []
 
-        for topic, data_list in topics:
+        for topic, data_list in topics.items():
 
             for data in data_list:
 
