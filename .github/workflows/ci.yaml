@@ -101,6 +101,7 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          clean: true
       - name: Install system dependencies and build
         run: |
           rm -rf build install log
