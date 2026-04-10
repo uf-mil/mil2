@@ -48,14 +48,11 @@ class DemoViewController:
         self.world_control_client = WorldControlClient()
         self.data_collector = DataCollectorClient()
         self.csv_writer = None
-        self.keyboard_controls_gui = KeyboardControlsGUI(
-            self.view,
-            self.pause_recording,
-        )
-        self.keyboard_controls_gui.hide()
+        self.keyboard_controls_gui = None
 
     def set_context(
         self,
+        keyboard_controls_gui: KeyboardControlsGUI,
         project: dict[str, Any] | None = None,
         demo: dict[str, Any] | None = None,
     ) -> None:
@@ -63,6 +60,9 @@ class DemoViewController:
         self.raw_project = project
         self.project = project.get("robogym_project", {})
         self.demo = demo.get("robogym_demo", {})
+
+        self.keyboard_controls_gui = keyboard_controls_gui
+        self.keyboard_controls_gui.on_close_callback = self.pause_recording
 
         if self.project and self.demo:
 

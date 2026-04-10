@@ -46,4 +46,8 @@ class ViewDemoPage(tk.Frame):
         self.controls.grid(row=3, column=0, sticky="ew", padx=14, pady=(6, 14))
 
     def set_context(self, project: dict[str, Any] | None = None, **kwargs: Any):
-        self.controller.set_context(project, demo=kwargs.get("demo", {}))
+        self.controller.set_context(
+            kwargs.get("keyboard_controls_gui"),
+            project,
+            demo=kwargs.get("demo", {}),
+        )

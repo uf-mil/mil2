@@ -117,6 +117,16 @@ class CreateProjectPage(tk.Frame):
 
         self._update_create_project_button_state()
 
+    def set_context(self, **kwargs: Any) -> None:
+        """
+        Set keyboard controls GUI.
+        """
+
+        self.keyboard_controls_gui = kwargs.get("keyboard_controls_gui")
+        self.keyboard_controls_gui.on_close_callback = (
+            self._on_close_of_keyboard_controls
+        )
+
     def _safe_get_topics(self) -> list[str]:
         """Fetch ROS topics and normalize failures into a page-specific error. This keeps behavior scoped to the current component.
 
@@ -165,10 +175,6 @@ class CreateProjectPage(tk.Frame):
             self.world_control_client.acquire_simulation_hold()
             self._has_grab_simulation_hold = True
 
-        self.keyboard_controls_gui = self.keyboard_controls_gui or KeyboardControlsGUI(
-            self,
-            self._on_close_of_keyboard_controls,
-        )
         self.keyboard_controls_gui.show()
 
         if self.popup and self.popup.win.winfo_exists():
@@ -341,6 +347,13 @@ class CreateProjectPage(tk.Frame):
                     str(exc) or type(exc).__name__,
                 )
                 return
+        else:
+            project_cfg["tensor_spec"] = {
+                "input_features": [],
+                "output_features": [],
+                "input_dim": 0,
+                "output_dim": 0,
+            }
 
         try:
             create_project_folder(project_cfg)

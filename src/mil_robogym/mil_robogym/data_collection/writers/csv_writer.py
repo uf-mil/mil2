@@ -59,8 +59,11 @@ class AsyncCSVWriter:
         Returns all the values for a certain column.
         """
         # NOTE: Images auto save so there is no need to pass them.
-        df = pd.read_csv(self.numerical_state_csv)
-        return df[column].values
+        try:
+            df = pd.read_csv(self.numerical_state_csv)
+            return df[column].values
+        except pd.errors.EmptyDataError:
+            return []
 
     def fetch_state_series(self) -> dict[str, list[float]]:
         """
@@ -99,19 +102,29 @@ class AsyncCSVWriter:
         Clear all data collected.
         """
 
-        # Handle CSVs
-        numerical_df = pd.read_csv(self.numerical_state_csv)
+        # Handle actions csv
         action_df = pd.read_csv(self.action_csv)
 
         if i_row is not None:
-            new_numerical_df = numerical_df.iloc[:i_row].copy()
             new_action_df = action_df.iloc[:i_row].copy()
         else:
-            new_numerical_df = pd.DataFrame(columns=numerical_df.columns)
             new_action_df = pd.DataFrame(columns=action_df.columns)
 
-        new_numerical_df.to_csv(self.numerical_state_csv, index=False)
         new_action_df.to_csv(self.action_csv, index=False)
+
+        # Handle state numerical data csv
+        try:
+            numerical_df = pd.read_csv(self.numerical_state_csv)
+
+            if i_row is not None:
+                new_numerical_df = numerical_df.iloc[:i_row].copy()
+            else:
+                new_numerical_df = pd.DataFrame(columns=numerical_df.columns)
+
+            new_numerical_df.to_csv(self.numerical_state_csv, index=False)
+
+        except pd.errors.EmptyDataError:
+            pass
 
         # Handle unordered set folders
         for name, topic_dir in self.unordered_sets.items():
@@ -177,7 +190,7 @@ class AsyncCSVWriter:
         for topic, data_list in input_non_numeric_topics.items():
 
             for data in data_list:
-                
+
                 if data["data_type"] == "unordered_set":
 
                     paths[f"{topic}:{data['field_path']}"] = (
@@ -208,7 +221,9 @@ class AsyncCSVWriter:
 
                     field_path = data["field_path"]
 
-                    data_path = topic if field_path == "data" else f"{topic}:{field_path}"
+                    data_path = (
+                        topic if field_path == "data" else f"{topic}:{field_path}"
+                    )
 
                     paths[data_path] = (
                         self.demo_dir_path
@@ -273,7 +288,10 @@ class AsyncCSVWriter:
         # Extract unordered set data
         unordered_set_feature_names = [
             f"{topic}:{data['field_path']}"
-            for topic, data_list in self.project.get("input_non_numeric_topics", {}).items()
+            for topic, data_list in self.project.get(
+                "input_non_numeric_topics",
+                {},
+            ).items()
             for data in data_list
             if data["data_type"] == "unordered_set"
         ]
@@ -301,7 +319,7 @@ class AsyncCSVWriter:
                     self.abstract_data_counters[name] = len(
                         list(topic_dir.iterdir()),
                     )
-                except:
+                except FileNotFoundError:
                     self.abstract_data_counters[name] = 0
 
             for state_idx, state_features in enumerate(unordered_set_state_buffer):
