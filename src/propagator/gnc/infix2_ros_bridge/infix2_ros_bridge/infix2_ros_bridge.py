@@ -31,6 +31,8 @@ class OdomPublisher(Node):
             10
         )
 
+        self.connect_and_suffer()
+
     def publish_cb(self, odom, absodom, accel):
         self.odom_rel_pub.publish(odom_from_json(odom))
         self.odom_abs_pub.publish(odom_from_json(absodom))
@@ -51,6 +53,7 @@ def main(args=None):
     node = OdomPublisher()
 
     try:
+        print("starting!")
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
