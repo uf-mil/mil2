@@ -2,8 +2,8 @@ import rclpy
 from rclpy.node import Node
 
 from mavros_msgs.srv import SetMode, CommandBool
-# from mavros_msgs.msg import NavSatFix # lmao this is actually wrong
-from sensor_msgs.msg import NavSatFix, OverrideRCIn
+from mavros_msgs.msg import OverrideRCIn
+from sensor_msgs.msg import NavSatFix 
 
 from nav_msgs.msg import Odometry
 
