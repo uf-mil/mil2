@@ -168,6 +168,7 @@ class Environment(gym.Env):
         next_state = self.data_collector_client.get_flattened_snapshot_values(
             self.input_features,
         )
+
         while not next_state:
             self.data_collector.get_logger().warn(
                 "Unable to retrieve state, trying again...",

@@ -5,10 +5,18 @@ from typing import Any
 
 from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
+from mil_robogym.data_collection.build_tensor_spec import build_tensor_spec
 from mil_robogym.data_collection.filesystem import create_project_folder
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
-from mil_robogym.data_collection.get_ros2_topics import get_ros2_topics
-from mil_robogym.data_collection.types import Coord4D, RoboGymProjectYaml
+from mil_robogym.data_collection.ros_graph import get_topic_names
+from mil_robogym.data_collection.types import (
+    Coord4D,
+    NonNumericTopicFieldSelection,
+    RoboGymProjectYaml,
+)
+from mil_robogym.data_collection.utils import (
+    filter_populated_non_numeric_topic_fields,
+)
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 
@@ -17,7 +25,6 @@ from .header_section import HeaderSection
 from .project_fields_section import ProjectFieldsSection
 from .random_spawn_section import RandomSpawnSection
 from .sub_topics_section import SubTopicsSection
-from .tensor_spec_section import TensorSpecSection
 from .topics_section import TopicsSection
 
 
@@ -52,6 +59,7 @@ class CreateProjectPage(tk.Frame):
 
         self.keyboard_controls_gui: KeyboardControlsGUI | None = None
         self.popup: GrabCoordinatesPopup | None = None
+        self._has_grab_simulation_hold = False
 
         self._topics = self._safe_get_topics()
         self._world_default = self._safe_get_world_file()
@@ -60,6 +68,14 @@ class CreateProjectPage(tk.Frame):
         self.selected_output_topics: list[str] = []
         self.selected_input_topic_subtopics: dict[str, list[str]] = {}
         self.selected_output_topic_subtopics: dict[str, list[str]] = {}
+        self.selected_input_non_numeric_topic_fields: dict[
+            str,
+            list[NonNumericTopicFieldSelection],
+        ] = {}
+        self.selected_output_non_numeric_topic_fields: dict[
+            str,
+            list[NonNumericTopicFieldSelection],
+        ] = {}
 
         self.header_section = HeaderSection(self, self._on_home_title_click)
         self.project_fields_section = ProjectFieldsSection(
@@ -84,22 +100,12 @@ class CreateProjectPage(tk.Frame):
             self,
             self._topics,
             self._on_topics_selection_changed,
+            self._on_refresh_topics,
         )
 
         self.sub_topics_section = SubTopicsSection(
             self,
             self._on_subtopics_selection_changed,
-        )
-
-        self.tensor_spec_section = TensorSpecSection(
-            self,
-            lambda: self._build_project_config(ensure_subtopics_loaded=True),
-            self._get_selected_input_topics,
-            self._get_selected_output_topics,
-            self._get_selected_input_topic_subtopics,
-            self._get_selected_output_topic_subtopics,
-            self.controls_section.show_error_tooltip,
-            self.controls_section.hide_error_tooltip,
         )
 
         self._sync_subtopics_with_topics()
@@ -120,8 +126,8 @@ class CreateProjectPage(tk.Frame):
             List of discovered ROS topic names.
         """
         try:
-            return get_ros2_topics()
-        except (RuntimeError, FileNotFoundError) as exc:
+            return get_topic_names()
+        except RuntimeError as exc:
             raise RuntimeError(
                 "Getting ROS 2 topics on create projects page failed",
             ) from exc
@@ -155,7 +161,9 @@ class CreateProjectPage(tk.Frame):
         Returns:
             None.
         """
-        self.world_control_client.play_simulation()
+        if not self._has_grab_simulation_hold:
+            self.world_control_client.acquire_simulation_hold()
+            self._has_grab_simulation_hold = True
 
         self.keyboard_controls_gui = self.keyboard_controls_gui or KeyboardControlsGUI(
             self,
@@ -202,9 +210,15 @@ class CreateProjectPage(tk.Frame):
 
         if self.keyboard_controls_gui is not None:
             self.keyboard_controls_gui.hide()
-        self.world_control_client.pause_simulation()
+        self._release_grab_simulation_hold()
         self.popup = None
         self._update_create_project_button_state()
+
+    def _release_grab_simulation_hold(self) -> None:
+        if not self._has_grab_simulation_hold:
+            return
+        self.world_control_client.release_simulation_hold()
+        self._has_grab_simulation_hold = False
 
     def _on_close_of_keyboard_controls(self) -> None:
         """Handle close events from the keyboard-controls popup. This keeps behavior scoped to the current component.
@@ -225,6 +239,7 @@ class CreateProjectPage(tk.Frame):
         Returns:
             None.
         """
+        self._release_grab_simulation_hold()
         if self.controller is not None:
             self.controller.show_page("start")
 
@@ -236,6 +251,7 @@ class CreateProjectPage(tk.Frame):
         Returns:
             None.
         """
+        self._release_grab_simulation_hold()
         if self.controller is not None:
             self.controller.show_page("start")
 
@@ -271,6 +287,32 @@ class CreateProjectPage(tk.Frame):
             ),
         }
 
+    def _with_optional_non_numeric_topics(
+        self,
+        project_cfg: RoboGymProjectYaml,
+        *,
+        ensure_subtopics_loaded: bool,
+    ) -> RoboGymProjectYaml:
+        input_non_numeric_topics = self._selected_input_non_numeric_topic_fields(
+            ensure_loaded=ensure_subtopics_loaded,
+        )
+        output_non_numeric_topics = self._selected_output_non_numeric_topic_fields(
+            ensure_loaded=ensure_subtopics_loaded,
+        )
+
+        input_non_numeric_topics = filter_populated_non_numeric_topic_fields(
+            input_non_numeric_topics,
+        )
+        output_non_numeric_topics = filter_populated_non_numeric_topic_fields(
+            output_non_numeric_topics,
+        )
+
+        if input_non_numeric_topics:
+            project_cfg["input_non_numeric_topics"] = input_non_numeric_topics
+        if output_non_numeric_topics:
+            project_cfg["output_non_numeric_topics"] = output_non_numeric_topics
+        return project_cfg
+
     def _on_create_project(self) -> None:
         """Create the project directory from validated form state. This keeps behavior scoped to the current component.
 
@@ -284,13 +326,21 @@ class CreateProjectPage(tk.Frame):
             return
 
         self._update_create_project_button_state()
-        tensor_spec = self.tensor_spec_section.compute_tensor_spec()
-        if tensor_spec is None:
-            return
-
         project_cfg = self._build_project_config(ensure_subtopics_loaded=True)
+        project_cfg = self._with_optional_non_numeric_topics(
+            project_cfg,
+            ensure_subtopics_loaded=True,
+        )
         project_name = project_cfg["name"]
-        project_cfg["tensor_spec"] = tensor_spec
+
+        if self._has_any_numeric_topic_selection():
+            try:
+                project_cfg["tensor_spec"] = build_tensor_spec(project_cfg)
+            except (RuntimeError, ValueError, KeyError) as exc:
+                self.controls_section.show_error_tooltip(
+                    str(exc) or type(exc).__name__,
+                )
+                return
 
         try:
             create_project_folder(project_cfg)
@@ -360,14 +410,23 @@ class CreateProjectPage(tk.Frame):
     def _has_valid_subtopic_selection(self) -> bool:
         """Return True when each selected topic has at least one selected subtopic."""
         for topic in self.selected_input_topics:
-            if not self.selected_input_topic_subtopics.get(topic):
+            if not self.selected_input_topic_subtopics.get(
+                topic,
+            ) and not self.selected_input_non_numeric_topic_fields.get(topic):
                 return False
 
         for topic in self.selected_output_topics:
-            if not self.selected_output_topic_subtopics.get(topic):
+            if not self.selected_output_topic_subtopics.get(
+                topic,
+            ) and not self.selected_output_non_numeric_topic_fields.get(topic):
                 return False
 
         return True
+
+    def _has_any_numeric_topic_selection(self) -> bool:
+        return any(self.selected_input_topic_subtopics.values()) and any(
+            self.selected_output_topic_subtopics.values(),
+        )
 
     def _update_create_project_button_state(self) -> None:
         """Update Create Project button state from current form validity. This keeps behavior scoped to the current component.
@@ -391,16 +450,22 @@ class CreateProjectPage(tk.Frame):
 
         self._sync_selected_topic_subtopics_from_section()
 
+    def _on_refresh_topics(self) -> None:
+        self._topics = self._safe_get_topics()
+        self.topics_section.set_topics(self._topics)
+        self._sync_subtopics_with_topics()
+        self.sub_topics_section.reload_selected_topics()
+        self._sync_selected_topic_subtopics_from_section()
+        self._on_form_state_changed()
+
     def _on_topics_selection_changed(self) -> None:
         """Handle topic list selection changes from TopicsSection."""
         self._sync_subtopics_with_topics()
-        self.tensor_spec_section.invalidate_tensor_spec()
         self._on_form_state_changed()
 
     def _on_subtopics_selection_changed(self) -> None:
         """Handle subtopic selection changes from SubTopicsSection."""
         self._sync_selected_topic_subtopics_from_section()
-        self.tensor_spec_section.invalidate_tensor_spec()
         self._on_form_state_changed()
 
     def _sync_selected_topic_subtopics_from_section(
@@ -416,6 +481,16 @@ class CreateProjectPage(tk.Frame):
         )
         self.selected_output_topic_subtopics = (
             self.sub_topics_section.get_selected_output_topic_subtopics(
+                ensure_loaded=ensure_loaded,
+            )
+        )
+        self.selected_input_non_numeric_topic_fields = (
+            self.sub_topics_section.get_selected_input_non_numeric_topic_fields(
+                ensure_loaded=ensure_loaded,
+            )
+        )
+        self.selected_output_non_numeric_topic_fields = (
+            self.sub_topics_section.get_selected_output_non_numeric_topic_fields(
                 ensure_loaded=ensure_loaded,
             )
         )
@@ -436,20 +511,24 @@ class CreateProjectPage(tk.Frame):
         self._sync_selected_topic_subtopics_from_section(ensure_loaded=ensure_loaded)
         return self.selected_output_topic_subtopics
 
-    def _get_selected_input_topics(self) -> list[str]:
-        return list(self.selected_input_topics)
-
-    def _get_selected_output_topics(self) -> list[str]:
-        return list(self.selected_output_topics)
-
-    def _get_selected_input_topic_subtopics(self) -> dict[str, list[str]]:
+    def _selected_input_non_numeric_topic_fields(
+        self,
+        *,
+        ensure_loaded: bool = False,
+    ) -> dict[str, list[NonNumericTopicFieldSelection]]:
+        self._sync_selected_topic_subtopics_from_section(ensure_loaded=ensure_loaded)
         return {
-            topic: list(fields)
-            for topic, fields in self.selected_input_topic_subtopics.items()
+            topic: [dict(field) for field in fields]
+            for topic, fields in self.selected_input_non_numeric_topic_fields.items()
         }
 
-    def _get_selected_output_topic_subtopics(self) -> dict[str, list[str]]:
+    def _selected_output_non_numeric_topic_fields(
+        self,
+        *,
+        ensure_loaded: bool = False,
+    ) -> dict[str, list[NonNumericTopicFieldSelection]]:
+        self._sync_selected_topic_subtopics_from_section(ensure_loaded=ensure_loaded)
         return {
-            topic: list(fields)
-            for topic, fields in self.selected_output_topic_subtopics.items()
+            topic: [dict(field) for field in fields]
+            for topic, fields in self.selected_output_non_numeric_topic_fields.items()
         }

@@ -442,6 +442,7 @@ class DemoViewController:
                 {
                     metric_name: float(value)
                     for metric_name, value in feature_values.items()
+                    if isinstance(value, (int, float))
                 },
             )
 

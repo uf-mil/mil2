@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import queue
 import sys
@@ -7,7 +9,7 @@ import tkinter as tk
 import traceback
 from contextlib import nullcontext, suppress
 from pathlib import Path
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping
 
 from mil_robogym.data_collection.delete_saved_agent import (
     delete_saved_agent_artifacts,
@@ -19,6 +21,9 @@ from mil_robogym.data_collection.load_saved_agent import (
 from mil_robogym.data_collection.types import RoboGymProjectYaml
 from mil_robogym.vairl.trainer import Trainer
 from mil_robogym.vairl.training_settings import normalize_training_settings
+
+if TYPE_CHECKING:
+    from mil_robogym.vairl.tester import Tester
 
 
 class TrainTestViewController:
@@ -34,8 +39,11 @@ class TrainTestViewController:
 
         self.raw_project = None
         self.project: RoboGymProjectYaml | None = None
+        self.agent = None
 
         self.trainer: Trainer | None = None
+        self.tester: Tester | None = None
+
         self.loaded_agent: LoadedAgent | None = None
         self.training_settings: dict[str, object] = {}
         self._training_event_queue: queue.Queue[dict[str, object]] = queue.Queue()
@@ -47,7 +55,11 @@ class TrainTestViewController:
         self._terminal_log_path: Path | None = None
         self._terminal_log_streaming = False
 
-    def set_context(self, project: Mapping[str, Any] | None = None) -> None:
+    def set_context(
+        self,
+        project: Mapping[str, Any] | None = None,
+        preferred_agent_name: str | None = None,
+    ) -> None:
 
         self.raw_project = project
         self.project = (
@@ -58,7 +70,21 @@ class TrainTestViewController:
         )
         self.training_settings = normalize_training_settings(raw_training_settings)
         self.trainer = None
-        self.loaded_agent = None
+        self.tester = None
+
+        if preferred_agent_name:
+            self.set_agent(preferred_agent_name)
+
+        self.loaded_agent = preferred_agent_name
+
+    def set_agent(self, agent_name: str) -> None:
+        """
+        Create and record agent.
+        """
+        tester = self._ensure_tester()
+        if tester is None:
+            return
+        tester.set_agent(load_saved_agent_model(self.project, agent_name))
 
     def navigate_to_home(self, _event=None) -> None:
         """
@@ -163,6 +189,34 @@ class TrainTestViewController:
     def wait_for_training_completion(self, timeout: float | None = None) -> None:
         if self._training_thread is not None:
             self._training_thread.join(timeout)
+
+    def test_agent(self) -> None:
+        """
+        Start testing agent.
+        """
+        try:
+            tester = self._ensure_tester()
+            if tester is None:
+                return
+            tester.test_agent()
+        except ValueError as e:
+            tk.messagebox.showinfo(
+                title="No Agent Selected",
+                message=str(e),
+                icon="warning",
+            )
+
+    def _ensure_tester(self) -> Tester | None:
+        if self.tester is not None:
+            return self.tester
+        if self.project is None:
+            self.view.set_terminal_text("Testing unavailable: no project is loaded.")
+            return None
+
+        from mil_robogym.vairl.tester import Tester
+
+        self.tester = Tester(self.project)
+        return self.tester
 
     def load_selected_agent(self) -> LoadedAgent | None:
         """Load the currently selected saved model as a callable agent."""

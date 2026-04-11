@@ -3,6 +3,7 @@ from __future__ import annotations
 import queue
 import tempfile
 import threading
+from collections.abc import Mapping
 from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,6 +17,14 @@ from mil_robogym.data_collection.types import RoboGymTrainingYaml
 TrainingMetrics = dict[str, list[float]]
 MetricsEventCallback = Callable[[dict[str, object]], None]
 _STOP_WORKER = object()
+_BASE_METRIC_NAMES = (
+    "episode",
+    "reward_mean",
+    "reward_std",
+    "disc_loss",
+    "disc_kl",
+    "disc_beta",
+)
 
 
 class _ModelSaver(Protocol):
@@ -76,16 +85,22 @@ class TrainingMetricsSession:
         reward_mean: float,
         reward_std: float,
         disc_stats: dict[str, float],
+        extra_metrics: Mapping[str, float] | None = None,
     ) -> None:
         """Append one episode of scalar metrics."""
         self._raise_if_failed()
         with self._metrics_lock:
+            previous_episode_count = len(self._metrics["episode"])
             self._metrics["episode"].append(float(episode))
             self._metrics["reward_mean"].append(float(reward_mean))
             self._metrics["reward_std"].append(float(reward_std))
             self._metrics["disc_loss"].append(float(disc_stats["loss"]))
             self._metrics["disc_kl"].append(float(disc_stats["kl"]))
             self._metrics["disc_beta"].append(float(disc_stats["beta"]))
+            self._append_extra_metrics(
+                previous_episode_count=previous_episode_count,
+                extra_metrics=extra_metrics or {},
+            )
 
     def snapshot(self) -> TrainingMetrics:
         """Return an immutable-by-convention copy for background persistence."""
@@ -200,6 +215,24 @@ class TrainingMetricsSession:
     def _reserve_model_path(self, *, agent_name: str, model_file_name: str) -> Path:
         suffix = Path(model_file_name).suffix or ".bin"
         return self._temp_dir_path / f"{agent_name}_{uuid4().hex}{suffix}"
+
+    def _append_extra_metrics(
+        self,
+        *,
+        previous_episode_count: int,
+        extra_metrics: Mapping[str, float],
+    ) -> None:
+        for metric_name, series in self._metrics.items():
+            if metric_name in _BASE_METRIC_NAMES or metric_name in extra_metrics:
+                continue
+            series.append(float("nan"))
+
+        for metric_name, raw_value in extra_metrics.items():
+            if metric_name in _BASE_METRIC_NAMES:
+                continue
+            if metric_name not in self._metrics:
+                self._metrics[metric_name] = [float("nan")] * previous_episode_count
+            self._metrics[metric_name].append(float(raw_value))
 
     def _get_failure(self) -> Exception | None:
         with self._failure_lock:

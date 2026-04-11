@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 Coord4D = tuple[float, float, float, float]
 Coord4DList = list[float]
@@ -23,6 +23,15 @@ class RoboGymTensorSpec(TypedDict):
     output_dim: int
 
 
+SupportedNonNumericDataType = Literal["unordered_set", "image"]
+
+
+class NonNumericTopicFieldSelection(TypedDict):
+    field_path: str
+    data_type: SupportedNonNumericDataType
+    ros_type: str
+
+
 class RandomSpawnSpaceConfig(TypedDict):
     enabled: bool
     coord1_4d: Coord4DList
@@ -36,6 +45,12 @@ class RoboGymProjectYaml(TypedDict):
     random_spawn_space: RandomSpawnSpaceConfig
     input_topics: dict[str, list[str]]
     output_topics: dict[str, list[str]]
+    input_non_numeric_topics: NotRequired[
+        dict[str, list[NonNumericTopicFieldSelection]]
+    ]
+    output_non_numeric_topics: NotRequired[
+        dict[str, list[NonNumericTopicFieldSelection]]
+    ]
     tensor_spec: NotRequired[RoboGymTensorSpec]
 
 

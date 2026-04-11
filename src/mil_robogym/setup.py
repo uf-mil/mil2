@@ -41,7 +41,8 @@ setup(
             "gz_pose_srv = mil_robogym.services.gz_pose:main",
             "data_collector_srv = mil_robogym.services.data_collector:main",
             "keyboard_control_srv = mil_robogym.services.keyboard_control:main",
-            "live_ros_sampling_test = mil_robogym.data_collection.live_ros_sampling_test:main",
+            "live_ros_sampling_test = mil_robogym.data_collection.live_ros_sampling:main",
+            "movement_server = mil_robogym.services.movement_server:main",
         ],
     },
 )

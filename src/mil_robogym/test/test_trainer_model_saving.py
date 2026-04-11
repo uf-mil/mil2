@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import importlib
 import sys
 import types
@@ -40,9 +41,34 @@ class DummyVAIRL:
 
     def __init__(self, *args, **kwargs):
         self.beta = 0.0
+        self.train_gen_calls = 0
+        self.logger = types.SimpleNamespace(
+            default_logger=types.SimpleNamespace(
+                name_to_value={},
+                name_to_count={},
+                name_to_excluded={},
+            ),
+        )
 
     def train_gen(self, total_timesteps: int) -> None:
         self.last_total_timesteps = total_timesteps
+        self.train_gen_calls += 1
+        self.logger.default_logger.name_to_value.update(
+            {
+                "mean/gen/time/fps": 166.0 + self.train_gen_calls,
+                "mean/gen/time/total_timesteps": float(total_timesteps),
+                "mean/gen/train/value_loss": 1.34 + self.train_gen_calls,
+                "mean/gen/train/std": 0.91,
+            },
+        )
+        self.logger.default_logger.name_to_count.update(
+            {
+                "mean/gen/time/fps": 1,
+                "mean/gen/time/total_timesteps": 1,
+                "mean/gen/train/value_loss": 1,
+                "mean/gen/train/std": 1,
+            },
+        )
 
     def train_disc(self, *, expert_samples=None, gen_samples=None) -> dict[str, float]:
         return {"loss": 1.5, "kl": 0.25, "beta": 0.05}
@@ -280,6 +306,28 @@ def test_train_saves_periodic_and_final_checkpoints(tmp_path: Path, monkeypatch)
     )
     assert len(checkpoint_rows) == 3
     assert len(final_rows) == 4
+    assert "gen_time_fps" in checkpoint_rows[0]
+    assert "gen_train_value_loss" in checkpoint_rows[0]
+    with (source_agents[0] / "training_metrics.csv").open(
+        "r",
+        encoding="utf-8",
+        newline="",
+    ) as checkpoint_csv:
+        checkpoint_records = list(csv.DictReader(checkpoint_csv))
+    with (source_agents[1] / "training_metrics.csv").open(
+        "r",
+        encoding="utf-8",
+        newline="",
+    ) as final_csv:
+        final_records = list(csv.DictReader(final_csv))
+    assert checkpoint_records[-1]["gen_time_fps"] == "168.0"
+    assert checkpoint_records[-1]["gen_time_total_timesteps"] == "32.0"
+    assert checkpoint_records[-1]["gen_train_std"] == "0.91"
+    assert checkpoint_records[-1]["gen_train_value_loss"] == "3.34"
+    assert final_records[-1]["gen_time_fps"] == "169.0"
+    assert final_records[-1]["gen_time_total_timesteps"] == "32.0"
+    assert final_records[-1]["gen_train_std"] == "0.91"
+    assert final_records[-1]["gen_train_value_loss"] == "4.34"
 
 
 def test_train_saves_final_checkpoint_when_periodic_saving_disabled(

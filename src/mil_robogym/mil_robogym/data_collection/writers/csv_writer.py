@@ -60,7 +60,7 @@ class AsyncCSVWriter:
         """
         try:
             df = pd.read_csv(self.numerical_state_csv)
-        except pd.errors.EmptyDataError:
+        except (FileNotFoundError, pd.errors.EmptyDataError):
             return {}
 
         state_columns = self.project["tensor_spec"]["input_features"]

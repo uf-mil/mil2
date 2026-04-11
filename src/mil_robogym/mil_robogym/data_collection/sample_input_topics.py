@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import time
 from typing import Any
 
-from .get_ros2_topics import get_ros2_topics
+from .ros_graph import resolve_topics_in_graph
 from .types import RoboGymProjectYaml, SampledTopics
-from .utils import canonical_topic_name, flatten_value
+from .utils import flatten_value
 
 
 def _default_message_as_dict(msg_type: str) -> object:
@@ -43,36 +42,44 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
     return deduped
 
 
-def _build_available_topic_lookup() -> dict[str, str]:
-    try:
-        available_topics = get_ros2_topics()
-    except (RuntimeError, FileNotFoundError) as e:
-        raise RuntimeError(
-            "Failed to list ROS 2 topics before sampling topics.",
-        ) from e
-
-    return {
-        topic_name: topic
-        for topic in available_topics
-        if (topic_name := canonical_topic_name(topic))
-    }
-
-
 def _resolve_topics_in_graph(
     topics: list[str],
     *,
+    timeout_s: float,
     operation: str,
 ) -> list[str]:
-    available_lookup = _build_available_topic_lookup()
-    missing_topics = [
-        topic for topic in topics if canonical_topic_name(topic) not in available_lookup
-    ]
-    if missing_topics:
-        raise RuntimeError(
-            f"Could not {operation} because these topics were not found "
-            f"in the ROS 2 graph: {missing_topics}",
-        )
-    return [available_lookup[canonical_topic_name(topic)] for topic in topics]
+    resolved_topics = resolve_topics_in_graph(
+        topics,
+        timeout_s=timeout_s,
+        operation=operation,
+    )
+    return [resolved_topic for resolved_topic, _topic_types in resolved_topics.values()]
+
+
+def resolve_topic_message_types(
+    topics: list[str],
+    *,
+    timeout_s: float = 2.0,
+) -> dict[str, str]:
+    """
+    Resolve each topic to its ROS 2 message type.
+
+    Returns:
+        Mapping from the original topic string to the resolved message type.
+    """
+    if timeout_s <= 0:
+        raise ValueError("timeout_s must be positive.")
+
+    selected_topics = list(topics)
+    if not selected_topics:
+        return {}
+
+    resolved_topics = resolve_topics_in_graph(
+        selected_topics,
+        timeout_s=timeout_s,
+        operation="resolve topic types",
+    )
+    return {topic: resolved_topics[topic][1][0] for topic in selected_topics}
 
 
 def _collect_topic_messages_once_via_subscriptions(
@@ -208,8 +215,8 @@ def sample_topics(
     Resolve each topic to a ROS 2 message type and return flattened defaults.
 
     Uses:
-        - `get_ros2_topics()` to verify each topic is present
-        - `ros2 topic type <topic>` to resolve the topic message type
+        - `rclpy` graph introspection to verify each topic is present
+        - `Node.get_topic_names_and_types()` to resolve each topic message type
         - ROS 2 message introspection to instantiate default message values
 
     Returns:
@@ -227,53 +234,14 @@ def sample_topics(
     selected_topics = list(topics)
     if not selected_topics:
         return {}
-    resolved_topics = _resolve_topics_in_graph(
+    topic_message_types = resolve_topic_message_types(
         selected_topics,
-        operation="sample topics",
+        timeout_s=timeout_s,
     )
 
     sampled_topics: SampledTopics = {}
-    for topic, resolved_topic in zip(selected_topics, resolved_topics):
-        command = (
-            "ros2",
-            "topic",
-            "type",
-            resolved_topic,
-        )
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=timeout_s,
-            )
-        except FileNotFoundError as e:
-            raise RuntimeError(
-                "No ROS 2 CLI found. Ensure 'ros2' is installed and in PATH.",
-            ) from e
-        except subprocess.TimeoutExpired as e:
-            raise RuntimeError(
-                f"Timed out after {timeout_s}s while resolving type for topic '{resolved_topic}'.",
-            ) from e
-
-        if result.returncode != 0:
-            raise RuntimeError(
-                "Failed to resolve topic type for "
-                f"'{resolved_topic}' with '{' '.join(command)}': {result.stderr.strip()}",
-            )
-
-        if not result.stdout.strip():
-            raise RuntimeError(
-                f"Received empty topic type output for topic '{resolved_topic}'.",
-            )
-
-        msg_type = result.stdout.strip().splitlines()[0].strip()
-        if not msg_type:
-            raise RuntimeError(
-                f"Resolved an invalid topic type for topic '{resolved_topic}'.",
-            )
-
+    for topic in selected_topics:
+        msg_type = topic_message_types[topic]
         parsed = _default_message_as_dict(msg_type)
         flattened: dict[str, object] = {}
         flatten_value(parsed, "", flattened)
@@ -301,6 +269,7 @@ def collect_topic_payloads_once(
         return []
     resolved_topics = _resolve_topics_in_graph(
         selected_topics,
+        timeout_s=timeout_s,
         operation="collect topic payloads",
     )
     return _collect_topic_messages_once_via_subscriptions(

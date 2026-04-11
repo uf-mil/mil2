@@ -83,3 +83,156 @@ def test_edit_project_raises_if_project_missing(tmp_path: Path, monkeypatch):
 
     with pytest.raises(FileNotFoundError, match="Project folder does not exist"):
         edit_project(_project_payload("Missing"))
+
+
+def test_edit_project_preserves_non_numeric_topic_selections(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Writes the new non-numeric topic selection mappings when present."""
+    source_projects = tmp_path / "src" / "mil_robogym" / "projects"
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: source_projects,
+    )
+
+    source_project = source_projects / "typed_topics_project"
+    source_project.mkdir(parents=True)
+    (source_project / "demos").mkdir()
+    (source_project / "config.yaml").write_text(
+        "robogym_project:\n"
+        "  name: Typed Topics Project\n"
+        "  world_file: src/default/world/file\n"
+        "  model_name: weights.pt\n"
+        "  random_spawn_space:\n"
+        "    enabled: false\n"
+        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "  input_topics:\n"
+        "    camera/image_raw: []\n"
+        "  output_topics:\n"
+        "    detections: []\n",
+        encoding="utf-8",
+    )
+
+    updated = _project_payload("Typed Topics Project")
+    updated["input_topics"] = {"camera/image_raw": []}
+    updated["output_topics"] = {"detections": []}
+    updated["input_non_numeric_topics"] = {
+        "camera/image_raw": [
+            {
+                "field_path": "data",
+                "data_type": "image",
+                "ros_type": "sensor_msgs/msg/Image",
+            },
+        ],
+    }
+    updated["output_non_numeric_topics"] = {
+        "detections": [
+            {
+                "field_path": "detections",
+                "data_type": "unordered_set",
+                "ros_type": "sequence<vision_msgs/msg/Detection2D>",
+            },
+        ],
+    }
+
+    edited_dir = edit_project(updated, original_project_name="Typed Topics Project")
+    source_cfg = yaml.safe_load(
+        (edited_dir / "config.yaml").read_text(encoding="utf-8"),
+    )
+
+    assert source_cfg["robogym_project"]["input_non_numeric_topics"] == {
+        "camera/image_raw": [
+            {
+                "field_path": "data",
+                "data_type": "image",
+                "ros_type": "sensor_msgs/msg/Image",
+            },
+        ],
+    }
+    assert source_cfg["robogym_project"]["output_non_numeric_topics"] == {
+        "detections": [
+            {
+                "field_path": "detections",
+                "data_type": "unordered_set",
+                "ros_type": "sequence<vision_msgs/msg/Detection2D>",
+            },
+        ],
+    }
+
+
+def test_edit_project_rejects_topic_changes_when_demos_exist(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Rejects topic edits once a project already has recorded demos."""
+    source_projects = tmp_path / "src" / "mil_robogym" / "projects"
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: source_projects,
+    )
+
+    source_project = source_projects / "locked_project"
+    (source_project / "demos" / "demo_1").mkdir(parents=True)
+    (source_project / "config.yaml").write_text(
+        "robogym_project:\n"
+        "  name: Locked Project\n"
+        "  world_file: src/default/world/file\n"
+        "  model_name: weights.pt\n"
+        "  random_spawn_space:\n"
+        "    enabled: false\n"
+        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "  input_topics:\n"
+        "    imu/processed: [orientation.x]\n"
+        "  output_topics:\n"
+        "    trajectory/4_deg: [yaw]\n",
+        encoding="utf-8",
+    )
+
+    updated = _project_payload("Locked Project")
+    updated["input_topics"] = {"imu/processed": ["orientation.y"]}
+
+    with pytest.raises(
+        ValueError,
+        match="Cannot change project topic selections while demos already exist",
+    ):
+        edit_project(updated, original_project_name="Locked Project")
+
+
+def test_edit_project_allows_non_topic_changes_when_demos_exist(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Allows renames when topic selections stay unchanged, even with demos."""
+    source_projects = tmp_path / "src" / "mil_robogym" / "projects"
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: source_projects,
+    )
+
+    source_project = source_projects / "stable_project"
+    (source_project / "demos" / "demo_1").mkdir(parents=True)
+    (source_project / "config.yaml").write_text(
+        "robogym_project:\n"
+        "  name: Stable Project\n"
+        "  world_file: src/default/world/file\n"
+        "  model_name: weights.pt\n"
+        "  random_spawn_space:\n"
+        "    enabled: false\n"
+        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
+        "  input_topics:\n"
+        "    imu/processed: [orientation.x]\n"
+        "  output_topics:\n"
+        "    trajectory/4_deg: [yaw]\n",
+        encoding="utf-8",
+    )
+
+    updated = _project_payload("Stable Project Renamed")
+
+    edited_dir = edit_project(updated, original_project_name="Stable Project")
+
+    assert edited_dir == source_projects / "stable_project_renamed"
+    assert (edited_dir / "demos" / "demo_1").is_dir()

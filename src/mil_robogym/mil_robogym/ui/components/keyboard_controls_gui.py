@@ -106,7 +106,7 @@ class KeyboardControlsGUI:
 
         self.root.bind("<KeyPress>", self.key_press)
         self.root.bind("<KeyRelease>", self.key_release)
-        self.root.bind("<space>", self._on_close_with_event)
+        self.root.bind("<space>", self._on_close)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.focus_set()
 
@@ -208,16 +208,9 @@ class KeyboardControlsGUI:
         """
         self.root.withdraw()
 
-    def _on_close_with_event(self, _event: tk.Event) -> None:
+    def _on_close(self, _event: tk.Event | None = None) -> None:
         """
         Close with event.
         """
         self.on_close_callback()
         self.hide()
-
-    def _on_close(self) -> None:
-        """
-        Handle window close event.
-        """
-        self.on_close_callback()
-        self.root.destroy()
