@@ -4,7 +4,8 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry, AccelStamped
 
-from
+from msg_from_json import accel_from_json, odom_from_json
+from no_ros_driver import go
 
 class OdomPublisher(Node):
     def __init__(self):
@@ -34,8 +35,13 @@ class OdomPublisher(Node):
         self.odom_abs_pub.publish(odom_from_json(absodom))
         self.accel_pub.publish(accel_from_json(accel))
 
-
     def connect_and_suffer(self):
+        while True:
+            try:
+                go(self.publish_cb)
+            except Exception:
+                traceback.print_exc()
+                time.sleep(1)
 
 
 def main(args=None):
@@ -56,10 +62,4 @@ if __name__ == '__main__':
 
 
 
-while True:
-    try:
-        go()
-    except Exception:
-        traceback.print_exc()
-        time.sleep(1)
 
