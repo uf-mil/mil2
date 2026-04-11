@@ -28,7 +28,7 @@ class OdomPublisher(Node):
         )
 
         self.accel_pub = self.create_publisher(
-            Odometry,
+            AccelStamped,
             '/infix2/accel',
             10
         )
