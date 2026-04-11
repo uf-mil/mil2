@@ -28,6 +28,16 @@ qos_profile.lifespan = Duration(seconds=0)   # 0 = infinite
 qos_profile.deadline = Duration(seconds=0)   # 0 = infinite
 qos_profile.liveliness_lease_duration = Duration(seconds=0)  # infinite
 
+
+# why isn't this just defined by python (say "clip" and i'll find you)
+def clamp(n, min, max):
+    if n < min:
+        return min
+    elif n > max:
+        return max
+    else:
+        return n
+
 class MavrosStartupNode(Node):
     def __init__(self):
         super().__init__('mavros_startup_node')
@@ -70,7 +80,7 @@ class MavrosStartupNode(Node):
             msg.channels[i] = 65535 # this way we respect the non-motor pwm channels
 
         msg.channels[0] = left
-        msg.channels[1] = right
+        msg.channels[2] = right
 
         self._raw_pwm_pub.publish(msg)
 
@@ -82,7 +92,7 @@ class MavrosStartupNode(Node):
 
     def set_mode(self):
         req = SetMode.Request()
-        req.custom_mode = "MANUAL"
+        req.custom_mode = "GUIDED"
 
         future = self.set_mode_client.call_async(req)
         future.add_done_callback(self.set_mode_callback)
@@ -114,7 +124,20 @@ class MavrosStartupNode(Node):
             self.get_logger().error(f"Arming call failed: {e}")
 
     def goto_gps_pos(self):
-        self.send_pwm()
+        P = 20
+        desired_x = 0.0
+        # desired_y = 0.0
+
+        actual_x = self.last_odom.pose.pose.position.x
+        # actual_y = last_odom.pose.pose.position.y
+
+        error = desired_x - actual_x
+
+        pwm_to_send = 1500 + (P*error)
+
+        pwm_to_send = clamp(pwm_to_send, 1100, 1900) # randomly picked these they should be selected based on thruster data sheet
+
+        self.send_pwm(left=pwm_to_send, right=pwm_to_send)
 
 def main(args=None):
     rclpy.init(args=args)
