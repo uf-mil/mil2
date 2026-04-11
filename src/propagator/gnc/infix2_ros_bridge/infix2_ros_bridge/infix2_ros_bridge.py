@@ -5,6 +5,8 @@ from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import AccelStamped
 
+import traceback
+
 from .msg_from_json import accel_from_json, odom_from_json
 from .no_ros_driver import go
 
