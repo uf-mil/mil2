@@ -25,31 +25,38 @@ class _DummyStepsFrame:
 
 class _DummyScrollbar:
     def __init__(self) -> None:
-        self.states: list[str] = []
+        self.actions: list[str] = []
 
-    def configure(self, *, state: str) -> None:
-        self.states.append(state)
+    def pack(self, **_kwargs) -> None:
+        self.actions.append("show")
+
+    def pack_forget(self) -> None:
+        self.actions.append("hide")
 
 
-def test_steps_section_disables_scrollbar_when_steps_fit() -> None:
+def test_steps_section_hides_scrollbar_when_steps_fit() -> None:
     section = StepsSection.__new__(StepsSection)
     section.canvas = _DummyCanvas(height=240)
     section.steps_frame = _DummyStepsFrame(requested_height=180)
     section.scrollbar = _DummyScrollbar()
+    section._scrollbar_visible = True
 
     section._update_scrollbar_state()
 
     assert section.canvas.yview_positions == [0.0]
-    assert section.scrollbar.states == ["disabled"]
+    assert section.scrollbar.actions == ["hide"]
+    assert section._scrollbar_visible is False
 
 
-def test_steps_section_enables_scrollbar_when_steps_overflow() -> None:
+def test_steps_section_shows_scrollbar_when_steps_overflow() -> None:
     section = StepsSection.__new__(StepsSection)
     section.canvas = _DummyCanvas(height=240)
     section.steps_frame = _DummyStepsFrame(requested_height=420)
     section.scrollbar = _DummyScrollbar()
+    section._scrollbar_visible = False
 
     section._update_scrollbar_state()
 
     assert section.canvas.yview_positions == []
-    assert section.scrollbar.states == ["normal"]
+    assert section.scrollbar.actions == ["show"]
+    assert section._scrollbar_visible is True
