@@ -6,7 +6,7 @@ from .ros_graph import query_topics_in_graph
 from .sample_input_topics import collect_resolved_topic_payloads_once
 from .types import RoboGymProjectYaml
 
-DEFAULT_TOPIC_READINESS_TIMEOUT_S = 5.0
+DEFAULT_TOPIC_READINESS_TIMEOUT_S = 2.0
 
 
 @dataclass(frozen=True)
