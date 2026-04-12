@@ -42,13 +42,24 @@ class Header(tk.Frame):
         )
         self.demo_title.pack(side="left", padx=(6, 0))
 
+        self.actions_frame = tk.Frame(self, bg="#DADADA")
+        self.actions_frame.grid(row=0, column=1, sticky="e")
+
+        self.new_demo_btn = tk.Button(
+            self.actions_frame,
+            text="New Demo",
+            width=10,
+            command=controller.show_create_demo,
+        )
+        self.new_demo_btn.pack(side="left", padx=(0, 8))
+
         self.edit_btn = tk.Button(
-            self,
+            self.actions_frame,
             text="Edit",
             width=8,
             command=controller.show_edit_demo,
         )
-        self.edit_btn.grid(row=0, column=1, sticky="e")
+        self.edit_btn.pack(side="left")
 
         self.subtitle = tk.Label(
             parent,
