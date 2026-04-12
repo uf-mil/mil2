@@ -10,6 +10,10 @@ from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.set_pose_client import SetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
 from mil_robogym.data_collection.filesystem import edit_demo
+from mil_robogym.data_collection.topic_readiness import (
+    DEFAULT_TOPIC_READINESS_TIMEOUT_S,
+    ensure_project_input_topics_ready,
+)
 from mil_robogym.data_collection.types import (
     Coord4D,
     RoboGymDemoYaml,
@@ -70,9 +74,6 @@ class DemoViewController:
 
             # Create and start services
             self.csv_writer = AsyncCSVWriter(self.project, self.demo)
-            self.data_collector.establish_subscriptions(
-                list(self.project["input_topics"].keys()),
-            )
 
             # Configure UI Components
             self.view.header.project_title.config(text=f"{self.project['name']} >")
@@ -152,6 +153,15 @@ class DemoViewController:
         """
         Starts recording steps.
         """
+        self.view.controls.play_button.config(state=tk.DISABLED)
+        self.view.steps.set_status_message("Checking input topics and publishers...")
+        self.view.update_idletasks()
+
+        if not self._ensure_recording_topics_ready():
+            self.view.steps.set_status_message("")
+            self.view.controls.play_button.config(state=tk.NORMAL)
+            return
+
         # Place sub in last position recorded
         if self.last_pose:
             x, y, z, yaw = self.last_pose
@@ -180,12 +190,38 @@ class DemoViewController:
 
         # Start sampling asynchronously
         self.is_recording = True
+        self.view.steps.set_status_message("")
 
         # Delay sampling if mid session
         if len(self.view.steps.steps) > 1:
             self.view.after(self.delay, self._schedule_next_sample)
         else:
             self._schedule_next_sample()
+
+    def _ensure_recording_topics_ready(self) -> bool:
+        if not self.project:
+            messagebox.showerror(
+                "Play Demo",
+                "Recording unavailable: no project is loaded.",
+            )
+            return False
+
+        try:
+            ensure_project_input_topics_ready(
+                self.project,
+                timeout_s=DEFAULT_TOPIC_READINESS_TIMEOUT_S,
+                operation="start or continue recording",
+                start_simulation=True,
+            )
+            self.data_collector.ensure_subscriptions(
+                list(self.project["input_topics"].keys()),
+                operation="prepare data collector subscriptions for recording",
+            )
+        except RuntimeError as exc:
+            messagebox.showerror("Play Demo", str(exc))
+            return False
+
+        return True
 
     def pause_recording(self) -> None:
         """

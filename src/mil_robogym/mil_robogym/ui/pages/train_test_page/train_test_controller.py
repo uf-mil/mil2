@@ -18,6 +18,10 @@ from mil_robogym.data_collection.load_saved_agent import (
     LoadedAgent,
     load_saved_agent_model,
 )
+from mil_robogym.data_collection.topic_readiness import (
+    DEFAULT_TOPIC_READINESS_TIMEOUT_S,
+    ensure_project_input_topics_ready,
+)
 from mil_robogym.data_collection.types import RoboGymProjectYaml
 from mil_robogym.vairl.trainer import Trainer
 from mil_robogym.vairl.training_settings import normalize_training_settings
@@ -123,11 +127,16 @@ class TrainTestViewController:
         """
         Start training loop.
         """
-        if self.project is None:
+        if not self.project:
             self.view.set_terminal_text("Training unavailable: no project is loaded.")
             return
         if self.is_training_running():
             self.view.set_terminal_text("Training is already running.")
+            return
+        if not self._ensure_project_topics_ready(
+            operation="start training",
+            status_message="Checking project input topics before training...",
+        ):
             return
 
         self._start_terminal_log_capture()
@@ -198,6 +207,15 @@ class TrainTestViewController:
             tester = self._ensure_tester()
             if tester is None:
                 return
+            if not self._ensure_project_topics_ready(
+                operation="start testing",
+                status_message="Checking project input topics before testing...",
+            ):
+                return
+            tester.data_collector_client.ensure_subscriptions(
+                list(self.project["input_topics"].keys()),
+                operation="prepare data collector subscriptions for testing",
+            )
             tester.test_agent()
         except ValueError as e:
             tk.messagebox.showinfo(
@@ -205,11 +223,13 @@ class TrainTestViewController:
                 message=str(e),
                 icon="warning",
             )
+        except RuntimeError as e:
+            self.view.set_terminal_text(str(e))
 
     def _ensure_tester(self) -> Tester | None:
         if self.tester is not None:
             return self.tester
-        if self.project is None:
+        if not self.project:
             self.view.set_terminal_text("Testing unavailable: no project is loaded.")
             return None
 
@@ -217,6 +237,34 @@ class TrainTestViewController:
 
         self.tester = Tester(self.project)
         return self.tester
+
+    def _ensure_project_topics_ready(
+        self,
+        *,
+        operation: str,
+        status_message: str,
+    ) -> bool:
+        if not self.project:
+            self.view.set_terminal_text(
+                f"{operation.capitalize()} unavailable: no project is loaded.",
+            )
+            return False
+
+        self.view.set_terminal_text(status_message)
+        self.view.flush_ui_updates()
+
+        try:
+            ensure_project_input_topics_ready(
+                self.project,
+                timeout_s=DEFAULT_TOPIC_READINESS_TIMEOUT_S,
+                operation=operation,
+                start_simulation=True,
+            )
+        except RuntimeError as e:
+            self.view.set_terminal_text(str(e))
+            return False
+
+        return True
 
     def load_selected_agent(self) -> LoadedAgent | None:
         """Load the currently selected saved model as a callable agent."""

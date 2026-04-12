@@ -42,6 +42,26 @@ class DataCollectorClient(Node):
 
         return future.result()
 
+    def ensure_subscriptions(
+        self,
+        topics: list[str],
+        *,
+        operation: str = "establish data collector subscriptions",
+    ) -> EstablishSubscriptions.Response:
+        response = self.establish_subscriptions(topics)
+        if response is None:
+            raise RuntimeError(
+                f"Failed to {operation}: data collector service returned no response.",
+            )
+
+        failed_topics = list(response.failed_topics)
+        if failed_topics:
+            raise RuntimeError(
+                f"Failed to {operation}: topics not found in the ROS 2 graph: {failed_topics}",
+            )
+
+        return response
+
     def get_snapshot(self):
 
         req = GetSnapshot.Request()
