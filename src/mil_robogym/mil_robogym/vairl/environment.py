@@ -153,7 +153,8 @@ class Environment(gym.Env):
                     self.project,
                 )
                 self.state = interpret_state_data(
-                    self.state, self.external_architecture,
+                    self.state,
+                    self.external_architecture,
                 )
         else:
             return np.zeros(self.input_size), {}
