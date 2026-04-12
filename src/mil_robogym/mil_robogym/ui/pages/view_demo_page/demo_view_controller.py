@@ -1,5 +1,7 @@
 import json
+import time
 import tkinter as tk
+from contextlib import suppress
 from tkinter import messagebox
 from typing import Any
 
@@ -46,6 +48,9 @@ class DemoViewController:
         self.is_recording = False
         self.last_pose = None
         self.delay = -1
+        self.sample_period_s = 0.0
+        self._countdown_after_id: str | None = None
+        self._next_sample_deadline_s: float | None = None
 
         self.get_pose_client = GetPoseClient()
         self.set_pose_client = SetPoseClient()
@@ -70,7 +75,7 @@ class DemoViewController:
 
         if self.project and self.demo:
 
-            self.delay = int((1.0 / self.demo["sampling_rate"]) * 1000)
+            self._set_sampling_interval(float(self.demo["sampling_rate"]))
 
             # Create and start services
             self.csv_writer = AsyncCSVWriter(self.project, self.demo)
@@ -123,6 +128,7 @@ class DemoViewController:
             self.set_pose_client.set_pose(x, y, z, yaw=yaw)
 
     def navigate_to_home(self, _event: tk.Event | None = None) -> None:
+        self._clear_sample_countdown()
 
         # Check if pose index is not last and override data
         if self.view.steps.current_pose_index != len(self.view.steps.steps) - 1:
@@ -133,6 +139,7 @@ class DemoViewController:
         self.app.show_page("start")
 
     def navigate_to_project(self, _event: tk.Event | None = None) -> None:
+        self._clear_sample_countdown()
 
         # Check if pose index is not last and override data
         if self.view.steps.current_pose_index != len(self.view.steps.steps) - 1:
@@ -153,6 +160,7 @@ class DemoViewController:
         """
         Starts recording steps.
         """
+        self._clear_sample_countdown()
         self.view.controls.play_button.config(state=tk.DISABLED)
         self.view.steps.set_status_message("Checking input topics and publishers...")
         self.view.update_idletasks()
@@ -194,6 +202,7 @@ class DemoViewController:
 
         # Delay sampling if mid session
         if len(self.view.steps.steps) > 1:
+            self._schedule_sample_countdown(self.sample_period_s)
             self.view.after(self.delay, self._schedule_next_sample)
         else:
             self._schedule_next_sample()
@@ -227,6 +236,8 @@ class DemoViewController:
         """
         Pauses the recording of steps.
         """
+        self._clear_sample_countdown()
+
         # Pause the gazebo environment
         self.world_control_client.pause_simulation()
 
@@ -384,6 +395,7 @@ class DemoViewController:
             edit_demo(self.project, demo, original_demo_name=self.demo["name"])
 
             self.demo = demo
+            self._set_sampling_interval(sampling_rate)
 
             self.view.header.demo_title.config(text=name)
             self.view.header.subtitle.config(
@@ -406,6 +418,8 @@ class DemoViewController:
         """
         Resets all recorded data of a demo.
         """
+        self._clear_sample_countdown()
+
         # Clear collected data
         self.csv_writer.clear_all_data()
 
@@ -432,9 +446,8 @@ class DemoViewController:
         Schedule the next sampling event.
         """
         if self.is_recording:
-
             self._record_step()
-
+            self._schedule_sample_countdown(self.sample_period_s)
             self.view.after(self.delay, self._schedule_next_sample)
 
     def _record_step(self) -> None:
@@ -489,6 +502,8 @@ class DemoViewController:
         """
         Save coordinate for the start position of the model.
         """
+        self._clear_sample_countdown()
+
         coordinate = coordinates[0]
 
         if coordinate is None:
@@ -516,5 +531,54 @@ class DemoViewController:
         self.view.controls.play_button.config(state=tk.NORMAL)
 
     def _clean_components(self) -> None:
+        self._clear_sample_countdown()
         self.view.header.destroy()
         self.view.content.destroy()
+
+    def _set_sampling_interval(self, sampling_rate: float) -> None:
+        self.sample_period_s = 1.0 / sampling_rate
+        self.delay = int(self.sample_period_s * 1000)
+
+    def _countdown_enabled(self) -> bool:
+        return self.sample_period_s > 1.0
+
+    def _schedule_sample_countdown(self, delay_s: float) -> None:
+        if not self.is_recording or not self._countdown_enabled():
+            self._clear_sample_countdown()
+            return
+
+        self._next_sample_deadline_s = time.monotonic() + delay_s
+        self._update_sample_countdown()
+
+    def _update_sample_countdown(self) -> None:
+        self._countdown_after_id = None
+
+        if (
+            not self.is_recording
+            or not self._countdown_enabled()
+            or self._next_sample_deadline_s is None
+        ):
+            self._clear_sample_countdown()
+            return
+
+        remaining_s = self._next_sample_deadline_s - time.monotonic()
+        if remaining_s <= 0:
+            self.view.steps.set_countdown_message("Recording next step...")
+        else:
+            self.view.steps.set_countdown_message(
+                f"Next step in {remaining_s:.1f}s",
+            )
+
+        self._countdown_after_id = self.view.after(
+            100,
+            self._update_sample_countdown,
+        )
+
+    def _clear_sample_countdown(self) -> None:
+        if self._countdown_after_id is not None:
+            with suppress(Exception):
+                self.view.after_cancel(self._countdown_after_id)
+        self._countdown_after_id = None
+        self._next_sample_deadline_s = None
+        if hasattr(self.view, "steps"):
+            self.view.steps.set_countdown_message("")

@@ -80,16 +80,31 @@ class StepsSection(tk.Frame):
         self.current_pose_index = -1
         self.selected_index = -1
         self.last_pose = None
+        self._scrollbar_visible = False
 
         self.grid_propagate(False)
 
-        tk.Label(
-            self,
+        self.header_row = tk.Frame(self, bg="#CFCFCF")
+        self.header_row.pack(fill="x", padx=8, pady=(8, 4))
+
+        self.title_label = tk.Label(
+            self.header_row,
             text="Steps",
             bg="#CFCFCF",
             font=("Arial", 12, "bold"),
             anchor="w",
-        ).pack(fill="x", padx=8, pady=(8, 4))
+        )
+        self.title_label.pack(side="left")
+
+        self.countdown_label = tk.Label(
+            self.header_row,
+            text="",
+            bg="#CFCFCF",
+            fg="#4A4A4A",
+            font=("Arial", 9),
+            anchor="e",
+        )
+        self.countdown_label.pack(side="right")
 
         self.status_label = tk.Label(
             self,
@@ -110,7 +125,7 @@ class StepsSection(tk.Frame):
         self.canvas.pack(side="left", fill="both", expand=True)
 
         self.scrollbar = tk.Scrollbar(self, command=self.canvas.yview)
-        self.scrollbar.pack(side="right", fill="y")
+        self._show_scrollbar()
 
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
@@ -159,10 +174,14 @@ class StepsSection(tk.Frame):
         self.steps = []
         self.current_pose_index = -1
         self.set_status_message("")
+        self.set_countdown_message("")
         self.after_idle(self._update_scrollbar_state)
 
     def set_status_message(self, message: str) -> None:
         self.status_label.config(text=message)
+
+    def set_countdown_message(self, message: str) -> None:
+        self.countdown_label.config(text=message)
 
     def refresh_display(self) -> None:
 
@@ -222,10 +241,22 @@ class StepsSection(tk.Frame):
 
         if content_height <= viewport_height:
             self.canvas.yview_moveto(0.0)
-            self.scrollbar.configure(state=tk.DISABLED)
+            self._hide_scrollbar()
             return
 
-        self.scrollbar.configure(state=tk.NORMAL)
+        self._show_scrollbar()
+
+    def _show_scrollbar(self) -> None:
+        if self._scrollbar_visible:
+            return
+        self.scrollbar.pack(side="right", fill="y")
+        self._scrollbar_visible = True
+
+    def _hide_scrollbar(self) -> None:
+        if not self._scrollbar_visible:
+            return
+        self.scrollbar.pack_forget()
+        self._scrollbar_visible = False
 
     def _handle_mouse_wheel(self, units: int) -> bool:
         return scroll_canvas(self.canvas, units)
