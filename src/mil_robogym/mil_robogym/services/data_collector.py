@@ -1,4 +1,5 @@
 import json
+from contextlib import suppress
 
 import rclpy
 from mil_msgs.srv import EstablishSubscriptions, GetSnapshot
@@ -46,9 +47,11 @@ class DataCollectorService(Node):
 
         # Find the union between existing subscribers and request and delete those that are not required.
         union_topics = set(request.topics) & set(self.subscribers)
-        for topic in self.subscribers:
+        for topic in list(self.subscribers):
             if topic not in union_topics:
-                del self.subscribers[topic]
+                subscription = self.subscribers.pop(topic)
+                with suppress(Exception):
+                    self.destroy_subscription(subscription)
 
         for topic in request.topics:
 

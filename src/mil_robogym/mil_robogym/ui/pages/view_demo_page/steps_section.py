@@ -91,6 +91,16 @@ class StepsSection(tk.Frame):
             anchor="w",
         ).pack(fill="x", padx=8, pady=(8, 4))
 
+        self.status_label = tk.Label(
+            self,
+            text="",
+            bg="#CFCFCF",
+            fg="#4A4A4A",
+            font=("Arial", 9),
+            anchor="w",
+        )
+        self.status_label.pack(fill="x", padx=8, pady=(0, 6))
+
         self.canvas = tk.Canvas(
             self,
             bg="#CFCFCF",
@@ -148,7 +158,11 @@ class StepsSection(tk.Frame):
 
         self.steps = []
         self.current_pose_index = -1
+        self.set_status_message("")
         self.after_idle(self._update_scrollbar_state)
+
+    def set_status_message(self, message: str) -> None:
+        self.status_label.config(text=message)
 
     def refresh_display(self) -> None:
 
