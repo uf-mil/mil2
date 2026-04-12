@@ -58,6 +58,13 @@ class DeepSet(nn.Module):
         m: number of objects in each unordered set
         n: feature size of object determined by convert_object_to_tensor
         """
+        # Handle completely empty input early
+        if len(x) == 0:
+            # Treat as single empty set: [m=0, n=input_dim]
+            pooled = torch.zeros(self.nested_network[-2].out_features)
+            out = self.outer_network(pooled)
+            return out.view(self.output_shape)
+
         # Convert raw input into tensor
         x_transformed = [self.convert_object_to_tensor(obj) for obj in x]
 

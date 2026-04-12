@@ -1,9 +1,9 @@
 import csv
+import json
 import queue
 import threading
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from ..filesystem import get_demo_dir_path
@@ -131,7 +131,7 @@ class AsyncCSVWriter:
             if not topic_dir.exists():
                 continue
 
-            files = sorted(topic_dir.glob("data_*.npy"))
+            files = sorted(topic_dir.glob("data_*.json"))
 
             if i_row is None:
                 # Delete everything
@@ -327,9 +327,10 @@ class AsyncCSVWriter:
                 data = state_features.get(name)
 
                 index = self.abstract_data_counters[name]
-                file_path = topic_dir / f"data_{index}.npy"
+                file_path = topic_dir / f"data_{index}.json"
 
-                np.save(file_path, np.array(data, dtype=object))
+                with open(file_path, "w") as f:
+                    json.dump(data, f)
 
                 self.abstract_data_counters[name] += 1
 

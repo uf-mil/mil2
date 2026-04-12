@@ -101,9 +101,11 @@ class DataCollectorClient(Node):
                 img_msgs,
                 input_features,
             )
-            flattened_data = [filtered_data[key] for key in input_features]
 
-        raise Exception(flattened_data)
+            if len(filtered_data) != len(input_features):
+                return []
+
+            flattened_data = [filtered_data[key] for key in input_features]
 
         return flattened_data
 

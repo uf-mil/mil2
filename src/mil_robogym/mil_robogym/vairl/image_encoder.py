@@ -109,12 +109,15 @@ class CNNEncoder(nn.Module):
         return image
 
     def forward(self, image: np.ndarray) -> torch.Tensor:
-        # Convert image to tensor
-        image = torch.from_numpy(image).float()
-        image = image.permute(2, 0, 1)  # (C, H, W)
+        # Convert to tensor
+        image = torch.as_tensor(image, dtype=torch.float32)
 
-        # Normalize
-        image = image / 255.0
+        # Handle single vs batch
+        if image.ndim == 3:  # (H, W, C)
+            image = image.permute(2, 0, 1)  # (C, H, W)
+
+        elif image.ndim == 4:  # (B, H, W, C)
+            image = image.permute(0, 3, 1, 2)  # → (B, C, H, W)
 
         image = self._prepare_input(image)
         features = self.backbone(image)

@@ -144,10 +144,21 @@ class Environment(gym.Env):
         )
         self.state = interpret_state_data(self.state, self.external_architecture)
 
-        if GYMNASIUM:
-            return self.state.copy(), {}
+        if not self.state and hasattr(self, "data_collector"):
+            while not self.state:
+                self.data_collector.get_logger().warn(
+                    "Unable to retrieve state, trying again...",
+                )
+                self.state = self.data_collector_client.get_flattened_snapshot_values(
+                    self.project,
+                )
+                self.state = interpret_state_data(
+                    self.state, self.external_architecture,
+                )
+        else:
+            return np.zeros(self.input_size), {}
 
-        return np.array(self.state.copy())
+        return self.state.copy(), {}
 
     def step(self, action):
         """

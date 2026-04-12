@@ -1,3 +1,5 @@
+import json
+from collections import OrderedDict
 from pathlib import Path
 
 import cv2
@@ -115,9 +117,9 @@ def load_file(path, device="cpu") -> np.ndarray:  # TODO: Pass in correct device
 
         return img
 
-    elif path.endswith(".npy"):
-
-        return np.load(path)
+    elif path.endswith(".json"):
+        with open(path) as f:
+            return json.load(f, object_pairs_hook=OrderedDict)
 
     else:
         raise ValueError(f"Unsupported file type: {path}")
@@ -152,7 +154,15 @@ def interpret_state_data(
 
         index += 1
 
-    return state
+    flattened_state = []
+
+    for item in state:
+        if isinstance(item, (list, tuple, np.ndarray)):
+            flattened_state.extend(item)
+        else:
+            flattened_state.append(item)
+
+    return flattened_state
 
 
 def interpret_abstract_data(
@@ -211,8 +221,13 @@ def interpret_abstract_data(
 
         # Batch inference
         if len(loaded_data) > 0:
-            batch = torch.stack(loaded_data)
-            embeddings = model(batch)
+            try:
+                batch = np.stack(loaded_data)
+            except:
+                raise Exception(loaded_data)
+
+            with torch.no_grad():
+                embeddings = model(batch)
 
             # Store in cache
             for path, emb in zip(valid_paths, embeddings):
