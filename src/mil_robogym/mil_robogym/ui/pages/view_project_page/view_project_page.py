@@ -10,6 +10,7 @@ from mil_robogym.data_collection.filesystem import get_demo_dir_path
 from mil_robogym.data_collection.get_all_demo_config import get_all_demo_config
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
 from mil_robogym.ui.components.create_demo_popup import CreateDemoPopup
+from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 
 class ViewProjectPage(tk.Frame):
@@ -90,7 +91,7 @@ class ViewProjectPage(tk.Frame):
             cursor="hand2",
         ).grid(row=0, column=1, sticky="e")
 
-        self._list_area = tk.Frame(self, bg="#DADADA")
+        self._list_area = ScrollableFrame(self, bg="#DADADA", fill_height=True)
         self._list_area.grid(
             row=1,
             column=0,
@@ -99,7 +100,7 @@ class ViewProjectPage(tk.Frame):
             padx=14,
             pady=(0, 8),
         )
-        self._list_area.grid_columnconfigure(0, weight=1)
+        self._list_area.content.grid_columnconfigure(0, weight=1)
 
         self._render_demo_rows()
 
@@ -193,6 +194,7 @@ class ViewProjectPage(tk.Frame):
 
         self._page_title.configure(text=self.project_name)
         self._render_demo_rows()
+        self._reset_demo_list_scroll()
 
     def _safe_get_project_by_name(self, name: str) -> dict[str, Any] | None:
         """
@@ -233,12 +235,12 @@ class ViewProjectPage(tk.Frame):
         """
         Render the list of demo rows for the active project.
         """
-        for child in self._list_area.winfo_children():
+        for child in self._list_area.content.winfo_children():
             child.destroy()
 
         if self._num_demos <= 0:
             tk.Label(
-                self._list_area,
+                self._list_area.content,
                 text="No demos found.",
                 bg="#DADADA",
                 fg="#444444",
@@ -250,7 +252,7 @@ class ViewProjectPage(tk.Frame):
         for index, (demo_name, demo) in enumerate(self._demos.items()):
             step_count = self._get_demo_step_count(demo)
             row = tk.Frame(
-                self._list_area,
+                self._list_area.content,
                 bg="#ECECEC",
                 bd=1,
                 relief="solid",
@@ -337,6 +339,10 @@ class ViewProjectPage(tk.Frame):
                 widget.bind("<Button-1>", on_click)
                 widget.bind("<Enter>", on_enter)
                 widget.bind("<Leave>", on_leave)
+
+    def _reset_demo_list_scroll(self) -> None:
+        if hasattr(self, "_list_area"):
+            self._list_area.reset_scroll()
 
     def _get_demo_step_count(self, demo: Mapping[str, Any]) -> int:
         """Return number of steps as (actions CSV rows - header row)."""
@@ -444,3 +450,4 @@ class ViewProjectPage(tk.Frame):
         self._demo_names = list(self._safe_get_demo_names(self.project_name))
         self._num_demos = len(self._demo_names)
         self._render_demo_rows()
+        self._reset_demo_list_scroll()

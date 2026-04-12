@@ -2,6 +2,10 @@ import tkinter as tk
 from typing import Callable
 
 from mil_robogym.data_collection.types import Coord4D
+from mil_robogym.ui.components.mouse_wheel import (
+    get_mouse_wheel_router,
+    scroll_canvas,
+)
 
 
 class Step(tk.Frame):
@@ -93,21 +97,26 @@ class StepsSection(tk.Frame):
             highlightthickness=0,
             width=260,
         )
-        self.canvas.pack(side="left", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
 
-        scrollbar = tk.Scrollbar(self, command=self.canvas.yview)
-        scrollbar.pack(side="right", fill="y")
+        self.scrollbar = tk.Scrollbar(self, command=self.canvas.yview)
+        self.scrollbar.pack(side="right", fill="y")
 
-        self.canvas.configure(yscrollcommand=scrollbar.set)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
         self.steps_frame = tk.Frame(self.canvas, bg="#CFCFCF")
-        self.canvas.create_window((0, 0), window=self.steps_frame, anchor="nw")
+        self._steps_window = self.canvas.create_window(
+            (0, 0),
+            window=self.steps_frame,
+            anchor="nw",
+        )
 
-        self.steps_frame.bind(
-            "<Configure>",
-            lambda _: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all"),
-            ),
+        self.steps_frame.bind("<Configure>", self._on_steps_frame_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        self._mouse_wheel_router = get_mouse_wheel_router(self)
+        self._mouse_wheel_binding = self._mouse_wheel_router.register(
+            self,
+            self._handle_mouse_wheel,
         )
 
     def add_step(self, coordinate: Coord4D, is_origin: bool = False) -> None:
@@ -139,6 +148,7 @@ class StepsSection(tk.Frame):
 
         self.steps = []
         self.current_pose_index = -1
+        self.after_idle(self._update_scrollbar_state)
 
     def refresh_display(self) -> None:
 
@@ -181,3 +191,27 @@ class StepsSection(tk.Frame):
         )
 
         self.selected_index = index
+
+    def _on_steps_frame_configure(self, _event: tk.Event | None = None) -> None:
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self._update_scrollbar_state()
+
+    def _on_canvas_configure(self, event: tk.Event) -> None:
+        self.canvas.itemconfigure(self._steps_window, width=event.width)
+        self._update_scrollbar_state()
+
+    def _update_scrollbar_state(self) -> None:
+        content_height = self.steps_frame.winfo_reqheight()
+        viewport_height = self.canvas.winfo_height()
+        if viewport_height <= 1:
+            return
+
+        if content_height <= viewport_height:
+            self.canvas.yview_moveto(0.0)
+            self.scrollbar.configure(state=tk.DISABLED)
+            return
+
+        self.scrollbar.configure(state=tk.NORMAL)
+
+    def _handle_mouse_wheel(self, units: int) -> bool:
+        return scroll_canvas(self.canvas, units)

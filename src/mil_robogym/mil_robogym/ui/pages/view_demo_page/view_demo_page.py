@@ -1,6 +1,8 @@
 import tkinter as tk
 from typing import Any
 
+from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
+
 from .collected_data_section import CollectedDataSection
 from .controls_section import ControlsSection
 from .demo_view_controller import DemoViewController
@@ -29,21 +31,22 @@ class ViewDemoPage(tk.Frame):
         self.header.subtitle.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 8))
 
         # Content
-        self.content = tk.Frame(self, bg="#DADADA")
+        self.content = ScrollableFrame(self, bg="#DADADA", fill_height=True)
         self.content.grid(row=2, column=0, sticky="nsew", padx=14)
-        self.content.grid_rowconfigure(0, weight=1)
-        self.content.grid_columnconfigure(1, weight=1)
+        self.content.content.grid_rowconfigure(0, weight=1)
+        self.content.content.grid_columnconfigure(1, weight=1)
 
         # Steps section
-        self.steps = StepsSection(self.content, self.controller)
+        self.steps = StepsSection(self.content.content, self.controller)
         self.steps.grid(row=0, column=0, sticky="nsw", padx=(0, 10))
 
         # Data collected section
-        self.data_section = CollectedDataSection(self.content)
+        self.data_section = CollectedDataSection(self.content.content)
 
         # Controls
         self.controls = ControlsSection(self, self.controller)
         self.controls.grid(row=3, column=0, sticky="ew", padx=14, pady=(6, 14))
 
     def set_context(self, project: dict[str, Any] | None = None, **kwargs: Any):
+        self.content.reset_scroll()
         self.controller.set_context(project, demo=kwargs.get("demo", {}))
