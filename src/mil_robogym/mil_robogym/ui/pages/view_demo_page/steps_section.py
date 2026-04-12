@@ -20,9 +20,10 @@ class Step(tk.Frame):
         coordinate: Coord4D,
         is_origin: bool,
     ):
+        self._base_bg = "#C0C0C0" if is_origin else "#E6E6E6"
         super().__init__(
             parent,
-            bg="#C0C0C0" if is_origin else "#E6E6E6",
+            bg=self._base_bg,
             bd=1,
             relief="solid",
             highlightthickness=0,
@@ -39,7 +40,7 @@ class Step(tk.Frame):
         self.label = tk.Label(
             self,
             text=text,
-            bg="#C0C0C0" if is_origin else "#E6E6E6",
+            bg=self._base_bg,
             font=("Courier", 8),
         )
         self.label.pack(
@@ -63,8 +64,8 @@ class Step(tk.Frame):
         self.label.config(bg="#C6E1F6")
 
     def default_color(self):
-        self.config(bg="#E6E6E6")
-        self.label.config(bg="#E6E6E6")
+        self.config(bg=self._base_bg)
+        self.label.config(bg=self._base_bg)
 
 
 class StepsSection(tk.Frame):
@@ -86,6 +87,7 @@ class StepsSection(tk.Frame):
 
         self.header_row = tk.Frame(self, bg="#CFCFCF")
         self.header_row.pack(fill="x", padx=8, pady=(8, 4))
+        self.header_row.grid_columnconfigure(1, weight=1)
 
         self.title_label = tk.Label(
             self.header_row,
@@ -94,7 +96,24 @@ class StepsSection(tk.Frame):
             font=("Arial", 12, "bold"),
             anchor="w",
         )
-        self.title_label.pack(side="left")
+        self.title_label.grid(row=0, column=0, sticky="w")
+
+        self.play_sequence_button = tk.Button(
+            self.header_row,
+            text="▶",
+            command=self.controller.toggle_sequence_playback,
+            state=tk.DISABLED,
+            bg="#ECECEC",
+            activebackground="#DFDFDF",
+            fg="black",
+            relief="solid",
+            bd=1,
+            font=("Arial", 9, "bold"),
+            padx=6,
+            pady=0,
+            cursor="hand2",
+        )
+        self.play_sequence_button.grid(row=0, column=2, sticky="e")
 
         self.countdown_label = tk.Label(
             self.header_row,
@@ -104,7 +123,7 @@ class StepsSection(tk.Frame):
             font=("Arial", 9),
             anchor="e",
         )
-        self.countdown_label.pack(side="right")
+        self.countdown_label.grid(row=0, column=1, sticky="e", padx=(12, 8))
 
         self.status_label = tk.Label(
             self,
@@ -156,7 +175,7 @@ class StepsSection(tk.Frame):
 
         step = Step(
             self.steps_frame,
-            lambda _, i=index, c=coordinate: self._select_step(i, c),
+            lambda _, i=index: self.controller.select_step(i),
             coordinate,
             is_origin,
         )
@@ -173,8 +192,10 @@ class StepsSection(tk.Frame):
 
         self.steps = []
         self.current_pose_index = -1
+        self.selected_index = -1
         self.set_status_message("")
         self.set_countdown_message("")
+        self.set_play_sequence_button_state(enabled=False, is_playing=False)
         self.after_idle(self._update_scrollbar_state)
 
     def set_status_message(self, message: str) -> None:
@@ -182,6 +203,17 @@ class StepsSection(tk.Frame):
 
     def set_countdown_message(self, message: str) -> None:
         self.countdown_label.config(text=message)
+
+    def set_play_sequence_button_state(
+        self,
+        *,
+        enabled: bool,
+        is_playing: bool,
+    ) -> None:
+        self.play_sequence_button.config(
+            text="■" if is_playing else "▶",
+            state=tk.NORMAL if enabled else tk.DISABLED,
+        )
 
     def refresh_display(self) -> None:
 
@@ -203,19 +235,26 @@ class StepsSection(tk.Frame):
         if self.steps:
             return self.steps[self.current_pose_index].coordinate
 
+    def get_step_coordinate(self, index: int) -> Coord4D | None:
+
+        if 0 <= index < len(self.steps):
+            return self.steps[index].coordinate
+
+        return None
+
     def move_highlight(self, from_i: int, to_i: int) -> None:
 
         self.steps[from_i].default_color()
         self.steps[to_i].highlight()
 
-    def _select_step(self, index: int, coordinate: Coord4D) -> None:
+    def set_selected_step(self, index: int | None) -> None:
 
-        # Move sub to coordinate
-        self.controller.move_model_to(coordinate)
-
-        # Remove border from last step
         if 0 <= self.selected_index < len(self.steps):
             self.steps[self.selected_index].config(highlightthickness=0)
+
+        if index is None or not (0 <= index < len(self.steps)):
+            self.selected_index = -1
+            return
 
         self.steps[index].config(
             highlightbackground="green",
@@ -224,6 +263,9 @@ class StepsSection(tk.Frame):
         )
 
         self.selected_index = index
+
+    def clear_selected_step(self) -> None:
+        self.set_selected_step(None)
 
     def _on_steps_frame_configure(self, _event: tk.Event | None = None) -> None:
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
