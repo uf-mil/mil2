@@ -23,6 +23,7 @@ from mil_robogym.data_collection.types import (
 )
 from mil_robogym.data_collection.utils import extract_selected_state_features
 from mil_robogym.data_collection.writers.csv_writer import AsyncCSVWriter
+from mil_robogym.ui.components.create_demo_popup import CreateDemoPopup
 from mil_robogym.ui.components.grab_coordinates_popup import GrabCoordinatesPopup
 from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 
@@ -52,6 +53,7 @@ class DemoViewController:
 
         self.coordinate_popup = None
         self.edit_demo_popup = None
+        self.create_demo_popup = None
 
         self.is_recording = False
         self.last_pose = None
@@ -142,27 +144,11 @@ class DemoViewController:
             self._refresh_sequence_playback_ui()
 
     def navigate_to_home(self, _event: tk.Event | None = None) -> None:
-        self._clear_sample_countdown()
-        self._stop_sequence_playback()
-
-        # Check if pose index is not last and override data
-        if self.view.steps.current_pose_index != len(self.view.steps.steps) - 1:
-            self.csv_writer.clear_all_data(self.view.steps.current_pose_index)
-
-        self.csv_writer.close()
-        self._clean_components()
+        self._close_current_demo()
         self.app.show_page("start")
 
     def navigate_to_project(self, _event: tk.Event | None = None) -> None:
-        self._clear_sample_countdown()
-        self._stop_sequence_playback()
-
-        # Check if pose index is not last and override data
-        if self.view.steps.current_pose_index != len(self.view.steps.steps) - 1:
-            self.csv_writer.clear_all_data(self.view.steps.current_pose_index)
-
-        self.csv_writer.close()
-        self._clean_components()
+        self._close_current_demo()
         self.app.show_page("view_project", project=self.raw_project)
 
     def move_model_to(self, coordinate: Coord4D) -> None:
@@ -176,6 +162,14 @@ class DemoViewController:
         self._stop_sequence_playback()
         self._select_step(index)
 
+    def toggle_recording(self) -> None:
+        if self.is_recording:
+            self.pause_recording()
+            return
+
+        if str(self.view.controls.play_button.cget("state")) != str(tk.DISABLED):
+            self.start_recording()
+
     def toggle_sequence_playback(self) -> None:
         if self._is_sequence_playback_running():
             self._stop_sequence_playback()
@@ -186,6 +180,9 @@ class DemoViewController:
         """
         Starts recording steps.
         """
+        if str(self.view.controls.play_button.cget("state")) == str(tk.DISABLED):
+            return
+
         self._clear_sample_countdown()
         self._stop_sequence_playback()
         self._clear_selected_step()
@@ -265,6 +262,9 @@ class DemoViewController:
         """
         Pauses the recording of steps.
         """
+        if str(self.view.controls.pause_button.cget("state")) == str(tk.DISABLED):
+            return
+
         self._clear_sample_countdown()
 
         # Pause the gazebo environment
@@ -285,6 +285,9 @@ class DemoViewController:
         """
         Enable keyboard controls to move the sub without recording steps.
         """
+        if str(self.view.controls.preposition_button.cget("state")) == str(tk.DISABLED):
+            return
+
         self._stop_sequence_playback()
 
         # Display coordinate popup
@@ -313,6 +316,11 @@ class DemoViewController:
         """
         Sets a random start position if a random spawn space was defined.
         """
+        if str(self.view.controls.random_position_button.cget("state")) == str(
+            tk.DISABLED,
+        ):
+            return
+
         self._stop_sequence_playback()
 
         random_spawn_space = self.project["random_spawn_space"]
@@ -335,6 +343,9 @@ class DemoViewController:
         """
         Pushes the index of the current step back by 1.
         """
+        if str(self.view.controls.undo_button.cget("state")) == str(tk.DISABLED):
+            return
+
         self._stop_sequence_playback()
 
         from_i = self.view.steps.current_pose_index
@@ -355,6 +366,9 @@ class DemoViewController:
         """
         Pushes the index of the current step up by 1.
         """
+        if str(self.view.controls.redo_button.cget("state")) == str(tk.DISABLED):
+            return
+
         self._stop_sequence_playback()
 
         from_i = self.view.steps.current_pose_index
@@ -378,6 +392,9 @@ class DemoViewController:
         """
         Displays pop up to confirm resetting of demo data.
         """
+        if str(self.view.controls.reset_demo_button.cget("state")) == str(tk.DISABLED):
+            return
+
         self._stop_sequence_playback()
 
         should_reset = messagebox.askyesno(
@@ -439,6 +456,10 @@ class DemoViewController:
         """
         Allow editing of demo name and sampling rate.
         """
+        if self.is_recording or self._has_active_popup(exclude="edit"):
+            return
+
+        self._stop_sequence_playback()
 
         # Show edit demo pop up
         if self.edit_demo_popup and self.edit_demo_popup.win.winfo_exists():
@@ -452,9 +473,43 @@ class DemoViewController:
                 self._save_changes,
             )
 
+    def show_create_demo(self) -> None:
+        """Open the quick-create popup for a fresh demo in the same project."""
+        if self.is_recording or self._has_active_popup(exclude="create"):
+            return
+
+        self._stop_sequence_playback()
+
+        if self.create_demo_popup and self.create_demo_popup.win.winfo_exists():
+            self.create_demo_popup.win.lift()
+            self.create_demo_popup.win.focus_force()
+            return
+
+        self.create_demo_popup = CreateDemoPopup(
+            self.view,
+            project=self.project,
+            on_created=self._open_created_demo,
+            on_cancel=self._cancel_create_demo,
+            default_sampling_rate=float(self.demo["sampling_rate"]),
+            default_start_position=tuple(self.demo["start_position"]),
+        )
+
     def _cancel_edit_demo(self) -> None:
         self.edit_demo_popup.win.destroy()
         self.edit_demo_popup = None
+
+    def _cancel_create_demo(self) -> None:
+        self.create_demo_popup = None
+
+    def _open_created_demo(self, demo_name: str, demo_cfg: dict[str, Any]) -> None:
+        self.create_demo_popup = None
+        self._close_current_demo()
+        self.app.show_page(
+            "view_demo",
+            project=self.raw_project,
+            demo_name=demo_name,
+            demo=demo_cfg,
+        )
 
     def _save_changes(self) -> None:
 
@@ -617,12 +672,33 @@ class DemoViewController:
     def _clean_components(self) -> None:
         self._clear_sample_countdown()
         self._stop_sequence_playback()
+        self._destroy_popup("create")
+        self._destroy_popup("edit")
+        self._destroy_popup("coordinate")
+        if hasattr(self.view, "cleanup"):
+            self.view.cleanup()
         self.view.header.destroy()
         self.view.content.destroy()
+        self.view.controls.destroy()
 
     def _set_sampling_interval(self, sampling_rate: float) -> None:
         self.sample_period_s = 1.0 / sampling_rate
         self.delay = int(self.sample_period_s * 1000)
+
+    def _close_current_demo(self) -> None:
+        self._clear_sample_countdown()
+        self._stop_sequence_playback()
+
+        if (
+            self.csv_writer is not None
+            and self.view.steps.current_pose_index != len(self.view.steps.steps) - 1
+        ):
+            self.csv_writer.clear_all_data(self.view.steps.current_pose_index)
+
+        if self.csv_writer is not None:
+            self.csv_writer.close()
+
+        self._clean_components()
 
     def _countdown_enabled(self) -> bool:
         return self.sample_period_s > 1.0
@@ -772,3 +848,44 @@ class DemoViewController:
         self._release_sequence_playback_hold()
         if hasattr(self.view, "steps"):
             self._refresh_sequence_playback_ui()
+
+    def _popup_is_open(self, popup) -> bool:
+        return bool(
+            popup is not None
+            and getattr(popup, "win", None) is not None
+            and popup.win.winfo_exists(),
+        )
+
+    def has_active_popup(self) -> bool:
+        return self._has_active_popup()
+
+    def _has_active_popup(self, *, exclude: str | None = None) -> bool:
+        popup_map = {
+            "coordinate": self.coordinate_popup,
+            "edit": self.edit_demo_popup,
+            "create": self.create_demo_popup,
+        }
+        return any(
+            name != exclude and self._popup_is_open(popup)
+            for name, popup in popup_map.items()
+        )
+
+    def _destroy_popup(self, popup_name: str) -> None:
+        popup_map = {
+            "coordinate": self.coordinate_popup,
+            "edit": self.edit_demo_popup,
+            "create": self.create_demo_popup,
+        }
+        popup = popup_map.get(popup_name)
+        if not self._popup_is_open(popup):
+            return
+
+        with suppress(Exception):
+            popup.win.destroy()
+
+        if popup_name == "coordinate":
+            self.coordinate_popup = None
+        elif popup_name == "edit":
+            self.edit_demo_popup = None
+        elif popup_name == "create":
+            self.create_demo_popup = None

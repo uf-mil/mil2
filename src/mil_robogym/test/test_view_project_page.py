@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import mil_robogym.ui.pages.view_project_page.view_project_page as view_project_page_module
 from mil_robogym.ui.pages.view_project_page.view_project_page import ViewProjectPage
 
 
@@ -61,6 +62,46 @@ def test_view_project_page_uses_reloaded_project_for_demo_navigation():
                 "project": loaded_project,
                 "demo_name": "Demo 1",
                 "demo": {"robogym_demo": {"name": "Demo 1"}},
+            },
+        ),
+    ]
+
+
+def test_view_project_page_record_demo_passes_project_and_navigates_on_create(
+    monkeypatch,
+):
+    """Record-demo popup should receive the current project and route create callbacks."""
+    page = ViewProjectPage.__new__(ViewProjectPage)
+    page.controller = _DummyController()
+    page.project = {"robogym_project": {"name": "Demo Project"}}
+    page.create_demo_popup = None
+
+    captured_kwargs: dict[str, object] = {}
+
+    class _DummyPopup:
+        def __init__(self, *_args, **kwargs) -> None:
+            captured_kwargs.update(kwargs)
+            self.win = SimpleNamespace(
+                winfo_exists=lambda: True,
+                lift=lambda: None,
+                focus_force=lambda: None,
+            )
+
+    monkeypatch.setattr(view_project_page_module, "CreateDemoPopup", _DummyPopup)
+
+    page._on_record_demo()
+
+    assert captured_kwargs["project"] == {"name": "Demo Project"}
+    on_created = captured_kwargs["on_created"]
+    on_created("New Demo", {"robogym_demo": {"name": "New Demo"}})
+
+    assert page.controller.calls == [
+        (
+            ("view_demo",),
+            {
+                "project": {"robogym_project": {"name": "Demo Project"}},
+                "demo_name": "New Demo",
+                "demo": {"robogym_demo": {"name": "New Demo"}},
             },
         ),
     ]

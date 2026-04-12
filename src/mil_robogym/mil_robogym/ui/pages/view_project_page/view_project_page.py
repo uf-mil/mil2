@@ -405,8 +405,19 @@ class ViewProjectPage(tk.Frame):
         def remove_reference_to_popup():
             self.create_demo_popup = None
 
+        def handle_demo_created(demo_name: str, demo_cfg: dict[str, Any]) -> None:
+            self.create_demo_popup = None
+            self.controller.show_page(
+                "view_demo",
+                project=self.project,
+                demo_name=demo_name,
+                demo=demo_cfg,
+            )
+
         self.create_demo_popup = CreateDemoPopup(
             self,
+            project=self.project["robogym_project"],
+            on_created=handle_demo_created,
             on_cancel=remove_reference_to_popup,
         )
 
