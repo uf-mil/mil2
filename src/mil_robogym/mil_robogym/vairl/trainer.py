@@ -103,9 +103,8 @@ class Trainer:
 
         # Start up data collector client
         self.data_collector_client = DataCollectorClient()
-        self.data_collector_client.establish_subscriptions(project)
         self.data_collector_client.ensure_subscriptions(
-            list(project["input_topics"].keys()),
+            project,
             operation="prepare data collector subscriptions for training",
         )
 

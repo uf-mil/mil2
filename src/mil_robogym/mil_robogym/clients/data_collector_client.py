@@ -58,11 +58,11 @@ class DataCollectorClient(Node):
 
     def ensure_subscriptions(
         self,
-        topics: list[str],
+        project: RoboGymProjectYaml,
         *,
         operation: str = "establish data collector subscriptions",
     ) -> EstablishSubscriptions.Response:
-        response = self.establish_subscriptions(topics)
+        response = self.establish_subscriptions(project)
         if response is None:
             raise RuntimeError(
                 f"Failed to {operation}: data collector service returned no response.",

@@ -253,7 +253,7 @@ class DemoViewController:
                 start_simulation=True,
             )
             self.data_collector.ensure_subscriptions(
-                list(self.project["input_topics"].keys()),
+                self.project,
                 operation="prepare data collector subscriptions for recording",
             )
         except RuntimeError as exc:
