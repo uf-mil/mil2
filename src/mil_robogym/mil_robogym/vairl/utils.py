@@ -137,6 +137,9 @@ def interpret_state_data(
     """
     Passes strictly ordered state data and passes non numerical data through encoder models.
     """
+    if not models:
+        return np.array(state)
+
     num_abstract_values = len(models)
     index = len(state) - num_abstract_values
 

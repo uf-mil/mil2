@@ -146,9 +146,9 @@ class Environment(gym.Env):
         )
         self.state = interpret_state_data(self.state, self.external_architecture)
 
-        if not self.state and self.initialized:
+        if len(self.state) == 0 and self.initialized:
 
-            while not self.state:
+            while len(self.state) == 0:
                 self.data_collector_client.get_logger().warn(
                     "Unable to retrieve state, trying again...",
                 )
@@ -205,7 +205,7 @@ class Environment(gym.Env):
         )
         next_state = interpret_state_data(next_state, self.external_architecture)
 
-        while not next_state:
+        while len(next_state) == 0:
             self.data_collector_client.get_logger().warn(
                 "Unable to retrieve state, trying again...",
             )

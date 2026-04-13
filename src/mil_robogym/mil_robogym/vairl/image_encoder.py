@@ -117,7 +117,6 @@ class CNNEncoder(nn.Module):
             image = image.permute(2, 0, 1)  # (C, H, W)
 
         elif image.ndim == 4:  # (B, H, W, C)
-            raise Exception(image.shape)
             image = image.permute(0, 3, 1, 2)  # → (B, C, H, W)
 
         image = self._prepare_input(image)
