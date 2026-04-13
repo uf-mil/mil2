@@ -2,6 +2,8 @@
 IMPORTANT: THIS ENVIRONMENT IS CONFIGURED FOR MOVEMENT ONLY I.E. 4D. It is not configured for other outputs yet.
 """
 
+import time
+
 import numpy as np
 
 try:
@@ -13,13 +15,16 @@ except ImportError:  # fallback for older gym
 
     GYMNASIUM = False
 
-from mil_robogym.data_collection.types import RandomSpawnSpace
+from mil_robogym.data_collection.types import RoboGymProjectYaml
 
 from ..clients.controller_client import ControllerClient
 from ..clients.data_collector_client import DataCollectorClient
 from ..clients.localization_client import LocalizationClient
 from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
+from .deep_set import DeepSet
+from .image_encoder import CNNEncoder
+from .utils import interpret_state_data
 
 
 class Environment(gym.Env):
@@ -32,20 +37,25 @@ class Environment(gym.Env):
         seed: int | None = None,
         max_step_count: int = 40,
         max_vals: np.ndarray = np.zeros(4, dtype=np.float32),
-        input_features: list[str] = [],
-        random_spawn_space: RandomSpawnSpace | None = None,
+        project: RoboGymProjectYaml | None = None,
         data_collector_client: DataCollectorClient | None = None,
         move_client: MoveClient | None = None,
         set_pose_client: SetPoseClient | None = None,
         controller_client: ControllerClient | None = None,
         localization_client: LocalizationClient | None = None,
+        external_architecture: list[DeepSet | CNNEncoder] = [],
         initialized: bool = False,
     ):
         super().__init__()
 
         self.initialized = initialized
+        self.external_architecture = external_architecture
+        self.input_features = []
+        self.input_size = 0
 
         if initialized:
+            # Save project
+            self.project = project
 
             # Pool clamping boundaries
             self.x_min, self.x_max = -11.0, 11.0
@@ -65,9 +75,10 @@ class Environment(gym.Env):
             # Saved parameters
             self.seed = seed
             self.max_step_count = max_step_count
-            self.input_features = input_features
+            self.input_features = self.project["tensor_spec"]["input_features"]
 
             # Configure random spawn space
+            random_spawn_space = self.project["random_spawn_space"]
             c1 = random_spawn_space["coord1_4d"]
             c2 = random_spawn_space["coord2_4d"]
             self.min_coord = np.minimum(c1, c2)
@@ -79,11 +90,16 @@ class Environment(gym.Env):
             self.t = 0
             self.rng = np.random.default_rng(seed)
 
+            # Get observation space size
+            self.input_size = len(self.input_features)
+            for model in self.external_architecture:
+                self.input_size += model.output_dim
+
         # Configure observation space
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(input_features),),
+            shape=(self.input_size,),
             dtype=np.float32,
         )
 
@@ -126,13 +142,32 @@ class Environment(gym.Env):
 
         # Record state
         self.state = self.data_collector_client.get_flattened_snapshot_values(
-            self.input_features,
+            self.project,
         )
+        self.state = interpret_state_data(self.state, self.external_architecture)
 
-        if GYMNASIUM:
-            return self.state.copy(), {}
+        if not self.state and self.initialized:
 
-        return np.array(self.state.copy())
+            while not self.state:
+                self.data_collector_client.get_logger().warn(
+                    "Unable to retrieve state, trying again...",
+                )
+                time.sleep(0.1)  # 100 milliseconds
+
+                self.state = self.data_collector_client.get_flattened_snapshot_values(
+                    self.project,
+                )
+                self.state = interpret_state_data(
+                    self.state,
+                    self.external_architecture,
+                )
+
+            self.data_collector_client.get_logger().warn("Data retrieved, moving on...")
+
+        else:
+            return np.zeros(self.input_size), {}
+
+        return self.state.copy(), {}
 
     def step(self, action):
         """
@@ -166,16 +201,18 @@ class Environment(gym.Env):
 
         # Record next state
         next_state = self.data_collector_client.get_flattened_snapshot_values(
-            self.input_features,
+            self.project,
         )
+        next_state = interpret_state_data(next_state, self.external_architecture)
 
         while not next_state:
-            self.data_collector.get_logger().warn(
+            self.data_collector_client.get_logger().warn(
                 "Unable to retrieve state, trying again...",
             )
             next_state = self.data_collector_client.get_flattened_snapshot_values(
-                self.input_features,
+                self.project,
             )
+            next_state = interpret_state_data(next_state, self.external_architecture)
 
         self.state = next_state
 

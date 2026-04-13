@@ -182,7 +182,6 @@ class ViewProjectPage(tk.Frame):
             self.project_name = str(selected_name) if selected_name else "Project"
             self._num_demos = int(project.get("num_demos", 0))
         else:
-            self.project = loaded
             self.project_name = loaded.get("robogym_project", {}).get(
                 "name",
                 "Project",

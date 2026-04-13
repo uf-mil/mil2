@@ -2,6 +2,7 @@ import tkinter as tk
 from typing import Any, Type
 
 from mil_robogym.clients.world_control_client import WorldControlClient
+from mil_robogym.ui.components.keyboard_controls_gui import KeyboardControlsGUI
 from mil_robogym.ui.pages.create_project_page.create_project_page import (
     CreateProjectPage,
 )
@@ -50,12 +51,16 @@ class App(tk.Tk):
         self._register_page("training_settings", TrainingSettingsPage)
         self._register_page("view_demo", ViewDemoPage)
 
-        self.show_page("start")
+        # Global components
+        self.keyboard_controls_gui = KeyboardControlsGUI(self)
+        self.keyboard_controls_gui.hide()
 
         # Start and stop simulation to get all topics
         world_control_client = WorldControlClient()
         world_control_client.play_simulation()
         world_control_client.pause_simulation()
+
+        self.show_page("start")
 
     def _register_page(self, name: str, page_cls: Type[tk.Frame]) -> None:
         """
@@ -89,7 +94,9 @@ class App(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
             if hasattr(frame, "set_context"):
-                frame.set_context(**kwargs)
+                frame.set_context(
+                    **kwargs | {"keyboard_controls_gui": self.keyboard_controls_gui},
+                )
 
             frame.tkraise()
 

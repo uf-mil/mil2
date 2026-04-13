@@ -213,7 +213,7 @@ class TrainTestViewController:
             ):
                 return
             tester.data_collector_client.ensure_subscriptions(
-                list(self.project["input_topics"].keys()),
+                self.project,
                 operation="prepare data collector subscriptions for testing",
             )
             tester.test_agent()

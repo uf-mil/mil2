@@ -112,6 +112,7 @@ def _validate_project_config_payload(project: RoboGymProjectYaml) -> None:
         "random_spawn_space",
         "input_topics",
         "output_topics",
+        "tensor_spec",
     )
     for field_name in required_fields:
         if field_name not in project:
@@ -454,7 +455,8 @@ def initialize_demo_numerical_csv_headers(
     Initialize numerical CSV headers when the file is empty.
     """
     if not headers:
-        raise ValueError("headers must be a non-empty list of column names.")
+        # Assume project is not collecting data from numerical fields
+        return
 
     _, numerical_csv_path, _ = _ensure_demo_data_layout(demo_dir)
     if numerical_csv_path.stat().st_size != 0:

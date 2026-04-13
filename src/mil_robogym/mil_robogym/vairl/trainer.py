@@ -10,6 +10,8 @@ import torch
 from imitation.data import rollout
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
+from rosidl_runtime_py.convert import message_to_ordereddict
+from rosidl_runtime_py.utilities import get_message
 from sb3_contrib import TRPO
 
 from mil_robogym.data_collection.filesystem import (
@@ -24,19 +26,23 @@ from ..clients.localization_client import LocalizationClient
 from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
 from ..clients.world_control_client import WorldControlClient
+from .deep_set import DeepSet
 from .environment import GYMNASIUM, Environment
 from .generator_metrics import extract_latest_generator_metrics
+from .image_encoder import CNNEncoder
 from .metrics import TrainingMetricsSession
 from .reward_net import VAIRLRewardNet
 from .training_settings import DEFAULT_TRAINING_SETTINGS
 from .utils import (
     fetch_demo_trajectories,
+    interpret_abstract_data,
     trajectories_to_batches,
     trajectories_to_imitations,
 )
 from .vairl import VAIRL
 
 GENERATOR_MODEL_FILE_NAME = "generator_model.zip"
+NUMBER_OF_MINI_BATCHES = 10
 
 
 class Trainer:
@@ -99,50 +105,65 @@ class Trainer:
         # Start up data collector client
         self.data_collector_client = DataCollectorClient()
         self.data_collector_client.ensure_subscriptions(
-            list(project["input_topics"].keys()),
+            project,
             operation="prepare data collector subscriptions for training",
         )
 
         # Fetch and process expert demonstrations
+        self.does_contain_abstract_data = (
+            self.project.get("input_non_numeric_topics", {}) != {}
+        )
         self.demo_trajectories, determined_max_step_count, determined_max_vals = (
             fetch_demo_trajectories(
                 self.project,
                 self.expert_noise_std,
             )
         )
+        self.demos_batch_size = int(
+            min(2048, len(self.demo_trajectories)),
+        )
+
         self.max_step_count = (
             self.max_step_count
             if self.max_step_count
             else int(determined_max_step_count * 1.5)
         )
         self.max_vals = determined_max_vals
-        self.demo_batches = trajectories_to_batches(self.demo_trajectories)
-        self.demo_imitations = trajectories_to_imitations(self.demo_trajectories)
-        self.flattened_demo_trajectories = rollout.flatten_trajectories(
-            self.demo_imitations,
-        )
-        self.demos_batch_size = int(min(2048, len(self.flattened_demo_trajectories)))
+
+        # Only fetch this data if no abstract data is being used to train the agent
+        if not self.does_contain_abstract_data:
+            self.demo_batches = trajectories_to_batches(self.demo_trajectories)
+            self.demo_imitations = trajectories_to_imitations(self.demo_trajectories)
+            self.flattened_demo_trajectories = rollout.flatten_trajectories(
+                self.demo_imitations,
+            )
+            self.external_architecture = []
+        else:
+            self.demo_batches = None
+            self.demo_imitations = None
+            self.flattened_demo_trajectories = None
+
+            # Load in external architectures for abstract data types
+            self.external_architecture = self._create_external_architecture()
 
         # Environment set up
         self.eval_environment = Environment(
             self.seed,
             self.max_step_count,
             self.max_vals,
-            self.project["tensor_spec"]["input_features"],
-            self.project["random_spawn_space"],
+            self.project,
             self.data_collector_client,
             self.move_client,
             self.set_pose_client,
             self.controller_client,
             self.localization_client,
+            self.external_architecture,
             True,
         )
 
         self.register_env()
 
-        # TODO: Configure metric outputs
-
-    def train(self):  # TODO: Incorporate metrics into training loop.
+    def train(self):
         """
         Train the VAIRL algorithm.
         """
@@ -173,13 +194,13 @@ class Trainer:
                     "seed": self.seed,
                     "max_step_count": self.max_step_count,
                     "max_vals": self.max_vals,
-                    "input_features": self.project["tensor_spec"]["input_features"],
-                    "random_spawn_space": self.project["random_spawn_space"],
+                    "project": self.project,
                     "data_collector_client": self.data_collector_client,
                     "move_client": self.move_client,
                     "set_pose_client": self.set_pose_client,
                     "controller_client": self.controller_client,
                     "localization_client": self.localization_client,
+                    "external_architecture": self.external_architecture,
                     "initialized": True,
                 },
             )
@@ -189,7 +210,8 @@ class Trainer:
                 policy="MlpPolicy",
                 env=train_venv,
                 learning_rate=self.generator_learning_rate,
-                batch_size=2048,
+                batch_size=self.demos_batch_size,
+                n_steps=self.demos_batch_size * NUMBER_OF_MINI_BATCHES,
                 gamma=0.99,
                 gae_lambda=0.95,
                 target_kl=0.01,
@@ -232,12 +254,43 @@ class Trainer:
                     self._stopped_early = True
                     break
 
+                if self.does_contain_abstract_data:
+                    # Recalculate values for abstract data
+                    pass
+
+                # Interpret abstract data if any
+                if self.does_contain_abstract_data:
+
+                    self.world_control_client.pause_simulation()
+
+                    self.data_collector_client.get_logger().warn(
+                        "Re-interpreting expert abstract data, this may take a few minutes...",
+                    )
+
+                    interpreted_trajectories = interpret_abstract_data(
+                        self.demo_trajectories,
+                        self.external_architecture,
+                    )
+                    self.demo_batches = trajectories_to_batches(
+                        interpreted_trajectories,
+                    )
+                    self.demo_imitations = trajectories_to_imitations(
+                        interpreted_trajectories,
+                    )
+                    self.flattened_demo_trajectories = rollout.flatten_trajectories(
+                        self.demo_imitations,
+                    )
+                    vairl.set_demonstrations(self.flattened_demo_trajectories)
+
+                    self.world_control_client.play_simulation()
+
                 reward_net.eval()
 
                 gen_data, reward_mean, reward_std = (
                     self.generate_generator_trajectories(
                         generator,
                         reward_net,
+                        self.demos_batch_size,
                     )
                 )
 
@@ -330,6 +383,59 @@ class Trainer:
                     raise close_error
                 if stop_error is not None:
                     raise stop_error
+
+    def _create_external_architecture(self):
+        """
+        Iterate through project yaml and set up CNN or DeepSet accordingly.
+        """
+
+        external_architecture = []
+        input_non_numeric_topics = self.project.get("input_non_numeric_topics", {})
+
+        for topic, data_list in input_non_numeric_topics.items():
+
+            for data in data_list:
+
+                if data["data_type"] == "image":
+                    external_architecture.append(CNNEncoder())
+
+                elif data["data_type"] == "unordered_set":
+                    ros_type = data["ros_type"]
+
+                    try:
+                        # Extract inner type from sequence<...>
+                        if "sequence<" in ros_type:
+                            inner_type = ros_type.replace("sequence<", "").replace(
+                                ">",
+                                "",
+                            )
+                        else:
+                            inner_type = ros_type
+
+                        # Get ROS message class
+                        msg_class = get_message(inner_type)
+
+                        # Create dummy instance
+                        dummy_obj = msg_class()
+                        dummy_obj = message_to_ordereddict(dummy_obj)
+
+                        # Define output shape (can later move to YAML)
+                        output_dim = data.get("output_dim", 32)
+                        self.move_client.get_logger().info(f"{dummy_obj}")
+
+                        external_architecture.append(
+                            DeepSet(obj=dummy_obj, output_shape=output_dim),
+                        )
+
+                    except Exception as e:
+                        raise RuntimeError(
+                            f"Failed to initialize DeepSet for topic '{topic}' with type '{ros_type}': {e}",
+                        )
+
+                else:
+                    raise ValueError(f"Unsupported data_type: {data['data_type']}")
+
+        return external_architecture
 
     def _build_agent_name(
         self,

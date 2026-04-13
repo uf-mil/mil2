@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -39,7 +40,7 @@ class CNNEncoder(nn.Module):
         if any(value <= 0 for value in std):
             raise ValueError("std values must be positive.")
 
-        self.latent_dim = latent_dim
+        self.output_dim = latent_dim
         self.resize_shape = tuple(int(size) for size in resize_shape)
 
         self.register_buffer(
@@ -66,7 +67,9 @@ class CNNEncoder(nn.Module):
 
     def _prepare_input(self, image: torch.Tensor) -> torch.Tensor:
         if not isinstance(image, torch.Tensor):
-            raise TypeError("image must be a torch.Tensor.")
+            raise TypeError(
+                f"image must be a torch.Tensor. Instead got type: {type(image)}",
+            )
 
         if image.ndim == 3:
             if image.shape[0] not in (1, 3) and image.shape[-1] in (1, 3):
@@ -105,7 +108,18 @@ class CNNEncoder(nn.Module):
         image = (image - self.mean) / self.std
         return image
 
-    def forward(self, image: torch.Tensor) -> torch.Tensor:
+    def forward(self, image: np.ndarray) -> torch.Tensor:
+        # Convert to tensor
+        image = torch.as_tensor(image, dtype=torch.float32)
+
+        # Handle single vs batch
+        if image.ndim == 3:  # (H, W, C)
+            image = image.permute(2, 0, 1)  # (C, H, W)
+
+        elif image.ndim == 4:  # (B, H, W, C)
+            raise Exception(image.shape)
+            image = image.permute(0, 3, 1, 2)  # → (B, C, H, W)
+
         image = self._prepare_input(image)
         features = self.backbone(image)
         pooled = self.pool(features).flatten(start_dim=1)

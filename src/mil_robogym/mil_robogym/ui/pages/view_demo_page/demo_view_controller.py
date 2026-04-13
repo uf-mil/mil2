@@ -49,7 +49,6 @@ class DemoViewController:
 
         self.project: RoboGymProjectYaml | None = None
         self.demo: RoboGymDemoYaml | None = None
-        self.steps: list[dict] = []
 
         self.coordinate_popup = None
         self.edit_demo_popup = None
@@ -70,14 +69,11 @@ class DemoViewController:
         self.world_control_client = WorldControlClient()
         self.data_collector = DataCollectorClient()
         self.csv_writer = None
-        self.keyboard_controls_gui = KeyboardControlsGUI(
-            self.view,
-            self.pause_recording,
-        )
-        self.keyboard_controls_gui.hide()
+        self.keyboard_controls_gui = None
 
     def set_context(
         self,
+        keyboard_controls_gui: KeyboardControlsGUI,
         project: dict[str, Any] | None = None,
         demo: dict[str, Any] | None = None,
     ) -> None:
@@ -88,12 +84,16 @@ class DemoViewController:
         self.project = project.get("robogym_project", {})
         self.demo = demo.get("robogym_demo", {})
 
+        self.keyboard_controls_gui = keyboard_controls_gui
+        self.keyboard_controls_gui.on_close_callback = self.pause_recording
+
         if self.project and self.demo:
 
             self._set_sampling_interval(float(self.demo["sampling_rate"]))
 
             # Create and start services
             self.csv_writer = AsyncCSVWriter(self.project, self.demo)
+            self.data_collector.establish_subscriptions(self.project)
 
             # Configure UI Components
             self.view.header.project_title.config(text=f"{self.project['name']} >")
@@ -226,6 +226,9 @@ class DemoViewController:
         self.view.steps.set_status_message("")
         self._refresh_sequence_playback_ui()
 
+        # Reset image data counters
+        self.data_collector.reset_image_counters()
+
         # Delay sampling if mid session
         if len(self.view.steps.steps) > 1:
             self._schedule_sample_countdown(self.sample_period_s)
@@ -249,7 +252,7 @@ class DemoViewController:
                 start_simulation=True,
             )
             self.data_collector.ensure_subscriptions(
-                list(self.project["input_topics"].keys()),
+                self.project,
                 operation="prepare data collector subscriptions for recording",
             )
         except RuntimeError as exc:
@@ -280,6 +283,23 @@ class DemoViewController:
         self.view.controls.redo_button.config(state=tk.NORMAL)
         self.view.controls.play_button.config(state=tk.NORMAL)
         self._refresh_sequence_playback_ui()
+
+        # Clean data
+        if not self.csv_writer.clean_data():
+
+            # Refresh steps list
+            self.view.steps.clear()
+
+            x, y, z, yaw = self.demo["start_position"]
+            self.view.steps.add_step((x, y, z, yaw), is_origin=True)
+
+            steps = self.csv_writer.fetch_steps()
+            for step in steps:
+                self.view.steps.add_step(step)
+
+            # Set last valid pose
+            x, y, z, yaw = steps[-1]
+            self.last_pose = (x, y, z, yaw)
 
     def preposition(self) -> None:
         """
@@ -575,6 +595,9 @@ class DemoViewController:
         # Place sub in starting location
         self.set_pose_client.set_pose(x, y, z, yaw=yaw)
 
+        # Reset image data counters
+        self.data_collector.reset_image_counters()
+
     def _schedule_next_sample(self) -> None:
         """
         Schedule the next sampling event.
@@ -595,7 +618,9 @@ class DemoViewController:
         dx, dy, dz, dyaw = (x - last_x, y - last_y, z - last_z, yaw - last_yaw)
 
         # Get input topic state data.
-        data = json.loads(self.data_collector.get_snapshot().data)
+        data = json.loads(
+            self.data_collector.get_snapshot(str(self.csv_writer.demo_dir_path)).data,
+        )
 
         if data:
             feature_values = extract_selected_state_features(

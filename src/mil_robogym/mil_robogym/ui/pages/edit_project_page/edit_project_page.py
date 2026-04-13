@@ -386,10 +386,14 @@ class EditProjectPage(tk.Frame):
     def set_context(
         self,
         project: Mapping[str, Any] | None = None,
-        **_kwargs: Any,
+        **kwargs: Any,
     ) -> None:
         """Populate form fields from a project payload."""
         self._available_topics = self._safe_get_topics()
+        self.keyboard_controls_gui = kwargs.get("keyboard_controls_gui")
+        self.keyboard_controls_gui.on_close_callback = (
+            self._on_close_of_keyboard_controls
+        )
 
         if project is None:
             self._set_project_title("Project")
@@ -546,10 +550,6 @@ class EditProjectPage(tk.Frame):
     def _on_grab_from_sim(self) -> None:
         self.world_control_client.play_simulation()
 
-        self.keyboard_controls_gui = self.keyboard_controls_gui or KeyboardControlsGUI(
-            self,
-            self._on_close_of_keyboard_controls,
-        )
         self.keyboard_controls_gui.show()
 
         if self.popup and self.popup.win.winfo_exists():
@@ -801,6 +801,14 @@ class EditProjectPage(tk.Frame):
                         f"Failed to recompute tensor spec:\n{exc}",
                     )
                     return None
+            else:
+                project_cfg["tensor_spec"] = {
+                    "input_features": [],
+                    "output_features": [],
+                    "input_dim": 0,
+                    "output_dim": 0,
+                }
+
         elif self._current_tensor_spec is not None:
             project_cfg["tensor_spec"] = dict(self._current_tensor_spec)
 
