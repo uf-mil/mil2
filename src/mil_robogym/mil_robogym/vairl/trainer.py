@@ -211,11 +211,7 @@ class Trainer:
                 env=train_venv,
                 learning_rate=self.generator_learning_rate,
                 batch_size=self.demos_batch_size,
-                n_steps=(
-                    self.demos_batch_size * NUMBER_OF_MINI_BATCHES
-                    if not self.does_contain_abstract_data
-                    else 2048
-                ),
+                n_steps=self.rollout_steps,
                 gamma=0.99,
                 gae_lambda=0.95,
                 target_kl=0.01,
