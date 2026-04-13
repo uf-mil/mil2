@@ -1,16 +1,49 @@
 from __future__ import annotations
 
-import tkinter as tk
-from pathlib import Path
+from collections.abc import Sequence
+
+from mil_robogym.ui.components.series_plots_section import SeriesPlotsSection
+
+DEFAULT_METRIC_ORDER = (
+    "reward_mean",
+    "reward_std",
+    "disc_loss",
+    "disc_kl",
+    "disc_beta",
+    "gen_rollout_ep_len_mean",
+    "gen_rollout_ep_rew_mean",
+    "gen_rollout_ep_rew_wrapped_mean",
+    "gen_time_fps",
+    "gen_time_iterations",
+    "gen_time_time_elapsed",
+    "gen_time_total_timesteps",
+    "gen_train_explained_variance",
+    "gen_train_is_line_search_success",
+    "gen_train_kl_divergence_loss",
+    "gen_train_learning_rate",
+    "gen_train_n_updates",
+    "gen_train_policy_objective",
+    "gen_train_std",
+    "gen_train_value_loss",
+)
+DEFAULT_VISIBLE_METRICS = DEFAULT_METRIC_ORDER[:5]
 
 
-class MetricsSection:
-    """Scrollable metrics image panel."""
+class MetricsSection(SeriesPlotsSection):
+    """Train/Test metrics panel backed by the shared multi-plot widget."""
 
-    def __init__(self, parent: tk.Widget) -> None:
-        self._image_refs: list[tk.PhotoImage] = []
-
-        self.container = tk.Frame(parent, bg="#DADADA")
+    def __init__(self, parent) -> None:
+        super().__init__(
+            parent,
+            title="Metrics",
+            preferred_metric_order=DEFAULT_METRIC_ORDER,
+            section_bg="#DADADA",
+            content_bg="#F2F2F2",
+            empty_state_message="No training metrics available.",
+            pending_data_message="Waiting for training metrics...",
+            missing_file_message="No metrics file found.",
+            empty_file_message="Metrics file is empty.",
+        )
         self.container.grid(
             row=1,
             column=2,
@@ -19,134 +52,11 @@ class MetricsSection:
             padx=(8, 14),
             pady=(0, 8),
         )
-        self.container.grid_columnconfigure(0, weight=1)
-        self.container.grid_rowconfigure(1, weight=1)
 
-        self.title_label = tk.Label(
-            self.container,
-            text="Metrics",
-            bg="#DADADA",
-            fg="black",
-            font=("Arial", 18, "bold"),
-            anchor="w",
-        )
-        self.title_label.grid(row=0, column=0, sticky="w", pady=(0, 4))
-
-        self.content_frame = tk.Frame(
-            self.container,
-            bg="#F2F2F2",
-            relief="solid",
-            bd=1,
-            padx=8,
-            pady=8,
-        )
-        self.content_frame.grid(row=1, column=0, columnspan=2, sticky="nsew")
-        self.content_frame.grid_columnconfigure(0, weight=1)
-        self.content_frame.grid_rowconfigure(0, weight=1)
-
-        self.canvas = tk.Canvas(
-            self.content_frame,
-            bg="#F2F2F2",
-            highlightthickness=0,
-        )
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-
-        self.scrollbar = tk.Scrollbar(
-            self.content_frame,
-            orient="vertical",
-            command=self.canvas.yview,
-        )
-        self.scrollbar.grid(row=0, column=1, sticky="ns")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-
-        self.scrollable_frame = tk.Frame(self.canvas, bg="#F2F2F2")
-        self.canvas_window = self.canvas.create_window(
-            (0, 0),
-            window=self.scrollable_frame,
-            anchor="nw",
-        )
-
-        self.scrollable_frame.bind("<Configure>", self._on_frame_configure)
-        self.canvas.bind("<Configure>", self._on_canvas_configure)
-
-        self.placeholder_label = tk.Label(
-            self.scrollable_frame,
-            text="Table/Graph of collected input and output data",
-            bg="#F2F2F2",
-            fg="#444444",
-            font=("Arial", 10),
-            pady=20,
-        )
-        self.placeholder_label.pack(fill="x")
-
-    def load_metrics(self, metrics_dir: Path | None) -> None:
-        """Load all image files from metrics directory into scrollable panel."""
-        for child in self.scrollable_frame.winfo_children():
-            child.destroy()
-        self._image_refs.clear()
-
-        if metrics_dir is None or not metrics_dir.is_dir():
-            self._render_text_placeholder("No metrics directory found.")
-            return
-
-        image_paths = sorted(
-            [
-                path
-                for path in metrics_dir.iterdir()
-                if path.is_file()
-                and path.suffix.lower() in {".png", ".gif", ".ppm", ".pgm"}
-            ],
-        )
-        if not image_paths:
-            self._render_text_placeholder("No metric images found.")
-            return
-
-        for image_path in image_paths:
-            try:
-                image = tk.PhotoImage(file=str(image_path))
-            except tk.TclError:
-                continue
-
-            self._image_refs.append(image)
-            card = tk.Frame(self.scrollable_frame, bg="#FFFFFF", relief="solid", bd=1)
-            card.pack(fill="x", padx=10, pady=6)
-
-            title = tk.Label(
-                card,
-                text=image_path.name,
-                bg="#FFFFFF",
-                fg="black",
-                font=("Arial", 10, "bold"),
-                anchor="w",
-                padx=8,
-                pady=6,
-            )
-            title.pack(fill="x")
-
-            image_label = tk.Label(card, image=image, bg="#FFFFFF")
-            image_label.pack(padx=8, pady=(0, 8))
-
-        if not self._image_refs:
-            self._render_text_placeholder(
-                "No supported metric images could be displayed.",
-            )
-
-    def _render_text_placeholder(self, text: str) -> None:
-        """Render placeholder text when no images are available."""
-        label = tk.Label(
-            self.scrollable_frame,
-            text=text,
-            bg="#F2F2F2",
-            fg="#444444",
-            font=("Arial", 10),
-            pady=20,
-        )
-        label.pack(fill="x")
-
-    def _on_frame_configure(self, _event: tk.Event | None = None) -> None:
-        """Refresh canvas scroll region when content changes."""
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def _on_canvas_configure(self, event: tk.Event) -> None:
-        """Keep scrollable frame width equal to canvas width."""
-        self.canvas.itemconfigure(self.canvas_window, width=event.width)
+    def _default_selected_metrics(self, available_metrics: Sequence[str]) -> list[str]:
+        preferred_metrics = [
+            metric_name
+            for metric_name in DEFAULT_VISIBLE_METRICS
+            if metric_name in available_metrics
+        ]
+        return preferred_metrics if preferred_metrics else list(available_metrics)

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import csv
 import tkinter as tk
+from tkinter import messagebox
 from typing import Any, Mapping
 
+from mil_robogym.data_collection.delete_demo import delete_demo
 from mil_robogym.data_collection.filesystem import get_demo_dir_path
 from mil_robogym.data_collection.get_all_demo_config import get_all_demo_config
 from mil_robogym.data_collection.get_all_project_config import get_all_project_config
@@ -179,6 +181,7 @@ class ViewProjectPage(tk.Frame):
             self.project_name = str(selected_name) if selected_name else "Project"
             self._num_demos = int(project.get("num_demos", 0))
         else:
+            self.project = loaded
             self.project_name = loaded.get("robogym_project", {}).get(
                 "name",
                 "Project",
@@ -257,6 +260,7 @@ class ViewProjectPage(tk.Frame):
             row.grid(row=index, column=0, sticky="ew", pady=4)
             row.grid_columnconfigure(0, weight=1)
             row.grid_columnconfigure(1, weight=0)
+            row.grid_columnconfigure(2, weight=0)
 
             left_label = tk.Label(
                 row,
@@ -283,6 +287,22 @@ class ViewProjectPage(tk.Frame):
                 cursor="hand2",
             )
             right_label.grid(row=0, column=1, sticky="e")
+
+            delete_button = tk.Button(
+                row,
+                text="Delete",
+                command=lambda n=demo_name, d=demo: self._on_delete_demo(n, d),
+                bg="#ECECEC",
+                activebackground="#DFDFDF",
+                fg="black",
+                relief="solid",
+                bd=1,
+                font=("Arial", 12),
+                padx=8,
+                pady=4,
+                cursor="hand2",
+            )
+            delete_button.grid(row=0, column=2, sticky="e", padx=(0, 8))
 
             def on_click(
                 _event: tk.Event | None = None,
@@ -396,3 +416,31 @@ class ViewProjectPage(tk.Frame):
             demo_name=demo_name,
             demo=demo,
         )
+
+    def _on_delete_demo(self, demo_name: str, demo: Mapping[str, Any]) -> None:
+        """
+        Delete a demo folder after explicit confirmation.
+
+        :param demo_name: Human-readable demo name.
+        :param demo: Demo config dictionary.
+        """
+        if not self.project_name or not isinstance(self.project, Mapping):
+            return
+
+        should_delete = messagebox.askyesno(
+            title="Delete Demo",
+            message=f"Delete demo '{demo_name}'?\nThis action cannot be undone.",
+            icon="warning",
+        )
+        if not should_delete:
+            return
+
+        demo_cfg = demo.get("robogym_demo", {}) if isinstance(demo, Mapping) else {}
+        if "name" not in demo_cfg:
+            demo_cfg = {**demo_cfg, "name": demo_name}
+
+        delete_demo(self.project, {"robogym_demo": demo_cfg})
+
+        self._demo_names = list(self._safe_get_demo_names(self.project_name))
+        self._num_demos = len(self._demo_names)
+        self._render_demo_rows()

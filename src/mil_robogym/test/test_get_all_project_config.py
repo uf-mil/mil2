@@ -84,14 +84,82 @@ def test_get_all_project_config_raises_on_project_name_key(tmp_path: Path, monke
 
 def test_find_projects_dir_creates_missing_projects_dir(tmp_path: Path, monkeypatch):
     """Creates the projects directory when it has been manually deleted."""
-    share_dir = tmp_path / "install" / "mil_robogym" / "share" / "mil_robogym"
-    share_dir.mkdir(parents=True, exist_ok=True)
+    source_projects = tmp_path / "src" / "mil_robogym" / "projects"
     monkeypatch.setattr(
-        "mil_robogym.data_collection.get_all_project_config.resolve_package_share_dir",
-        lambda _package_name="mil_robogym": share_dir,
+        "mil_robogym.data_collection.get_all_project_config.resolve_source_projects_dir",
+        lambda package_name="mil_robogym": source_projects,
     )
 
     projects_dir = find_projects_dir()
 
-    assert projects_dir == share_dir / "projects"
+    assert projects_dir == source_projects
     assert projects_dir.is_dir()
+
+
+def test_get_all_project_config_accepts_non_numeric_topic_selections(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Loads optional non-numeric topic selection mappings when present."""
+    projects_dir = tmp_path / "projects"
+    project_dir = projects_dir / "typed_topics"
+    _write_project_config(
+        project_dir,
+        {
+            "robogym_project": {
+                "name": "Typed Topics",
+                "world_file": "src/default/world/file",
+                "model_name": "weights.pt",
+                "random_spawn_space": {
+                    "enabled": False,
+                    "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+                    "coord2_4d": [1.0, 2.0, 3.0, 4.0],
+                },
+                "input_topics": {"camera/image_raw": []},
+                "output_topics": {"detections": []},
+                "input_non_numeric_topics": {
+                    "camera/image_raw": [
+                        {
+                            "field_path": "data",
+                            "data_type": "image",
+                            "ros_type": "sensor_msgs/msg/Image",
+                        },
+                    ],
+                },
+                "output_non_numeric_topics": {
+                    "detections": [
+                        {
+                            "field_path": "detections",
+                            "data_type": "unordered_set",
+                            "ros_type": "sequence<vision_msgs/msg/Detection2D>",
+                        },
+                    ],
+                },
+            },
+        },
+    )
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.get_all_project_config.find_projects_dir",
+        lambda: projects_dir,
+    )
+
+    configs = get_all_project_config()
+
+    assert configs[0]["robogym_project"]["input_non_numeric_topics"] == {
+        "camera/image_raw": [
+            {
+                "field_path": "data",
+                "data_type": "image",
+                "ros_type": "sensor_msgs/msg/Image",
+            },
+        ],
+    }
+    assert configs[0]["robogym_project"]["output_non_numeric_topics"] == {
+        "detections": [
+            {
+                "field_path": "detections",
+                "data_type": "unordered_set",
+                "ros_type": "sequence<vision_msgs/msg/Detection2D>",
+            },
+        ],
+    }

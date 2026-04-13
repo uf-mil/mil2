@@ -12,8 +12,8 @@ from mil_robogym.data_collection.utils import to_lower_snake_case
 def test_create_project_folder(tmp_path: Path, monkeypatch):
     """Creates a project folder and writes a project config file."""
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
-        lambda: tmp_path,
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: tmp_path / "projects",
     )
 
     proj = {
@@ -44,6 +44,8 @@ def test_create_project_folder(tmp_path: Path, monkeypatch):
 
     parsed = yaml.safe_load(cfg)
     assert parsed["robogym_project"]["name"] == "Start Gate Agent"
+    assert parsed["robogym_training"]["num_episodes"] == 500
+    assert parsed["robogym_training"]["max_step_count"] is None
     assert parsed["robogym_project"]["input_topics"]["imu/processed"] == [
         "orientation.x",
         "orientation.y",
@@ -78,8 +80,8 @@ def test_to_lower_snake_case_already_snake():
 def test_create_project_folder_raises_if_exists(tmp_path, monkeypatch):
     """Raises when creating the same project folder twice."""
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
-        lambda: tmp_path,
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: tmp_path / "projects",
     )
 
     proj = {
@@ -107,8 +109,8 @@ def test_create_project_folder_raises_if_exists(tmp_path, monkeypatch):
 def test_create_project_folder_writes_tensor_spec(tmp_path: Path, monkeypatch):
     """Persists tensor_spec fields when they are provided in the project payload."""
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
-        lambda: tmp_path,
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: tmp_path / "projects",
     )
 
     proj = {
@@ -154,8 +156,8 @@ def test_create_project_folder_rejects_legacy_ignored_tensor_spec_fields(
 ):
     """Rejects legacy ignored_* tensor-spec fields under strict schema validation."""
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
-        lambda: tmp_path,
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: tmp_path / "projects",
     )
 
     proj = {
@@ -182,17 +184,12 @@ def test_create_project_folder_rejects_legacy_ignored_tensor_spec_fields(
         create_project_folder(proj)
 
 
-def test_create_project_folder_writes_source_and_install(tmp_path: Path, monkeypatch):
-    """Writes identical project config files to install and source project roots."""
-    share_dir = tmp_path / "install" / "mil_robogym" / "share" / "mil_robogym"
+def test_create_project_folder_writes_source_only(tmp_path: Path, monkeypatch):
+    """Writes project config only to the source project root."""
     source_projects = tmp_path / "src" / "mil_robogym" / "projects"
     monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
-        lambda: share_dir,
-    )
-    monkeypatch.setattr(
         "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
-        lambda _share_dir: source_projects,
+        lambda: source_projects,
     )
 
     proj = {
@@ -208,16 +205,68 @@ def test_create_project_folder_writes_source_and_install(tmp_path: Path, monkeyp
         "output_topics": {"trajectory/4_deg": ["yaw"]},
     }
 
-    share_project_dir = create_project_folder(proj)
+    created_project_dir = create_project_folder(proj)
     source_project_dir = source_projects / "dual_write_project"
 
-    assert share_project_dir == share_dir / "projects" / "dual_write_project"
-    assert (share_project_dir / "config.yaml").is_file()
+    assert created_project_dir == source_project_dir
     assert (source_project_dir / "config.yaml").is_file()
-    assert (share_project_dir / "config.yaml").read_text(
-        encoding="utf-8",
-    ) == source_project_dir.joinpath(
-        "config.yaml",
-    ).read_text(
-        encoding="utf-8",
+
+
+def test_create_project_folder_writes_non_numeric_topic_selections(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Persists supported non-numeric topic selections alongside numeric topic maps."""
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: tmp_path / "projects",
     )
+
+    proj = {
+        "name": "Typed Topics Project",
+        "world_file": "src/default/world/file",
+        "model_name": "weights.pt",
+        "random_spawn_space": {
+            "enabled": False,
+            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
+            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
+        },
+        "input_topics": {"camera/image_raw": []},
+        "output_topics": {"detections": []},
+        "input_non_numeric_topics": {
+            "camera/image_raw": [
+                {
+                    "field_path": "data",
+                    "data_type": "image",
+                    "ros_type": "sensor_msgs/msg/Image",
+                },
+            ],
+        },
+        "output_non_numeric_topics": {
+            "detections": [
+                {
+                    "field_path": "detections",
+                    "data_type": "unordered_set",
+                    "ros_type": "sequence<vision_msgs/msg/Detection2D>",
+                },
+            ],
+        },
+    }
+
+    project_dir = create_project_folder(proj)
+    cfg = yaml.safe_load((project_dir / "config.yaml").read_text(encoding="utf-8"))
+
+    assert cfg["robogym_project"]["input_non_numeric_topics"]["camera/image_raw"] == [
+        {
+            "field_path": "data",
+            "data_type": "image",
+            "ros_type": "sensor_msgs/msg/Image",
+        },
+    ]
+    assert cfg["robogym_project"]["output_non_numeric_topics"]["detections"] == [
+        {
+            "field_path": "detections",
+            "data_type": "unordered_set",
+            "ros_type": "sequence<vision_msgs/msg/Detection2D>",
+        },
+    ]

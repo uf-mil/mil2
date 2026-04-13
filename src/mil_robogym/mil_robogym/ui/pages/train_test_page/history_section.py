@@ -14,10 +14,10 @@ class HistorySection:
         self,
         parent: tk.Widget,
         on_agent_click: Callable[[str], None],
-        on_download_click: Callable[[str], None],
+        on_delete_click: Callable[[str], None],
     ) -> None:
         self._on_agent_click = on_agent_click
-        self._on_download_click = on_download_click
+        self._on_delete_click = on_delete_click
 
         self.container = tk.Frame(parent, bg="#DADADA")
         self.container.grid(
@@ -126,21 +126,21 @@ class HistorySection:
         )
         demos_label.grid(row=0, column=1, sticky="w")
 
-        download_button = tk.Button(
+        delete_button = tk.Button(
             row,
-            text="↓",
-            command=lambda name=agent_name: self._on_download_clicked(name),
-            bg="#ECECEC",
-            activebackground="#DFDFDF",
-            fg="black",
+            text="Delete",
+            command=lambda name=agent_name: self._on_delete_clicked(name),
+            bg="#F1DDDA",
+            activebackground="#E8CAC5",
+            fg="#4A120A",
             relief="flat",
             bd=0,
-            font=("Arial", 11, "bold"),
+            font=("Arial", 9, "bold"),
             padx=6,
             pady=2,
             cursor="hand2",
         )
-        download_button.grid(row=0, column=2, sticky="e")
+        delete_button.grid(row=0, column=2, sticky="e", padx=(6, 2))
 
         self._bind_row_click(row, agent_label, demos_label, agent_name)
 
@@ -169,6 +169,6 @@ class HistorySection:
             widget.bind("<Enter>", on_enter)
             widget.bind("<Leave>", on_leave)
 
-    def _on_download_clicked(self, agent_name: str) -> None:
-        """Handle download-button placeholder behavior."""
-        self._on_download_click(agent_name)
+    def _on_delete_clicked(self, agent_name: str) -> None:
+        """Handle row-action delete behavior."""
+        self._on_delete_click(agent_name)

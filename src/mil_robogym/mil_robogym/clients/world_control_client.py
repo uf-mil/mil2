@@ -1,6 +1,11 @@
+import threading
+
 from gz.msgs10.boolean_pb2 import Boolean
 from gz.msgs10.world_control_pb2 import WorldControl
 from gz.transport13 import Node as GZNode
+
+_WORLD_CONTROL_LOCK = threading.Lock()
+_SIMULATION_HOLD_COUNT = 0
 
 
 class WorldControlClient:
@@ -23,9 +28,7 @@ class WorldControlClient:
         request = WorldControl()
         request.pause = False
 
-        response = Boolean()
-
-        result, response = self.gz_node.request(
+        self.gz_node.request(
             self.service_name,
             request,
             WorldControl,
@@ -40,12 +43,32 @@ class WorldControlClient:
         request = WorldControl()
         request.pause = True
 
-        response = Boolean()
-
-        result, response = self.gz_node.request(
+        self.gz_node.request(
             self.service_name,
             request,
             WorldControl,
             Boolean,
             self.timeout,
         )
+
+    def acquire_simulation_hold(self) -> None:
+        """
+        Keep simulation running until a matching release call occurs.
+        """
+        global _SIMULATION_HOLD_COUNT
+        with _WORLD_CONTROL_LOCK:
+            if _SIMULATION_HOLD_COUNT == 0:
+                self.play_simulation()
+            _SIMULATION_HOLD_COUNT += 1
+
+    def release_simulation_hold(self) -> None:
+        """
+        Release a simulation hold and pause only when no holds remain.
+        """
+        global _SIMULATION_HOLD_COUNT
+        with _WORLD_CONTROL_LOCK:
+            if _SIMULATION_HOLD_COUNT == 0:
+                return
+            _SIMULATION_HOLD_COUNT -= 1
+            if _SIMULATION_HOLD_COUNT == 0:
+                self.pause_simulation()

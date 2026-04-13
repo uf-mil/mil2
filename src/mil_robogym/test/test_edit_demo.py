@@ -9,17 +9,13 @@ from mil_robogym.data_collection.filesystem import edit_demo
 
 def test_edit_demo_uses_name_schema(tmp_path: Path, monkeypatch):
     """Updates demo config using project['name'] for project lookup."""
-    share_dir = tmp_path / "install" / "mil_robogym" / "share" / "mil_robogym"
-    monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.resolve_package_share_dir",
-        lambda: share_dir,
-    )
+    source_projects = tmp_path / "src" / "mil_robogym" / "projects"
     monkeypatch.setattr(
         "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
-        lambda _share_dir: None,
+        lambda: source_projects,
     )
 
-    demo_dir = share_dir / "projects" / "start_gate_agent" / "demos" / "demo_1"
+    demo_dir = source_projects / "start_gate_agent" / "demos" / "demo_1"
     demo_dir.mkdir(parents=True)
     (demo_dir / "config.yaml").write_text(
         yaml.safe_dump(
