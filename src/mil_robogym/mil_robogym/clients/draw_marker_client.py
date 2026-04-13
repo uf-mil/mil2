@@ -126,27 +126,40 @@ class DrawMarkerClient:
     def _get_quaternion_from_yaw(self, yaw: float) -> tuple[float, float, float, float]:
         """
         Returns quaternion for:
-        yaw about Z + 90 deg rotation about X
+        yaw about Z + 90° about X + 90° about Y
         """
 
-        # Yaw quaternion (Z axis)
+        # --- Yaw (Z axis) ---
         sz = math.sin(yaw / 2.0)
         cz = math.cos(yaw / 2.0)
         q_yaw = (0.0, 0.0, sz, cz)
 
-        # 90 deg rotation about X
-        angle = math.pi / 2.0
-        sx = math.sin(angle / 2.0)
-        cx = math.cos(angle / 2.0)
+        # --- 90° about X ---
+        angle_x = math.pi / 2.0
+        sx = math.sin(angle_x / 2.0)
+        cx = math.cos(angle_x / 2.0)
         q_x = (sx, 0.0, 0.0, cx)
 
-        # Quaternion multiplication: q = q_yaw * q_x
-        x1, y1, z1, w1 = q_yaw
-        x2, y2, z2, w2 = q_x
+        # --- 90° about Y ---
+        angle_y = math.pi / 2.0
+        sy = math.sin(angle_y / 2.0)
+        cy = math.cos(angle_y / 2.0)
+        q_y = (0.0, sy, 0.0, cy)
 
-        x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
-        y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
-        z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
-        w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+        # --- Quaternion multiply helper ---
+        def quat_mul(q1, q2):
+            x1, y1, z1, w1 = q1
+            x2, y2, z2, w2 = q2
 
-        return (x, y, z, w)
+            x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
+            y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
+            z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
+            w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+
+            return (x, y, z, w)
+
+        # Compose rotations: yaw → X → Y
+        q = quat_mul(q_yaw, q_x)
+        q = quat_mul(q, q_y)
+
+        return q
