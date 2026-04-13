@@ -101,7 +101,7 @@ class DataCollectorClient(Node):
     def get_flattened_snapshot_values(self, project: RoboGymProjectYaml) -> list[any]:
 
         input_features = copy.deepcopy(project["tensor_spec"]["input_features"])
-        non_numeric_features = project["input_non_numeric_topics"]
+        non_numeric_features = project.get("input_non_numeric_topics", {})
 
         # Compose full list of input features
         input_features.extend(
