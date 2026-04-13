@@ -49,7 +49,6 @@ class DemoViewController:
 
         self.project: RoboGymProjectYaml | None = None
         self.demo: RoboGymDemoYaml | None = None
-        self.steps: list[dict] = []
 
         self.coordinate_popup = None
         self.edit_demo_popup = None
@@ -284,6 +283,23 @@ class DemoViewController:
         self.view.controls.redo_button.config(state=tk.NORMAL)
         self.view.controls.play_button.config(state=tk.NORMAL)
         self._refresh_sequence_playback_ui()
+
+        # Clean data
+        if not self.csv_writer.clean_data():
+
+            # Refresh steps list
+            self.view.steps.clear()
+
+            x, y, z, yaw = self.demo["start_position"]
+            self.view.steps.add_step((x, y, z, yaw), is_origin=True)
+
+            steps = self.csv_writer.fetch_steps()
+            for step in steps:
+                self.view.steps.add_step(step)
+
+            # Set last valid pose
+            x, y, z, yaw = steps[-1]
+            self.last_pose = (x, y, z, yaw)
 
     def preposition(self) -> None:
         """

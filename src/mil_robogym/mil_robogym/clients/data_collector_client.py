@@ -1,3 +1,4 @@
+import copy
 import json
 
 import rclpy
@@ -99,7 +100,7 @@ class DataCollectorClient(Node):
 
     def get_flattened_snapshot_values(self, project: RoboGymProjectYaml) -> list[any]:
 
-        input_features = project["tensor_spec"]["input_features"]
+        input_features = copy.deepcopy(project["tensor_spec"]["input_features"])
         non_numeric_features = project["input_non_numeric_topics"]
 
         # Compose full list of input features
@@ -122,7 +123,7 @@ class DataCollectorClient(Node):
                 input_features,
             )
 
-            if len(filtered_data) != len(input_features):
+            if len(filtered_data.keys()) != len(input_features):
                 return []
 
             flattened_data = [filtered_data[key] for key in input_features]
@@ -197,10 +198,10 @@ class DataCollectorClient(Node):
                 feature_name = f"{topic}:{key}"
                 flattened_states[feature_name] = value
 
-            # Iterate through image data
-            for topic, img_msg in img_msgs:
-                cv_img = self.bridge.imgmsg_to_cv2(img_msg, desired_encoding="bgr8")
-                flattened_states[topic] = cv_img
+        # Iterate through image data
+        for topic, img_msg in img_msgs:
+            cv_img = self.bridge.imgmsg_to_cv2(img_msg, desired_encoding="bgr8")
+            flattened_states[topic] = cv_img
 
         features_allowed = set(input_features)
 

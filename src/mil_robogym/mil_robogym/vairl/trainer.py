@@ -42,6 +42,7 @@ from .utils import (
 from .vairl import VAIRL
 
 GENERATOR_MODEL_FILE_NAME = "generator_model.zip"
+NUMBER_OF_MINI_BATCHES = 10
 
 
 class Trainer:
@@ -210,6 +211,7 @@ class Trainer:
                 env=train_venv,
                 learning_rate=self.generator_learning_rate,
                 batch_size=self.demos_batch_size,
+                n_steps=self.demos_batch_size * NUMBER_OF_MINI_BATCHES,
                 gamma=0.99,
                 gae_lambda=0.95,
                 target_kl=0.01,
@@ -258,6 +260,13 @@ class Trainer:
 
                 # Interpret abstract data if any
                 if self.does_contain_abstract_data:
+
+                    self.world_control_client.pause_simulation()
+
+                    self.data_collector_client.get_logger().warn(
+                        "Re-interpreting expert abstract data, this may take a few minutes...",
+                    )
+
                     interpreted_trajectories = interpret_abstract_data(
                         self.demo_trajectories,
                         self.external_architecture,
@@ -266,11 +275,14 @@ class Trainer:
                         interpreted_trajectories,
                     )
                     self.demo_imitations = trajectories_to_imitations(
-                        self.demo_trajectories,
+                        interpreted_trajectories,
                     )
                     self.flattened_demo_trajectories = rollout.flatten_trajectories(
                         self.demo_imitations,
                     )
+                    vairl.set_demonstrations(self.flattened_demo_trajectories)
+
+                    self.world_control_client.play_simulation()
 
                 reward_net.eval()
 

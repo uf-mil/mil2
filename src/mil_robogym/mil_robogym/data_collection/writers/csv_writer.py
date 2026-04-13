@@ -54,6 +54,70 @@ class AsyncCSVWriter:
 
         self.q.put(step)
 
+    def clean_data(self) -> bool:
+        """
+        Ensures same number of steps across all data stores by truncating
+        everything to the minimum available length.
+
+        Returns:
+            True  -> no clipping was needed
+            False -> clipping occurred
+        """
+
+        def numeric_sort(files):
+            return sorted(files, key=lambda p: int(p.stem.split("_")[-1]))
+
+        lengths = []
+
+        # Numerical state CSV
+        is_recording_numerical_data = True
+        try:
+            df_states = pd.read_csv(self.numerical_state_csv)
+            lengths.append(len(df_states))
+        except pd.errors.EmptyDataError:
+            is_recording_numerical_data = False
+
+        # Action CSV
+        df_actions = pd.read_csv(self.action_csv)
+        lengths.append(len(df_actions))
+
+        # Unordered sets
+        unordered_files = []
+        for path in self.unordered_sets.values():
+            files = numeric_sort(list(path.glob("*.json")))
+            unordered_files.append((path, files))
+            lengths.append(len(files))
+
+        # Images
+        image_files = []
+        for path in self.images.values():
+            files = numeric_sort(list(path.glob("*")))
+            image_files.append((path, files))
+            lengths.append(len(files))
+
+        # Determine minimum length
+        min_len = min(lengths)
+
+        clipped = any(length != min_len for length in lengths)
+
+        # Truncate CSVs
+        if is_recording_numerical_data:
+            df_states.iloc[:min_len].to_csv(self.numerical_state_csv, index=False)
+
+        df_actions.iloc[:min_len].to_csv(self.action_csv, index=False)
+
+        # Truncate unordered sets
+        for _, files in unordered_files:
+            for f in files[min_len:]:
+                f.unlink()
+
+        # Truncate images
+        for _, files in image_files:
+            for f in files[min_len:]:
+                f.unlink()
+
+        return not clipped
+
     def fetch_state_column_values(self, column: str) -> list:
         """
         Returns all the values for a certain column.
@@ -274,6 +338,7 @@ class AsyncCSVWriter:
         """
         # Extract numerical state data
         state_buffer = [sa_pair[0] for sa_pair in buffer]
+
         feature_names = self.project["tensor_spec"]["input_features"]
         numeric_state_buffer = [
             extract_selected_state_features(state, feature_names)

@@ -2,6 +2,8 @@
 IMPORTANT: THIS ENVIRONMENT IS CONFIGURED FOR MOVEMENT ONLY I.E. 4D. It is not configured for other outputs yet.
 """
 
+import time
+
 import numpy as np
 
 try:
@@ -144,11 +146,14 @@ class Environment(gym.Env):
         )
         self.state = interpret_state_data(self.state, self.external_architecture)
 
-        if not self.state and hasattr(self, "data_collector"):
+        if not self.state and self.initialized:
+
             while not self.state:
-                self.data_collector.get_logger().warn(
+                self.data_collector_client.get_logger().warn(
                     "Unable to retrieve state, trying again...",
                 )
+                time.sleep(0.1)  # 100 milliseconds
+
                 self.state = self.data_collector_client.get_flattened_snapshot_values(
                     self.project,
                 )
@@ -156,6 +161,9 @@ class Environment(gym.Env):
                     self.state,
                     self.external_architecture,
                 )
+
+            self.data_collector_client.get_logger().warn("Data retrieved, moving on...")
+
         else:
             return np.zeros(self.input_size), {}
 
@@ -198,7 +206,7 @@ class Environment(gym.Env):
         next_state = interpret_state_data(next_state, self.external_architecture)
 
         while not next_state:
-            self.data_collector.get_logger().warn(
+            self.data_collector_client.get_logger().warn(
                 "Unable to retrieve state, trying again...",
             )
             next_state = self.data_collector_client.get_flattened_snapshot_values(

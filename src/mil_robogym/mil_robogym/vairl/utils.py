@@ -21,6 +21,11 @@ def _add_noise(action: np.ndarray, noise_std: float) -> np.ndarray:
     return action + np.random.normal(scale=noise_std, size=action.shape)
 
 
+def _extract_number(path: Path) -> int:
+    name = path.stem  # e.g., "img_12" or "data_3"
+    return int(name.split("_")[1])
+
+
 def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
     """
     Go through all demo folders in project, compose trajectories as 3-tuple s.t. (s_t, a_t+1, s_t+1).
@@ -71,14 +76,14 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
 
                 absolute_path = demo_dir / "data" / rel_path
 
-                files = sorted(absolute_path.iterdir())
+                files = sorted(absolute_path.iterdir(), key=_extract_number)
                 file_paths = [str(f) for f in files]
 
                 abstract_data_per_feature.append(file_paths[:num_steps])
 
             if abstract_data_per_feature:
 
-                abstract_matrix = np.array(abstract_data_per_feature, dtype=object).T
+                abstract_matrix = np.stack(abstract_data_per_feature, axis=1)
 
                 if states:
                     states = np.concatenate([states, abstract_matrix], axis=1)
@@ -162,7 +167,7 @@ def interpret_state_data(
         else:
             flattened_state.append(item)
 
-    return flattened_state
+    return np.array(flattened_state)
 
 
 def interpret_abstract_data(
@@ -221,13 +226,10 @@ def interpret_abstract_data(
 
         # Batch inference
         if len(loaded_data) > 0:
-            try:
-                batch = np.stack(loaded_data)
-            except:
-                raise Exception(loaded_data)
+            # batch = np.stack(loaded_data)
 
             with torch.no_grad():
-                embeddings = model(batch)
+                embeddings = model(loaded_data)  # batch
 
             # Store in cache
             for path, emb in zip(valid_paths, embeddings):
