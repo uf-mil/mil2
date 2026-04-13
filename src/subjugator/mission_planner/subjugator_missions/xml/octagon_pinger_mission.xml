@@ -1,0 +1,64 @@
+<root BTCPP_format="4" main_tree_to_execute="OctagonPingerMission">
+    <BehaviorTree ID="OctagonPingerMission">
+        <Sequence>
+            <!-- Sweep yaw until first pinger bearing is observed. -->
+            <Parallel success_count="1" failure_count="2">
+                <SonarFollower
+                    name="wait_for_first_ping"
+                    ctx="{ctx}"
+                    stop_on_first_ping="true"
+                    sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
+                    <AlwaysSuccess/>
+                </SonarFollower>
+
+                <Repeat num_cycles="-1">
+                    <Sequence>
+                        <Repeat num_cycles="4">
+                            <Fallback>
+                                <SubTree ID="RelativeMove" _autoremap="true"
+                                    yaw_deg="15.0"
+                                    pos_tol="0.25" ori_tol_deg="6.0"
+                                    msec="4000"
+                                    ctx="{ctx}"/>
+                                <AlwaysSuccess/>
+                            </Fallback>
+                        </Repeat>
+
+                        <Repeat num_cycles="8">
+                            <Fallback>
+                                <SubTree ID="RelativeMove" _autoremap="true"
+                                    yaw_deg="-15.0"
+                                    pos_tol="0.25" ori_tol_deg="6.0"
+                                    msec="4000"
+                                    ctx="{ctx}"/>
+                                <AlwaysSuccess/>
+                            </Fallback>
+                        </Repeat>
+
+                        <Repeat num_cycles="4">
+                            <Fallback>
+                                <SubTree ID="RelativeMove" _autoremap="true"
+                                    yaw_deg="15.0"
+                                    pos_tol="0.25" ori_tol_deg="6.0"
+                                    msec="4000"
+                                    ctx="{ctx}"/>
+                                <AlwaysSuccess/>
+                            </Fallback>
+                        </Repeat>
+                    </Sequence>
+                </Repeat>
+            </Parallel>
+
+            <!-- Follow pinger bearing updates until the follower marks target passed. -->
+            <SonarFollower
+                name="follow_ping_to_octagon"
+                ctx="{ctx}"
+                sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
+                <SubTree ID="RelativeMove" _autoremap="true"
+                    x="{sonar_x}" y="{sonar_y}" z="0.0"
+                    pos_tol="0.20" ori_tol_deg="12.0" msec="25000"
+                    ctx="{ctx}"/>
+            </SonarFollower>
+        </Sequence>
+    </BehaviorTree>
+</root>
