@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 
 from mil_robogym.clients.data_collector_client import DataCollectorClient
+from mil_robogym.clients.draw_marker_client import DrawMarkerClient
 from mil_robogym.clients.get_pose_client import GetPoseClient
 from mil_robogym.clients.set_pose_client import SetPoseClient
 from mil_robogym.clients.world_control_client import WorldControlClient
@@ -67,6 +68,7 @@ class DemoViewController:
         self.get_pose_client = GetPoseClient()
         self.set_pose_client = SetPoseClient()
         self.world_control_client = WorldControlClient()
+        self.draw_marker_client = DrawMarkerClient()
         self.data_collector = DataCollectorClient()
         self.csv_writer = None
         self.keyboard_controls_gui = None
@@ -79,6 +81,7 @@ class DemoViewController:
     ) -> None:
         self._stop_sequence_playback()
         self._clear_selected_step()
+        self.draw_marker_client.clear_markers()
 
         self.raw_project = project
         self.project = project.get("robogym_project", {})
@@ -144,10 +147,12 @@ class DemoViewController:
             self._refresh_sequence_playback_ui()
 
     def navigate_to_home(self, _event: tk.Event | None = None) -> None:
+        self.draw_marker_client.clear_markers()
         self._close_current_demo()
         self.app.show_page("start")
 
     def navigate_to_project(self, _event: tk.Event | None = None) -> None:
+        self.draw_marker_client.clear_markers()
         self._close_current_demo()
         self.app.show_page("view_project", project=self.raw_project)
 
@@ -171,6 +176,7 @@ class DemoViewController:
             self.start_recording()
 
     def toggle_sequence_playback(self) -> None:
+        self.draw_marker_client.clear_markers()
         if self._is_sequence_playback_running():
             self._stop_sequence_playback()
             return
@@ -454,7 +460,7 @@ class DemoViewController:
 
         start_index = (
             self.view.steps.selected_index
-            if 0 <= self.view.steps.selected_index <= end_index
+            if 0 <= self.view.steps.selected_index < end_index
             else 0
         )
 
@@ -769,7 +775,7 @@ class DemoViewController:
         if hasattr(self.view, "steps"):
             self.view.steps.set_countdown_message("")
 
-    def _select_step(self, index: int) -> None:
+    def _select_step(self, index: int, draw: bool = False) -> None:
         end_index = self._visible_sequence_end_index()
         if not (0 <= index <= end_index):
             return
@@ -777,6 +783,14 @@ class DemoViewController:
         coordinate = self.view.steps.get_step_coordinate(index)
         if coordinate is None:
             return
+
+        # Draw step taken
+        if draw:
+            if index - 1 >= 0:
+                prev_coordinate = self.view.steps.get_step_coordinate(index - 1)
+                self.draw_marker_client.slerp(prev_coordinate, coordinate)
+
+            self.draw_marker_client.place_marker(coordinate)
 
         self.move_model_to(coordinate)
         self.view.steps.set_selected_step(index)
@@ -841,7 +855,7 @@ class DemoViewController:
             return
 
         self._sequence_playback_index = next_index
-        self._select_step(next_index)
+        self._select_step(next_index, draw=True)
 
         if next_index >= end_index:
             self._stop_sequence_playback()
