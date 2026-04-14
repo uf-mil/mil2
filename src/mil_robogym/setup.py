@@ -43,6 +43,7 @@ setup(
             "keyboard_control_srv = mil_robogym.services.keyboard_control:main",
             "live_ros_sampling_test = mil_robogym.data_collection.live_ros_sampling:main",
             "movement_server = mil_robogym.services.movement_server:main",
+            "shark_detect = mil_robogym.nodes.shark_detect:main",
         ],
     },
 )

@@ -29,6 +29,7 @@ set(msg_files
     "msg/PoseTwistStamped.msg"
     "msg/PoseTwist.msg"
     "msg/RangeStamped.msg"
+    "msg/TrackedDetection.msg"
     "msg/VelocityMeasurements.msg"
     "msg/VelocityMeasurement.msg"
     "msg/ProcessedPing.msg"
