@@ -76,10 +76,14 @@ class TrainTestViewController:
         self.trainer = None
         self.tester = None
 
+        self.loaded_agent = None
+
         if preferred_agent_name:
             self.set_agent(preferred_agent_name)
-
-        self.loaded_agent = load_saved_agent_model(self.project, preferred_agent_name)
+            self.loaded_agent = load_saved_agent_model(
+                self.project,
+                preferred_agent_name,
+            )
 
     def set_agent(self, agent_name: str) -> None:
         """
