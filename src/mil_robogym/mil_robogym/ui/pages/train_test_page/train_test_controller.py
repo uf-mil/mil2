@@ -79,7 +79,7 @@ class TrainTestViewController:
         if preferred_agent_name:
             self.set_agent(preferred_agent_name)
 
-        self.loaded_agent = preferred_agent_name
+        self.loaded_agent = load_saved_agent_model(self.project, preferred_agent_name)
 
     def set_agent(self, agent_name: str) -> None:
         """
@@ -199,7 +199,7 @@ class TrainTestViewController:
         if self._training_thread is not None:
             self._training_thread.join(timeout)
 
-    def test_agent(self) -> None:
+    def test_agent(self, validate: bool = False) -> None:
         """
         Start testing agent.
         """
@@ -216,7 +216,7 @@ class TrainTestViewController:
                 self.project,
                 operation="prepare data collector subscriptions for testing",
             )
-            tester.test_agent()
+            tester.test_agent(validate)
         except ValueError as e:
             tk.messagebox.showinfo(
                 title="No Agent Selected",
@@ -236,6 +236,10 @@ class TrainTestViewController:
         from mil_robogym.vairl.tester import Tester
 
         self.tester = Tester(self.project)
+
+        if self.loaded_agent:
+            self.tester.set_agent(self.loaded_agent)
+
         return self.tester
 
     def _ensure_project_topics_ready(
