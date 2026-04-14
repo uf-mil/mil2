@@ -189,6 +189,7 @@ class DemoViewController:
         if str(self.view.controls.play_button.cget("state")) == str(tk.DISABLED):
             return
 
+        self.draw_marker_client.clear_markers()
         self._clear_sample_countdown()
         self._stop_sequence_playback()
         self._clear_selected_step()
@@ -314,6 +315,7 @@ class DemoViewController:
         if str(self.view.controls.preposition_button.cget("state")) == str(tk.DISABLED):
             return
 
+        self.draw_marker_client.clear_markers()
         self._stop_sequence_playback()
 
         # Display coordinate popup
@@ -347,6 +349,7 @@ class DemoViewController:
         ):
             return
 
+        self.draw_marker_client.clear_markers()
         self._stop_sequence_playback()
 
         random_spawn_space = self.project["random_spawn_space"]
@@ -576,6 +579,7 @@ class DemoViewController:
         """
         Resets all recorded data of a demo.
         """
+        self.draw_marker_client.clear_markers()
         self._clear_sample_countdown()
 
         # Clear collected data
