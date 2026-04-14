@@ -85,7 +85,7 @@ def fetch_demo_trajectories(project: RoboGymProjectYaml, noise_std: float):
 
                 abstract_matrix = np.stack(abstract_data_per_feature, axis=1)
 
-                if states:
+                if states.size > 0:
                     states = np.concatenate([states, abstract_matrix], axis=1)
                 else:
                     states = abstract_matrix

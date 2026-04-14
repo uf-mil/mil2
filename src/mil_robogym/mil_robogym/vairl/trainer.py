@@ -1,3 +1,4 @@
+import copy
 import os
 import threading
 from concurrent.futures import Future
@@ -10,8 +11,6 @@ import torch
 from imitation.data import rollout
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
-from rosidl_runtime_py.convert import message_to_ordereddict
-from rosidl_runtime_py.utilities import get_message
 from sb3_contrib import TRPO
 
 from mil_robogym.data_collection.filesystem import (
@@ -26,22 +25,21 @@ from ..clients.localization_client import LocalizationClient
 from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
 from ..clients.world_control_client import WorldControlClient
-from .deep_set import DeepSet
 from .environment import GYMNASIUM, Environment
 from .generator_metrics import extract_latest_generator_metrics
-from .image_encoder import CNNEncoder
 from .metrics import TrainingMetricsSession
+from .observation_preprocessor import ObservationPreprocessor
 from .reward_net import VAIRLRewardNet
 from .training_settings import DEFAULT_TRAINING_SETTINGS
 from .utils import (
     fetch_demo_trajectories,
-    interpret_abstract_data,
     trajectories_to_batches,
     trajectories_to_imitations,
 )
 from .vairl import VAIRL
 
 GENERATOR_MODEL_FILE_NAME = "generator_model.zip"
+OBSERVATION_PREPROCESSOR_FILE_NAME = "observation_preprocessor.pt"
 NUMBER_OF_MINI_BATCHES = 10
 
 
@@ -110,9 +108,10 @@ class Trainer:
         )
 
         # Fetch and process expert demonstrations
-        self.does_contain_abstract_data = (
-            self.project.get("input_non_numeric_topics", {}) != {}
+        self.observation_preprocessor = ObservationPreprocessor.from_project(
+            self.project,
         )
+        self.does_contain_abstract_data = self.observation_preprocessor is not None
         self.demo_trajectories, determined_max_step_count, determined_max_vals = (
             fetch_demo_trajectories(
                 self.project,
@@ -137,14 +136,8 @@ class Trainer:
             self.flattened_demo_trajectories = rollout.flatten_trajectories(
                 self.demo_imitations,
             )
-            self.external_architecture = []
         else:
-            self.demo_batches = None
-            self.demo_imitations = None
-            self.flattened_demo_trajectories = None
-
-            # Load in external architectures for abstract data types
-            self.external_architecture = self._create_external_architecture()
+            self._rebuild_encoded_demo_cache()
 
         # Environment set up
         self.eval_environment = Environment(
@@ -157,7 +150,7 @@ class Trainer:
             self.set_pose_client,
             self.controller_client,
             self.localization_client,
-            self.external_architecture,
+            self.observation_preprocessor,
             True,
         )
 
@@ -175,6 +168,10 @@ class Trainer:
             self._stopped_early = False
         if not hasattr(self, "_aborted"):
             self._aborted = False
+        if not hasattr(self, "observation_preprocessor"):
+            self.observation_preprocessor = None
+        if not hasattr(self, "does_contain_abstract_data"):
+            self.does_contain_abstract_data = False
 
         metrics_session = TrainingMetricsSession(
             save_callback=self._emit_progress_event,
@@ -200,7 +197,7 @@ class Trainer:
                     "set_pose_client": self.set_pose_client,
                     "controller_client": self.controller_client,
                     "localization_client": self.localization_client,
-                    "external_architecture": self.external_architecture,
+                    "observation_preprocessor": self.observation_preprocessor,
                     "initialized": True,
                 },
             )
@@ -240,6 +237,11 @@ class Trainer:
                 i_c=self.i_c,
                 beta_step_size=self.beta_step_size,
                 disc_lr=self.discriminator_learning_rate,
+                extra_disc_modules=(
+                    [self.observation_preprocessor]
+                    if self.observation_preprocessor is not None
+                    else None
+                ),
                 allow_variable_horizon=True,
             )
 
@@ -255,46 +257,25 @@ class Trainer:
                     break
 
                 if self.does_contain_abstract_data:
-                    # Recalculate values for abstract data
-                    pass
-
-                # Interpret abstract data if any
-                if self.does_contain_abstract_data:
-
                     self.world_control_client.pause_simulation()
-
                     self.data_collector_client.get_logger().warn(
                         "Re-interpreting expert abstract data, this may take a few minutes...",
                     )
-
-                    interpreted_trajectories = interpret_abstract_data(
-                        self.demo_trajectories,
-                        self.external_architecture,
-                    )
-                    self.demo_batches = trajectories_to_batches(
-                        interpreted_trajectories,
-                    )
-                    self.demo_imitations = trajectories_to_imitations(
-                        interpreted_trajectories,
-                    )
-                    self.flattened_demo_trajectories = rollout.flatten_trajectories(
-                        self.demo_imitations,
-                    )
-                    vairl.set_demonstrations(self.flattened_demo_trajectories)
-
+                    self._refresh_encoded_demonstrations(vairl)
                     self.world_control_client.play_simulation()
 
                 reward_net.eval()
 
-                gen_data, reward_mean, reward_std = (
-                    self.generate_generator_trajectories(
-                        generator,
-                        reward_net,
-                        self.demos_batch_size,
-                    )
+                generator_result = self.generate_generator_trajectories(
+                    generator,
+                    reward_net,
+                    self.demos_batch_size,
                 )
-
-                gen_batch = trajectories_to_batches(gen_data)
+                if isinstance(generator_result, tuple) and len(generator_result) == 4:
+                    gen_data, reward_mean, reward_std, raw_gen_data = generator_result
+                else:
+                    gen_data, reward_mean, reward_std = generator_result
+                    raw_gen_data = gen_data
 
                 # Train Generator
                 vairl.train_gen(total_timesteps=self.rollout_steps)
@@ -305,9 +286,21 @@ class Trainer:
 
                 # Train Discriminator
                 if train_discriminator_flag:
+                    if self.observation_preprocessor is not None:
+                        expert_samples = self._build_discriminator_samples(
+                            self.demo_trajectories,
+                            device=vairl.device,
+                        )
+                        gen_samples = self._build_discriminator_samples(
+                            raw_gen_data,
+                            device=vairl.device,
+                        )
+                    else:
+                        expert_samples = self.demo_batches
+                        gen_samples = trajectories_to_batches(gen_data)
                     _disc_stats = vairl.train_disc(
-                        expert_samples=self.demo_batches,
-                        gen_samples=gen_batch,
+                        expert_samples=expert_samples,
+                        gen_samples=gen_samples,
                     )
                 else:
                     _disc_stats = {"loss": 0.0, "kl": 0.0, "beta": float(vairl.beta)}
@@ -384,58 +377,120 @@ class Trainer:
                 if stop_error is not None:
                     raise stop_error
 
-    def _create_external_architecture(self):
-        """
-        Iterate through project yaml and set up CNN or DeepSet accordingly.
-        """
+    def _refresh_encoded_demonstrations(self, vairl: VAIRL) -> None:
+        self._rebuild_encoded_demo_cache()
+        vairl.set_demonstrations(self.flattened_demo_trajectories)
 
-        external_architecture = []
-        input_non_numeric_topics = self.project.get("input_non_numeric_topics", {})
+    def _rebuild_encoded_demo_cache(self) -> None:
+        encoded_trajectories = self._encode_trajectories(self.demo_trajectories)
+        self.demo_batches = trajectories_to_batches(encoded_trajectories)
+        self.demo_imitations = trajectories_to_imitations(encoded_trajectories)
+        self.flattened_demo_trajectories = rollout.flatten_trajectories(
+            self.demo_imitations,
+        )
 
-        for topic, data_list in input_non_numeric_topics.items():
+    def _encode_trajectories(
+        self,
+        trajectories: list[list[tuple[np.ndarray, np.ndarray, np.ndarray]]],
+    ) -> list[list[tuple[np.ndarray, np.ndarray, np.ndarray]]]:
+        if self.observation_preprocessor is None:
+            return trajectories
 
-            for data in data_list:
+        flat_states = []
+        flat_next_states = []
+        traj_lengths = []
 
-                if data["data_type"] == "image":
-                    external_architecture.append(CNNEncoder())
+        for trajectory in trajectories:
+            traj_lengths.append(len(trajectory))
+            for state, _action, next_state in trajectory:
+                flat_states.append(state)
+                flat_next_states.append(next_state)
 
-                elif data["data_type"] == "unordered_set":
-                    ros_type = data["ros_type"]
+        encoded_states = self.observation_preprocessor.encode_batch(flat_states)
+        encoded_next_states = self.observation_preprocessor.encode_batch(
+            flat_next_states,
+        )
 
-                    try:
-                        # Extract inner type from sequence<...>
-                        if "sequence<" in ros_type:
-                            inner_type = ros_type.replace("sequence<", "").replace(
-                                ">",
-                                "",
-                            )
-                        else:
-                            inner_type = ros_type
+        encoded_states_np = encoded_states.detach().cpu().numpy()
+        encoded_next_states_np = encoded_next_states.detach().cpu().numpy()
 
-                        # Get ROS message class
-                        msg_class = get_message(inner_type)
+        rebuilt_trajectories = []
+        offset = 0
+        for traj_length, trajectory in zip(traj_lengths, trajectories, strict=False):
+            rebuilt_trajectory = []
+            for index in range(traj_length):
+                _state, action, _next_state = trajectory[index]
+                rebuilt_trajectory.append(
+                    (
+                        encoded_states_np[offset],
+                        np.asarray(action, dtype=np.float32),
+                        encoded_next_states_np[offset],
+                    ),
+                )
+                offset += 1
+            rebuilt_trajectories.append(rebuilt_trajectory)
 
-                        # Create dummy instance
-                        dummy_obj = msg_class()
-                        dummy_obj = message_to_ordereddict(dummy_obj)
+        return rebuilt_trajectories
 
-                        # Define output shape (can later move to YAML)
-                        output_dim = data.get("output_dim", 32)
-                        self.move_client.get_logger().info(f"{dummy_obj}")
+    def _build_discriminator_samples(
+        self,
+        trajectories: list[list[tuple[np.ndarray, np.ndarray, np.ndarray]]],
+        *,
+        device: torch.device,
+    ) -> dict[str, torch.Tensor]:
+        obs = []
+        acts = []
+        next_obs = []
+        dones = []
 
-                        external_architecture.append(
-                            DeepSet(obj=dummy_obj, output_shape=output_dim),
-                        )
+        for trajectory in trajectories:
+            for index, (state, action, next_state) in enumerate(trajectory):
+                obs.append(state)
+                acts.append(np.asarray(action, dtype=np.float32))
+                next_obs.append(next_state)
+                dones.append(1.0 if index == len(trajectory) - 1 else 0.0)
 
-                    except Exception as e:
-                        raise RuntimeError(
-                            f"Failed to initialize DeepSet for topic '{topic}' with type '{ros_type}': {e}",
-                        )
+        if self.observation_preprocessor is None:
+            return {
+                "obs": torch.as_tensor(
+                    np.asarray(obs, dtype=np.float32),
+                    dtype=torch.float32,
+                    device=device,
+                ),
+                "acts": torch.as_tensor(
+                    np.asarray(acts, dtype=np.float32),
+                    dtype=torch.float32,
+                    device=device,
+                ),
+                "next_obs": torch.as_tensor(
+                    np.asarray(next_obs, dtype=np.float32),
+                    dtype=torch.float32,
+                    device=device,
+                ),
+                "dones": torch.as_tensor(
+                    np.asarray(dones, dtype=np.float32),
+                    dtype=torch.float32,
+                    device=device,
+                ),
+            }
 
-                else:
-                    raise ValueError(f"Unsupported data_type: {data['data_type']}")
-
-        return external_architecture
+        return {
+            "obs": self.observation_preprocessor.encode_batch(obs, device=device),
+            "acts": torch.as_tensor(
+                np.asarray(acts, dtype=np.float32),
+                dtype=torch.float32,
+                device=device,
+            ),
+            "next_obs": self.observation_preprocessor.encode_batch(
+                next_obs,
+                device=device,
+            ),
+            "dones": torch.as_tensor(
+                np.asarray(dones, dtype=np.float32),
+                dtype=torch.float32,
+                device=device,
+            ),
+        }
 
     def _build_agent_name(
         self,
@@ -493,12 +548,18 @@ class Trainer:
         num_demos = len(self.demo_trajectories)
         return metrics_session.enqueue_agent_save(
             generator=generator,
+            preprocessor=self.observation_preprocessor,
             project_dirs=project_dirs,
             num_demos=num_demos,
             created_at=created_at,
             model_file_name=GENERATOR_MODEL_FILE_NAME,
             agent_name=agent_name,
             checkpoint_episode=checkpoint_episode,
+            preprocessor_file_name=(
+                OBSERVATION_PREPROCESSOR_FILE_NAME
+                if self.observation_preprocessor is not None
+                else None
+            ),
             training_settings=self._resolved_training_settings(),
         )
 
@@ -528,6 +589,7 @@ class Trainer:
         Generate an array of trajectories and return the reward mean and standard deviation from the trajectories.
         """
         trajectories = []
+        raw_trajectories = [] if self.observation_preprocessor is not None else None
         rewards = []
         reward_net_device = next(reward_net.parameters()).device
 
@@ -537,8 +599,10 @@ class Trainer:
                 state, _ = self.eval_environment.reset()
             else:
                 state = self.eval_environment.reset()
+            raw_state = copy.deepcopy(self.eval_environment.raw_state)
 
             traj = []
+            raw_traj = [] if raw_trajectories is not None else None
             reward_accumulated = 0.0
 
             for _ in range(self.max_step_count):
@@ -555,6 +619,7 @@ class Trainer:
                     next_state, _env_reward, done, _ = self.eval_environment.step(
                         action,
                     )
+                raw_next_state = copy.deepcopy(self.eval_environment.raw_state)
 
                 with torch.no_grad():
                     s_t = torch.as_tensor(
@@ -581,18 +646,37 @@ class Trainer:
 
                 reward_accumulated += reward
                 traj.append((state.copy(), action.copy(), next_state.copy()))
+                if raw_traj is not None:
+                    raw_traj.append(
+                        (
+                            raw_state,
+                            action.copy(),
+                            raw_next_state,
+                        ),
+                    )
 
                 state = next_state
+                raw_state = raw_next_state
 
                 if done:
                     if GYMNASIUM:
                         state, _ = self.eval_environment.reset()
                     else:
                         state = self.eval_environment.reset()
+                    raw_state = copy.deepcopy(self.eval_environment.raw_state)
 
             rewards.append(reward_accumulated)
             trajectories.append(traj)
+            if raw_trajectories is not None and raw_traj is not None:
+                raw_trajectories.append(raw_traj)
 
+        if raw_trajectories is not None:
+            return (
+                trajectories,
+                float(np.mean(rewards)),
+                float(np.std(rewards)),
+                raw_trajectories,
+            )
         return trajectories, float(np.mean(rewards)), float(np.std(rewards))
 
     def _resolved_training_settings(self) -> dict[str, int | float | None]:
@@ -657,7 +741,7 @@ class Trainer:
         self.controller_client.reset_controller()
         self.world_control_client.pause_simulation()
 
-    def _ready_gazebo(headless: bool = False):
+    def _ready_gazebo(self, headless: bool = False):
         """
         Configure environment variables and hints for faster Gazebo RL training.
         """

@@ -22,9 +22,7 @@ from ..clients.data_collector_client import DataCollectorClient
 from ..clients.localization_client import LocalizationClient
 from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
-from .deep_set import DeepSet
-from .image_encoder import CNNEncoder
-from .utils import interpret_state_data
+from .observation_preprocessor import ObservationPreprocessor
 
 
 class Environment(gym.Env):
@@ -43,15 +41,17 @@ class Environment(gym.Env):
         set_pose_client: SetPoseClient | None = None,
         controller_client: ControllerClient | None = None,
         localization_client: LocalizationClient | None = None,
-        external_architecture: list[DeepSet | CNNEncoder] = [],
+        observation_preprocessor: ObservationPreprocessor | None = None,
         initialized: bool = False,
     ):
         super().__init__()
 
         self.initialized = initialized
-        self.external_architecture = external_architecture
+        self.observation_preprocessor = observation_preprocessor
         self.input_features = []
         self.input_size = 0
+        self.raw_state: list[object] = []
+        self.state = None
 
         if initialized:
             # Save project
@@ -85,15 +85,15 @@ class Environment(gym.Env):
             self.max_coord = np.maximum(c1, c2)
 
             # Tracked values
-            self.state = None
             self.pose = np.zeros(4, dtype=np.float32)
             self.t = 0
             self.rng = np.random.default_rng(seed)
 
             # Get observation space size
-            self.input_size = len(self.input_features)
-            for model in self.external_architecture:
-                self.input_size += model.output_dim
+            if self.observation_preprocessor is not None:
+                self.input_size = self.observation_preprocessor.encoded_input_size
+            else:
+                self.input_size = len(self.input_features)
 
         # Configure observation space
         self.observation_space = gym.spaces.Box(
@@ -140,32 +140,8 @@ class Environment(gym.Env):
         # Move to spawn position to ground movement client.
         # self.move_client.move((0, 0, 0, 0))
 
-        # Record state
-        self.state = self.data_collector_client.get_flattened_snapshot_values(
-            self.project,
-        )
-        self.state = interpret_state_data(self.state, self.external_architecture)
-
-        if len(self.state) == 0 and self.initialized:
-
-            while len(self.state) == 0:
-                self.data_collector_client.get_logger().warn(
-                    "Unable to retrieve state, trying again...",
-                )
-                time.sleep(0.1)  # 100 milliseconds
-
-                self.state = self.data_collector_client.get_flattened_snapshot_values(
-                    self.project,
-                )
-                self.state = interpret_state_data(
-                    self.state,
-                    self.external_architecture,
-                )
-
-            self.data_collector_client.get_logger().warn("Data retrieved, moving on...")
-
-        else:
-            return np.zeros(self.input_size), {}
+        self.raw_state = self._get_raw_state_with_retry()
+        self.state = self._encode_observation(self.raw_state)
 
         return self.state.copy(), {}
 
@@ -200,20 +176,10 @@ class Environment(gym.Env):
             env_reward -= 1.0
 
         # Record next state
-        next_state = self.data_collector_client.get_flattened_snapshot_values(
-            self.project,
-        )
-        next_state = interpret_state_data(next_state, self.external_architecture)
+        raw_next_state = self._get_raw_state_with_retry()
+        next_state = self._encode_observation(raw_next_state)
 
-        while len(next_state) == 0:
-            self.data_collector_client.get_logger().warn(
-                "Unable to retrieve state, trying again...",
-            )
-            next_state = self.data_collector_client.get_flattened_snapshot_values(
-                self.project,
-            )
-            next_state = interpret_state_data(next_state, self.external_architecture)
-
+        self.raw_state = raw_next_state
         self.state = next_state
 
         # TODO: Maybe determine condition for termination based on where most demos terminate
@@ -231,6 +197,27 @@ class Environment(gym.Env):
 
         done = bool(terminated or truncated)
         return next_state.copy(), float(env_reward), done, {}
+
+    def _get_raw_state_with_retry(self) -> list[object]:
+        raw_state = self.data_collector_client.get_flattened_snapshot_values(
+            self.project,
+        )
+
+        while not raw_state:
+            self.data_collector_client.get_logger().warn(
+                "Unable to retrieve state, trying again...",
+            )
+            time.sleep(0.1)
+            raw_state = self.data_collector_client.get_flattened_snapshot_values(
+                self.project,
+            )
+
+        return raw_state
+
+    def _encode_observation(self, raw_state: list[object]) -> np.ndarray:
+        if self.observation_preprocessor is None:
+            return np.asarray(raw_state, dtype=np.float32)
+        return self.observation_preprocessor.encode_state(raw_state)
 
     def _apply_action_with_bounds(self, pose, action):
         """
