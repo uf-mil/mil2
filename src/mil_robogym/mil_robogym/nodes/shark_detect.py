@@ -1,5 +1,3 @@
-import threading
-
 import rclpy
 from mil_msgs.msg import TrackedDetection
 from rclpy.node import Node
@@ -21,13 +19,13 @@ class SharkDetect(Node):
             DetectionArray,
             "/yolo/detections",
             self._callback,
-            1,
+            10,
         )
 
         self.pub = self.create_publisher(
             TrackedDetection,
             "/shark_tracking",
-            1,
+            10,
         )
 
     def _callback(self, msg: DetectionArray) -> None:
@@ -62,7 +60,4 @@ def main(args=None):
 
     shark_detect = SharkDetect()
 
-    thread = threading.Thread(target=rclpy.spin, args=(shark_detect,))
-    thread.start()
-
-    thread.join()
+    rclpy.spin(shark_detect)
