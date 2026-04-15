@@ -55,6 +55,15 @@ def generate_launch_description():
         output="screen",
     )
 
+    Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=[
+            "/velodyne/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
+        ],
+        output="screen",
+    )
+
     return LaunchDescription(
         [model_file_arg, model_name_arg, spawn_navigator],
     )

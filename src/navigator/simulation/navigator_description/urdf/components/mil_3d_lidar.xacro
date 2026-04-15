@@ -136,9 +136,9 @@
     </joint>
 
     <gazebo reference="${name}">
-      <sensor type="gpu_ray" name="${name}_sensor">
+      <sensor type="gpu_lidar" name="${name}_sensor">
         <update_rate>${update_rate}</update_rate>
-        <ray>
+        <lidar>
           <scan>
             <horizontal>
               <samples>${samples/resolution}</samples>
@@ -154,7 +154,7 @@
             </vertical>
           </scan>
           <range>
-            <min>0.1</min>
+            <min>5</min>
             <max>${max_range}</max>
           </range>
           <noise>
@@ -162,7 +162,9 @@
             <mean>0.0</mean>
             <stddev>${noise_stddev}</stddev>
           </noise>
-        </ray>
+        </lidar>
+        <always_on>true</always_on>
+        <visualize>true</visualize>
       </sensor>
     </gazebo>
 
