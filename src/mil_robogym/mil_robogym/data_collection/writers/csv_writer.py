@@ -1,0 +1,178 @@
+import csv
+import queue
+import threading
+
+import pandas as pd
+
+from ..filesystem import get_demo_dir_path
+from ..types import Coord4D, RoboGymDemoYaml, RoboGymProjectYaml, StateActionPair
+from ..utils import extract_selected_state_features
+
+
+class AsyncCSVWriter:
+    """
+    Class responsible for writing to CSVs in the background.
+    """
+
+    def __init__(
+        self,
+        project: RoboGymProjectYaml,
+        demo: RoboGymDemoYaml,
+        flush_size: int = 1,
+    ):
+
+        self.q = queue.Queue()
+
+        self.project = project
+        self.demo = demo
+        self.flush_size = flush_size
+
+        self.demo_dir_path = get_demo_dir_path(project, demo)
+
+        self.numerical_state_csv = (
+            self.demo_dir_path / "data" / "numerical" / "data.csv"
+        )
+        self.action_csv = self.demo_dir_path / "data" / "actions" / "data.csv"
+
+        self._stop_event = threading.Event()
+
+        self.thread = threading.Thread(target=self._worker, daemon=True)
+        self.thread.start()
+
+    def record(self, state: dict, action: dict) -> None:
+        """
+        Add the state action pair to the queue.
+        """
+        step = (state, action)
+
+        self.q.put(step)
+
+    def fetch_state_column_values(self, column: str) -> list:
+        """
+        Returns all the values for a certain column.
+        """
+        df = pd.read_csv(self.numerical_state_csv)
+        return df[column].values
+
+    def fetch_state_series(self) -> dict[str, list[float]]:
+        """
+        Return all saved state columns as ordered numeric series.
+        """
+        try:
+            df = pd.read_csv(self.numerical_state_csv)
+        except (FileNotFoundError, pd.errors.EmptyDataError):
+            return {}
+
+        state_columns = self.project["tensor_spec"]["input_features"]
+        return {
+            column: [float(value) for value in df[column].dropna().tolist()]
+            for column in state_columns
+            if column in df.columns
+        }
+
+    def fetch_steps(self) -> list[Coord4D]:
+        """
+        Retrieve the list of steps taken.
+        """
+        df = pd.read_csv(self.action_csv)
+        poses = df[["x", "y", "z", "yaw"]]
+
+        return [tuple(row) for row in poses.to_numpy()]
+
+    def close(self) -> None:
+        """
+        Stop the writer and flush out the remaining data.
+        """
+        self._stop_event.set()
+        self.thread.join
+
+    def clear_all_data(self, i_row: int | None = None) -> None:
+        """
+        Clear all data collected.
+        """
+        # TODO: Clear other folder data and reset metadata.csv
+        numerical_df = pd.read_csv(self.numerical_state_csv)
+        action_df = pd.read_csv(self.action_csv)
+
+        if i_row is not None:
+            new_numerical_df = numerical_df.iloc[:i_row].copy()
+            new_action_df = action_df.iloc[:i_row].copy()
+        else:
+            new_numerical_df = pd.DataFrame(columns=numerical_df.columns)
+            new_action_df = pd.DataFrame(columns=action_df.columns)
+
+        new_numerical_df.to_csv(self.numerical_state_csv, index=False)
+        new_action_df.to_csv(self.action_csv, index=False)
+
+    def set_new_paths(self, project: RoboGymProjectYaml, demo: RoboGymDemoYaml) -> None:
+        """
+        Set new paths for the csv files.
+        """
+        self.project = project
+        self.demo = demo
+
+        self.demo_dir_path = get_demo_dir_path(project, demo)
+
+        self.numerical_state_csv = (
+            self.demo_dir_path / "data" / "numerical" / "data.csv"
+        )
+        self.action_csv = self.demo_dir_path / "data" / "actions" / "data.csv"
+
+    def _worker(self) -> None:
+        """
+        Background thread that writes data in batches.
+        """
+        buffer = []
+
+        while not self._stop_event.is_set() or not self.q.empty():
+
+            # Get step
+            try:
+                step = self.q.get()
+            except queue.Empty:
+                step = None
+
+            if step is None:
+                continue
+
+            buffer.append(step)
+
+            # Write buffer into respective CSVs if buffer overflows
+            if len(buffer) >= self.flush_size:
+                self._flush(buffer)
+                buffer.clear()
+
+        # Write buffer on close
+        if buffer:
+            self.flush(buffer)
+
+    def _flush(self, buffer: list[StateActionPair]):
+        """
+        Write state and action data to CSVs.
+        """
+        state_buffer = [sa_pair[0] for sa_pair in buffer]
+        feature_names = self.project["tensor_spec"]["input_features"]
+        state_buffer = [
+            extract_selected_state_features(state, feature_names)
+            for state in state_buffer
+        ]
+
+        state_fieldnames = feature_names
+
+        action_buffer = [sa_pair[1] for sa_pair in buffer]
+
+        with open(self.numerical_state_csv, "a", newline="") as f_state:
+            writer = csv.DictWriter(
+                f_state,
+                fieldnames=state_fieldnames,
+                extrasaction="ignore",
+            )
+            writer.writerows(state_buffer)
+
+        with open(self.action_csv, "a", newline="") as f_action:
+            writer = csv.DictWriter(
+                f_action,
+                fieldnames=action_buffer[0].keys(),
+                extrasaction="ignore",
+            )
+            writer.writerows(action_buffer)

@@ -7,6 +7,10 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
+    """
+    Launches gazebo simulation, the MIL RoboGYM interface, and the pose service to query position of sub9.
+    """
+
     return LaunchDescription(
         [
             IncludeLaunchDescription(
@@ -30,6 +34,18 @@ def generate_launch_description():
                 package="mil_robogym",
                 executable="gz_pose_srv",
                 name="gz_pose_srv",
+                output="screen",
+            ),
+            Node(
+                package="mil_robogym",
+                executable="data_collector_srv",
+                name="data_collector_srv",
+                output="screen",
+            ),
+            Node(
+                package="mil_robogym",
+                executable="movement_server",
+                name="movement_server",
                 output="screen",
             ),
         ],

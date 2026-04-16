@@ -48,7 +48,7 @@ void MarbleDropper::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf
 
 void MarbleDropper::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
 {
-    std::cout << "[MarbleDropper] Keypress received: " << msg->data << std::endl;
+    // std::cout << "[MarbleDropper] Keypress received: " << msg->data << std::endl;
     if (msg->data == "m" && !m_pressed)
     {
         m_pressed = true;

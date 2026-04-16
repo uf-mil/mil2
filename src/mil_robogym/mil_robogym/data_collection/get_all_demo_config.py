@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import yaml
 
-from .filesystem import to_lower_snake_case
 from .get_all_project_config import find_projects_dir
+from .types import RoboGymDemoConfig
+from .utils import to_lower_snake_case
 
 
-def get_all_demo_config(project_name: str) -> dict[str, dict]:
+def get_all_demo_config(project_name: str) -> dict[str, RoboGymDemoConfig]:
     """
     Load all demo config YAMLs for a project and return:
     demo_name_raw -> parsed_yaml_dict
@@ -25,11 +26,10 @@ def get_all_demo_config(project_name: str) -> dict[str, dict]:
 
     demos_dir = project_dir / "demos"
     if not demos_dir.is_dir():
-        raise FileNotFoundError(
-            f"Demos directory does not exist for project '{project_name}': {demos_dir}",
-        )
+        demos_dir.mkdir(parents=True, exist_ok=True)
+        return {}
 
-    configs: dict[str, dict] = {}
+    configs: dict[str, RoboGymDemoConfig] = {}
     for demo_dir in demos_dir.iterdir():
         if not demo_dir.is_dir() or demo_dir.name.startswith("."):
             continue
@@ -52,13 +52,20 @@ def get_all_demo_config(project_name: str) -> dict[str, dict]:
                 f"Config path for demo '{demo_dir.name}' parsed, but is empty or invalid: {config_path}",
             )
 
-        # Store by the raw name from YAML (not snake_case folder name).
-        demo_name_raw = parsed.get("robogym_demo", {}).get("demo_name")
+        try:
+            parsed_config: RoboGymDemoConfig = {
+                "robogym_demo": parsed["robogym_demo"],
+            }
+            demo_name_raw = parsed_config["robogym_demo"]["name"]
+        except (KeyError, TypeError) as e:
+            raise ValueError(
+                f"Config for demo '{demo_dir.name}' has an invalid robogym_demo structure: {config_path}",
+            ) from e
         if not isinstance(demo_name_raw, str) or not demo_name_raw.strip():
             raise ValueError(
-                f"Config for demo '{demo_dir.name}' is missing robogym_demo.demo_name: {config_path}",
+                f"Config for demo '{demo_dir.name}' is missing robogym_demo.name: {config_path}",
             )
 
-        configs[demo_name_raw] = parsed
+        configs[demo_name_raw] = parsed_config
 
     return configs

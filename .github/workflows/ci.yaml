@@ -45,9 +45,13 @@ jobs:
       group: mala-lab-pre-commit
     if: needs.avoid-duplicate-ci.outputs.should_skip != 'true'
     steps:
+      - name: Clean repo
+        run: |
+          rm -rf .git
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
+          clean: true
           fetch-depth: 0
           submodules: recursive
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
@@ -92,10 +96,17 @@ jobs:
     runs-on:
       group: mala-lab-noble
     steps:
+      - name: Ensure clean git state
+        run: |
+          git reset --hard
+          git clean -fdx
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           submodules: recursive
+          fetch-depth: 0
+          clean: true
       - name: Install system dependencies and build
         run: |
           rm -rf build install log
