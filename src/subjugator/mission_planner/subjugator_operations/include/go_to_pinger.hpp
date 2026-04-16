@@ -122,7 +122,7 @@ class SonarFollower : public BT::DecoratorNode
     {
         return {
             BT::InputPort<std::shared_ptr<Context>>("ctx"),
-            BT::InputPort<bool>("stop_on_first_ping", false),
+            BT::InputPort<bool>("stop_on_first_ping", false, "stop on first ping"),
 
             BT::OutputPort<double>("sonar_x"),
             BT::OutputPort<double>("sonar_y"),
