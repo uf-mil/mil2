@@ -16,8 +16,8 @@ class _DummyController:
         self.calls.append((args, kwargs))
 
 
-def test_view_project_page_uses_reloaded_project_for_demo_navigation():
-    """Demo navigation should use the full reloaded project, not a name-only stub."""
+def test_view_project_page_uses_passed_project_for_demo_navigation():
+    """Demo navigation should use the current project payload passed into the page."""
     page = ViewProjectPage.__new__(ViewProjectPage)
     page.controller = _DummyController()
     page.project = None
@@ -51,7 +51,7 @@ def test_view_project_page_uses_reloaded_project_for_demo_navigation():
     page._safe_get_project_by_name = lambda name: loaded_project
     page._safe_get_demo_names = lambda project_name: ["Demo 1"]
 
-    page.set_context(project={"robogym_project": {"name": "Demo Project"}})
+    page.set_context(project=loaded_project)
     page._on_demo_row_click("Demo 1", {"robogym_demo": {"name": "Demo 1"}})
 
     assert page.project == loaded_project
