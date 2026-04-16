@@ -140,7 +140,8 @@ BT::NodeStatus TrackLargestPoles::onRunning()
             continue;
         double w = det.bbox.size.x;
         double h = det.bbox.size.y;
-        double area = std::max(0.0, w) * std::max(0.0, h);
+
+        double area = w * h;
 
         if (det.class_name == "red-pole" && area > best_red_area_)
         {
