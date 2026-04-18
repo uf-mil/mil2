@@ -122,6 +122,13 @@ def generate_launch_description():
         output="both",
     )
 
+    new_depth = Node(
+        package="new_depth_driver",
+        executable="new_depth_driver",
+        name="new_depth_driver",
+        output="both",
+    )
+
     # wrench_tuner = IncludeLaunchDescription(
     # pkg_share("subjugator_wrench_tuner", "launch", "wrench_tuner_launch.py")
     # )
@@ -137,5 +144,6 @@ def generate_launch_description():
             controller,
             path_planner,
             trajectory_planner,
+            new_depth,
         ],
     )
