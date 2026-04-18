@@ -120,7 +120,7 @@
             <Parallel success_count="2" failure_count="2">
 
               <ForceSuccess>
-                <Timeout msec="15000">
+                <Timeout msec="30000">
                   <Action ID="TrackBestPair"
                           min_conf="0.15"
                           channel_side="{right_channel}"
@@ -182,37 +182,42 @@
               </Timeout>
             </Sequence>
 
-            <!-- Micro-step yaw centering using HoneMidpoint + RelativeMove -->
-            <RetryUntilSuccessful num_attempts="-1">
-              <Parallel success_count="1" failure_count="1">
-
-                <!-- HoneMidpoint keeps updating yaw_step_deg and succeeds once centered -->
-                <Timeout msec="8000">
-                  <Action ID="HoneMidpoint"
-                          ctx="{ctx}"
-                          min_conf="0.15"
-                          kp="0.03"
-                          max_cmd="3.0"
-                          tol_px="10.0"
-                          hold_ticks="5"
-                          yaw_cmd="{yaw_step_deg}"/>
-                </Timeout>
-
-                <!-- Keep applying the latest yaw step until HoneMidpoint succeeds -->
+            <!-- Micro-step yaw centering using HoneMidpoint + RelativeMove.
+                 Give up after 20s if poles aren't visible so we don't loop forever. -->
+            <ForceSuccess>
+              <Timeout msec="15000">
                 <RetryUntilSuccessful num_attempts="-1">
-                  <Sequence>
-                    <SubTree ID="RelativeMove" _autoremap="true"
-                            yaw_deg="{yaw_step_deg}"
-                            pos_tol="0.25" ori_tol_deg="6.0"
-                            msec="600"
-                            ctx="{ctx}"/>
-                    <AlwaysFailure/>
-                  </Sequence>
+                  <Parallel success_count="1" failure_count="1">
+
+                    <!-- HoneMidpoint keeps updating yaw_step_deg and succeeds once centered -->
+                    <Timeout msec="8000">
+                      <Action ID="HoneMidpoint"
+                              ctx="{ctx}"
+                              min_conf="0.15"
+                              kp="0.03"
+                              max_cmd="3.0"
+                              tol_px="10.0"
+                              hold_ticks="5"
+                              yaw_cmd="{yaw_step_deg}"/>
+                    </Timeout>
+
+                    <!-- Keep applying the latest yaw step until HoneMidpoint succeeds -->
+                    <RetryUntilSuccessful num_attempts="-1">
+                      <Sequence>
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                                yaw_deg="{yaw_step_deg}"
+                                pos_tol="0.25" ori_tol_deg="6.0"
+                                msec="600"
+                                ctx="{ctx}"/>
+                        <AlwaysFailure/>
+                      </Sequence>
+                    </RetryUntilSuccessful>
+
+                  </Parallel>
+
                 </RetryUntilSuccessful>
-
-              </Parallel>
-
-            </RetryUntilSuccessful>
+              </Timeout>
+            </ForceSuccess>
 
             <!-- Move forward and keep looping -->
             <SubTree ID="RelativeMove" _autoremap="true"
