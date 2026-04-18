@@ -68,7 +68,7 @@ class DepthDriver : public rclcpp::Node
 DepthDriver::DepthDriver() : rclcpp::Node("depth_driver")
 {
     pub_ = this->create_publisher<mil_msgs::msg::DepthStamped>("depth", 10);
-    pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("depth/pose", 10);  // JOSEPH
+    pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("depth/pose/old", 10);  // JOSEPH
     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "odom", 10, std::bind(&DepthDriver::odom_callback, this, std::placeholders::_1));
 
