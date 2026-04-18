@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <deque>
 
 #include "context.hpp"
 #include "mil_msgs/msg/processed_ping.hpp"
@@ -79,14 +80,15 @@ class PingChecker
         auto x2 = p2.origin_direction_body.x;
         auto y2 = p2.origin_direction_body.y;
 
-        auto our_z1 = p1.origin_direction_body.z;
-        auto our_z2 = p2.origin_direction_body.z;
-        return std::abs(our_z1) > 0.9 && std::abs(our_z2) > 0.9;
-
         // normalize them
         auto mag1 = std::sqrt(x1 * x1 + y1 * y1);
         auto mag2 = std::sqrt(x2 * x2 + y2 * y2);
-        x1 /= mag1;  // TODO divide by 0 here?
+        if (mag1 <= 1e-6 || mag2 <= 1e-6)
+        {
+            return false;
+        }
+
+        x1 /= mag1;
         y1 /= mag1;
         x2 /= mag2;
         y2 /= mag2;
@@ -120,6 +122,7 @@ class SonarFollower : public BT::DecoratorNode
     {
         return {
             BT::InputPort<std::shared_ptr<Context>>("ctx"),
+            BT::InputPort<bool>("stop_on_first_ping", false, "stop on first ping"),
 
             BT::OutputPort<double>("sonar_x"),
             BT::OutputPort<double>("sonar_y"),
@@ -132,6 +135,7 @@ class SonarFollower : public BT::DecoratorNode
     std::shared_ptr<Context> ctx_;
     std::shared_ptr<rclcpp::Subscription<mil_msgs::msg::ProcessedPing>> sub_;
     BT::NodeStatus current_status_ = BT::NodeStatus::IDLE;
+    bool stop_on_first_ping_ = false;
 
     // other nodes
     std::unique_ptr<PublishGoalPose> goal_pub_node_;
@@ -147,6 +151,12 @@ class SonarFollower : public BT::DecoratorNode
             throw BT::RuntimeError("TopicTicker requires [ctx] input");
         }
         ctx_ = ctx_res.value();
+
+        auto stop_res = getInput<bool>("stop_on_first_ping");
+        if (stop_res)
+        {
+            stop_on_first_ping_ = stop_res.value();
+        }
     }
 
     // each ping we will move and check if done
@@ -154,6 +164,13 @@ class SonarFollower : public BT::DecoratorNode
     {
         if (current_status_ != BT::NodeStatus::RUNNING)
         {
+            return;
+        }
+
+        if (stop_on_first_ping_)
+        {
+            current_status_ = BT::NodeStatus::SUCCESS;
+            pc.reset();
             return;
         }
 
@@ -176,6 +193,10 @@ class SonarFollower : public BT::DecoratorNode
         auto x = new_ping.origin_direction_body.x;
         auto y = new_ping.origin_direction_body.y;
         auto mag = std::sqrt(x * x + y * y);
+        if (mag <= 1e-6)
+        {
+            return;
+        }
         x /= mag;
         y /= mag;
         // (x, y) dot (1, 0) = 1*1*cos(theta) (1 times 1 since both are unit length)
