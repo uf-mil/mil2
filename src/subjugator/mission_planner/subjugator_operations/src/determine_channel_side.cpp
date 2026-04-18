@@ -106,3 +106,14 @@ BT::NodeStatus DetermineChannelSide::onRunning()
     }
     return BT::NodeStatus::RUNNING;
 }
+
+void DetermineChannelSide::onHalted()
+{
+    if (ctx_)
+    {
+        RCLCPP_WARN(ctx_->logger(),
+                    "DetermineChannelSide: halted before deciding a side (right=%d, left=%d, need=%d). "
+                    "channel_side will default to 0 (unknown).",
+                    right_count_, left_count_, need_frames_);
+    }
+}

@@ -260,14 +260,14 @@ BT::NodeStatus TrackBestPair::onRunning()
 
             if (channel_side < 0)
             {
-                // red must be left of white
-                if (rx >= wx)
+                // LEFT channel: red is right of white in image
+                if (rx <= wx)
                     continue;
             }
             else if (channel_side > 0)
             {
-                // red must be right of white
-                if (rx <= wx)
+                // RIGHT channel: red is left of white in image
+                if (rx >= wx)
                     continue;
             }
 

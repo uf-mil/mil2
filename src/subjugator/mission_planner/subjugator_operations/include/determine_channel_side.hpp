@@ -13,9 +13,7 @@ class DetermineChannelSide : public BT::StatefulActionNode
 
     BT::NodeStatus onStart() override;
     BT::NodeStatus onRunning() override;
-    void onHalted() override
-    {
-    }
+    void onHalted() override;
 
   private:
     std::shared_ptr<Context> ctx_;
