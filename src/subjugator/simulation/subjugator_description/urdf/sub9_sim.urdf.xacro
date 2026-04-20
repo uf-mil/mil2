@@ -43,6 +43,7 @@
       </geometry>
     </collision>
 
+    <!--
     <visual name="buoyancy_visual_1">
       <origin rpy="0 0 0" xyz="0 0.128 -0.05"/>
       <geometry>
@@ -52,6 +53,7 @@
         <color rgba="1 0.6 0 0.5"/>
       </material>
     </visual>
+    -->
 
     <!-- Front Left Object -->
     <collision name="buoyancy_collision_2">
@@ -61,6 +63,7 @@
       </geometry>
     </collision>
 
+    <!--
     <visual name="buoyancy_visual_2">
       <origin rpy="0 0 0" xyz="0.708 0.128 -0.05"/>
       <geometry>
@@ -70,6 +73,7 @@
         <color rgba="1 0.6 0 0.5"/>
       </material>
     </visual>
+    -->
 
     <!-- Back Right Object -->
     <collision name="buoyancy_collision_3">
@@ -79,6 +83,7 @@
       </geometry>
     </collision>
 
+    <!--
     <visual name="buoyancy_visual_3">
       <origin rpy="0 0 0" xyz="0 -.128 -0.05"/>
       <geometry>
@@ -88,6 +93,7 @@
         <color rgba="1 0.6 0 0.5"/>
       </material>
     </visual>
+    -->
 
     <!-- Front Right Object -->
     <collision name="buoyancy_collision_4">
@@ -97,6 +103,7 @@
       </geometry>
     </collision>
 
+    <!--
     <visual name="buoyancy_visual_4">
       <origin rpy="0 0 0" xyz="0.708 -.128 -0.05"/>
       <geometry>
@@ -106,6 +113,7 @@
         <color rgba="1 0.6 0 0.5"/>
       </material>
     </visual>
+    -->
 
     <!-- Top Front Object -->
     <collision name="buoyancy_collision_5">
@@ -115,6 +123,7 @@
       </geometry>
     </collision>
 
+    <!--
     <visual name="buoyancy_visual_5">
       <origin rpy="0 0 0" xyz="0.4425 0 0.15"/>
       <geometry>
@@ -124,6 +133,7 @@
         <color rgba="1 0.6 0 0.5"/>
       </material>
     </visual>
+    -->
 
     <!-- Top Back Object -->
     <collision name="buoyancy_collision_6">
@@ -133,6 +143,7 @@
       </geometry>
     </collision>
 
+    <!--
     <visual name="buoyancy_visual_6">
       <origin rpy="0 0 0" xyz="0.25875 0 0.15"/>
       <geometry>
@@ -142,6 +153,7 @@
         <color rgba="1 0.6 0 0.5"/>
       </material>
     </visual>
+    -->
 
     <!-- The following are shell collisions. They dont contrubute to buoyancy-->
     <!-- and are for collisions -->
