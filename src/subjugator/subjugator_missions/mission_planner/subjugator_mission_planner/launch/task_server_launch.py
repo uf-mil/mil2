@@ -47,5 +47,11 @@ def generate_launch_description():
                 name="nav_channel_server",
                 parameters=[],
             ),
+            Node(
+                package="subjugator_mission_planner",
+                executable="pool_wall_detector",
+                name="pool_wall_detector",
+                parameters=[],
+            ),
         ],
     )
