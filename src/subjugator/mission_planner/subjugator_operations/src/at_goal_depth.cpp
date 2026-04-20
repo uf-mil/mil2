@@ -1,6 +1,15 @@
 #include "at_goal_depth.hpp"
 
 #include <cmath>
+#include <iostream>
+
+AtGoalDepth::AtGoalDepth(std::string const& name, const BT::NodeConfiguration& config) : BT::ConditionNode(name, config)
+{
+}
+
+// void AtGoalDepth::depthCallback(const mil_msgs::msg::DepthStamped::SharedPtr msg) {
+//     depth.store(msg->depth);
+// }
 
 BT::NodeStatus AtGoalDepth::tick()
 {
@@ -8,26 +17,24 @@ BT::NodeStatus AtGoalDepth::tick()
     double tolerance;
     getInput("target_depth", target);
     getInput("tolerance", tolerance);
-    getInput("ctx", ctx_);
+    getInput("ctx", ctx);
 
-    // copied from at_goal_pose
-    std::optional<nav_msgs::msg::Odometry> odom;
-    {
-        std::scoped_lock lk(ctx_->odom_mx);
-        odom = ctx_->latest_odom;
-    }
+    std::scoped_lock lk(ctx->odom_mx);
+    auto odom = ctx->latest_odom;
+    auto current_depth = odom->pose.pose.position.z;
+    // auto current_depth = depth.load();
 
-    if (!odom)
+    if (std::isnan(current_depth))
     {
-        RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000, "AtGoalDepth: no odometry yet");
         return BT::NodeStatus::FAILURE;
     }
 
-    auto current_depth = odom->pose.pose.position.z;
-
     double error = std::abs(current_depth - target);
+    std::cout << "target: " << target << std::endl;
+    std::cout << "current: " << current_depth << std::endl;
+    std::cout << "error: " << error << std::endl;
 
-    if (error < tolerance)
+    if (std::abs(error) < tolerance)
     {
         return BT::NodeStatus::SUCCESS;
     }

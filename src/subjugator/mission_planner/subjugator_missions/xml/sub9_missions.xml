@@ -16,4 +16,5 @@
     <include path="survey_for_image.xml"/>
     <include path="go_to_depth.xml"/>
     <include path="octogon_mission.xml"/>
+    <include path="spin.xml"/>
 </root>

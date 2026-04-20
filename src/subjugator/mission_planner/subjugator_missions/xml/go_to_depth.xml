@@ -1,25 +1,38 @@
 <root BTCPP_format="4" main_tree_to_execute="GoToDepth">
     <BehaviorTree ID="GoToDepth">
-        <Parallel success_count="1" failure_count="1">
-            <RetryUntilSuccessful num_attempts="-1">
-                <SubTree ID="RelativeMove"
-                    x="0.0"
-                    y="0.0"
-                    z="0.3"
-                    roll_deg="0.0"
-                    pitch_deg="0.0"
-                    yaw_deg="0.0"
-                    msec="2000"
-                    pos_tol="0.2"
-                    ori_tol_deg="10.0"
-                    ctx="{ctx}"/>
-            </RetryUntilSuccessful>
-            <RetryUntilSuccessful num_attempts="-1">
-                <AtGoalDepth
-                    ctx="{ctx}"
-                    target_depth="-0.2"
-                    tolerance="0.1"/>
-            </RetryUntilSuccessful>
-        </Parallel>
+        <Sequence>
+            <!-- <SubTree ID="RelativeMove"
+                        x="0.0"
+                        y="0.0"
+                        z="-0.5"
+                        roll_deg="0.0"
+                        pitch_deg="0.0"
+                        yaw_deg="0.0"
+                        msec="2000"
+                        pos_tol="0.2"
+                        ori_tol_deg="10.0"
+                        ctx="{ctx}"/> -->
+            <Parallel success_count="1" failure_count="2">
+                <RetryUntilSuccessful num_attempts="-1">
+                    <SubTree ID="RelativeMove"
+                        x="0.0"
+                        y="0.0"
+                        z="0.2"
+                        roll_deg="0.0"
+                        pitch_deg="0.0"
+                        yaw_deg="0.0"
+                        msec="2000"
+                        pos_tol="0.2"
+                        ori_tol_deg="10.0"
+                        ctx="{ctx}"/>
+                </RetryUntilSuccessful>
+                <RetryUntilSuccessful num_attempts="-1">
+                    <AtGoalDepth
+                        target_depth="-0.2"
+                        tolerance="0.1"
+                        ctx="{ctx}"/>
+                </RetryUntilSuccessful>
+            </Parallel>
+        </Sequence>
     </BehaviorTree>
 </root>

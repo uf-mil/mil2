@@ -1,0 +1,16 @@
+<root BTCPP_format="4" main_tree_to_execute="Spin">
+    <BehaviorTree ID="Spin">
+    <!-- spins once for now but i dont know how to parameterize this-->
+        <SubTree ID="RelativeMove"
+            x="0.0"
+            y="0.0"
+            z="0.0"
+            roll_deg="0.0"
+            pitch_deg="0.0"
+            yaw_deg="360"
+            msec="5000"
+            pos_tol="0.2"
+            ori_tol_deg="10.0"
+            ctx="{ctx}"/>
+    </BehaviorTree>
+</root>

@@ -21,9 +21,11 @@
             </SonarFollower>
             <!-- surface -->
             <SubTree ID="GoToDepth"
-                z="0.3"
+                z="-0.2"
                 msec="2000"
                 ctx="{ctx}"/>
+            <!-- spin -->
+            <SubTree ID="Spin" ctx="{ctx}"/>
             <!-- survey for image-->
             <SubTree ID="SurveyForImage" ctx="{ctx}"/>
         </Sequence>
