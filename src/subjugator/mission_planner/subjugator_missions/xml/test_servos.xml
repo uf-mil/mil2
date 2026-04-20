@@ -1,0 +1,24 @@
+<!--
+	Test mission to exercise `ActuateServo` for servo IDs 1 (gripper),
+	2 (marble dropper) and 3 (torpedo launcher). Each servo is actuated
+	to the TRUE state then to the FALSE state. The `ctx` blackboard key
+	must be set in code (e.g. `blackboard->set("ctx", ctx)`).
+	Use mission name: `TestServos` when creating the tree.
+-->
+<root main_tree_to_execute="TestServos">
+	<BehaviorTree ID="TestServos">
+		<Sequence name="RunAllServos">
+			<!-- Gripper: open then close -->
+			<ActuateServo ctx="{ctx}" servo_id="1" gripper_is_open="true"/>
+			<ActuateServo ctx="{ctx}" servo_id="1" gripper_is_open="false"/>
+
+			<!-- Marble dropper: drop then reset -->
+			<!-- <ActuateServo ctx="{ctx}" servo_id="2" marble_is_drop="true"/>
+			<ActuateServo ctx="{ctx}" servo_id="2" marble_is_drop="false"/> -->
+
+			<!-- Torpedo launcher: launch then reset -->
+			<!-- <ActuateServo ctx="{ctx}" servo_id="3" torp_is_launch="true"/>
+			<ActuateServo ctx="{ctx}" servo_id="3" torp_is_launch="false"/> -->
+		</Sequence>
+	</BehaviorTree>
+</root>

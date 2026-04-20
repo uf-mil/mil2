@@ -47,8 +47,8 @@ struct Context
 
 // Function: Actuate a Service Client to open or close a servo
 // Output: Returns a boolean indicating whether the service call was successful (true) or not (false)
-bool actuateServo(std::shared_ptr<rclcpp::Node> node, rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr client,
-                  bool isOpen)
+inline bool actuateServo(std::shared_ptr<rclcpp::Node> node, rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr client,
+                         bool isOpen)
 {
     auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
     request->data = isOpen;
