@@ -58,7 +58,7 @@ inline bool actuateServo(std::shared_ptr<rclcpp::Node> node, rclcpp::Client<std_
     // Spin Node until future completes, or timeout after 2 second
     if (rclcpp::spin_until_future_complete(node, future, std::chrono::seconds(2)) == rclcpp::FutureReturnCode::SUCCESS)
     {
-        RCLCPP_INFO(node->get_logger(), "Servo actuation for %s: %s", clientName.c_str(),
+        RCLCPP_INFO(node->get_logger(), "Servo success status for %s: %s", clientName.c_str(),
                     future.get()->success ? "true" : "false");
         return true;
     }

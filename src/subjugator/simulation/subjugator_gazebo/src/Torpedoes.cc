@@ -56,6 +56,7 @@ void Torpedoes::LaunchTorpedo(std::shared_ptr<std_srvs::srv::SetBool::Request> c
 {
     // Set service to request->data to trigger torpedo launch in PostUpdate depending on requested state
     this->service_called = request->data;
+    std::cout << "[Torpedoes] Request Data: " << request->data << std::endl;
 
     // Set response for Servo Client
     response->success = true;
@@ -157,8 +158,8 @@ void Torpedoes::SpawnTorpedo(std::string const &worldName, std::string const &sd
     factoryMsg.set_sdf(sdfString);
 
     // Set the pose to X, Y, Z, and roll, pitch, yaw
-    // -0.5 offset in Z to not hit sub9 but will replace once torp launcher model is added
-    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(sub9_pose.X(), sub9_pose.Y(), sub9_pose.Z() - 0.5,
+    // -0.75 offset in Z to not hit sub9 but will REPLACE once torp launcher model is added
+    gz::msgs::Set(factoryMsg.mutable_pose(), gz::math::Pose3d(sub9_pose.X(), sub9_pose.Y(), sub9_pose.Z() - 0.75,
                                                               sub9_pose.Roll(), sub9_pose.Pitch(), sub9_pose.Yaw()));
 
     // Send the request to create model in .world
@@ -227,7 +228,8 @@ void Torpedoes::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCompo
     {
         this->SpawnTorpedo(this->worldName, this->Torpedo_sdfPath);
         torpedoCount++;
-        t_pressed = false;  // Reset the flag after spawning
+        t_pressed = false;       // Reset the flag after spawning
+        service_called = false;  // Reset the service call flag
     }
 }
 
