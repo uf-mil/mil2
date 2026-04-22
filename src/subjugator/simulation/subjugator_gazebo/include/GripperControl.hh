@@ -39,9 +39,6 @@ class GripperControl : public gz::sim::System, public gz::sim::ISystemConfigure,
     // PreUpdate - called each simulation step (read-write access)
     void PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &_ecm) override;
 
-    // PostUpdate - called each simulation step (read-only access)
-    // void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
-
     // Service callback
     void setOpen(std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
                  std::shared_ptr<std_srvs::srv::SetBool::Response> response);

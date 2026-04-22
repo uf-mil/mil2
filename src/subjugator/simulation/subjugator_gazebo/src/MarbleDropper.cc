@@ -26,6 +26,13 @@ void MarbleDropper::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf
         "/keyboard/keypress", 10,
         std::bind(&marble_dropper::MarbleDropper::KeypressCallback, this, std::placeholders::_1));
 
+    // Define ROS2 service for dropping marbles
+    // Lambda is used so service callback can be a member function with access to class boolean flag
+    this->service_ = this->marble_node_->create_service<std_srvs::srv::SetBool>(
+        "marble_dropper/drop_marble",
+        [this](std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+               std::shared_ptr<std_srvs::srv::SetBool::Response> response) { this->DropMarble(request, response); });
+
     // Gather necessary information for future GatherWorldInfo() call
     this->sub9_Entity = entity;
 
@@ -45,6 +52,18 @@ void MarbleDropper::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf
             });
     }
     std::cout << "[MarbleDropper] World Name: " << this->worldName << std::endl;
+}
+
+void MarbleDropper::DropMarble(std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+                               std::shared_ptr<std_srvs::srv::SetBool::Response> response)
+{
+    // Set service to request->data to trigger marble drop in PostUpdate depending on requested state
+    this->service_called = request->data;
+
+    // Set response for Servo Client
+    response->success = true;
+    response->message = "Marble dropped state: " + std::to_string(request->data);
+    std::cout << "[MarbleDropper] Service call received. Marble State: " << request->data << std::endl;
 }
 
 void MarbleDropper::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
@@ -166,13 +185,14 @@ void MarbleDropper::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
         }
     }
 
-    // Spawn two marble_dropper maximum, only once per 'm' keypress
-    if (marbleCount < 2 && m_pressed)
+    // Spawn two marble_dropper maximum, only once per 'm' keypress or service call
+    if (marbleCount < 2 && (m_pressed || service_called))
     {
         std::cout << "[MarbleDropper] Spawning marble #" << (marbleCount + 1) << "..." << std::endl;
         this->SpawnMarble(this->worldName, this->Marble_sdfPath);
         marbleCount++;
-        m_pressed = false;  // Reset the flag after spawning
+        m_pressed = false;       // Reset the flag after spawning
+        service_called = false;  // Reset the service flag after spawning
     }
 }
 

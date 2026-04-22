@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<sdf version="1.5">
+  <model name="torpedo">
+    <static>false</static>
+    <link name="body">
+
+      <!-- Change this to reflect real values -->
+      <inertial>
+        <mass>.0156</mass>
+        <inertia>
+          <ixx>1.18</ixx>
+          <ixy>-0.003</ixy>
+          <ixz>0.04</ixz>
+          <iyy>1.431</iyy>
+          <iyz>-0.034</iyz>
+          <izz>1.262</izz>
+        </inertia>
+      </inertial>
+
+      <velocity_decay>
+        <linear>0.00001</linear>
+        <angular>0.00001</angular>
+      </velocity_decay>
+
+      <!-- The collision geometry -->
+      <collision name="bodycol">
+        <pose>0 0 0 0 1.57 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.25</length>
+          </cylinder>
+        </geometry>
+      </collision>
+
+      <!-- The physical aspects of the torpedo -->
+      <visual name="bodyvisual">
+        <pose>0 0 0 0 1.57 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>.01</radius>
+            <length>.125</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 0.55 0 1</ambient>
+        </material>
+      </visual>
+
+      <sensor name="contact" type="contact">
+        <contact>
+          <collision>bodycol</collision>
+        </contact>
+        <update_rate>50</update_rate>
+      </sensor>
+
+      <!-- Add center_of_volume and volume for buoyancy system plugin in world file -->
+      <center_of_volume>0 0 0</center_of_volume>
+      <volume>0.0000156</volume>
+    </link>
+  </model>
+</sdf>

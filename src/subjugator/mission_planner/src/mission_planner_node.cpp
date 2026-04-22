@@ -43,6 +43,17 @@ int main(int argc, char** argv)
     {
     };
 
+    ctx->marble_client = node->create_client<std_srvs::srv::SetBool>("marble_dropper/drop_marble");
+    while (!ctx->marble_client->wait_for_service(std::chrono::seconds(1)))
+    {
+    };
+
+    std::cout << "Creat torp client" << std::endl;
+    ctx->torpedo_client = node->create_client<std_srvs::srv::SetBool>("torpedo_launcher/launch_torpedo");
+    while (!ctx->torpedo_client->wait_for_service(std::chrono::seconds(1)))
+    {
+    };
+
     // actuateServo(node, ctx->gripper_client, true);
 
     // for (int i = 0; i < 5; i++){

@@ -8,17 +8,24 @@
 <root main_tree_to_execute="TestServos">
 	<BehaviorTree ID="TestServos">
 		<Sequence name="RunAllServos">
-			<!-- Gripper: open then close -->
+			<!-- Gripper: open -->
 			<ActuateServo ctx="{ctx}" servo_id="1" gripper_is_open="true"/>
+
+			<!-- Marble dropper: drop -->
+			<ActuateServo ctx="{ctx}" servo_id="2" marble_is_drop="true"/>
+
+			<!-- Torpedo launcher: launch -->
+			<ActuateServo ctx="{ctx}" servo_id="3" torp_is_launch="true"/>
+
+			<!-- Gripper: close -->
 			<ActuateServo ctx="{ctx}" servo_id="1" gripper_is_open="false"/>
 
-			<!-- Marble dropper: drop then reset -->
-			<!-- <ActuateServo ctx="{ctx}" servo_id="2" marble_is_drop="true"/>
-			<ActuateServo ctx="{ctx}" servo_id="2" marble_is_drop="false"/> -->
+			<!-- Marble dropper: reset -->
+			<ActuateServo ctx="{ctx}" servo_id="2" marble_is_drop="false"/>
 
-			<!-- Torpedo launcher: launch then reset -->
-			<!-- <ActuateServo ctx="{ctx}" servo_id="3" torp_is_launch="true"/>
-			<ActuateServo ctx="{ctx}" servo_id="3" torp_is_launch="false"/> -->
+			<!-- Torpedo launcher: reset -->
+			<ActuateServo ctx="{ctx}" servo_id="3" torp_is_launch="false"/>
+
 		</Sequence>
 	</BehaviorTree>
 </root>
