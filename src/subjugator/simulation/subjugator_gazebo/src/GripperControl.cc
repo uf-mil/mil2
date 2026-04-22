@@ -31,8 +31,14 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
     this->node_ = std::make_shared<rclcpp::Node>("gripper_control_plugin_node");
     this->key_sub_ = this->node_->create_subscription<std_msgs::msg::String>(
         "/keyboard/keypress", 10, std::bind(&GripperControl::KeypressCallback, this, std::placeholders::_1));
-
     std::cout << "[GripperControl] ROS2 node created and subscribed to /keyboard/keypress" << std::endl;
+
+    // Define ROS2 service for setting gripper open/closed
+    // Lambda is used so service callback can be a member function with access to class boolean flag
+    this->service_ = this->node_->create_service<std_srvs::srv::SetBool>(
+        "gripper_control/set_open",
+        [this](std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+               std::shared_ptr<std_srvs::srv::SetBool::Response> response) { this->setOpen(request, response); });
 
     // Try to obtain model name (from Entity Name component or SDF attribute)
     auto nameComp = ecm.Component<gz::sim::components::Name>(entity);
@@ -103,6 +109,18 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
         });
 }
 
+void GripperControl::setOpen(std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+                             std::shared_ptr<std_srvs::srv::SetBool::Response> response)
+{
+    // Set service called flag so PreUpdate moves Gazebo Gripper Model
+    this->service_called = true;
+
+    // Set response for Servo Client
+    response->success = true;
+    response->message = "Gripper open state: " + std::to_string(request->data);
+    std::cout << "[GripperControl] Service call received. Setting gripper status: " << request->data << std::endl;
+}
+
 void GripperControl::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
 {
     // If message is empty or invalid, ignore
@@ -118,10 +136,17 @@ void GripperControl::KeypressCallback(std_msgs::msg::String::SharedPtr const msg
     }
 }
 
+// PreUpdate is called so we can use the ecm which is read only in PostUpdate
 void GripperControl::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &_ecm)
 {
+    if (info.paused)
+        return;
+
+    // Let ROS2 handle incoming messages for this node
+    rclcpp::spin_some(this->node_);
+
     // If a 'u' press was detected (set in ROS callback), toggle and apply immediately
-    if (this->u_pressed_)
+    if (this->u_pressed_ or this->service_called)
     {
         // Set targets; actual motion will be smoothed over subsequent PreUpdate calls
         this->gripper_open_ = !this->gripper_open_;
@@ -129,6 +154,7 @@ void GripperControl::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
         this->left_target_pos_ = tgt;
         this->right_target_pos_ = tgt;
         this->u_pressed_ = false;
+        this->service_called = false;
     }
 
     // Perform smoothing toward targets each PreUpdate (exponential smoothing)
@@ -179,18 +205,7 @@ void GripperControl::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
     }
 }
 
-void GripperControl::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm)
-{
-    if (info.paused)
-        return;
-
-    // Let ROS2 handle incoming messages for this node
-    rclcpp::spin_some(this->node_);
-    (void)ecm;
-}
-
 }  // namespace gripper_control
 
 // Register plugin for Gazebo (include PreUpdate interface so PreUpdate() is called)
-GZ_ADD_PLUGIN(gripper_control::GripperControl, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPreUpdate,
-              gz::sim::ISystemPostUpdate)
+GZ_ADD_PLUGIN(gripper_control::GripperControl, gz::sim::System, gz::sim::ISystemConfigure, gz::sim::ISystemPreUpdate)
