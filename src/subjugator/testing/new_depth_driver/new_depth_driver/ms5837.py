@@ -1,6 +1,6 @@
 try:
     import smbus2 as smbus
-except:
+except Exception:
     print("Try sudo apt-get install python-smbus2")
 
 from time import sleep
@@ -58,9 +58,9 @@ class MS5837:
 
         try:
             self._bus = smbus.SMBus(bus)
-        except:
-            print("Bus %d is not available." % bus)
-            print("Available busses are listed as /dev/i2c*")
+        except Exception:
+            print(f"Bus {bus!s} is not available.")
+            print("Available buses are listed as /dev/i2c*")
             self._bus = None
 
         self._fluidDensity = DENSITY_FRESHWATER
@@ -167,8 +167,8 @@ class MS5837:
 
         return True
 
-    def setFluidDensity(self, denisty):
-        self._fluidDensity = denisty
+    def setFluidDensity(self, density):
+        self._fluidDensity = density
 
     # Pressure in requested units
     # mbar * conversion
@@ -271,10 +271,13 @@ class MS5837:
                 n_rem ^= n_prom[i >> 1] >> 8
 
             for n_bit in range(8, 0, -1):
+                n_rem = n_rem << 1 ^ 12288 if n_rem & 32768 else n_rem << 1
+                """
                 if n_rem & 0x8000:
                     n_rem = (n_rem << 1) ^ 0x3000
                 else:
                     n_rem = n_rem << 1
+                """
 
         n_rem = (n_rem >> 12) & 0x000F
 
