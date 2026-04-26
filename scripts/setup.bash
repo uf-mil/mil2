@@ -322,19 +322,19 @@ torpedo() {
 # Mission Planner launcher
 mp() {
 	if [[ $# -ne 1 ]]; then
-		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission|BUSTMission|NavChannelMission>"
+		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission|BUSTMission|NavChannelMission|ETHAN>"
 		return 2
 	fi
 
 	local mission="$1"
 	case "$mission" in
-	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission)
+	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission | ETHAN)
 		echo "Launching mission_planner with mission: ${mission}"
 		ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
 		;;
 	*)
 		echo "Invalid mission: ${mission}"
-		echo "Valid missions: SquareTestMission  StartGateMission  PassPoleMission BUSTMission NavChannelMission"
+		echo "Valid missions: SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN"
 		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
 		return 2
 		;;
@@ -345,7 +345,7 @@ _mp_complete() {
 	local cur
 	cur=${COMP_WORDS[COMP_CWORD]}
 
-	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission"
+	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN"
 	COMPREPLY=()
 	while IFS='' read -r line; do
 		COMPREPLY+=("$line")
