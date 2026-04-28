@@ -62,6 +62,11 @@ class App(tk.Tk):
 
         self.show_page("start")
 
+        # Start and stop simulation to get all topics
+        world_control_client = WorldControlClient()
+        world_control_client.play_simulation()
+        world_control_client.pause_simulation()
+
     def _register_page(self, name: str, page_cls: Type[tk.Frame]) -> None:
         """
         Instantiate and register a page frame with the application.

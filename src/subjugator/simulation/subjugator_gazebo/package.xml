@@ -20,7 +20,7 @@
   <depend>std_msgs</depend>
   <depend>subjugator_description</depend>
   <depend>subjugator_msgs</depend>
-
+  <exec_depend>rclpy</exec_depend>
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <test_depend>ament_lint_auto</test_depend>
