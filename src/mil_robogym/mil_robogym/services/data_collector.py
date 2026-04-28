@@ -164,6 +164,22 @@ class DataCollectorService(Node):
         mapped_data = {}
         demo_path = request.demo_path
 
+        # Check if data has been retrieved for all topics
+        subscribed_topics = set(self.subscribers.keys()) | set(
+            self.image_fields_map.keys(),
+        )
+        collected_topics = set(self.latest_data.keys())
+
+        if subscribed_topics != collected_topics:
+            waiting_for_topics = subscribed_topics - collected_topics
+            self.get_logger().warn(
+                f"Returning empty response... Waiting for data from these topics: {waiting_for_topics}",
+            )
+
+            response.data = json.dumps(mapped_data)
+
+            return response
+
         for topic, msg in self.latest_data.items():
 
             # NOTE: This assumes only one nested image msg per topic

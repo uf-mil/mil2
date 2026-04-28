@@ -74,6 +74,8 @@ class EditProjectPage(tk.Frame):
             list[NonNumericTopicFieldSelection],
         ] = {}
 
+        self.project = None
+
         self._build_layout()
 
     def _build_layout(self) -> None:
@@ -431,6 +433,7 @@ class EditProjectPage(tk.Frame):
             self._toggle_random_spawn()
             return
 
+        self.project = project.get("robogym_project", {})
         details = project.get("robogym_project", {})
 
         project_name = str(details.get("name", "Project"))
@@ -940,7 +943,7 @@ class EditProjectPage(tk.Frame):
         if self.controller is not None:
             self.controller.show_page(
                 "view_project",
-                project={"robogym_project": {"name": self._current_project_name}},
+                project={"robogym_project": self.project},
             )
 
     def _format_coord(self, coord: tuple[float, float, float, float] | None) -> str:
