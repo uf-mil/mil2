@@ -2,6 +2,8 @@
 IMPORTANT: THIS ENVIRONMENT IS CONFIGURED FOR MOVEMENT ONLY I.E. 4D. It is not configured for other outputs yet.
 """
 
+import time
+
 import numpy as np
 
 try:
@@ -13,13 +15,14 @@ except ImportError:  # fallback for older gym
 
     GYMNASIUM = False
 
-from mil_robogym.data_collection.types import RandomSpawnSpace
+from mil_robogym.data_collection.types import RoboGymProjectYaml
 
 from ..clients.controller_client import ControllerClient
 from ..clients.data_collector_client import DataCollectorClient
 from ..clients.localization_client import LocalizationClient
 from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
+from .observation_preprocessor import ObservationPreprocessor
 
 
 class Environment(gym.Env):
@@ -32,20 +35,27 @@ class Environment(gym.Env):
         seed: int | None = None,
         max_step_count: int = 40,
         max_vals: np.ndarray = np.zeros(4, dtype=np.float32),
-        input_features: list[str] = [],
-        random_spawn_space: RandomSpawnSpace | None = None,
+        project: RoboGymProjectYaml | None = None,
         data_collector_client: DataCollectorClient | None = None,
         move_client: MoveClient | None = None,
         set_pose_client: SetPoseClient | None = None,
         controller_client: ControllerClient | None = None,
         localization_client: LocalizationClient | None = None,
+        observation_preprocessor: ObservationPreprocessor | None = None,
         initialized: bool = False,
     ):
         super().__init__()
 
         self.initialized = initialized
+        self.observation_preprocessor = observation_preprocessor
+        self.input_features = []
+        self.input_size = 0
+        self.raw_state: list[object] = []
+        self.state = None
 
         if initialized:
+            # Save project
+            self.project = project
 
             # Pool clamping boundaries
             self.x_min, self.x_max = -11.0, 11.0
@@ -65,25 +75,31 @@ class Environment(gym.Env):
             # Saved parameters
             self.seed = seed
             self.max_step_count = max_step_count
-            self.input_features = input_features
+            self.input_features = self.project["tensor_spec"]["input_features"]
 
             # Configure random spawn space
+            random_spawn_space = self.project["random_spawn_space"]
             c1 = random_spawn_space["coord1_4d"]
             c2 = random_spawn_space["coord2_4d"]
             self.min_coord = np.minimum(c1, c2)
             self.max_coord = np.maximum(c1, c2)
 
             # Tracked values
-            self.state = None
             self.pose = np.zeros(4, dtype=np.float32)
             self.t = 0
             self.rng = np.random.default_rng(seed)
+
+            # Get observation space size
+            if self.observation_preprocessor is not None:
+                self.input_size = self.observation_preprocessor.encoded_input_size
+            else:
+                self.input_size = len(self.input_features)
 
         # Configure observation space
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(input_features),),
+            shape=(self.input_size,),
             dtype=np.float32,
         )
 
@@ -124,15 +140,10 @@ class Environment(gym.Env):
         # Move to spawn position to ground movement client.
         # self.move_client.move((0, 0, 0, 0))
 
-        # Record state
-        self.state = self.data_collector_client.get_flattened_snapshot_values(
-            self.input_features,
-        )
+        self.raw_state = self._get_raw_state_with_retry()
+        self.state = self._encode_observation(self.raw_state)
 
-        if GYMNASIUM:
-            return self.state.copy(), {}
-
-        return np.array(self.state.copy())
+        return self.state.copy(), {}
 
     def step(self, action):
         """
@@ -165,18 +176,10 @@ class Environment(gym.Env):
             env_reward -= 1.0
 
         # Record next state
-        next_state = self.data_collector_client.get_flattened_snapshot_values(
-            self.input_features,
-        )
+        raw_next_state = self._get_raw_state_with_retry()
+        next_state = self._encode_observation(raw_next_state)
 
-        while not next_state:
-            self.data_collector.get_logger().warn(
-                "Unable to retrieve state, trying again...",
-            )
-            next_state = self.data_collector_client.get_flattened_snapshot_values(
-                self.input_features,
-            )
-
+        self.raw_state = raw_next_state
         self.state = next_state
 
         # TODO: Maybe determine condition for termination based on where most demos terminate
@@ -194,6 +197,27 @@ class Environment(gym.Env):
 
         done = bool(terminated or truncated)
         return next_state.copy(), float(env_reward), done, {}
+
+    def _get_raw_state_with_retry(self) -> list[object]:
+        raw_state = self.data_collector_client.get_flattened_snapshot_values(
+            self.project,
+        )
+
+        while not raw_state:
+            self.data_collector_client.get_logger().warn(
+                "Unable to retrieve state, trying again...",
+            )
+            time.sleep(0.1)
+            raw_state = self.data_collector_client.get_flattened_snapshot_values(
+                self.project,
+            )
+
+        return raw_state
+
+    def _encode_observation(self, raw_state: list[object]) -> np.ndarray:
+        if self.observation_preprocessor is None:
+            return np.asarray(raw_state, dtype=np.float32)
+        return self.observation_preprocessor.encode_state(raw_state)
 
     def _apply_action_with_bounds(self, pose, action):
         """

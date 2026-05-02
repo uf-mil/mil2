@@ -1,3 +1,4 @@
+import copy
 import os
 import threading
 from concurrent.futures import Future
@@ -27,6 +28,7 @@ from ..clients.world_control_client import WorldControlClient
 from .environment import GYMNASIUM, Environment
 from .generator_metrics import extract_latest_generator_metrics
 from .metrics import TrainingMetricsSession
+from .observation_preprocessor import ObservationPreprocessor
 from .reward_net import VAIRLRewardNet
 from .training_settings import DEFAULT_TRAINING_SETTINGS
 from .utils import (
@@ -37,6 +39,8 @@ from .utils import (
 from .vairl import VAIRL
 
 GENERATOR_MODEL_FILE_NAME = "generator_model.zip"
+OBSERVATION_PREPROCESSOR_FILE_NAME = "observation_preprocessor.pt"
+NUMBER_OF_MINI_BATCHES = 10
 
 
 class Trainer:
@@ -98,50 +102,61 @@ class Trainer:
 
         # Start up data collector client
         self.data_collector_client = DataCollectorClient()
-        self.data_collector_client.establish_subscriptions(
-            list(project["input_topics"].keys()),
+        self.data_collector_client.ensure_subscriptions(
+            project,
+            operation="prepare data collector subscriptions for training",
         )
 
         # Fetch and process expert demonstrations
+        self.observation_preprocessor = ObservationPreprocessor.from_project(
+            self.project,
+        )
+        self.does_contain_abstract_data = self.observation_preprocessor is not None
         self.demo_trajectories, determined_max_step_count, determined_max_vals = (
             fetch_demo_trajectories(
                 self.project,
                 self.expert_noise_std,
             )
         )
+        self.demos_batch_size = int(
+            min(2048, len(self.demo_trajectories)),
+        )
+
         self.max_step_count = (
             self.max_step_count
             if self.max_step_count
             else int(determined_max_step_count * 1.5)
         )
         self.max_vals = determined_max_vals
-        self.demo_batches = trajectories_to_batches(self.demo_trajectories)
-        self.demo_imitations = trajectories_to_imitations(self.demo_trajectories)
-        self.flattened_demo_trajectories = rollout.flatten_trajectories(
-            self.demo_imitations,
-        )
-        self.demos_batch_size = int(min(2048, len(self.flattened_demo_trajectories)))
+
+        # Only fetch this data if no abstract data is being used to train the agent
+        if not self.does_contain_abstract_data:
+            self.demo_batches = trajectories_to_batches(self.demo_trajectories)
+            self.demo_imitations = trajectories_to_imitations(self.demo_trajectories)
+            self.flattened_demo_trajectories = rollout.flatten_trajectories(
+                self.demo_imitations,
+            )
+        else:
+            self._rebuild_encoded_demo_cache()
 
         # Environment set up
         self.eval_environment = Environment(
             self.seed,
             self.max_step_count,
             self.max_vals,
-            self.project["tensor_spec"]["input_features"],
-            self.project["random_spawn_space"],
+            self.project,
             self.data_collector_client,
             self.move_client,
             self.set_pose_client,
             self.controller_client,
             self.localization_client,
+            self.observation_preprocessor,
             True,
         )
 
         self.register_env()
 
-        # TODO: Configure metric outputs
-
-    def train(self):  # TODO: Incorporate metrics into training loop.
+    def train(self):
         """
         Train the VAIRL algorithm.
         """
@@ -153,6 +168,10 @@ class Trainer:
             self._stopped_early = False
         if not hasattr(self, "_aborted"):
             self._aborted = False
+        if not hasattr(self, "observation_preprocessor"):
+            self.observation_preprocessor = None
+        if not hasattr(self, "does_contain_abstract_data"):
+            self.does_contain_abstract_data = False
 
         metrics_session = TrainingMetricsSession(
             save_callback=self._emit_progress_event,
@@ -172,13 +191,13 @@ class Trainer:
                     "seed": self.seed,
                     "max_step_count": self.max_step_count,
                     "max_vals": self.max_vals,
-                    "input_features": self.project["tensor_spec"]["input_features"],
-                    "random_spawn_space": self.project["random_spawn_space"],
+                    "project": self.project,
                     "data_collector_client": self.data_collector_client,
                     "move_client": self.move_client,
                     "set_pose_client": self.set_pose_client,
                     "controller_client": self.controller_client,
                     "localization_client": self.localization_client,
+                    "observation_preprocessor": self.observation_preprocessor,
                     "initialized": True,
                 },
             )
@@ -188,7 +207,8 @@ class Trainer:
                 policy="MlpPolicy",
                 env=train_venv,
                 learning_rate=self.generator_learning_rate,
-                batch_size=2048,
+                batch_size=self.demos_batch_size,
+                n_steps=self.rollout_steps,
                 gamma=0.99,
                 gae_lambda=0.95,
                 target_kl=0.01,
@@ -217,6 +237,11 @@ class Trainer:
                 i_c=self.i_c,
                 beta_step_size=self.beta_step_size,
                 disc_lr=self.discriminator_learning_rate,
+                extra_disc_modules=(
+                    [self.observation_preprocessor]
+                    if self.observation_preprocessor is not None
+                    else None
+                ),
                 allow_variable_horizon=True,
             )
 
@@ -231,16 +256,26 @@ class Trainer:
                     self._stopped_early = True
                     break
 
+                if self.does_contain_abstract_data:
+                    self.world_control_client.pause_simulation()
+                    self.data_collector_client.get_logger().warn(
+                        "Re-interpreting expert abstract data, this may take a few minutes...",
+                    )
+                    self._refresh_encoded_demonstrations(vairl)
+                    self.world_control_client.play_simulation()
+
                 reward_net.eval()
 
-                gen_data, reward_mean, reward_std = (
-                    self.generate_generator_trajectories(
-                        generator,
-                        reward_net,
-                    )
+                generator_result = self.generate_generator_trajectories(
+                    generator,
+                    reward_net,
+                    self.demos_batch_size,
                 )
-
-                gen_batch = trajectories_to_batches(gen_data)
+                if isinstance(generator_result, tuple) and len(generator_result) == 4:
+                    gen_data, reward_mean, reward_std, raw_gen_data = generator_result
+                else:
+                    gen_data, reward_mean, reward_std = generator_result
+                    raw_gen_data = gen_data
 
                 # Train Generator
                 vairl.train_gen(total_timesteps=self.rollout_steps)
@@ -251,9 +286,21 @@ class Trainer:
 
                 # Train Discriminator
                 if train_discriminator_flag:
+                    if self.observation_preprocessor is not None:
+                        expert_samples = self._build_discriminator_samples(
+                            self.demo_trajectories,
+                            device=vairl.device,
+                        )
+                        gen_samples = self._build_discriminator_samples(
+                            raw_gen_data,
+                            device=vairl.device,
+                        )
+                    else:
+                        expert_samples = self.demo_batches
+                        gen_samples = trajectories_to_batches(gen_data)
                     _disc_stats = vairl.train_disc(
-                        expert_samples=self.demo_batches,
-                        gen_samples=gen_batch,
+                        expert_samples=expert_samples,
+                        gen_samples=gen_samples,
                     )
                 else:
                     _disc_stats = {"loss": 0.0, "kl": 0.0, "beta": float(vairl.beta)}
@@ -330,6 +377,121 @@ class Trainer:
                 if stop_error is not None:
                     raise stop_error
 
+    def _refresh_encoded_demonstrations(self, vairl: VAIRL) -> None:
+        self._rebuild_encoded_demo_cache()
+        vairl.set_demonstrations(self.flattened_demo_trajectories)
+
+    def _rebuild_encoded_demo_cache(self) -> None:
+        encoded_trajectories = self._encode_trajectories(self.demo_trajectories)
+        self.demo_batches = trajectories_to_batches(encoded_trajectories)
+        self.demo_imitations = trajectories_to_imitations(encoded_trajectories)
+        self.flattened_demo_trajectories = rollout.flatten_trajectories(
+            self.demo_imitations,
+        )
+
+    def _encode_trajectories(
+        self,
+        trajectories: list[list[tuple[np.ndarray, np.ndarray, np.ndarray]]],
+    ) -> list[list[tuple[np.ndarray, np.ndarray, np.ndarray]]]:
+        if self.observation_preprocessor is None:
+            return trajectories
+
+        flat_states = []
+        flat_next_states = []
+        traj_lengths = []
+
+        for trajectory in trajectories:
+            traj_lengths.append(len(trajectory))
+            for state, _action, next_state in trajectory:
+                flat_states.append(state)
+                flat_next_states.append(next_state)
+
+        encoded_states = self.observation_preprocessor.encode_batch(flat_states)
+        encoded_next_states = self.observation_preprocessor.encode_batch(
+            flat_next_states,
+        )
+
+        encoded_states_np = encoded_states.detach().cpu().numpy()
+        encoded_next_states_np = encoded_next_states.detach().cpu().numpy()
+
+        rebuilt_trajectories = []
+        offset = 0
+        for traj_length, trajectory in zip(traj_lengths, trajectories, strict=False):
+            rebuilt_trajectory = []
+            for index in range(traj_length):
+                _state, action, _next_state = trajectory[index]
+                rebuilt_trajectory.append(
+                    (
+                        encoded_states_np[offset],
+                        np.asarray(action, dtype=np.float32),
+                        encoded_next_states_np[offset],
+                    ),
+                )
+                offset += 1
+            rebuilt_trajectories.append(rebuilt_trajectory)
+
+        return rebuilt_trajectories
+
+    def _build_discriminator_samples(
+        self,
+        trajectories: list[list[tuple[np.ndarray, np.ndarray, np.ndarray]]],
+        *,
+        device: torch.device,
+    ) -> dict[str, torch.Tensor]:
+        obs = []
+        acts = []
+        next_obs = []
+        dones = []
+
+        for trajectory in trajectories:
+            for index, (state, action, next_state) in enumerate(trajectory):
+                obs.append(state)
+                acts.append(np.asarray(action, dtype=np.float32))
+                next_obs.append(next_state)
+                dones.append(1.0 if index == len(trajectory) - 1 else 0.0)
+
+        if self.observation_preprocessor is None:
+            return {
+                "obs": torch.as_tensor(
+                    np.asarray(obs, dtype=np.float32),
+                    dtype=torch.float32,
+                    device=device,
+                ),
+                "acts": torch.as_tensor(
+                    np.asarray(acts, dtype=np.float32),
+                    dtype=torch.float32,
+                    device=device,
+                ),
+                "next_obs": torch.as_tensor(
+                    np.asarray(next_obs, dtype=np.float32),
+                    dtype=torch.float32,
+                    device=device,
+                ),
+                "dones": torch.as_tensor(
+                    np.asarray(dones, dtype=np.float32),
+                    dtype=torch.float32,
+                    device=device,
+                ),
+            }
+
+        return {
+            "obs": self.observation_preprocessor.encode_batch(obs, device=device),
+            "acts": torch.as_tensor(
+                np.asarray(acts, dtype=np.float32),
+                dtype=torch.float32,
+                device=device,
+            ),
+            "next_obs": self.observation_preprocessor.encode_batch(
+                next_obs,
+                device=device,
+            ),
+            "dones": torch.as_tensor(
+                np.asarray(dones, dtype=np.float32),
+                dtype=torch.float32,
+                device=device,
+            ),
+        }
+
     def _build_agent_name(
         self,
         created_at: datetime,
@@ -386,12 +548,18 @@ class Trainer:
         num_demos = len(self.demo_trajectories)
         return metrics_session.enqueue_agent_save(
             generator=generator,
+            preprocessor=self.observation_preprocessor,
             project_dirs=project_dirs,
             num_demos=num_demos,
             created_at=created_at,
             model_file_name=GENERATOR_MODEL_FILE_NAME,
             agent_name=agent_name,
             checkpoint_episode=checkpoint_episode,
+            preprocessor_file_name=(
+                OBSERVATION_PREPROCESSOR_FILE_NAME
+                if self.observation_preprocessor is not None
+                else None
+            ),
             training_settings=self._resolved_training_settings(),
         )
 
@@ -421,6 +589,7 @@ class Trainer:
         Generate an array of trajectories and return the reward mean and standard deviation from the trajectories.
         """
         trajectories = []
+        raw_trajectories = [] if self.observation_preprocessor is not None else None
         rewards = []
         reward_net_device = next(reward_net.parameters()).device
 
@@ -430,8 +599,10 @@ class Trainer:
                 state, _ = self.eval_environment.reset()
             else:
                 state = self.eval_environment.reset()
+            raw_state = copy.deepcopy(self.eval_environment.raw_state)
 
             traj = []
+            raw_traj = [] if raw_trajectories is not None else None
             reward_accumulated = 0.0
 
             for _ in range(self.max_step_count):
@@ -448,6 +619,7 @@ class Trainer:
                     next_state, _env_reward, done, _ = self.eval_environment.step(
                         action,
                     )
+                raw_next_state = copy.deepcopy(self.eval_environment.raw_state)
 
                 with torch.no_grad():
                     s_t = torch.as_tensor(
@@ -474,18 +646,37 @@ class Trainer:
 
                 reward_accumulated += reward
                 traj.append((state.copy(), action.copy(), next_state.copy()))
+                if raw_traj is not None:
+                    raw_traj.append(
+                        (
+                            raw_state,
+                            action.copy(),
+                            raw_next_state,
+                        ),
+                    )
 
                 state = next_state
+                raw_state = raw_next_state
 
                 if done:
                     if GYMNASIUM:
                         state, _ = self.eval_environment.reset()
                     else:
                         state = self.eval_environment.reset()
+                    raw_state = copy.deepcopy(self.eval_environment.raw_state)
 
             rewards.append(reward_accumulated)
             trajectories.append(traj)
+            if raw_trajectories is not None and raw_traj is not None:
+                raw_trajectories.append(raw_traj)
 
+        if raw_trajectories is not None:
+            return (
+                trajectories,
+                float(np.mean(rewards)),
+                float(np.std(rewards)),
+                raw_trajectories,
+            )
         return trajectories, float(np.mean(rewards)), float(np.std(rewards))
 
     def _resolved_training_settings(self) -> dict[str, int | float | None]:
@@ -550,7 +741,7 @@ class Trainer:
         self.controller_client.reset_controller()
         self.world_control_client.pause_simulation()
 
-    def _ready_gazebo(headless: bool = False):
+    def _ready_gazebo(self, headless: bool = False):
         """
         Configure environment variables and hints for faster Gazebo RL training.
         """

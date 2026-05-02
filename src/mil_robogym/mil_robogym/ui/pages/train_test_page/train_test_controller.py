@@ -18,6 +18,10 @@ from mil_robogym.data_collection.load_saved_agent import (
     LoadedAgent,
     load_saved_agent_model,
 )
+from mil_robogym.data_collection.topic_readiness import (
+    DEFAULT_TOPIC_READINESS_TIMEOUT_S,
+    ensure_project_input_topics_ready,
+)
 from mil_robogym.data_collection.types import RoboGymProjectYaml
 from mil_robogym.vairl.trainer import Trainer
 from mil_robogym.vairl.training_settings import normalize_training_settings
@@ -72,10 +76,14 @@ class TrainTestViewController:
         self.trainer = None
         self.tester = None
 
+        self.loaded_agent = None
+
         if preferred_agent_name:
             self.set_agent(preferred_agent_name)
-
-        self.loaded_agent = preferred_agent_name
+            self.loaded_agent = load_saved_agent_model(
+                self.project,
+                preferred_agent_name,
+            )
 
     def set_agent(self, agent_name: str) -> None:
         """
@@ -123,11 +131,16 @@ class TrainTestViewController:
         """
         Start training loop.
         """
-        if self.project is None:
+        if not self.project:
             self.view.set_terminal_text("Training unavailable: no project is loaded.")
             return
         if self.is_training_running():
             self.view.set_terminal_text("Training is already running.")
+            return
+        if not self._ensure_project_topics_ready(
+            operation="start training",
+            status_message="Checking project input topics before training...",
+        ):
             return
 
         self._start_terminal_log_capture()
@@ -190,7 +203,7 @@ class TrainTestViewController:
         if self._training_thread is not None:
             self._training_thread.join(timeout)
 
-    def test_agent(self) -> None:
+    def test_agent(self, validate: bool = False) -> None:
         """
         Start testing agent.
         """
@@ -198,25 +211,68 @@ class TrainTestViewController:
             tester = self._ensure_tester()
             if tester is None:
                 return
-            tester.test_agent()
+            if not self._ensure_project_topics_ready(
+                operation="start testing",
+                status_message="Checking project input topics before testing...",
+            ):
+                return
+            tester.data_collector_client.ensure_subscriptions(
+                self.project,
+                operation="prepare data collector subscriptions for testing",
+            )
+            tester.test_agent(validate)
         except ValueError as e:
             tk.messagebox.showinfo(
                 title="No Agent Selected",
                 message=str(e),
                 icon="warning",
             )
+        except RuntimeError as e:
+            self.view.set_terminal_text(str(e))
 
     def _ensure_tester(self) -> Tester | None:
         if self.tester is not None:
             return self.tester
-        if self.project is None:
+        if not self.project:
             self.view.set_terminal_text("Testing unavailable: no project is loaded.")
             return None
 
         from mil_robogym.vairl.tester import Tester
 
         self.tester = Tester(self.project)
+
+        if self.loaded_agent:
+            self.tester.set_agent(self.loaded_agent)
+
         return self.tester
+
+    def _ensure_project_topics_ready(
+        self,
+        *,
+        operation: str,
+        status_message: str,
+    ) -> bool:
+        if not self.project:
+            self.view.set_terminal_text(
+                f"{operation.capitalize()} unavailable: no project is loaded.",
+            )
+            return False
+
+        self.view.set_terminal_text(status_message)
+        self.view.flush_ui_updates()
+
+        try:
+            ensure_project_input_topics_ready(
+                self.project,
+                timeout_s=DEFAULT_TOPIC_READINESS_TIMEOUT_S,
+                operation=operation,
+                start_simulation=True,
+            )
+        except RuntimeError as e:
+            self.view.set_terminal_text(str(e))
+            return False
+
+        return True
 
     def load_selected_agent(self) -> LoadedAgent | None:
         """Load the currently selected saved model as a callable agent."""
