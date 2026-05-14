@@ -278,7 +278,7 @@ mil_user_setup_rc() {
 }
 
 add_hosts_entry() {
-	sudo grep -qxF "$1" /etc/hosts || echo "$1" | sudo tee -a /etc/hosts >/dev/null
+	sudo grep -qxF "$1" /etc/hosts || echo "$1" | sudo tee -a /etc/hosts >/dev/null || true
 }
 
 # Add /etc/hosts entry for vehicles
