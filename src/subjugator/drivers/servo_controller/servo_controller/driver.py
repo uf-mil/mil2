@@ -1,31 +1,15 @@
+import time
+
 import rclpy
-import RPi.GPIO as GPIO
+from pca9685_driver import Device
 from rclpy.node import Node
 from subjugator_msgs.srv import Servo
 
-Dropper_Pin = 15
-Gripper_Pin = 32  # 35 and 120 for top and bottom
-Torpedo_Pin = 33
+dev = Device(0x40, bus_number=7)
 
-GPIO.setmode(GPIO.BOARD)
+dev.set_pwm_frequency(50)
 
-# setup dropper pwm
-GPIO.setup(Dropper_Pin, GPIO.OUT, initial=GPIO.HIGH)
-Dropper_PWM = GPIO.PWM(Dropper_Pin, 50)
-Dropper_PWM.start(12)
-
-# setup gripper pwm
-GPIO.setup(Gripper_Pin, GPIO.OUT, initial=GPIO.HIGH)
-Gripper_PWM = GPIO.PWM(Gripper_Pin, 50)
-Gripper_PWM.start(8.2)
-
-# setup torpedo pwm
-GPIO.setup(Torpedo_Pin, GPIO.OUT, initial=GPIO.HIGH)
-Torpedo_PWM = GPIO.PWM(Torpedo_Pin, 50)
-Torpedo_PWM.start(0)
-
-# duty needs to = 12 to allow for load
-# duty needs to = 7 for first drop and 4 for second drop
+# add startup command to hold the bearings in
 
 
 class Servo_Controller(Node):
@@ -35,25 +19,48 @@ class Servo_Controller(Node):
         self.srv2 = self.create_service(Servo, "gripper", self.gripper_callback)
         self.srv3 = self.create_service(Servo, "torpedo", self.torpedo_callback)
 
-    def change_angle(self, x, angle):
-        duty = angle / 10
-        if x == 1:
-            Dropper_PWM.ChangeDutyCycle(duty)
-        elif x == 2:
-            Gripper_PWM.ChangeDutyCycle(duty)
-        elif x == 3:
-            Torpedo_PWM.ChangeDutyCycle(duty)
-
     def dropper_callback(self, request: Servo, response):
-        self.change_angle(1, request.angle)
+        if request.angle == 1:
+            dev.set_pwm(0, 310)
+            time.sleep(3)
+        elif request.angle == 2:
+            dev.set_pwm(0, 432)
+            time.sleep(3)
+            dev.set_pwm(0, 138)
+            time.sleep(2)
+        else:
+            print("Nonvalid input, please input 1 or 2")
+        # dev.set_pwm(0, 310)
+        # time.sleep(1)
+        # dev.set_pwm(0, 432)
+        # time.sleep(1)
+        # dev.set_pwm(0, 138)
+        # time.sleep(1)
         return response
 
     def gripper_callback(self, request: Servo, response):
-        self.change_angle(2, request.angle)
         return response
 
     def torpedo_callback(self, request: Servo, response):
-        self.change_angle(3, request.angle)
+        # dev.set_pwm(4, 450)
+        # dev.set_pwm(4, request.angle)
+        # time.sleep(1)
+        # time.sleep(0.5)
+        # dev.set_pwm(4, 300)
+        # dev.set_pwm(4, 450)
+        # time.sleep(1)
+        dev.set_pwm(4, request.angle)
+        if request.angle == 1:
+            dev.set_pwm(4, 380)
+            time.sleep(1)
+            dev.set_pwm(4, 330)
+        elif request.angle == 2:
+            dev.set_pwm(4, 200)
+            time.sleep(1)
+            dev.set_pwm(4, 330)
+        else:
+            pass
+            # print("Nonvalid input, please input 1 or 2")
         return response
 
 

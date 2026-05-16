@@ -296,7 +296,7 @@ alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Emp
 #explain
 dropper() {
 	if [ $# -lt 1 ]; then
-		echo "missing angle! should be: angle <uint8>"
+		echo "missing angle! should be: angle <uint16>"
 		return 1
 	fi
 
@@ -304,7 +304,7 @@ dropper() {
 }
 gripper() {
 	if [ $# -lt 1 ]; then
-		echo "missing angle! should be: angle <uint8>"
+		echo "missing angle! should be: angle <uint16>"
 		return 1
 	fi
 
@@ -312,7 +312,7 @@ gripper() {
 }
 torpedo() {
 	if [ $# -lt 1 ]; then
-		echo "missing angle! should be: angle <uint8>"
+		echo "missing angle! should be: angle <uint16>"
 		return 1
 	fi
 
