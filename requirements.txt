@@ -1,3 +1,6 @@
+# Build tooling (colcon-core 0.20.1 needs setuptools<80 for editable installs)
+setuptools<80
+
 # Graphing
 matplotlib>=3.1.2
 tqdm>=4.66.3
