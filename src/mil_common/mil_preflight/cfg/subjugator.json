@@ -1,6 +1,6 @@
 {
     "actuators": {
-        "plugin": "actuator_plugin",
+        "plugin": "ActuatorPlugin",
         "actions": {
             "FLH Thruster": [
                 "/thruster_efforts",
@@ -45,7 +45,7 @@
         }
     },
     "setup": {
-        "plugin": "setup_plugin",
+        "plugin": "SetupPlugin",
         "actions": {
             "O-rings": [
                 "Grease O-rings with Molykote 55 every time a pressure vessel is closed."
@@ -56,7 +56,7 @@
         }
     },
     "nodes": {
-        "plugin": "node_plugin",
+        "plugin": "NodePlugin",
         "actions": {
             "/odom_estimator": [
                 "/odom_estimator"
@@ -79,7 +79,7 @@
         }
     },
     "topics": {
-        "plugin": "topic_plugin",
+        "plugin": "TopicPlugin",
         "actions": {
             "/camera/front/right/image_raw": [
                 "/camera/front/right/image_raw"
