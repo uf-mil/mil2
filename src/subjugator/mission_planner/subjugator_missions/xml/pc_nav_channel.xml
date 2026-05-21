@@ -14,7 +14,7 @@
 
         <!-- Tracking during initial sweep (doesn't block the sweep) -->
         <ForceSuccess>
-          <Timeout msec="30000">
+          <Timeout msec="42000">
             <Action ID="TrackBestPair"
                     min_conf="0.15"
                     channel_side="0"
@@ -74,29 +74,38 @@
         </Timeout>
       </Sequence>
 
-      <!-- 3) Drive forward until poles are big enough -->
-      <RetryUntilSuccessful num_attempts="-1">
-        <Fallback>
+      <!-- 3) Drive forward until poles are big enough (90 s hard cap) -->
+      <ForceSuccess>
+        <Timeout msec="10000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Fallback>
 
-          <Condition ID="PolesBigEnough"
-                     min_height_px="100.0"
-                     min_width_px="10.0"
-                     min_conf="0.15"
-                     consecutive_frames="2"
-                     need_both="false"
-                     ctx="{ctx}"/>
+              <Condition ID="PolesBigEnough"
+                         min_height_px="100.0"
+                         min_width_px="10.0"
+                         min_conf="0.15"
+                         consecutive_frames="2"
+                         need_both="false"
+                         ctx="{ctx}"/>
 
-          <Sequence>
-            <SubTree ID="RelativeMove" _autoremap="true" x="0.5"
-                     pos_tol="0.25" ori_tol_deg="30.0" msec="6000"
-                     ctx="{ctx}"/>
-            <AlwaysFailure/>
-          </Sequence>
+              <Sequence>
+                <SubTree ID="RelativeMove" _autoremap="true" x="0.5"
+                         pos_tol="0.25" ori_tol_deg="30.0" msec="6000"
+                         ctx="{ctx}"/>
+                <Action ID="LogToFile"
+                         dir="/home/carlos-chavez/mil2/src/subjugator/mission_planner/logs"
+                         filename="mission_debug.txt"
+                         message="Driving forward until pole big enough"/>
+                <AlwaysFailure/>
+              </Sequence>
 
-        </Fallback>
-      </RetryUntilSuccessful>
+            </Fallback>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </ForceSuccess>
 
       <!-- 4) Determine channel side (right_channel = +1 or -1). Don't block forever -->
+      <Script code="right_channel:=0"/>
       <ForceSuccess>
         <Timeout msec="4000">
           <Action ID="DetermineChannelSide"
@@ -106,6 +115,11 @@
                   right_channel="{right_channel}"/>
         </Timeout>
       </ForceSuccess>
+
+      <Action ID="LogToFile"
+                     dir="/home/carlos-chavez/mil2/src/subjugator/mission_planner/logs"
+                     filename="mission_debug.txt"
+                     message="DETERMINED CHANNEL SIDE"/>
 
       <!-- 5) Loop: while poles exist -> survey+track with known side -> micro-yaw steps -> forward 1m -->
       <RetryUntilSuccessful num_attempts="-1">
@@ -135,7 +149,7 @@
                 <Repeat num_cycles="2">
                   <Fallback>
                     <SubTree ID="RelativeMove" _autoremap="true"
-                             yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
                     <AlwaysSuccess/>
                   </Fallback>
                 </Repeat>
@@ -144,7 +158,7 @@
                 <Repeat num_cycles="4">
                   <Fallback>
                     <SubTree ID="RelativeMove" _autoremap="true"
-                             yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                            yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
                     <AlwaysSuccess/>
                   </Fallback>
                 </Repeat>
@@ -153,7 +167,7 @@
                 <Repeat num_cycles="2">
                   <Fallback>
                     <SubTree ID="RelativeMove" _autoremap="true"
-                             yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                            yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
                     <AlwaysSuccess/>
                   </Fallback>
                 </Repeat>
