@@ -27,6 +27,8 @@
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 #include "track_best_pair.hpp"
 #include "track_largest_poles.hpp"
+#include "remember_waypoint.hpp"
+#include "lookup_waypoint.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <count_when_ticked.hpp>
@@ -116,6 +118,8 @@ int main(int argc, char** argv)
     factory.registerNodeType<ActuateServo>("ActuateServo");
     factory.registerNodeType<AlignDepth>("AlignDepth");
     factory.registerNodeType<AlignYaw>("AlignYaw");
+    factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
+    factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
