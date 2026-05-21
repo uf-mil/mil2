@@ -136,15 +136,20 @@ export LANG=en_US.UTF-8
 # Add universe
 sudo add-apt-repository universe -y
 
-# ROS2 GPG key
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
-
-# ROS2 apt source
 ARCH=$(dpkg --print-architecture)
 CODENAME=$(awk -F= '/^UBUNTU_CODENAME=/{print $2}' /etc/os-release)
-sudo tee /etc/apt/sources.list.d/ros2.list <<EOF >/dev/null
+
+if [ ! -f /etc/apt/sources.list.d/ros2.sources ] && [ ! -f /etc/apt/sources.list.d/ros2.list ]; then
+	# ROS2 GPG key
+	sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+	# ROS2 apt source
+	sudo tee /etc/apt/sources.list.d/ros2.list <<EOF >/dev/null
 deb [arch=$ARCH signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $CODENAME main
 EOF
+else
+	echo "ROS2 sources already configured, skipping to avoid conflicts..."
+fi
 
 # Gazebo GPG key
 sudo curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
@@ -273,7 +278,7 @@ mil_user_setup_rc() {
 }
 
 add_hosts_entry() {
-	sudo grep -qxF "$1" /etc/hosts || echo "$1" | sudo tee -a /etc/hosts >/dev/null
+	sudo grep -qxF "$1" /etc/hosts || echo "$1" | sudo tee -a /etc/hosts >/dev/null || true
 }
 
 # Add /etc/hosts entry for vehicles
