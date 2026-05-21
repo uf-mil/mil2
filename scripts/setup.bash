@@ -322,20 +322,20 @@ torpedo() {
 # Mission Planner launcher
 mp() {
 	if [[ $# -ne 1 ]]; then
-		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission|BUSTMission|NavChannelMission|ETHAN>"
+		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission|BUSTMission|NavChannelMission|ETHAN|WaypointDemoMission>"
 		return 2
 	fi
 
 	local mission="$1"
 	case "$mission" in
-	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission | ETHAN)
+	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission | ETHAN | WaypointDemoMission)
 		echo "Launching mission_planner with mission: ${mission}"
 		ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
 		;;
 	*)
 		echo "Invalid mission: ${mission}"
-		echo "Valid missions: SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN"
-		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
+		echo "Valid missions: SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN WaypointDemoMission"
+		echo "(Note: RelativeMove and GoToWaypoint are subtrees and cannot run standalone.)"
 		return 2
 		;;
 	esac
@@ -345,7 +345,7 @@ _mp_complete() {
 	local cur
 	cur=${COMP_WORDS[COMP_CWORD]}
 
-	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN"
+	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN WaypointDemoMission"
 	COMPREPLY=()
 	while IFS='' read -r line; do
 		COMPREPLY+=("$line")

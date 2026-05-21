@@ -15,8 +15,10 @@
 #include "determine_channel_side.hpp"
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
+#include "lookup_waypoint.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
+#include "remember_waypoint.hpp"
 #include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -91,6 +93,8 @@ int main(int argc, char** argv)
     factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
+    factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
+    factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");

@@ -15,4 +15,6 @@
     <include path="octagon_pinger_mission.xml"/>
     <include path="yaw_style.xml"/>
     <include path="ETHAN.xml"/>
+    <include path="waypoint.xml"/>
+    <include path="waypoint_demo_mission.xml"/>
 </root>
