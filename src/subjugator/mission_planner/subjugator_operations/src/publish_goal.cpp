@@ -166,8 +166,10 @@ BT::NodeStatus PublishGoalPose::tick()
         RCLCPP_DEBUG(ctx_->logger(), "PublishGoalPose: yaw-only -> adding %.3fm forward nudge", eps_move);
     }
 
-    // Choose base pose (last goal if available when relative, else odom, else identity)
+    // Choose base pose: relative chains off last_goal (avoids odom drift accumulation);
+    // absolute uses current odom for keep_current_pos_abs. Both fall back to world origin.
     geometry_msgs::msg::Pose base{};
+    base.orientation.w = 1.0;
     bool have_base = false;
 
     if (relative)
@@ -179,7 +181,7 @@ BT::NodeStatus PublishGoalPose::tick()
             have_base = true;
         }
     }
-    if (!have_base)
+    else
     {
         std::optional<nav_msgs::msg::Odometry> odom;
         {
@@ -192,12 +194,10 @@ BT::NodeStatus PublishGoalPose::tick()
             have_base = true;
         }
     }
+
     if (!have_base)
     {
-        base.position.x = base.position.y = base.position.z = 0.0;
-        base.orientation.x = base.orientation.y = base.orientation.z = 0.0;
-        base.orientation.w = 1.0;
-        RCLCPP_WARN(ctx_->logger(), "PublishGoalPose: composing without odom; assuming world origin.");
+        RCLCPP_WARN(ctx_->logger(), "PublishGoalPose: no base pose available; assuming world origin.");
     }
 
     bool keep_cur_abs = true;
