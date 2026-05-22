@@ -104,6 +104,7 @@ sudo apt install -y --no-install-recommends \
 	doxygen-doc \
 	doxygen-gui \
 	expect \
+	git \
 	gnupg \
 	gnupg2 \
 	graphviz \
