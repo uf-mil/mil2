@@ -269,9 +269,9 @@ mil_user_setup_rc() {
 		# Copies bashrc to interactive login shells (like tmux)
 		cat <<-EOF >>~/.profile
 			# include .bashrc if it exists
-			if [ -n "$BASH_VERSION" ] && [ -n "$PS1" ]; then
-			  if [ -f "$HOME/.bashrc" ]; then
-			    . "$HOME/.bashrc"
+			if [ -n "\$BASH_VERSION" ] && [ -n "\$PS1" ]; then
+			  if [ -f "\$HOME/.bashrc" ]; then
+			    . "\$HOME/.bashrc"
 			  fi
 			fi
 		EOF
