@@ -33,8 +33,12 @@ def rotate_front_cam(frame: MatLike) -> MatLike:
     M = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
 
     # Rotate the padded image
-    rotated = cv2.warpAffine(frame, M, (w, h))
-    return rotated
+    frame = cv2.warpAffine(frame, M, (w, h))
+    # frame = cv2.circle(frame, (320 + 40, 240 + 80), 5, (0, 0, 0), 2)
+    # frame = cv2.circle(frame, (320 + 40, 240 + 120), 5, (0, 0, 0), 2)
+    frame = cv2.circle(frame, (320 + 40, 240), 5, (0, 0, 0), 2)
+    frame = cv2.circle(frame, (320 + 40, 240 + 40), 5, (0, 0, 0), 2)
+    return frame
 
 
 class FrontCamDriver(Node):

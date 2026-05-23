@@ -51,13 +51,13 @@ class Servo_Controller(Node):
         # time.sleep(1)
         dev.set_pwm(4, request.angle)
         if request.angle == 1:
-            dev.set_pwm(4, 380)
+            dev.set_pwm(4, 270)
             time.sleep(1)
-            dev.set_pwm(4, 330)
+            dev.set_pwm(4, 300)
         elif request.angle == 2:
-            dev.set_pwm(4, 200)
+            dev.set_pwm(4, 350)
             time.sleep(1)
-            dev.set_pwm(4, 330)
+            dev.set_pwm(4, 300)
         else:
             pass
             # print("Nonvalid input, please input 1 or 2")
