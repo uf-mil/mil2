@@ -16,6 +16,7 @@ find_package(ament_index_cpp REQUIRED)
 find_package(yolo_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
+find_package(subjugator_msgs REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
