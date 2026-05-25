@@ -7,7 +7,7 @@ from launch.actions import (
     ExecuteProcess,
     IncludeLaunchDescription,
 )
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     Command,
@@ -143,11 +143,14 @@ def generate_launch_description():
         output="both",
     )
 
+    # Real MS5837 I2C depth sensor driver; only on hardware, never in sim
+    # (in sim, depth comes from Gazebo via the localization pipeline).
     new_depth = Node(
         package="new_depth_driver",
         executable="new_depth_driver",
         name="new_depth_driver",
         output="both",
+        condition=UnlessCondition(LaunchConfiguration("use_sim_time")),
     )
 
     # wrench_tuner = IncludeLaunchDescription(
