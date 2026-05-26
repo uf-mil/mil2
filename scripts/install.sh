@@ -207,6 +207,29 @@ $(color "$Pur")Installing Python dependencies...
 $(hash_header)$(color "$Res")
 EOF
 
+# torch (pulled in by ultralytics in requirements.txt below) defaults to the
+# PyPI build, which bundles ~4 GB of CUDA wheels (nvidia-* + triton + cuda-*).
+# On a machine with no NVIDIA GPU those never run, so pre-install the CPU-only
+# build from PyTorch's CPU wheel index FIRST. requirements.txt pins torch with
+# >= (not ==), so the install below then finds it already satisfied and never
+# pulls the CUDA build -- torch is downloaded exactly once. NVIDIA's PCI vendor
+# ID is 0x10de.
+has_nvidia_gpu() {
+	local vendor
+	for vendor in /sys/bus/pci/devices/*/vendor; do
+		[[ -r $vendor ]] || continue
+		[[ $(cat "$vendor") == "0x10de" ]] && return 0
+	done
+	return 1
+}
+if has_nvidia_gpu; then
+	echo "NVIDIA GPU detected; torch will be installed with CUDA support."
+else
+	echo "No NVIDIA GPU detected; pre-installing CPU-only torch (saves ~4 GB)."
+	sudo pip3 install --index-url https://download.pytorch.org/whl/cpu \
+		torch torchvision
+fi
+
 # Install Python 3 dependencies
 sudo pip3 install -r requirements.txt
 
