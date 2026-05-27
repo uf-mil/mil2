@@ -23,6 +23,8 @@ rosidl_generate_interfaces(
   "msg/Trajectory.msg"
   "msg/Waypoint.msg"
   "msg/Centroid.msg"
+  "msg/SensorSpike.msg"
+  "msg/SensorSpikeArray.msg"
   "srv/BMatrix.srv"
   "srv/OcrRequest.srv"
   "srv/TBDetectionSwitch.srv"
