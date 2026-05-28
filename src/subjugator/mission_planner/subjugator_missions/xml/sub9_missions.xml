@@ -20,4 +20,8 @@
     <include path="best_pair_test_mission.xml"/>
     <include path="nav_channel_control_test.xml"/>
     <include path="BUST_mission.xml"/>
+    <include path="octagon_pinger_mission.xml"/>
+    <include path="yaw_style.xml"/>
+    <include path="ETHAN.xml"/>
+    <include path="servo_test_mission.xml"/>
 </root>
