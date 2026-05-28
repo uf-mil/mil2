@@ -36,7 +36,8 @@ add_library(
   subjugator_operations/src/track_best_pair.cpp
   subjugator_operations/src/hone_midpoint.cpp
   subjugator_operations/src/log_to_file.cpp
-  subjugator_operations/src/nav_channel_control.cpp)
+  subjugator_operations/src/nav_channel_control.cpp
+  subjugator_operations/src/actuate_servo.cpp)
 
 ament_target_dependencies(
   operations
@@ -46,6 +47,7 @@ ament_target_dependencies(
   mil_msgs
   sensor_msgs
   yolo_msgs
+  subjugator_msgs
   behaviortree_cpp
   lifecycle_msgs
   rcl_interfaces
@@ -62,6 +64,7 @@ ament_target_dependencies(
   mil_msgs
   sensor_msgs
   yolo_msgs
+  subjugator_msgs
   behaviortree_cpp
   ament_index_cpp)
 
