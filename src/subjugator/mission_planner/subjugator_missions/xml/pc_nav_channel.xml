@@ -121,6 +121,43 @@
                      filename="mission_debug.txt"
                      message="DETERMINED CHANNEL SIDE"/>
 
+      <!-- 4.5) Strafe along body-Y (no yaw) to center the red/correct-side-white midpoint.
+               StrafeToMidpoint updates y_strafe and succeeds once centered within tol_px. -->
+      <ForceSuccess>
+        <Timeout msec="20000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Parallel success_count="1" failure_count="1">
+
+              <Timeout msec="15000">
+                <Action ID="StrafeToMidpoint"
+                        ctx="{ctx}"
+                        min_conf="0.15"
+                        right_channel="{right_channel}"
+                        kp="0.002"
+                        max_cmd="0.5"
+                        tol_px="15.0"
+                        hold_ticks="5"
+                        invert="false"
+                        y_cmd="{y_strafe}"/>
+              </Timeout>
+
+              <!-- Keep applying the latest strafe step (pure Y) until StrafeToMidpoint succeeds -->
+              <RetryUntilSuccessful num_attempts="-1">
+                <Sequence>
+                  <SubTree ID="RelativeMove" _autoremap="true"
+                           y="{y_strafe}"
+                           pos_tol="0.20" ori_tol_deg="180.0"
+                           msec="1500"
+                           ctx="{ctx}"/>
+                  <AlwaysFailure/>
+                </Sequence>
+              </RetryUntilSuccessful>
+
+            </Parallel>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </ForceSuccess>
+
       <!-- 5) Loop: while poles exist -> survey+track with known side -> micro-yaw steps -> forward 1m -->
       <RetryUntilSuccessful num_attempts="-1">
         <Fallback>
