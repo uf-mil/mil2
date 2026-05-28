@@ -33,7 +33,8 @@ add_library(
   subjugator_operations/src/poles_big_enough.cpp
   subjugator_operations/src/determine_channel_side.cpp
   subjugator_operations/src/any_poles_detected.cpp
-  subjugator_operations/src/has_found_pair.cpp)
+  subjugator_operations/src/has_found_pair.cpp
+  subjugator_operations/src/actuate_servo.cpp)
 
 ament_target_dependencies(
   operations
@@ -43,6 +44,7 @@ ament_target_dependencies(
   mil_msgs
   sensor_msgs
   yolo_msgs
+  subjugator_msgs
   behaviortree_cpp
   lifecycle_msgs
   rcl_interfaces
@@ -59,6 +61,7 @@ ament_target_dependencies(
   mil_msgs
   sensor_msgs
   yolo_msgs
+  subjugator_msgs
   behaviortree_cpp
   ament_index_cpp)
 

@@ -7,6 +7,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "actuate_servo.hpp"
 #include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
 #include "check_yolo_model.hpp"
@@ -63,6 +64,11 @@ int main(int argc, char** argv)
                                                                             ctx->img_height = msg->height;
                                                                         });
 
+    // Servo service clients (matched to services exposed by servo_controller/driver.py)
+    ctx->dropper_client = node->create_client<subjugator_msgs::srv::Servo>("dropper");
+    ctx->gripper_client = node->create_client<subjugator_msgs::srv::Servo>("gripper");
+    ctx->torpedo_client = node->create_client<subjugator_msgs::srv::Servo>("torpedo");
+
     // Wait for odometry before starting mission
     RCLCPP_INFO(node->get_logger(), "Waiting for odometry...");
     rclcpp::Rate wait_rate(10.0);
@@ -91,6 +97,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
+    factory.registerNodeType<ActuateServo>("ActuateServo");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
