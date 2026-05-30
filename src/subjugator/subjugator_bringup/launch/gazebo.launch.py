@@ -7,31 +7,27 @@ from launch.actions import (
     IncludeLaunchDescription,
     SetLaunchConfiguration,
 )
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-from launch_ros.actions import Node
+from launch_ros.actions import Node, SetParameter
+
+
+def pkg_share(pkg, *path):
+    return os.path.join(get_package_share_directory(pkg), *path)
 
 
 def generate_launch_description():
-    # Configure ROS nodes for launch
-
-    # Setup project paths
-    pkg_project_bringup = get_package_share_directory("subjugator_bringup")
-    pkg_project_gazebo = get_package_share_directory("subjugator_gazebo")
-    # pkg_project_description = get_package_share_directory("subjugator_description")
-    pkg_ros_gz_sim = get_package_share_directory("ros_gz_sim")
-    pkg_controller = get_package_share_directory("subjugator_controller")
-
     # Setup to launch the simulator and Gazebo world
     gz_sim_world = DeclareLaunchArgument("world", default_value="robosub_2025.world")
     gz_sim = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_ros_gz_sim, "launch", "gz_sim.launch.py"),
-        ),
+        pkg_share("ros_gz_sim", "launch", "gz_sim.launch.py"),
         launch_arguments={
             "gz_args": [
                 PathJoinSubstitution(
-                    [pkg_project_gazebo, "worlds", LaunchConfiguration("world")],
+                    [
+                        pkg_share("subjugator_gazebo"),
+                        "worlds",
+                        LaunchConfiguration("world"),
+                    ],
                 ),
                 " --render-engine",
                 " ogre",
@@ -40,18 +36,18 @@ def generate_launch_description():
     )
 
     # Get controller to use sim values
-    sim_pid_yaml = os.path.join(pkg_controller, "config", "sim_pid_controller.yaml")
-    set_sim_params = SetLaunchConfiguration("param_file", sim_pid_yaml)
+    set_sim_params = SetLaunchConfiguration(
+        "param_file",
+        pkg_share("subjugator_controller", "config", "sim_pid_controller.yaml"),
+    )
+    set_sim_time = SetParameter("use_sim_time", True)
 
     # Include the Subjugator_Setup Launch file
     subjugator_setup = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_project_bringup, "launch", "subjugator_setup.launch.py"),
-        ),
+        pkg_share("subjugator_bringup", "launch", "common.launch.py"),
         launch_arguments={
-            "use_sim_time": "true",
-            "xacro_file": os.path.join(
-                get_package_share_directory("subjugator_description"),
+            "xacro_file": pkg_share(
+                "subjugator_description",
                 "urdf",
                 "sub9_sim.urdf.xacro",
             ),
@@ -65,8 +61,8 @@ def generate_launch_description():
         executable="parameter_bridge",
         parameters=[
             {
-                "config_file": os.path.join(
-                    pkg_project_bringup,
+                "config_file": pkg_share(
+                    "subjugator_bringup",
                     "config",
                     "subjugator_bridge.yaml",
                 ),
@@ -86,7 +82,6 @@ def generate_launch_description():
         executable="pinger_heading_node.py",
         name="pinger_heading_node",
         output="screen",
-        parameters=[{"use_sim_time": True}],
     )
 
     return LaunchDescription(
@@ -94,6 +89,7 @@ def generate_launch_description():
             gz_sim_world,
             gz_sim,
             set_sim_params,
+            set_sim_time,
             subjugator_setup,
             bridge,
             pinger_heading,
