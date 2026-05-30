@@ -20,7 +20,6 @@
 #include "nav_channel_control.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
-#include "strafe_to_midpoint.hpp"
 #include "track_best_pair.hpp"
 #include "track_largest_poles.hpp"
 
