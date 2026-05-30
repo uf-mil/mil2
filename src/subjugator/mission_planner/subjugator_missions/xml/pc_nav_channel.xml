@@ -4,17 +4,22 @@
 
       <!-- 0) Use correct YOLO model -->
       <Action ID="CheckYoloModel"
-              model_filename="new_sim_nav_channel.pt"
+              model_filename="small-May16-NavChan.pt"
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="0.0" z="-0.2"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+               ctx="{ctx}"/>
 
       <!-- 1) Initial survey +/-45 while tracking (side unknown => channel_side=0) -->
       <Parallel success_count="2" failure_count="2">
 
         <!-- Tracking during initial sweep (doesn't block the sweep) -->
         <ForceSuccess>
-          <Timeout msec="42000">
+          <Timeout msec="15000">
             <Action ID="TrackBestPair"
                     min_conf="0.15"
                     channel_side="0"
@@ -93,7 +98,7 @@
                          pos_tol="0.25" ori_tol_deg="30.0" msec="6000"
                          ctx="{ctx}"/>
                 <Action ID="LogToFile"
-                         dir="/home/carlos-chavez/mil2/src/subjugator/mission_planner/logs"
+                         dir="/home/sub9/mil2/src/subjugator/mission_planner/logs"
                          filename="mission_debug.txt"
                          message="Driving forward until pole big enough"/>
                 <AlwaysFailure/>
@@ -117,46 +122,9 @@
       </ForceSuccess>
 
       <Action ID="LogToFile"
-                     dir="/home/carlos-chavez/mil2/src/subjugator/mission_planner/logs"
+                     dir="/home/sub9/mil2/src/subjugator/mission_planner/logs"
                      filename="mission_debug.txt"
                      message="DETERMINED CHANNEL SIDE"/>
-
-      <!-- 4.5) Strafe along body-Y (no yaw) to center the red/correct-side-white midpoint.
-               StrafeToMidpoint updates y_strafe and succeeds once centered within tol_px. -->
-      <ForceSuccess>
-        <Timeout msec="20000">
-          <RetryUntilSuccessful num_attempts="-1">
-            <Parallel success_count="1" failure_count="1">
-
-              <Timeout msec="15000">
-                <Action ID="StrafeToMidpoint"
-                        ctx="{ctx}"
-                        min_conf="0.15"
-                        right_channel="{right_channel}"
-                        kp="0.002"
-                        max_cmd="0.5"
-                        tol_px="15.0"
-                        hold_ticks="5"
-                        invert="false"
-                        y_cmd="{y_strafe}"/>
-              </Timeout>
-
-              <!-- Keep applying the latest strafe step (pure Y) until StrafeToMidpoint succeeds -->
-              <RetryUntilSuccessful num_attempts="-1">
-                <Sequence>
-                  <SubTree ID="RelativeMove" _autoremap="true"
-                           y="{y_strafe}"
-                           pos_tol="0.20" ori_tol_deg="180.0"
-                           msec="1500"
-                           ctx="{ctx}"/>
-                  <AlwaysFailure/>
-                </Sequence>
-              </RetryUntilSuccessful>
-
-            </Parallel>
-          </RetryUntilSuccessful>
-        </Timeout>
-      </ForceSuccess>
 
       <!-- 5) Loop: while poles exist -> survey+track with known side -> micro-yaw steps -> forward 1m -->
       <RetryUntilSuccessful num_attempts="-1">
@@ -171,7 +139,7 @@
             <Parallel success_count="2" failure_count="2">
 
               <ForceSuccess>
-                <Timeout msec="30000">
+                <Timeout msec="15000">
                   <Action ID="TrackBestPair"
                           min_conf="0.15"
                           channel_side="{right_channel}"

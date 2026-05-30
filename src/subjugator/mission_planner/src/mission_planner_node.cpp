@@ -87,6 +87,7 @@ int main(int argc, char** argv)
     BT::BehaviorTreeFactory factory;
     factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
     factory.registerNodeType<AtGoalPose>("AtGoalPose");
+    factory.registerNodeType<LogToFile>("LogToFile");
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
     factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
@@ -132,7 +133,7 @@ int main(int argc, char** argv)
     BT::StdCoutLogger logger_cout(*tree_ptr);
 
     RCLCPP_INFO(node->get_logger(), "Mission Planner started. Ticking tree…");
-    rclcpp::WallRate rate(20.0);
+    rclcpp::WallRate rate(30.0);
 
     std::string xml_models = BT::writeTreeNodesModelXML(factory);
     std::ofstream("/home/carlos/models.xml") << xml_models;
