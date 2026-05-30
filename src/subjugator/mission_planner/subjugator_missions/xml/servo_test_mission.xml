@@ -1,21 +1,9 @@
 <root BTCPP_format="4" main_tree_to_execute="ServoTestMission">
   <BehaviorTree ID="ServoTestMission">
     <Sequence>
-
-      <!-- Dropper: angle 1 = single move, angle 2 = full open/close cycle -->
-      <ActuateServo target="dropper" angle="1" ctx="{ctx}"/>
-      <Delay delay_msec="2000"><AlwaysSuccess/></Delay>
-
-      <ActuateServo target="dropper" angle="2" ctx="{ctx}"/>
-      <Delay delay_msec="2000"><AlwaysSuccess/></Delay>
-
-      <!-- Gripper: currently a no-op server-side, included for coverage -->
-      <ActuateServo target="gripper" angle="1" ctx="{ctx}"/>
-      <Delay delay_msec="2000"><AlwaysSuccess/></Delay>
-
       <!-- Torpedo: angle 1 and angle 2 fire the two launch positions -->
       <ActuateServo target="torpedo" angle="1" ctx="{ctx}"/>
-      <Delay delay_msec="2000"><AlwaysSuccess/></Delay>
+      <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
 
       <ActuateServo target="torpedo" angle="2" ctx="{ctx}"/>
 
