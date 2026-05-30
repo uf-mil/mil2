@@ -8,26 +8,16 @@ from launch.actions import (
     IncludeLaunchDescription,
 )
 from launch.conditions import IfCondition
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import (
-    Command,
-    FindExecutable,
-    LaunchConfiguration,
-    PathJoinSubstitution,
-)
+from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def pkg_share(pkg, *path):
+    return os.path.join(get_package_share_directory(pkg), *path)
+
+
 def generate_launch_description():
-
-    # Setup project paths
-    pkg_project_bringup = get_package_share_directory("subjugator_bringup")
-    pkg_project_description = get_package_share_directory("subjugator_description")
-    pkg_thruster_manager = get_package_share_directory("subjugator_thruster_manager")
-    pkg_localization = get_package_share_directory("subjugator_localization")
-    pkg_controller = get_package_share_directory("subjugator_controller")
-
     # Args
     gui_cmd = DeclareLaunchArgument(
         "gui",
@@ -37,26 +27,18 @@ def generate_launch_description():
 
     xacro_file_arg = DeclareLaunchArgument(
         "xacro_file",
-        default_value=PathJoinSubstitution(
-            [pkg_project_description, "urdf", "sub9.urdf.xacro"],
-        ),
+        default_value=pkg_share("subjugator_description", "urdf", "sub9.urdf.xacro"),
         description="Path to the robot xacro file",
-    )
-
-    use_sim_time_arg = DeclareLaunchArgument(
-        "use_sim_time",
-        default_value="false",
-        description="Use sim clock (true for sim, false for real)",
     )
 
     # Expand xacro at runtime
     robot_desc = ParameterValue(
-        Command([FindExecutable(name="xacro"), " ", LaunchConfiguration("xacro_file")]),
+        Command(["xacro", " ", LaunchConfiguration("xacro_file")]),
         value_type=str,
     )
 
     # Write an on-disk URDF
-    urdf_out = os.path.join(pkg_project_description, "urdf", "sub9.urdf")
+    urdf_out = pkg_share("subjugator_description", "urdf", "sub9.urdf")
     generate_urdf = ExecuteProcess(
         cmd=["xacro", LaunchConfiguration("xacro_file"), "-o", urdf_out],
         output="screen",
@@ -77,7 +59,6 @@ def generate_launch_description():
         name="robot_state_publisher",
         output="both",
         parameters=[
-            {"use_sim_time": LaunchConfiguration("use_sim_time")},
             {"robot_description": robot_desc},
         ],
     )
@@ -88,28 +69,28 @@ def generate_launch_description():
         executable="rviz2",
         arguments=[
             "-d",
-            os.path.join(pkg_project_bringup, "config", "subjugator.rviz"),
+            pkg_share("subjugator_bringup", "config", "subjugator.rviz"),
         ],
         condition=IfCondition(LaunchConfiguration("gui")),
     )
 
     thruster_manager = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_thruster_manager, "launch", "thruster_manager.launch.py"),
+        pkg_share(
+            "subjugator_thruster_manager",
+            "launch",
+            "thruster_manager.launch.py",
         ),
     )
 
     localization = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                pkg_localization,
-                "launch",
-                "subjugator_localization.launch.py",
-            ),
+        pkg_share(
+            "subjugator_localization",
+            "launch",
+            "subjugator_localization.launch.py",
         ),
         launch_arguments={
-            "params_file": os.path.join(
-                pkg_localization,
+            "params_file": pkg_share(
+                "subjugator_localization",
                 "config",
                 "localization_parameters.yaml",
             ),
@@ -124,9 +105,7 @@ def generate_launch_description():
     # )
 
     controller = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_controller, "launch", "pid_controller.launch.py"),
-        ),
+        pkg_share("subjugator_controller", "launch", "pid_controller.launch.py"),
     )
 
     path_planner = Node(
@@ -143,36 +122,20 @@ def generate_launch_description():
         output="both",
     )
 
-    new_depth = Node(
-        package="new_depth_driver",
-        executable="new_depth_driver",
-        name="new_depth_driver",
-        output="both",
-    )
-
     # wrench_tuner = IncludeLaunchDescription(
-    # PythonLaunchDescriptionSource(
-    # os.path.join(
-    # get_package_share_directory("subjugator_wrench_tuner"),
-    # "launch",
-    # "wrench_tuner_launch.py",
-    # ),
-    # ),
+    # pkg_share("subjugator_wrench_tuner", "launch", "wrench_tuner_launch.py")
     # )
     return LaunchDescription(
         [
             gui_cmd,
             xacro_file_arg,
-            use_sim_time_arg,
             generate_urdf,
             robot_state_publisher_node,
-            # joint_state_publisher_node,
             rviz,
             thruster_manager,
             localization,
             controller,
             path_planner,
             trajectory_planner,
-            new_depth,
         ],
     )
