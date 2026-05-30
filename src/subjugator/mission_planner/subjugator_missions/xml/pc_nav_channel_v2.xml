@@ -1,0 +1,200 @@
+<root BTCPP_format="4" main_tree_to_execute="pcNavChannelV2">
+  <BehaviorTree ID="pcNavChannelV2">
+    <Sequence>
+
+      <!-- Channel side. 0 = auto (NavChannelControl latches the side from the
+           first frame containing both a red and a white pole). Edit to +1
+           (RIGHT channel: red appears left of white) or -1 (LEFT channel) to
+           hard-code. -->
+      <Script code="right_channel:=0"/>
+
+      <!-- 0) YOLO model -->
+      <Action ID="CheckYoloModel"
+              model_filename="new_sim_nav_channel.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- 1) Initial survey: yaw sweep while TrackBestPair records the best
+           orientation seen. Side unknown here so channel_side=0. -->
+      <Parallel success_count="2" failure_count="2">
+
+        <ForceSuccess>
+          <Timeout msec="42000">
+            <Action ID="TrackBestPair"
+                    min_conf="0.15"
+                    channel_side="0"
+                    ctx="{ctx}"
+                    best_qx="{best_qx}" best_qy="{best_qy}"
+                    best_qz="{best_qz}" best_qw="{best_qw}"/>
+          </Timeout>
+        </ForceSuccess>
+
+        <Sequence>
+          <Repeat num_cycles="3">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+          <Repeat num_cycles="6">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+          <Repeat num_cycles="3">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+        </Sequence>
+
+      </Parallel>
+
+      <!-- 2) Yaw to memorized best orientation, keeping position. -->
+      <Sequence>
+        <Action ID="PublishGoalPose"
+                use_euler_deg="false" relative="false" keep_current_pos_abs="true"
+                qx="{best_qx}" qy="{best_qy}" qz="{best_qz}" qw="{best_qw}" ctx="{ctx}"
+                abs_x="{goal_x}" abs_y="{goal_y}" abs_z="{goal_z}"
+                abs_qx="{goal_qx}" abs_qy="{goal_qy}" abs_qz="{goal_qz}" abs_qw="{goal_qw}"/>
+
+        <Timeout msec="10000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Sequence>
+              <Delay delay_msec="250"><AlwaysSuccess/></Delay>
+              <Condition ID="AtGoalPose"
+                         x="{goal_x}" y="{goal_y}" z="{goal_z}"
+                         qx="{goal_qx}" qy="{goal_qy}" qz="{goal_qz}" qw="{goal_qw}"
+                         pos_tol="0.25" ori_tol_deg="8.0" ctx="{ctx}"/>
+            </Sequence>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </Sequence>
+
+      <!-- 3) Drive forward until at least one pole is big enough on screen
+           (sigmoid in NavChannelControl assumes meaningful sizes). -->
+      <ForceSuccess>
+        <Timeout msec="20000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Fallback>
+              <Condition ID="PolesBigEnough"
+                         min_height_px="80.0"
+                         min_width_px="8.0"
+                         min_conf="0.15"
+                         consecutive_frames="2"
+                         need_both="false"
+                         ctx="{ctx}"/>
+
+              <Sequence>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         x="0.5" y="0.0" z="0.0"
+                         roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                         pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+                <AlwaysFailure/>
+              </Sequence>
+            </Fallback>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </ForceSuccess>
+
+      <!-- 4) Main loop: correct yaw OR strafe with NavChannelControl, push
+           forward, repeat. Exits when poles stay absent through a survey. -->
+      <RetryUntilSuccessful num_attempts="-1">
+        <Fallback>
+
+          <!-- A) Poles visible: correct then advance. -->
+          <Sequence>
+            <Action ID="AnyPolesDetected" min_conf="0.15" ctx="{ctx}"/>
+
+            <ForceSuccess>
+              <Timeout msec="15000">
+                <RetryUntilSuccessful num_attempts="-1">
+                  <Parallel success_count="1" failure_count="1">
+
+                    <Timeout msec="8000">
+                      <Action ID="NavChannelControl"
+                              ctx="{ctx}"
+                              right_channel="{right_channel}"
+                              min_conf="0.15"
+                              size_center_px="80.0"
+                              size_div_px="20.0"
+                              ideal_offset_norm="0.20"
+                              yaw_deadzone_norm="0.05"
+                              yaw_outer_norm="0.22"
+                              strafe_saturate_norm="0.42"
+                              max_yaw_deg="6.0"
+                              max_strafe_m="0.25"
+                              tol_px="15.0"
+                              hold_ticks="5"
+                              yaw_cmd="{nav_yaw}"
+                              y_cmd="{nav_y}"
+                              mode_is_strafe="{nav_strafe_mode}"
+                              resolved_channel="{right_channel}"/>
+                    </Timeout>
+
+                    <RetryUntilSuccessful num_attempts="-1">
+                      <Sequence>
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                                 x="0.0" y="{nav_y}" z="0.0"
+                                 roll_deg="0.0" pitch_deg="0.0" yaw_deg="{nav_yaw}"
+                                 pos_tol="0.20" ori_tol_deg="6.0" msec="800" ctx="{ctx}"/>
+                        <AlwaysFailure/>
+                      </Sequence>
+                    </RetryUntilSuccessful>
+
+                  </Parallel>
+                </RetryUntilSuccessful>
+              </Timeout>
+            </ForceSuccess>
+
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="1.0" y="0.0" z="0.0"
+                     roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                     pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+            <AlwaysFailure/>
+          </Sequence>
+
+          <!-- B) No poles: wait, push forward to exit the channel, re-survey.
+               If nothing reappears, finish. -->
+          <Sequence>
+            <Repeat num_cycles="30">
+              <Sequence>
+                <Delay delay_msec="200"><AlwaysSuccess/></Delay>
+                <Inverter>
+                  <Action ID="AnyPolesDetected" min_conf="0.20" ctx="{ctx}"/>
+                </Inverter>
+              </Sequence>
+            </Repeat>
+
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="1.0" y="0.0" z="0.0"
+                     roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                     pos_tol="0.25" ori_tol_deg="180.0" msec="6000" ctx="{ctx}"/>
+
+            <!-- Confirm-empty survey: each tick must remain pole-free for
+                 ~3 s. If a pole reappears we fail this branch and the outer
+                 Fallback re-enters branch A. -->
+            <Repeat num_cycles="15">
+              <Sequence>
+                <Delay delay_msec="200"><AlwaysSuccess/></Delay>
+                <Inverter>
+                  <Action ID="AnyPolesDetected" min_conf="0.20" ctx="{ctx}"/>
+                </Inverter>
+              </Sequence>
+            </Repeat>
+
+            <AlwaysSuccess/>
+          </Sequence>
+
+        </Fallback>
+      </RetryUntilSuccessful>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

@@ -16,6 +16,8 @@
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
 #include "hone_midpoint.hpp"
+#include "log_to_file.hpp"
+#include "nav_channel_control.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "strafe_to_midpoint.hpp"
