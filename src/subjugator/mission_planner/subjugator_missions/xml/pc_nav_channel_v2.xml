@@ -2,30 +2,33 @@
   <BehaviorTree ID="pcNavChannelV2">
     <Sequence>
 
-      <!-- Channel side. 0 = auto (NavChannelControl latches the side from the
-           first frame containing both a red and a white pole). Edit to +1
-           (RIGHT channel: red appears left of white) or -1 (LEFT channel) to
-           hard-code. -->
+      <!-- Channel side. +1 = RIGHT (red appears left of white in frame).
+           Set to -1 for LEFT channel, or 0 to auto-detect from first frame
+           that contains both a red and a white pole. -->
       <Script code="right_channel:=1"/>
 
-      <!-- 0) YOLO model -->
+      <!-- 0) Load YOLO model -->
       <Action ID="CheckYoloModel"
-              model_filename="small-May16-NavChan.pt"
+              model_filename="new_sim_nav_channel.pt"
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>
 
-     <SubTree ID="RelativeMove" _autoremap="true"
+      <!-- 0b) Dive to operating depth -->
+      <SubTree ID="RelativeMove" _autoremap="true"
                x="0.0" y="0.0" z="-0.3"
                pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
                ctx="{ctx}"/>
 
-      <!-- 1) Initial survey: yaw sweep while TrackBestPair records the best
-           orientation seen. Side unknown here so channel_side=0. -->
+      <!-- 1) Initial survey: yaw sweep while TrackBestPair records the
+           orientation that had the best pole visibility. The Parallel exits
+           once both children finish (success_count=2). ForceSuccess on
+           TrackBestPair means it "succeeds" after the 40 s timeout so the
+           Parallel doesn't hang if the sweep ends first. -->
       <Parallel success_count="2" failure_count="2">
 
         <ForceSuccess>
-          <Timeout msec="15000">
+          <Timeout msec="40000">
             <Action ID="TrackBestPair"
                     min_conf="0.15"
                     channel_side="0"
@@ -39,21 +42,21 @@
           <Repeat num_cycles="3">
             <Fallback>
               <SubTree ID="RelativeMove" _autoremap="true"
-                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="7500" ctx="{ctx}"/>
               <AlwaysSuccess/>
             </Fallback>
           </Repeat>
           <Repeat num_cycles="6">
             <Fallback>
               <SubTree ID="RelativeMove" _autoremap="true"
-                       yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                       yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="7500" ctx="{ctx}"/>
               <AlwaysSuccess/>
             </Fallback>
           </Repeat>
           <Repeat num_cycles="3">
             <Fallback>
               <SubTree ID="RelativeMove" _autoremap="true"
-                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="7500" ctx="{ctx}"/>
               <AlwaysSuccess/>
             </Fallback>
           </Repeat>
@@ -61,14 +64,19 @@
 
       </Parallel>
 
-      <!-- 2) Yaw to memorized best orientation, keeping position. -->
+      <!-- 2) Yaw to the best orientation TrackBestPair recorded. Position is
+           kept; only heading changes. -->
       <Sequence>
+        <Action ID="LogToFile"
+                dir="/home/carlos-chavez/mil2/src/subjugator/mission_planner/logs"
+                filename="mission_debug.txt"
+                message="Yawing to best orientation from survey"/>
         <Action ID="PublishGoalPose"
                 use_euler_deg="false" relative="false" keep_current_pos_abs="true"
-                qx="{best_qx}" qy="{best_qy}" qz="{best_qz}" qw="{best_qw}" ctx="{ctx}"
+                qx="{best_qx}" qy="{best_qy}" qz="{best_qz}" qw="{best_qw}"
+                ctx="{ctx}"
                 abs_x="{goal_x}" abs_y="{goal_y}" abs_z="{goal_z}"
                 abs_qx="{goal_qx}" abs_qy="{goal_qy}" abs_qz="{goal_qz}" abs_qw="{goal_qw}"/>
-
         <Timeout msec="8000">
           <RetryUntilSuccessful num_attempts="-1">
             <Sequence>
@@ -82,8 +90,9 @@
         </Timeout>
       </Sequence>
 
-      <!-- 3) Drive forward until at least one pole is big enough on screen
-           (sigmoid in NavChannelControl assumes meaningful sizes). -->
+      <!-- 3) Creep forward until at least one pole is large enough on screen
+           for the size-sigmoid in NavChannelControl to weight it meaningfully.
+           ForceSuccess so a timeout here doesn't abort the whole mission. -->
       <ForceSuccess>
         <Timeout msec="10000">
           <RetryUntilSuccessful num_attempts="-1">
@@ -95,7 +104,6 @@
                          consecutive_frames="2"
                          need_both="false"
                          ctx="{ctx}"/>
-
               <Sequence>
                 <SubTree ID="RelativeMove" _autoremap="true"
                          x="0.25" y="0.0" z="0.0"
@@ -108,65 +116,92 @@
         </Timeout>
       </ForceSuccess>
 
-      <!-- 4) Main loop: correct yaw OR strafe with NavChannelControl, push
-           forward, repeat. Exits when poles stay absent through a survey. -->
+      <!-- 4) Main loop: correct alignment, push forward, repeat until the
+           gate is passed (poles disappear and stay gone). -->
       <RetryUntilSuccessful num_attempts="-1">
         <Fallback>
 
-          <!-- A) Poles visible: correct then advance. -->
+          <!-- Branch A: poles visible → align with NavChannelControl, then
+               advance 1 m. AlwaysFailure at the end forces the outer
+               RetryUntilSuccessful to loop back so we keep correcting and
+               advancing until the gate is behind us. -->
           <Sequence>
             <Action ID="AnyPolesDetected" min_conf="0.15" ctx="{ctx}"/>
 
+            <!--
+              Sequential correction loop.
+
+              NavChannelControl reads the latest YOLO frame each iteration,
+              computes ONE yaw or strafe command, and writes it to
+              {nav_yaw}/{nav_y}. It returns SUCCESS to unblock the Sequence so
+              RelativeMove can execute the command, and returns FAILURE once
+              both poles have been within tol_px for hold_ticks consecutive
+              iterations (meaning: aligned).
+
+              KeepRunningUntilFailure loops the Sequence until that FAILURE
+              (aligned) or the 20 s Timeout fires. ForceSuccess converts
+              either exit into SUCCESS so the Sequence continues to the
+              forward move regardless.
+
+              RelativeMove is wrapped in ForceSuccess so a move that times
+              out (e.g. a large strafe command on a slow axis) does not abort
+              the correction loop — the next iteration simply re-evaluates
+              and commands a fresh correction.
+            -->
             <ForceSuccess>
-              <Timeout msec="15000">
-                <RetryUntilSuccessful num_attempts="-1">
-                  <Parallel success_count="1" failure_count="1">
+              <Timeout msec="20000">
+                <KeepRunningUntilFailure>
+                  <Sequence>
 
-                    <Timeout msec="7000">
-                      <Action ID="NavChannelControl"
-                              ctx="{ctx}"
-                              right_channel="{right_channel}"
-                              min_conf="0.15"
-                              size_center_px="210.0"
-                              size_div_px="20.0"
-                              ideal_offset_norm="0.15"
-                              yaw_deadzone_norm="0.05"
-                              yaw_outer_norm="0.32"
-                              strafe_saturate_norm="0.50"
-                              max_yaw_deg="6.0"
-                              max_strafe_m="0.4"
-                              tol_px="20.0"
-                              hold_ticks="4"
-                              yaw_cmd="{nav_yaw}"
-                              y_cmd="{nav_y}"
-                              mode_is_strafe="{nav_strafe_mode}"
-                              resolved_channel="{right_channel}"/>
-                    </Timeout>
+                    <Action ID="NavChannelControl"
+                            ctx="{ctx}"
+                            right_channel="{right_channel}"
+                            min_conf="0.15"
+                            size_center_px="210.0"
+                            size_div_px="20.0"
+                            ideal_offset_norm="0.15"
+                            yaw_deadzone_norm="0.05"
+                            yaw_outer_norm="0.32"
+                            strafe_saturate_norm="0.50"
+                            max_yaw_deg="6.0"
+                            max_strafe_m="0.15"
+                            tol_px="20.0"
+                            hold_ticks="4"
+                            yaw_cmd="{nav_yaw}"
+                            y_cmd="{nav_y}"
+                            mode_is_strafe="{nav_strafe_mode}"
+                            resolved_channel="{right_channel}"/>
 
-                    <RetryUntilSuccessful num_attempts="-1">
-                      <Sequence>
-                        <SubTree ID="RelativeMove" _autoremap="true"
-                                 x="0.0" y="{nav_y}" z="0.0"
-                                 roll_deg="0.0" pitch_deg="0.0" yaw_deg="{nav_yaw}"
-                                 pos_tol="0.20" ori_tol_deg="6.0" msec="800" ctx="{ctx}"/>
-                        <AlwaysFailure/>
-                      </Sequence>
-                    </RetryUntilSuccessful>
+                    <ForceSuccess>
+                      <SubTree ID="RelativeMove" _autoremap="true"
+                               x="0.0" y="{nav_y}" z="0.0"
+                               roll_deg="0.0" pitch_deg="0.0" yaw_deg="{nav_yaw}"
+                               pos_tol="0.20" ori_tol_deg="6.0" msec="5000" ctx="{ctx}"/>
+                    </ForceSuccess>
 
-                  </Parallel>
-                </RetryUntilSuccessful>
+                  </Sequence>
+                </KeepRunningUntilFailure>
               </Timeout>
             </ForceSuccess>
 
+            <!-- Advance through the gate -->
             <SubTree ID="RelativeMove" _autoremap="true"
                      x="1.0" y="0.0" z="0.0"
                      roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                      pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+
+            <!-- Force the outer Fallback/RetryUntilSuccessful to loop again
+                 so we keep correcting-and-advancing until the gate is passed. -->
             <AlwaysFailure/>
           </Sequence>
 
-          <!-- B) No poles: wait, push forward to exit the channel, re-survey.
-               If nothing reappears, finish. -->
+          <!-- Branch B: no poles visible. Wait 6 s to confirm they are truly
+               gone (not a momentary occlusion), push forward 1 m to clear
+               the gate area, then do a 3 s confirm-empty survey. If poles
+               reappear at any point, the Inverter+AnyPolesDetected check
+               fails the inner Sequence, the Repeat exits early, and the
+               outer Fallback falls back to branch A. If poles stay absent
+               through the full survey, AlwaysSuccess ends the mission. -->
           <Sequence>
             <Repeat num_cycles="30">
               <Sequence>
@@ -182,9 +217,6 @@
                      roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                      pos_tol="0.25" ori_tol_deg="180.0" msec="6000" ctx="{ctx}"/>
 
-            <!-- Confirm-empty survey: each tick must remain pole-free for
-                 ~3 s. If a pole reappears we fail this branch and the outer
-                 Fallback re-enters branch A. -->
             <Repeat num_cycles="15">
               <Sequence>
                 <Delay delay_msec="200"><AlwaysSuccess/></Delay>

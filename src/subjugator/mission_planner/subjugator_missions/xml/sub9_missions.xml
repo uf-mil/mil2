@@ -18,5 +18,6 @@
     <include path="square_test_mission.xml"/>
     <include path="midpoint_test_mission.xml"/>
     <include path="best_pair_test_mission.xml"/>
+    <include path="nav_channel_control_test.xml"/>
     <include path="BUST_mission.xml"/>
 </root>

@@ -55,7 +55,9 @@ BT::NodeStatus NavChannelControl::onStart()
     (void)getInput("right_channel", rc_in);
     resolved_side_ = (rc_in == 1 || rc_in == -1) ? rc_in : 0;
 
-    centered_streak_ = 0;
+    // NOTE: centered_streak_ is intentionally NOT reset here so it can
+    // accumulate across sequential Sequence iterations. It is only reset in
+    // onHalted() (if the node is stopped while mid-run) or at construction.
     setOutput("yaw_cmd", 0.0);
     setOutput("y_cmd", 0.0);
     setOutput("mode_is_strafe", false);
@@ -98,10 +100,11 @@ BT::NodeStatus NavChannelControl::onRunning()
     }
     if (W == 0)
     {
+        // No image yet — emit a no-op command and let RelativeMove execute it.
         setOutput("yaw_cmd", 0.0);
         setOutput("y_cmd", 0.0);
         setOutput("mode_is_strafe", false);
-        return BT::NodeStatus::RUNNING;
+        return BT::NodeStatus::SUCCESS;
     }
     double const Wf = static_cast<double>(W);
 
@@ -112,10 +115,11 @@ BT::NodeStatus NavChannelControl::onRunning()
     }
     if (!arr || arr->detections.empty())
     {
+        // No detections yet — emit a no-op command and continue.
         setOutput("yaw_cmd", 0.0);
         setOutput("y_cmd", 0.0);
         setOutput("mode_is_strafe", false);
-        return BT::NodeStatus::RUNNING;
+        return BT::NodeStatus::SUCCESS;
     }
 
     yolo_msgs::msg::Detection const* best_r = nullptr;
@@ -153,10 +157,11 @@ BT::NodeStatus NavChannelControl::onRunning()
 
     if (resolved_side_ == 0 || (!best_r && !best_w))
     {
+        // Side not yet resolved — emit a no-op and continue.
         setOutput("yaw_cmd", 0.0);
         setOutput("y_cmd", 0.0);
         setOutput("mode_is_strafe", false);
-        return BT::NodeStatus::RUNNING;
+        return BT::NodeStatus::SUCCESS;
     }
 
     // Expected normalized X for each pole on the resolved channel.
@@ -236,13 +241,17 @@ BT::NodeStatus NavChannelControl::onRunning()
 
     if (centered_streak_ >= hold_ticks)
     {
+        // Centered for hold_ticks consecutive ticks — signal the
+        // KeepRunningUntilFailure wrapper to stop the loop.
         setOutput("yaw_cmd", 0.0);
         setOutput("y_cmd", 0.0);
         setOutput("mode_is_strafe", false);
-        return BT::NodeStatus::SUCCESS;
+        return BT::NodeStatus::FAILURE;
     }
 
-    return BT::NodeStatus::RUNNING;
+    // Command computed — return SUCCESS so the Sequence can advance to
+    // RelativeMove immediately this tick.
+    return BT::NodeStatus::SUCCESS;
 }
 
 void NavChannelControl::onHalted()

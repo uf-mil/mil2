@@ -1,0 +1,69 @@
+<root BTCPP_format="4" main_tree_to_execute="NavChannelControlTest">
+  <BehaviorTree ID="NavChannelControlTest">
+    <Sequence>
+
+      <!-- Load the correct YOLO model for this task -->
+      <Action ID="CheckYoloModel"
+              model_filename="new_sim_nav_channel.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- Set channel side: -1 = LEFT, +1 = RIGHT, 0 = auto-detect -->
+      <Script code="right_channel:=-1"/>
+
+      <!--
+        Sequential correction loop (60 s hard cap).
+
+        Each iteration:
+          1. NavChannelControl reads the latest YOLO frame, computes one
+             yaw or strafe command, and writes it to {nav_yaw}/{nav_y}.
+             Returns SUCCESS to advance the Sequence.
+             Returns FAILURE when centered for hold_ticks ticks (stops loop).
+          2. RelativeMove executes that one command (800 ms move).
+             Wrapped in ForceSuccess so a failed move does not abort the loop.
+          3. KeepRunningUntilFailure re-arms the Sequence for the next
+             iteration until NavChannelControl signals FAILURE (centered).
+          4. ForceSuccess converts the "done" FAILURE from
+             KeepRunningUntilFailure into SUCCESS for the outer Sequence.
+      -->
+      <Timeout msec="60000">
+        <Repeat num_cycles="3">
+            <Sequence>
+
+              <ForceSuccess>
+                <Action ID="NavChannelControl"
+                        ctx="{ctx}"
+                        right_channel="{right_channel}"
+                        min_conf="0.15"
+                        size_center_px="60.0"
+                        size_div_px="10.0"
+                        ideal_offset_norm="0.20"
+                        yaw_deadzone_norm="0.05"
+                        yaw_outer_norm="0.22"
+                        strafe_saturate_norm="0.42"
+                        max_yaw_deg="6.0"
+                        max_strafe_m="1.6"
+                        tol_px="15.0"
+                        hold_ticks="5"
+                        yaw_cmd="{nav_yaw}"
+                        y_cmd="{nav_y}"
+                        mode_is_strafe="{nav_strafe_mode}"
+                        resolved_channel="{right_channel}"/>
+
+              </ForceSuccess>
+
+              <ForceSuccess>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         x="0.0" y="{nav_y}" z="0.0"
+                         roll_deg="0.0" pitch_deg="0.0" yaw_deg="{nav_yaw}"
+                         pos_tol="0.20" ori_tol_deg="6.0" msec="9000" ctx="{ctx}"/>
+              </ForceSuccess>
+
+            </Sequence>
+        </Repeat>
+      </Timeout>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

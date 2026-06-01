@@ -1,5 +1,4 @@
 #pragma once
-
 #include <behaviortree_cpp/action_node.h>
 
 #include <algorithm>
@@ -24,8 +23,13 @@
 // Output `resolved_channel` reports the side actually used and can be wired
 // back to the same blackboard variable as the input to persist the choice.
 //
-// SUCCESS once every visible pole's pixel error stays within `tol_px` for
-// `hold_ticks` consecutive ticks.
+// SEQUENTIAL MODE (the .cpp is compiled for sequence use):
+//   onRunning() returns SUCCESS each tick after emitting the command, so the
+//   tree can advance immediately to RelativeMove. Returns FAILURE once every
+//   visible pole's pixel error stays within `tol_px` for `hold_ticks`
+//   consecutive ticks — that signals the KeepRunningUntilFailure wrapper to
+//   stop looping.
+
 class NavChannelControl : public BT::StatefulActionNode
 {
   public:
@@ -39,7 +43,6 @@ class NavChannelControl : public BT::StatefulActionNode
 
   private:
     std::shared_ptr<Context> ctx_;
-
     int centered_streak_ = 0;
     int resolved_side_ = 0;  // +1 RIGHT, -1 LEFT, 0 unknown
 
