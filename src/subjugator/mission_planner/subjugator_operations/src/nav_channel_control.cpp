@@ -207,7 +207,9 @@ BT::NodeStatus NavChannelControl::onRunning()
         // is a negative yaw_deg in REP-103 (positive yaw = CCW = LEFT).
         double const red_y = signed_ramp(red_e, yaw_dead, yaw_outer) * KrS;
         double const white_y = signed_ramp(white_e, yaw_dead, yaw_outer) * KwS;
-        double const raw = red_y + white_y;
+        int const pole_count = (int)have_r + (int)have_w;
+        double const scale = (pole_count == 1) ? 2.0 : 1.0;
+        double const raw = (red_y + white_y) * scale;
         yaw_cmd = clamp(-max_yaw_deg * raw, -max_yaw_deg, +max_yaw_deg);
     }
     else if (strafe_mode)
@@ -216,7 +218,9 @@ BT::NodeStatus NavChannelControl::onRunning()
         // RIGHT (negative y in REP-103) so the pole drifts back to the left.
         double const red_s = signed_ramp(red_e, yaw_outer, strafe_sat) * KrS;
         double const white_s = signed_ramp(white_e, yaw_outer, strafe_sat) * KwS;
-        double const raw = red_s + white_s;
+        int const pole_count = (int)have_r + (int)have_w;
+        double const scale = (pole_count == 1) ? 2.0 : 1.0;
+        double const raw = (red_s + white_s) * scale;
         y_cmd = clamp(-max_strafe_m * raw, -max_strafe_m, +max_strafe_m);
     }
 

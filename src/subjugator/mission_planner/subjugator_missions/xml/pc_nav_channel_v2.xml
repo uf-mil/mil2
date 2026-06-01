@@ -6,21 +6,26 @@
            first frame containing both a red and a white pole). Edit to +1
            (RIGHT channel: red appears left of white) or -1 (LEFT channel) to
            hard-code. -->
-      <Script code="right_channel:=0"/>
+      <Script code="right_channel:=1"/>
 
       <!-- 0) YOLO model -->
       <Action ID="CheckYoloModel"
-              model_filename="new_sim_nav_channel.pt"
+              model_filename="small-May16-NavChan.pt"
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="0.0" z="-0.3"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+               ctx="{ctx}"/>
 
       <!-- 1) Initial survey: yaw sweep while TrackBestPair records the best
            orientation seen. Side unknown here so channel_side=0. -->
       <Parallel success_count="2" failure_count="2">
 
         <ForceSuccess>
-          <Timeout msec="42000">
+          <Timeout msec="15000">
             <Action ID="TrackBestPair"
                     min_conf="0.15"
                     channel_side="0"
@@ -64,7 +69,7 @@
                 abs_x="{goal_x}" abs_y="{goal_y}" abs_z="{goal_z}"
                 abs_qx="{goal_qx}" abs_qy="{goal_qy}" abs_qz="{goal_qz}" abs_qw="{goal_qw}"/>
 
-        <Timeout msec="10000">
+        <Timeout msec="8000">
           <RetryUntilSuccessful num_attempts="-1">
             <Sequence>
               <Delay delay_msec="250"><AlwaysSuccess/></Delay>
@@ -80,7 +85,7 @@
       <!-- 3) Drive forward until at least one pole is big enough on screen
            (sigmoid in NavChannelControl assumes meaningful sizes). -->
       <ForceSuccess>
-        <Timeout msec="20000">
+        <Timeout msec="10000">
           <RetryUntilSuccessful num_attempts="-1">
             <Fallback>
               <Condition ID="PolesBigEnough"
@@ -93,7 +98,7 @@
 
               <Sequence>
                 <SubTree ID="RelativeMove" _autoremap="true"
-                         x="0.5" y="0.0" z="0.0"
+                         x="0.25" y="0.0" z="0.0"
                          roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                          pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
                 <AlwaysFailure/>
@@ -117,21 +122,21 @@
                 <RetryUntilSuccessful num_attempts="-1">
                   <Parallel success_count="1" failure_count="1">
 
-                    <Timeout msec="8000">
+                    <Timeout msec="7000">
                       <Action ID="NavChannelControl"
                               ctx="{ctx}"
                               right_channel="{right_channel}"
                               min_conf="0.15"
-                              size_center_px="80.0"
+                              size_center_px="210.0"
                               size_div_px="20.0"
-                              ideal_offset_norm="0.20"
+                              ideal_offset_norm="0.15"
                               yaw_deadzone_norm="0.05"
-                              yaw_outer_norm="0.22"
-                              strafe_saturate_norm="0.42"
+                              yaw_outer_norm="0.32"
+                              strafe_saturate_norm="0.50"
                               max_yaw_deg="6.0"
-                              max_strafe_m="0.25"
-                              tol_px="15.0"
-                              hold_ticks="5"
+                              max_strafe_m="0.4"
+                              tol_px="20.0"
+                              hold_ticks="4"
                               yaw_cmd="{nav_yaw}"
                               y_cmd="{nav_y}"
                               mode_is_strafe="{nav_strafe_mode}"

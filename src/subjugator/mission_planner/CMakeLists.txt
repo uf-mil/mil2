@@ -35,7 +35,8 @@ add_library(
   subjugator_operations/src/has_found_pair.cpp
   subjugator_operations/src/track_best_pair.cpp
   subjugator_operations/src/hone_midpoint.cpp
-  subjugator_operations/src/log_to_file.cpp)
+  subjugator_operations/src/log_to_file.cpp
+  subjugator_operations/src/nav_channel_control.cpp)
 
 ament_target_dependencies(
   operations

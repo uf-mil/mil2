@@ -98,6 +98,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
     factory.registerNodeType<TrackBestPair>("TrackBestPair");
     factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
+    factory.registerNodeType<NavChannelControl>("NavChannelControl");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
