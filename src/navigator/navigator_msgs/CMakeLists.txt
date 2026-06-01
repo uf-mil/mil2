@@ -31,6 +31,7 @@ rosidl_generate_interfaces(
   "msg/ScanTheCode.msg"
   "msg/DroneTarget.msg"
   "msg/DroneTin.msg"
+  "msg/WrenchNamed.msg"
   # ------ srvs ------
   "srv/AcousticBeacon.srv"
   "srv/ChooseAnimal.srv"

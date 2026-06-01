@@ -119,6 +119,16 @@ def generate_launch_description():
         ],
     )
 
+    controller_server = Node(
+        package="navigator_controller",
+        executable="server_node",
+        name="navigator_controller_server",
+        output="screen",
+        parameters=[
+            {"use_sim_time": LaunchConfiguration("use_sim_time")},
+        ],
+    )
+
     # !!! Uncomment once navigator_localization is created !!!
     # localization = IncludeLaunchDescription(
     #     PythonLaunchDescriptionSource(
@@ -186,6 +196,7 @@ def generate_launch_description():
             OpaqueFunction(function=make_robot_state),
             rviz,
             thruster_mapper,
+            controller_server,
             # !!! Uncomment once navigator_localization is created !!!
             # thruster_manager,
             # localization,

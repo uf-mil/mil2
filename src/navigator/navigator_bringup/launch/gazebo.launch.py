@@ -274,6 +274,7 @@ def generate_launch_description():
                 " --render-engine",
                 " ogre2",
             ],
+            "on_exit_shutdown": "true",
         }.items(),
     )
 
