@@ -30,6 +30,10 @@
       <Timeout msec="60000">
         <Repeat num_cycles="3">
             <Sequence>
+              <Action ID="LogToFile"
+                dir="/home/carlos-chavez/mil2/src/subjugator/mission_planner/logs"
+                filename="mission_debug.txt"
+                message="Before ForceSuccess"/>
 
               <ForceSuccess>
                 <Action ID="NavChannelControl"
