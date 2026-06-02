@@ -77,7 +77,7 @@ class FrontCamDriver(Node):
             if not ret:
                 self.get_logger().warn("no frame from camera")
 
-            frame = rotate_front_cam(frame)
+            # frame = rotate_front_cam(frame)
 
             # publish frame to "camera/rgb/camera_raw"
             try:
