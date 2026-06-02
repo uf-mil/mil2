@@ -172,6 +172,7 @@ EOF
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
 sudo apt install -y \
+	ccache \
 	libboost-all-dev \
 	nlohmann-json3-dev \
 	python3-colcon-common-extensions \
