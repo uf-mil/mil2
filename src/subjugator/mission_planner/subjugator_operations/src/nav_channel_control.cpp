@@ -1,6 +1,7 @@
 #include "nav_channel_control.hpp"
 
 #include <optional>
+#include <vector>
 
 #include <yolo_msgs/msg/detection_array.hpp>
 
@@ -122,53 +123,138 @@ BT::NodeStatus NavChannelControl::onRunning()
         return BT::NodeStatus::SUCCESS;
     }
 
-    yolo_msgs::msg::Detection const* best_r = nullptr;
-    yolo_msgs::msg::Detection const* best_w = nullptr;
-    double best_rh = -1.0, best_wh = -1.0;
-
+    // -------------------------------------------------------------------------
+    // Collect all confident poles of each colour.
+    // -------------------------------------------------------------------------
+    std::vector<yolo_msgs::msg::Detection const*> reds, whites;
     for (auto const& d : arr->detections)
     {
         if (d.score < min_conf)
             continue;
-        double const h = std::max(0.0, d.bbox.size.y);
-        if (d.class_name == "red-pole" && h > best_rh)
-        {
-            best_rh = h;
-            best_r = &d;
-        }
-        else if (d.class_name == "white-pole" && h > best_wh)
-        {
-            best_wh = h;
-            best_w = &d;
-        }
+        if (d.class_name == "red-pole")
+            reds.push_back(&d);
+        else if (d.class_name == "white-pole")
+            whites.push_back(&d);
     }
 
-    // Channel-side resolution: explicit input wins, otherwise latch from a
-    // confident pair the first time we see one.
+    // "Nearness" of a pole = its bbox height in px (taller = physically closer).
+    auto pole_h = [](yolo_msgs::msg::Detection const* d) -> double { return std::max(0.0, d->bbox.size.y); };
+
+    // -------------------------------------------------------------------------
+    // Channel-side resolution. Explicit input wins. Otherwise latch from the
+    // NEAREST red/white pair (largest min-height) the first time we see one,
+    // and infer the side from their left/right ordering.
+    // -------------------------------------------------------------------------
     if (rc_in == 1 || rc_in == -1)
-        resolved_side_ = rc_in;
-    else if (resolved_side_ == 0 && best_r && best_w)
     {
-        double const rx = best_r->bbox.center.position.x;
-        double const wx = best_w->bbox.center.position.x;
+        resolved_side_ = rc_in;
+    }
+    else if (resolved_side_ == 0 && !reds.empty() && !whites.empty())
+    {
+        yolo_msgs::msg::Detection const* nr = nullptr;
+        yolo_msgs::msg::Detection const* nw = nullptr;
+        double best_near = -1.0;
+        for (auto* r : reds)
+            for (auto* w : whites)
+            {
+                double const near = std::min(pole_h(r), pole_h(w));
+                if (near > best_near)
+                {
+                    best_near = near;
+                    nr = r;
+                    nw = w;
+                }
+            }
+        double const rx = nr->bbox.center.position.x;
+        double const wx = nw->bbox.center.position.x;
         resolved_side_ = (rx < wx) ? +1 : -1;
     }
     setOutput("resolved_channel", resolved_side_);
 
-    if (resolved_side_ == 0 || (!best_r && !best_w))
+    if (resolved_side_ == 0 || (reds.empty() && whites.empty()))
     {
-        // Side not yet resolved — emit a no-op and continue.
+        // Side not yet resolved / nothing to track — emit a no-op and continue.
         setOutput("yaw_cmd", 0.0);
         setOutput("y_cmd", 0.0);
         setOutput("mode_is_strafe", false);
         return BT::NodeStatus::SUCCESS;
     }
 
+    // -------------------------------------------------------------------------
     // Expected normalized X for each pole on the resolved channel.
     // RIGHT (+1): red left-of-center, white right-of-center. LEFT (-1): mirrored.
+    // -------------------------------------------------------------------------
     double const red_exp_norm = 0.5 - resolved_side_ * ideal_off;
     double const white_exp_norm = 0.5 + resolved_side_ * ideal_off;
 
+    // Required left/right ordering for a valid gate on this channel, derived
+    // straight from the expected positions so it can never drift out of sync
+    // with the convention above:
+    //   LEFT  (-1): red_exp > white_exp  -> red must sit RIGHT of white.
+    //   RIGHT (+1): red_exp < white_exp  -> red must sit LEFT  of white.
+    bool const need_red_right_of_white = (red_exp_norm > white_exp_norm);
+
+    // -------------------------------------------------------------------------
+    // Gate-aware selection.
+    //
+    // IMPORTANT: selection is based on NEARNESS (pole height), NOT on how close
+    // a pole already is to its target position. Selecting by "closest to
+    // expected" is a degenerate feedback loop — it always picks whatever pole
+    // is already centred, so the measured error is tiny and the sub never
+    // corrects. Instead we pick the nearest VALID gate (a red+white pair with
+    // the correct ordering for this channel) and let the controller drive that
+    // gate's real error to zero.
+    //
+    // Score = min(red_h, white_h): both poles of the pair must be large, so a
+    // near-red + far-white cross-gate pairing loses to a genuine near gate.
+    // -------------------------------------------------------------------------
+    yolo_msgs::msg::Detection const* best_r = nullptr;
+    yolo_msgs::msg::Detection const* best_w = nullptr;
+    double best_pair_near = -1.0;
+
+    for (auto* r : reds)
+        for (auto* w : whites)
+        {
+            double const rx = r->bbox.center.position.x;
+            double const wx = w->bbox.center.position.x;
+            bool const ordering_ok = need_red_right_of_white ? (rx > wx) : (rx < wx);
+            if (!ordering_ok)
+                continue;
+            double const near = std::min(pole_h(r), pole_h(w));
+            if (near > best_pair_near)
+            {
+                best_pair_near = near;
+                best_r = r;
+                best_w = w;
+            }
+        }
+
+    // Fallback: no valid gate pair visible (one pole off-screen/occluded, or
+    // only wrong-ordering pairs exist). Steer toward the single NEAREST pole of
+    // either colour so we keep making progress instead of freezing. Exactly one
+    // of best_r / best_w is set here, so the single-pole (scale=2.0) path runs.
+    if (!best_r && !best_w)
+    {
+        double best_near = -1.0;
+        for (auto* r : reds)
+            if (pole_h(r) > best_near)
+            {
+                best_near = pole_h(r);
+                best_r = r;
+                best_w = nullptr;
+            }
+        for (auto* w : whites)
+            if (pole_h(w) > best_near)
+            {
+                best_near = pole_h(w);
+                best_w = w;
+                best_r = nullptr;
+            }
+    }
+
+    // -------------------------------------------------------------------------
+    // Per-pole error and size-sigmoid weight.
+    // -------------------------------------------------------------------------
     auto compute_pole = [&](yolo_msgs::msg::Detection const* d, double exp_norm, double& err_norm, double& size_w,
                             double& err_px_abs) -> bool
     {
