@@ -123,6 +123,7 @@ class SonarFollower : public BT::DecoratorNode
         return {
             BT::InputPort<std::shared_ptr<Context>>("ctx"),
             BT::InputPort<bool>("stop_on_first_ping", false, "stop on first ping"),
+            BT::InputPort<uint32_t>("target_freq", 0, "only follow ping with this HZ; 0 for all pings"),
 
             BT::OutputPort<double>("sonar_x"),
             BT::OutputPort<double>("sonar_y"),
@@ -136,6 +137,7 @@ class SonarFollower : public BT::DecoratorNode
     std::shared_ptr<rclcpp::Subscription<mil_msgs::msg::ProcessedPing>> sub_;
     BT::NodeStatus current_status_ = BT::NodeStatus::IDLE;
     bool stop_on_first_ping_ = false;
+    uint32_t target_freq_ = 0;
 
     // other nodes
     std::unique_ptr<PublishGoalPose> goal_pub_node_;
