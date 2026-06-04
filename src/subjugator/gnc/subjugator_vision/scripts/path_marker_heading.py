@@ -11,6 +11,7 @@ import math
 
 import cv2
 import numpy as np
+import rclpy
 from cv_bridge import CvBridge
 from geometry_msgs.msg import QuaternionStamped
 from rclpy.node import Node
@@ -37,21 +38,31 @@ class PathMarkerHeading(Node):
     def image_callback(self, msg: Image):
         # convert ROS image to OpenCV format
         img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        heading = self.find_path_marker_heading(img)
-        if heading is not None:
-            quat_msg = QuaternionStamped()
-            quat_msg.header.stamp = self.get_clock().now().to_msg()
-            quat_msg.header.frame_id = "down_cam"
-            quat_msg.quaternion.x = 0.0
-            quat_msg.quaternion.y = 0.0
-            #   quat_msg.quaternion.z = math.cos(heading_rad / 2)
-            #   quat_msg.quaternion.w = math.sin(heading_rad / 2)  # Yaw rotation
-            self.heading_pub.publish(quat_msg)
-            self.get_logger().info(
-                f"Published path marker heading: {math.degrees(heading):.1f} degrees",
-            )
+        heading_rad = self.find_path_marker_heading(img)
+        if heading_rad is None:
+            return
+        qw = math.cos(heading_rad / 2.0)
+        qz = math.sin(heading_rad / 2.0)
+
+        quat_msg = QuaternionStamped()
+        quat_msg.header.stamp = self.get_clock().now().to_msg()
+        quat_msg.header.frame_id = "odom"
+        quat_msg.quaternion.x = 0.0
+        quat_msg.quaternion.y = 0.0
+        quat_msg.quaternion.z = qz
+        quat_msg.quaternion.w = qw
+
+        self.heading_pub.publish(quat_msg)
+        self.get_logger().info(
+            f"Published path marker heading: {math.degrees(heading_rad):.1f} degrees",
+        )
 
     def find_path_marker_heading(self, img):
+        """
+        Takes an OpenCV image, finds the orange path marker,
+        and returns its heading as a yaw angle in radians.
+        Returns None if no marker is found.
+        """
         # Convert to HSV and threshold for orange color
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         lower_orange = np.array([5, 100, 100])  # Need to adjust
@@ -70,16 +81,11 @@ class PathMarkerHeading(Node):
             return None
 
         largest_contour = max(contours, key=cv2.contourArea)
-        # M = cv2.moments(largest_contour)
-        # if M["m00"] == 0:
-        #    return None
 
-        # cx = int(M["m10"] / M["m00"])
-        # cy = int(M["m01"] / M["m00"])
-
-        # Calculate heading from center of image to contour center
-        # img_center_x = img.shape[1] / 2
-        # img_center_y = img.shape[0]
+        # Filter out small contours that are unlikely to be the marker
+        if cv2.contourArea(largest_contour) < 1000:
+            self.get_logger().warn("Largest orange blob too small, ignoring")
+            return None
 
         rect = cv2.minAreaRect(largest_contour)
         (cx, cy), (w, h), rect_angle = rect
@@ -92,9 +98,9 @@ class PathMarkerHeading(Node):
         # rect_angle is now the angle of the marker's long axis in image space
         # in degrees, measured clockwise from the image's horizontal axis
 
-        yaw_deg = rect_angle
-        yaw_rad = math.radians(yaw_deg)
+        yaw_rad = math.radians(rect_angle)
 
+        # fix 180° ambiguity using current heading as a tiebreaker
         current_yaw = 0.0  # replace with real odomentry yaw
         option_a = yaw_rad
         option_b = yaw_rad + math.pi
@@ -106,13 +112,20 @@ class PathMarkerHeading(Node):
             angle_diff(option_b, current_yaw),
         ):
             return option_a
-            # heading_rad = option_a
         else:
             return option_b
-            # heading_rad = option_b
 
-        # qw = math.cos(heading_rad / 2)
-        # qz = math.sin(heading_rad / 2)
 
-        # call the function to publish the heading as a quaternion already done in image call back, either call image call back in this function or vice versa
-        # publish result in this function
+def main():
+    rclpy.init()
+    node = PathMarkerHeading()
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
