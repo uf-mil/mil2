@@ -4,13 +4,18 @@
 
       <!-- Load the correct YOLO model for this task -->
       <Action ID="CheckYoloModel"
-              model_filename="new_sim_nav_channel.pt"
+              model_filename="small-May16-NavChan.pt"
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>
 
+     <!--
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="0.0" z="-0.3"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+      ctx="{ctx}"/> -->
+
       <!-- Set channel side: -1 = LEFT, +1 = RIGHT, 0 = auto-detect -->
-      <Script code="right_channel:=-1"/>
 
       <!--
         Sequential correction loop (60 s hard cap).
@@ -31,14 +36,14 @@
         <Repeat num_cycles="3">
             <Sequence>
               <Action ID="LogToFile"
-                dir="/home/carlos-chavez/mil2/src/subjugator/mission_planner/logs"
+                dir="/home/sub9/mil2/src/subjugator/mission_planner/logs"
                 filename="mission_debug.txt"
                 message="Before ForceSuccess"/>
 
               <ForceSuccess>
                 <Action ID="NavChannelControl"
                         ctx="{ctx}"
-                        right_channel="{right_channel}"
+                        right_channel="-1"
                         min_conf="0.15"
                         size_center_px="70.0"
                         size_div_px="10.0"

@@ -5,11 +5,10 @@
       <!-- Channel side. +1 = RIGHT (red appears left of white in frame).
            Set to -1 for LEFT channel, or 0 to auto-detect from first frame
            that contains both a red and a white pole. -->
-      <Script code="right_channel:=1"/>
 
       <!-- 0) Load YOLO model -->
       <Action ID="CheckYoloModel"
-              model_filename="new_sim_nav_channel.pt"
+              model_filename="small-May16-NavChan.pt"
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>
@@ -68,7 +67,7 @@
            kept; only heading changes. -->
       <Sequence>
         <Action ID="LogToFile"
-                dir="/home/carlos-chavez/mil2/src/subjugator/mission_planner/logs"
+                dir="/home/sub9/mil2/src/subjugator/mission_planner/logs"
                 filename="mission_debug.txt"
                 message="Yawing to best orientation from survey"/>
         <Action ID="PublishGoalPose"
@@ -98,7 +97,7 @@
           <RetryUntilSuccessful num_attempts="-1">
             <Fallback>
               <Condition ID="PolesBigEnough"
-                         min_height_px="80.0"
+                         min_height_px="90.0"
                          min_width_px="8.0"
                          min_conf="0.15"
                          consecutive_frames="2"
@@ -155,18 +154,18 @@
 
                     <Action ID="NavChannelControl"
                             ctx="{ctx}"
-                            right_channel="{right_channel}"
+                            right_channel="-1"
                             min_conf="0.15"
-                            size_center_px="210.0"
-                            size_div_px="20.0"
-                            ideal_offset_norm="0.15"
+                            size_center_px="70.0"
+                            size_div_px="10.0"
+                            ideal_offset_norm="0.20"
                             yaw_deadzone_norm="0.05"
-                            yaw_outer_norm="0.32"
-                            strafe_saturate_norm="0.50"
-                            max_yaw_deg="6.0"
-                            max_strafe_m="0.15"
-                            tol_px="20.0"
-                            hold_ticks="4"
+                            yaw_outer_norm="0.22"
+                            strafe_saturate_norm="0.52"
+                            max_yaw_deg="15.0"
+                            max_strafe_m="0.60"
+                            tol_px="15.0"
+                            hold_ticks="5"
                             yaw_cmd="{nav_yaw}"
                             y_cmd="{nav_y}"
                             mode_is_strafe="{nav_strafe_mode}"
@@ -186,7 +185,7 @@
 
             <!-- Advance through the gate -->
             <SubTree ID="RelativeMove" _autoremap="true"
-                     x="1.0" y="0.0" z="0.0"
+                     x="0.75" y="0.0" z="0.0"
                      roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                      pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
 
