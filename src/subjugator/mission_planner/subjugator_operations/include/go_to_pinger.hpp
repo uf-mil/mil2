@@ -159,12 +159,23 @@ class SonarFollower : public BT::DecoratorNode
         {
             stop_on_first_ping_ = stop_res.value();
         }
+
+        auto freq_res = getInput<uint32_t>("target_freq");
+        if (freq_res)
+        {
+            target_freq_ = freq_res.value();
+        }
     }
 
     // each ping we will move and check if done
     void topic_cb(mil_msgs::msg::ProcessedPing const& msg)
     {
         if (current_status_ != BT::NodeStatus::RUNNING)
+        {
+            return;
+        }
+
+        if (target_freq_ != 0 && msg.frequency != target_freq_)
         {
             return;
         }
