@@ -13,33 +13,6 @@
   <library_effects>
     <effect id="Left_Side_Image_001-effect">
       <profile_COMMON>
-        <newparam sid="SurveyRepair_png-surface">
-          <surface type="2D">
-            <init_from>SurveyRepair_png</init_from>
-          </surface>
-        </newparam>
-        <newparam sid="SurveyRepair_png-sampler">
-          <sampler2D>
-            <source>SurveyRepair_png-surface</source>
-          </sampler2D>
-        </newparam>
-        <technique sid="common">
-          <lambert>
-            <emission>
-              <color sid="emission">0 0 0 1</color>
-            </emission>
-            <diffuse>
-              <texture texture="SurveyRepair_png-sampler" texcoord="UVMap"/>
-            </diffuse>
-            <index_of_refraction>
-              <float sid="ior">1.45</float>
-            </index_of_refraction>
-          </lambert>
-        </technique>
-      </profile_COMMON>
-    </effect>
-    <effect id="Right_Side_Image-effect">
-      <profile_COMMON>
         <newparam sid="SearchRescue_png-surface">
           <surface type="2D">
             <init_from>SearchRescue_png</init_from>
@@ -57,6 +30,33 @@
             </emission>
             <diffuse>
               <texture texture="SearchRescue_png-sampler" texcoord="UVMap"/>
+            </diffuse>
+            <index_of_refraction>
+              <float sid="ior">1.45</float>
+            </index_of_refraction>
+          </lambert>
+        </technique>
+      </profile_COMMON>
+    </effect>
+    <effect id="Right_Side_Image-effect">
+      <profile_COMMON>
+        <newparam sid="SurveyRepair_png-surface">
+          <surface type="2D">
+            <init_from>SurveyRepair_png</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="SurveyRepair_png-sampler">
+          <sampler2D>
+            <source>SurveyRepair_png-surface</source>
+          </sampler2D>
+        </newparam>
+        <technique sid="common">
+          <lambert>
+            <emission>
+              <color sid="emission">0 0 0 1</color>
+            </emission>
+            <diffuse>
+              <texture texture="SurveyRepair_png-sampler" texcoord="UVMap"/>
             </diffuse>
             <index_of_refraction>
               <float sid="ior">1.45</float>
