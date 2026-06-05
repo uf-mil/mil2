@@ -1,5 +1,4 @@
-#include "nav_msgs/msg/odometry.hpp"
-#include "pch.h"
+#include "common.hpp"
 
 class EKFNode : public rclcpp::Node
 {
@@ -12,24 +11,33 @@ class EKFNode : public rclcpp::Node
             "/yolo/detections", 10, [this](yolo_msgs::msg::DetectionArray msg) { detection_cb(msg); });
     }
 
-    void odom_cb(nav_msgs::msg::Odometry msg)
+    void odom_cb(nav_msgs::msg::Odometry &msg)
     {
-        auto actions = mrpt::obs::CActionCollection::Create();
-        auto sensors = mrpt::obs::CSensoryFrame::Create();
-
-        auto range = mrpt::obs::CObservationBearingRange::Create();
-        sensors->push_back(range);
-
-        mrpt::obs::CActionRobotMovement2D action{};
-        actionss.insert(action);
-
-        slam.processActionObservation(actions, sensors);
+        if (!has_odom) {
+            odom_prev = msg;
+            has_odom = true;
+        }
+        odom_last = msg;
     }
 
-    void detection_cb(yolo_msgs::msg::DetectionArray msg)
+    void detection_cb(yolo_msgs::msg::DetectionArray &msg)
     {
+        if (!has_odom) return;
+
+        auto odom_next = extrapolate_odom(odom_last);
+        auto odom_diff = subtract_odom(odom_prev, odom_next);
+        odom_prev = odom_last;
+
         auto actions = mrpt::obs::CActionCollection::Create();
         auto sensors = mrpt::obs::CSensoryFrame::Create();
+
+        auto action = mrpt::obs::CActionRobotMovement2D::Create();
+        actions->insertPtr(action);
+        auto pose = mrpt::poses::CPosePDFGaussian::Create();
+        pose->mean.x(odom_diff.x);
+        pose->mean.y(odom_diff.x);
+        pose->mean.phi(odom_diff.phi);
+        action->poseChange = pose;
 
         auto range = mrpt::obs::CObservationBearingRange::Create();
         sensors->push_back(range);
@@ -56,6 +64,10 @@ class EKFNode : public rclcpp::Node
     mrpt::slam::CRangeBearingKFSLAM2D slam{};
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr s_odom;
     rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr s_detections;
+
+    bool has_odom = false;
+    nav_msgs::msg::Odometry odom_prev{};
+    nav_msgs::msg::Odometry odom_last{};
 };
 
 int main(int argc, char **argv)
