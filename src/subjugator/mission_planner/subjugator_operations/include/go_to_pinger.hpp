@@ -124,6 +124,7 @@ class SonarFollower : public BT::DecoratorNode
             BT::InputPort<std::shared_ptr<Context>>("ctx"),
             BT::InputPort<bool>("stop_on_first_ping", false, "stop on first ping"),
             BT::InputPort<uint32_t>("target_freq", 0, "only follow ping with this HZ; 0 for all pings"),
+            BT::InputPort<uint32_t>("target_freq_tol", 0, "accept pings within +/- this many HZ of target_freq"),
 
             BT::OutputPort<double>("sonar_x"),
             BT::OutputPort<double>("sonar_y"),
@@ -138,6 +139,7 @@ class SonarFollower : public BT::DecoratorNode
     BT::NodeStatus current_status_ = BT::NodeStatus::IDLE;
     bool stop_on_first_ping_ = false;
     uint32_t target_freq_ = 0;
+    uint32_t target_freq_tol_ = 0;
 
     // other nodes
     std::unique_ptr<PublishGoalPose> goal_pub_node_;
@@ -165,6 +167,12 @@ class SonarFollower : public BT::DecoratorNode
         {
             target_freq_ = freq_res.value();
         }
+
+        auto freq_tol_res = getInput<uint32_t>("target_freq_tol");
+        if (freq_tol_res)
+        {
+            target_freq_tol_ = freq_tol_res.value();
+        }
     }
 
     // each ping we will move and check if done
@@ -175,9 +183,14 @@ class SonarFollower : public BT::DecoratorNode
             return;
         }
 
-        if (target_freq_ != 0 && msg.frequency != target_freq_)
+        if (target_freq_ != 0)
         {
-            return;
+            uint32_t freq_diff =
+                (msg.frequency > target_freq_) ? msg.frequency - target_freq_ : target_freq_ - msg.frequency;
+            if (freq_diff > target_freq_tol_)
+            {
+                return;
+            }
         }
 
         if (stop_on_first_ping_)
