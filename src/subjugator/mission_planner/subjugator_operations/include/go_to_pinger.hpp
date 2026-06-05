@@ -25,29 +25,27 @@ class PingChecker
     {
         // insert new ping into queue
         this->insert_new_ping(new_ping);
+        // trim length
+        trim_to_n_elements(10);
+
+        size_t const k = 2;
 
         // sanity check
-        if (recent_pings_.size() <= 1)
+        if (recent_pings_.size() < k + 1)
         {
             return false;
         }
 
+        auto const& baseline = recent_pings_.front();
         // check for passing pinger
-        bool passed_pinger = false;
-        for (size_t i = 0; i < recent_pings_.size() - 1; i++)
-        {  // ++i is stupid
-            passed_pinger = compare_two_pings(recent_pings_[i], recent_pings_[i + 1]);
-            if (passed_pinger == true)
+        for (size_t i = recent_pings_.size() - k; i < recent_pings_.size(); ++i)
+        {
+            if (!compare_two_pings(baseline, recent_pings_[i]))
             {
-                break;
+                return false;
             }
         }
-
-        // trim length
-        trim_to_n_elements(10);
-
-        // return result
-        return passed_pinger;
+        return true;
     }
 
     // delete all recent pings
