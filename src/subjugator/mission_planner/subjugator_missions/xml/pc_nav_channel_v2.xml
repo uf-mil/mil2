@@ -6,6 +6,8 @@
            Set to -1 for LEFT channel, or 0 to auto-detect from first frame
            that contains both a red and a white pole. -->
 
+      <Delay delay_msec="15000"><AlwaysSuccess/></Delay>
+
       <!-- 0) Load YOLO model -->
       <Action ID="CheckYoloModel"
               model_filename="small-May16-NavChan.pt"
@@ -148,7 +150,7 @@
               and commands a fresh correction.
             -->
             <ForceSuccess>
-              <Timeout msec="20000">
+              <Timeout msec="18000">
                 <KeepRunningUntilFailure>
                   <Sequence>
 
@@ -185,7 +187,7 @@
 
             <!-- Advance through the gate -->
             <SubTree ID="RelativeMove" _autoremap="true"
-                     x="0.75" y="0.0" z="0.0"
+                     x="0.65" y="0.0" z="0.0"
                      roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                      pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
 
