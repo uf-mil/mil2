@@ -4,7 +4,7 @@
 
       <!-- Home onto the first target -->
       <SubTree ID="TorpedoHomingMotion" _autoremap="true"
-               label="torpedo_target"
+               label="Red spiral"
                ctx="{ctx}"/>
 
       <!-- Fire torpedo 1 -->
@@ -13,7 +13,7 @@
 
       <!-- Re-home onto the second target (change label if it's a different YOLO class) -->
       <SubTree ID="TorpedoHomingMotion" _autoremap="true"
-               label="torpedo_target"
+               label="Red spiral"
                ctx="{ctx}"/>
 
       <!-- Fire torpedo 2 -->

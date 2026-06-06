@@ -20,7 +20,6 @@ BT::PortsList AlignYaw::providedPorts()
         BT::InputPort<double>("min_conf", 0.30, "Minimum detection confidence"),
         BT::InputPort<double>("kp", 0.7, "Proportional gain (0-1)"),
         BT::InputPort<double>("yaw_tol_norm", 0.06, "Normalised X-centre error tolerance (0-1)"),
-        BT::InputPort<double>("fov_deg", 110.0, "Camera horizontal FOV in degrees"),
         BT::InputPort<double>("max_yaw_deg", 12.0, "Max yaw correction per step (deg)"),
         BT::InputPort<double>("ori_tol_deg", 4.0, "Goal-reached orientation tolerance (deg)"),
         BT::InputPort<std::shared_ptr<Context>>("ctx"),
@@ -42,12 +41,11 @@ BT::NodeStatus AlignYaw::onRunning()
 {
     std::string label;
     double min_conf = 0.30, kp = 0.7, yaw_tol_norm = 0.06;
-    double fov_deg = 110.0, max_yaw_deg = 12.0, ori_tol_deg = 4.0;
+    double max_yaw_deg = 12.0, ori_tol_deg = 4.0;
     getInput("label", label);
     getInput("min_conf", min_conf);
     getInput("kp", kp);
     getInput("yaw_tol_norm", yaw_tol_norm);
-    getInput("fov_deg", fov_deg);
     getInput("max_yaw_deg", max_yaw_deg);
     getInput("ori_tol_deg", ori_tol_deg);
 
@@ -122,11 +120,9 @@ BT::NodeStatus AlignYaw::onRunning()
         return BT::NodeStatus::SUCCESS;
     }
 
-    // Bearing in degrees, right-positive
-    double bearing_deg = error_x * (fov_deg / 2.0);
-
-    // P step: target to the right (bearing > 0) → yaw right → negative yaw in ROS2 (CCW positive)
-    double yaw_cmd_deg = -kp * bearing_deg;
+    // Direct pixel mapping: error_x in [-1,1], scale straight to yaw degrees.
+    // error_x > 0 → target right of centre → yaw right → negative cmd (ROS2 CCW-positive)
+    double yaw_cmd_deg = -kp * error_x * max_yaw_deg;
     yaw_cmd_deg = std::clamp(yaw_cmd_deg, -max_yaw_deg, max_yaw_deg);
 
     // Compose: goal_q = current_q * delta_q  (same pattern as HoneBearing)
@@ -174,7 +170,7 @@ BT::NodeStatus AlignYaw::onRunning()
     pending_goal_ = goal;
     waiting_for_goal_ = true;
 
-    RCLCPP_INFO(ctx_->logger(), "AlignYaw: error_x=%.3f bearing=%.1f° → cmd=%.1f°", error_x, bearing_deg, yaw_cmd_deg);
+    RCLCPP_INFO(ctx_->logger(), "AlignYaw: error_x=%.3f → yaw_cmd=%.1f°", error_x, yaw_cmd_deg);
     return BT::NodeStatus::RUNNING;
 }
 
