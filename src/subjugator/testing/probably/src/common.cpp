@@ -17,7 +17,7 @@ State subtract_odom(nav_msgs::msg::Odometry &odom_prev,
     tf2::Matrix3x3 mat_prev{q_prev}, mat_next{q_next};
     double r, p, yaw_prev, yaw_next;
     mat_prev.getRPY(r, p, yaw_prev);
-    mat_prev.getRPY(r, p, yaw_next);
+    mat_next.getRPY(r, p, yaw_next);
     s.phi = yaw_next - yaw_prev;
 
     // position: R1^-1 (t2 - t1)
@@ -25,6 +25,8 @@ State subtract_odom(nav_msgs::msg::Odometry &odom_prev,
     double dy = pn.pose.position.y - pp.pose.position.y;
     s.x = dx * cos(yaw_prev)  + dy * sin(yaw_prev);
     s.y = dx * -sin(yaw_prev) - dy * cos(yaw_prev);
+
+    // std::cout << s.x << ", " << s.y << ", " << s.phi << std::endl;
 
     return s;
 }

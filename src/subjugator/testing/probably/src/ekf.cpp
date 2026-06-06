@@ -5,7 +5,11 @@ class EKFNode : public rclcpp::Node
   public:
     EKFNode() : Node("probably_ekf")
     {
-        s_odom = this->create_subscription<nav_msgs::msg::Odometry>("/dvl/", 10, [this](nav_msgs::msg::Odometry msg)
+        declare_parameter("chi2_thres", 0.99);
+
+        slam.options.data_assoc_method = mrpt::slam::assocJCBB;
+        slam.options.data_assoc_IC_chi2_thres = get_parameter("chi2_thres").as_double();
+        s_odom = this->create_subscription<nav_msgs::msg::Odometry>("/odometry/filtered", 10, [this](nav_msgs::msg::Odometry msg)
                                                                     { odom_cb(msg); });
         s_detections = this->create_subscription<yolo_msgs::msg::DetectionArray>(
             "/yolo/detections", 10, [this](yolo_msgs::msg::DetectionArray msg) { detection_cb(msg); });
@@ -42,23 +46,49 @@ class EKFNode : public rclcpp::Node
         auto range = mrpt::obs::CObservationBearingRange::Create();
         sensors->push_back(range);
 
+        // std::cout << "----------" << msg.detections.size() << std::endl;
         for (auto &det : msg.detections)
         {
             auto &center = det.bbox.center.position;
-            // double w2 = det.bbox.size.x / 2, h2 = det.bbox.size.y / 2;
+            double w2 = det.bbox.size.x / 2, h2 = det.bbox.size.y / 2;
             // double left = center.x - w2, right = center.x + w2;
             // double top = center.y + h2, bot = center.y - h2;
+            double diag = sqrt(4 * (w2 * w2 + h2 * h2));
             // std::cout << center.x << ", " << center.y << std::endl;
 
             mrpt::obs::CObservationBearingRange::TMeasurement measure{};
-            measure.range = 0.5;
-            measure.yaw = atan2(center.x - 320, tan(40 * M_PI / 180));
+            measure.range = (320 / diag) * (0.9144 / tan(40 * M_PI / 180));
+            measure.yaw = atan2(center.x - 320, 320 / tan(40 * M_PI / 180))
+                * 180 / M_PI;
+            measure.covariance(0, 0) = 5; // range
+            measure.covariance(1, 1) = 1; // yaw
             measure.landmarkID = -1;
             range->sensedData.push_back(measure);
+            // std::cout << measure.yaw << ", " << measure.range << std::endl;;
         }
 
         slam.processActionObservation(actions, sensors);
-    };
+        log();
+    }
+
+    void log() {
+        mrpt::poses::CPosePDFGaussian pose;
+        std::vector<mrpt::math::TPoint2D> landmarkPositions;
+        std::map<unsigned int, mrpt::maps::CLandmark::TLandmarkID> landmarkIDs;
+        mrpt::math::CVectorDouble fullState;
+        mrpt::math::CMatrixDouble fullCovariance;
+
+        slam.getCurrentState(pose,
+                             landmarkPositions,
+                             landmarkIDs,
+                             fullState,
+                             fullCovariance);
+
+        std::cout << "----------" << landmarkPositions.size() << std::endl;
+        // for (int i = 0; i < landmarkPositions.size(); ++i) {
+        //     std::cout << landmarkIDs[i] << ": " << landmarkPositions[i] << std::endl;
+        // }
+    }
 
   private:
     mrpt::slam::CRangeBearingKFSLAM2D slam{};
