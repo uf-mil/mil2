@@ -34,7 +34,9 @@ add_library(
   subjugator_operations/src/determine_channel_side.cpp
   subjugator_operations/src/any_poles_detected.cpp
   subjugator_operations/src/has_found_pair.cpp
-  subjugator_operations/src/actuate_servo.cpp)
+  subjugator_operations/src/actuate_servo.cpp
+  subjugator_operations/src/align_depth.cpp
+  subjugator_operations/src/align_yaw.cpp)
 
 ament_target_dependencies(
   operations

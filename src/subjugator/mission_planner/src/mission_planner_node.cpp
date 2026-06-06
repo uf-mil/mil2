@@ -8,6 +8,8 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "actuate_servo.hpp"
+#include "align_depth.hpp"
+#include "align_yaw.hpp"
 #include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
 #include "check_yolo_model.hpp"
@@ -98,6 +100,8 @@ int main(int argc, char** argv)
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
     factory.registerNodeType<ActuateServo>("ActuateServo");
+    factory.registerNodeType<AlignDepth>("AlignDepth");
+    factory.registerNodeType<AlignYaw>("AlignYaw");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
