@@ -44,6 +44,7 @@ class ResetLocalizationService(Node):
         set_pose_request.pose.pose.pose.orientation.w = 1.0
         set_pose_request.pose.pose.covariance = [0.0] * 36
         self.set_pose_client.call_async(set_pose_request)
+        self.dvl_reset_client.call_async(Trigger.Request())
         response = Empty.Response()
         return response
 
