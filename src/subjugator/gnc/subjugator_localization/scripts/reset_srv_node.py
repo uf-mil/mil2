@@ -4,7 +4,7 @@ import rclpy
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from rclpy.node import Node
 from robot_localization.srv import SetPose
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty, Trigger
 
 
 class ResetLocalizationService(Node):
@@ -22,6 +22,13 @@ class ResetLocalizationService(Node):
         )
         while not self.set_pose_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("service not available, waiting again...")
+
+        self.dvl_reset_client = self.create_client(
+            Trigger,
+            "/waterlinked_dvl_driver/reset_dead_reckoning",
+        )
+        while not self.dvl_reset_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info("DVL reset service not available, waiting again...")
 
     def reset_localization_callback(self, request, response):
         self.get_logger().info("Incoming request to reset localization")
