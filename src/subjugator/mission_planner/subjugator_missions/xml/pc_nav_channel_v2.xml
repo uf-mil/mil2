@@ -27,7 +27,7 @@
       <Parallel success_count="2" failure_count="2">
 
         <ForceSuccess>
-          <Timeout msec="40000">
+          <Timeout msec="15000">
             <Action ID="TrackBestPair"
                     min_conf="0.15"
                     channel_side="0"
@@ -97,7 +97,7 @@
           <RetryUntilSuccessful num_attempts="-1">
             <Fallback>
               <Condition ID="PolesBigEnough"
-                         min_height_px="90.0"
+                         min_height_px="100.0"
                          min_width_px="8.0"
                          min_conf="0.15"
                          consecutive_frames="2"
@@ -156,16 +156,16 @@
                             ctx="{ctx}"
                             right_channel="-1"
                             min_conf="0.15"
-                            size_center_px="70.0"
+                            size_center_px="60.0"
                             size_div_px="10.0"
                             ideal_offset_norm="0.20"
-                            yaw_deadzone_norm="0.05"
-                            yaw_outer_norm="0.22"
-                            strafe_saturate_norm="0.52"
-                            max_yaw_deg="15.0"
-                            max_strafe_m="0.60"
+                            yaw_deadzone_norm="0.15"
+                            yaw_outer_norm="0.32"
+                            strafe_saturate_norm="0.72"
+                            max_yaw_deg="18.0"
+                            max_strafe_m="0.70"
                             tol_px="15.0"
-                            hold_ticks="5"
+                            hold_ticks="4"
                             yaw_cmd="{nav_yaw}"
                             y_cmd="{nav_y}"
                             mode_is_strafe="{nav_strafe_mode}"

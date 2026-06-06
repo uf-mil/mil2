@@ -1,5 +1,6 @@
 #pragma once
-#include <behaviortree_cpp/action_node.h>
+
+#include <behaviortree_cpp/behavior_tree.h>
 
 #include <algorithm>
 #include <cmath>
@@ -8,28 +9,23 @@
 
 #include "context.hpp"
 
-// NavChannelControl
-//
-// Per-tick controller for navigating a red/white channel gate. Picks the
-// largest red and white poles in the current frame, weights each pole's
-// position error by a size-based sigmoid (closer pole -> larger weight), and
-// emits EITHER a yaw step OR a strafe step (never both in the same tick).
-//
-// right_channel input:
-//   +1 -> RIGHT channel  (red expected left-of-center, white right-of-center)
-//   -1 -> LEFT channel   (red expected right-of-center, white left-of-center)
-//    0 -> AUTO: latches the side from the first frame containing both colors.
-//
-// Output `resolved_channel` reports the side actually used and can be wired
-// back to the same blackboard variable as the input to persist the choice.
-//
-// SEQUENTIAL MODE (the .cpp is compiled for sequence use):
-//   onRunning() returns SUCCESS each tick after emitting the command, so the
-//   tree can advance immediately to RelativeMove. Returns FAILURE once every
-//   visible pole's pixel error stays within `tol_px` for `hold_ticks`
-//   consecutive ticks — that signals the KeepRunningUntilFailure wrapper to
-//   stop looping.
-
+/**
+ * NavChannelControl
+ *
+ * Vision-based alignment controller for the navigation-channel gate. Each tick
+ * it reads the latest YOLO detections, selects the nearest valid red/white gate
+ * (or a single pole as a fallback), and emits ONE yaw OR strafe correction for
+ * a downstream RelativeMove to execute.
+ *
+ * Return convention (drives a KeepRunningUntilFailure wrapper):
+ *   RUNNING  - only from onStart()
+ *   SUCCESS  - a command was computed this tick; advance the Sequence
+ *   FAILURE  - poles centred for hold_ticks ticks (aligned / passing through);
+ *              stop the loop
+ *
+ * This node does NOT command forward (x) motion — it is a pure alignment stage.
+ * Forward progress through the gate is the job of a separate downstream move.
+ */
 class NavChannelControl : public BT::StatefulActionNode
 {
   public:
@@ -42,16 +38,17 @@ class NavChannelControl : public BT::StatefulActionNode
     void onHalted() override;
 
   private:
-    std::shared_ptr<Context> ctx_;
-    int centered_streak_ = 0;
-    int resolved_side_ = 0;  // +1 RIGHT, -1 LEFT, 0 unknown
+    // ---- math helpers --------------------------------------------------------
 
+    // Clamp v into [lo, hi].
     static double clamp(double v, double lo, double hi)
     {
-        return std::max(lo, std::min(hi, v));
+        return std::max(lo, std::min(v, hi));
     }
 
-    // Sigmoid on pole height. Larger height (closer pole) => weight -> 1.
+    // Sigmoid mapping bbox height (px) -> weight in (0, 1).
+    //   weight = 0.5 at height_px == center_px
+    //   smaller div_px => steeper transition
     static double sigmoid_height(double height_px, double center_px, double div_px)
     {
         if (div_px <= 1e-9)
@@ -59,15 +56,35 @@ class NavChannelControl : public BT::StatefulActionNode
         return 1.0 / (1.0 + std::exp(-(height_px - center_px) / div_px));
     }
 
-    // Signed linear ramp: 0 at |e|<=lo, +/-1 at |e|>=hi, sign matches e.
-    static double signed_ramp(double e, double lo, double hi)
+    // Signed ramp on |err|:
+    //   |err| <= lo        -> 0            (dead zone)
+    //   lo < |err| < hi    -> linear 0..1
+    //   |err| >= hi        -> 1            (saturated)
+    // Result carries the sign of err, so the output is in [-1, +1].
+    static double signed_ramp(double err, double lo, double hi)
     {
-        double const a = std::abs(e);
+        double const a = std::abs(err);
         if (a <= lo)
             return 0.0;
+        double t;
         if (hi <= lo)
-            return (e > 0.0) ? 1.0 : -1.0;
-        double const r = std::min(1.0, (a - lo) / (hi - lo));
-        return (e > 0.0 ? 1.0 : -1.0) * r;
+            t = 1.0;  // degenerate band -> behave as a hard step above lo
+        else
+            t = std::min(1.0, (a - lo) / (hi - lo));
+        return (err < 0.0) ? -t : t;
     }
+
+    // ---- state ---------------------------------------------------------------
+
+    std::shared_ptr<Context> ctx_;
+
+    // Channel side actually in use: +1 RIGHT, -1 LEFT, 0 unresolved.
+    int resolved_side_{ 0 };
+
+    // Consecutive ticks the gate has been within tol_px (discounted error).
+    int centered_streak_{ 0 };
+
+    // Previous-tick smoothed commands for the EMA output filter.
+    double smoothed_yaw_{ 0.0 };
+    double smoothed_y_{ 0.0 };
 };

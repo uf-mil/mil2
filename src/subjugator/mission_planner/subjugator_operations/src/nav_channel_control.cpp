@@ -30,9 +30,22 @@ BT::PortsList NavChannelControl::providedPorts()
     ports.insert(BT::InputPort<double>("yaw_outer_norm", 0.22, "|err| at which we switch from yaw to strafe"));
     ports.insert(BT::InputPort<double>("strafe_saturate_norm", 0.42, "|err| where strafe magnitude saturates"));
 
+    // Asymmetric (outward) error handling. A pole drifting further in its
+    // DESIRED outward direction (white going left on a left channel, red going
+    // right) is good — it's exiting the frame as we pass through — so its error
+    // is hard-zeroed and produces no correction. The exception is a very large
+    // (close) pole, where an inward-ish position is a real clip risk: above
+    // outward_keep_px the outward discount is disabled and the error is honored.
+    ports.insert(BT::InputPort<double>("outward_keep_px", 250.0,
+                                       "Pole height (px) above which outward drift is still corrected (clip guard)"));
+
     // Output magnitudes.
     ports.insert(BT::InputPort<double>("max_yaw_deg", 6.0, "Max abs yaw cmd per tick (deg)"));
     ports.insert(BT::InputPort<double>("max_strafe_m", 0.25, "Max abs strafe cmd per tick (m)"));
+
+    // Command smoothing: EMA blend factor in [0,1]. 1.0 = no smoothing (raw
+    // command each tick), lower = more damping of tick-to-tick reversals.
+    ports.insert(BT::InputPort<double>("cmd_alpha", 0.7, "EMA blend factor for output smoothing (0=frozen,1=raw)"));
 
     // SUCCESS criterion.
     ports.insert(BT::InputPort<double>("tol_px", 15.0, "Per-pole pixel tolerance for SUCCESS"));
@@ -56,9 +69,12 @@ BT::NodeStatus NavChannelControl::onStart()
     (void)getInput("right_channel", rc_in);
     resolved_side_ = (rc_in == 1 || rc_in == -1) ? rc_in : 0;
 
-    // NOTE: centered_streak_ is intentionally NOT reset here so it can
-    // accumulate across sequential Sequence iterations. It is only reset in
-    // onHalted() (if the node is stopped while mid-run) or at construction.
+    // Fresh start for each alignment phase: don't carry streak or smoothed
+    // command state over from a previously-passed gate.
+    centered_streak_ = 0;
+    smoothed_yaw_ = 0.0;
+    smoothed_y_ = 0.0;
+
     setOutput("yaw_cmd", 0.0);
     setOutput("y_cmd", 0.0);
     setOutput("mode_is_strafe", false);
@@ -76,7 +92,9 @@ BT::NodeStatus NavChannelControl::onRunning()
     double size_center = 80.0, size_div = 20.0;
     double ideal_off = 0.20;
     double yaw_dead = 0.05, yaw_outer = 0.22, strafe_sat = 0.42;
+    double outward_keep = 250.0;
     double max_yaw_deg = 6.0, max_strafe_m = 0.25;
+    double cmd_alpha = 0.7;
     double tol_px = 15.0;
     int hold_ticks = 5;
     int rc_in = 0;
@@ -88,11 +106,15 @@ BT::NodeStatus NavChannelControl::onRunning()
     (void)getInput("yaw_deadzone_norm", yaw_dead);
     (void)getInput("yaw_outer_norm", yaw_outer);
     (void)getInput("strafe_saturate_norm", strafe_sat);
+    (void)getInput("outward_keep_px", outward_keep);
     (void)getInput("max_yaw_deg", max_yaw_deg);
     (void)getInput("max_strafe_m", max_strafe_m);
+    (void)getInput("cmd_alpha", cmd_alpha);
     (void)getInput("tol_px", tol_px);
     (void)getInput("hold_ticks", hold_ticks);
     (void)getInput("right_channel", rc_in);
+
+    cmd_alpha = std::max(0.0, std::min(1.0, cmd_alpha));
 
     uint32_t W = 0;
     {
@@ -101,7 +123,6 @@ BT::NodeStatus NavChannelControl::onRunning()
     }
     if (W == 0)
     {
-        // No image yet — emit a no-op command and let RelativeMove execute it.
         setOutput("yaw_cmd", 0.0);
         setOutput("y_cmd", 0.0);
         setOutput("mode_is_strafe", false);
@@ -116,7 +137,6 @@ BT::NodeStatus NavChannelControl::onRunning()
     }
     if (!arr || arr->detections.empty())
     {
-        // No detections yet — emit a no-op command and continue.
         setOutput("yaw_cmd", 0.0);
         setOutput("y_cmd", 0.0);
         setOutput("mode_is_strafe", false);
@@ -137,13 +157,11 @@ BT::NodeStatus NavChannelControl::onRunning()
             whites.push_back(&d);
     }
 
-    // "Nearness" of a pole = its bbox height in px (taller = physically closer).
+    // Nearness proxy: bbox height in px (taller = physically closer).
     auto pole_h = [](yolo_msgs::msg::Detection const* d) -> double { return std::max(0.0, d->bbox.size.y); };
 
     // -------------------------------------------------------------------------
-    // Channel-side resolution. Explicit input wins. Otherwise latch from the
-    // NEAREST red/white pair (largest min-height) the first time we see one,
-    // and infer the side from their left/right ordering.
+    // Channel-side resolution.
     // -------------------------------------------------------------------------
     if (rc_in == 1 || rc_in == -1)
     {
@@ -165,15 +183,12 @@ BT::NodeStatus NavChannelControl::onRunning()
                     nw = w;
                 }
             }
-        double const rx = nr->bbox.center.position.x;
-        double const wx = nw->bbox.center.position.x;
-        resolved_side_ = (rx < wx) ? +1 : -1;
+        resolved_side_ = (nr->bbox.center.position.x < nw->bbox.center.position.x) ? +1 : -1;
     }
     setOutput("resolved_channel", resolved_side_);
 
     if (resolved_side_ == 0 || (reds.empty() && whites.empty()))
     {
-        // Side not yet resolved / nothing to track — emit a no-op and continue.
         setOutput("yaw_cmd", 0.0);
         setOutput("y_cmd", 0.0);
         setOutput("mode_is_strafe", false);
@@ -182,31 +197,24 @@ BT::NodeStatus NavChannelControl::onRunning()
 
     // -------------------------------------------------------------------------
     // Expected normalized X for each pole on the resolved channel.
-    // RIGHT (+1): red left-of-center, white right-of-center. LEFT (-1): mirrored.
+    //   RIGHT (+1): red left  (0.30), white right (0.70)
+    //   LEFT  (-1): red right (0.70), white left  (0.30)
     // -------------------------------------------------------------------------
     double const red_exp_norm = 0.5 - resolved_side_ * ideal_off;
     double const white_exp_norm = 0.5 + resolved_side_ * ideal_off;
 
-    // Required left/right ordering for a valid gate on this channel, derived
-    // straight from the expected positions so it can never drift out of sync
-    // with the convention above:
-    //   LEFT  (-1): red_exp > white_exp  -> red must sit RIGHT of white.
-    //   RIGHT (+1): red_exp < white_exp  -> red must sit LEFT  of white.
     bool const need_red_right_of_white = (red_exp_norm > white_exp_norm);
 
+    // Which screen half each colour belongs on. Also defines the "outward"
+    // direction: a pole expected on the right drifts outward by going further
+    // right (positive error); one expected on the left drifts outward by going
+    // further left (negative error).
+    bool const red_expected_right = (red_exp_norm > 0.5);
+    bool const white_expected_right = (white_exp_norm > 0.5);
+
     // -------------------------------------------------------------------------
-    // Gate-aware selection.
-    //
-    // IMPORTANT: selection is based on NEARNESS (pole height), NOT on how close
-    // a pole already is to its target position. Selecting by "closest to
-    // expected" is a degenerate feedback loop — it always picks whatever pole
-    // is already centred, so the measured error is tiny and the sub never
-    // corrects. Instead we pick the nearest VALID gate (a red+white pair with
-    // the correct ordering for this channel) and let the controller drive that
-    // gate's real error to zero.
-    //
-    // Score = min(red_h, white_h): both poles of the pair must be large, so a
-    // near-red + far-white cross-gate pairing loses to a genuine near gate.
+    // Gate-aware pair selection. Score = min(red_h, white_h); ordering
+    // constraint rejects pairs whose geometry contradicts the channel.
     // -------------------------------------------------------------------------
     yolo_msgs::msg::Detection const* best_r = nullptr;
     yolo_msgs::msg::Detection const* best_w = nullptr;
@@ -229,34 +237,70 @@ BT::NodeStatus NavChannelControl::onRunning()
             }
         }
 
-    // Fallback: no valid gate pair visible (one pole off-screen/occluded, or
-    // only wrong-ordering pairs exist). Steer toward the single NEAREST pole of
-    // either colour so we keep making progress instead of freezing. Exactly one
-    // of best_r / best_w is set here, so the single-pole (scale=2.0) path runs.
+    // -------------------------------------------------------------------------
+    // Single-pole fallback with screen-side filter (rejects wrong-gate poles
+    // on the wrong half), then a last-resort nearest-any pick so a badly
+    // drifted sub still gets some correction rather than freezing.
+    // -------------------------------------------------------------------------
     if (!best_r && !best_w)
     {
         double best_near = -1.0;
+
         for (auto* r : reds)
+        {
+            bool const right_half = (r->bbox.center.position.x / Wf > 0.5);
+            if (right_half != red_expected_right)
+                continue;
             if (pole_h(r) > best_near)
             {
                 best_near = pole_h(r);
                 best_r = r;
                 best_w = nullptr;
             }
+        }
         for (auto* w : whites)
+        {
+            bool const right_half = (w->bbox.center.position.x / Wf > 0.5);
+            if (right_half != white_expected_right)
+                continue;
             if (pole_h(w) > best_near)
             {
                 best_near = pole_h(w);
                 best_w = w;
                 best_r = nullptr;
             }
+        }
+
+        if (!best_r && !best_w)
+        {
+            for (auto* r : reds)
+                if (pole_h(r) > best_near)
+                {
+                    best_near = pole_h(r);
+                    best_r = r;
+                    best_w = nullptr;
+                }
+            for (auto* w : whites)
+                if (pole_h(w) > best_near)
+                {
+                    best_near = pole_h(w);
+                    best_w = w;
+                    best_r = nullptr;
+                }
+        }
     }
 
     // -------------------------------------------------------------------------
-    // Per-pole error and size-sigmoid weight.
+    // Per-pole error, size weight, and ASYMMETRIC outward-error cutoff.
+    //
+    // A pole whose error points further in its desired outward direction is
+    // doing exactly what we want as we pass through the gate, so we hard-zero
+    // that error: no correction, and it reads as "centered" for the SUCCESS
+    // check. The cutoff is disabled once the pole is very large (>= outward_keep
+    // px), where an inward-ish close pole is a genuine clip risk worth honoring.
     // -------------------------------------------------------------------------
-    auto compute_pole = [&](yolo_msgs::msg::Detection const* d, double exp_norm, double& err_norm, double& size_w,
-                            double& err_px_abs) -> bool
+    auto compute_pole = [&](yolo_msgs::msg::Detection const* d, double exp_norm, bool expected_right, double& err_norm,
+                            double& size_w, double& err_px_abs) -> bool
     {
         if (!d)
         {
@@ -265,9 +309,19 @@ BT::NodeStatus NavChannelControl::onRunning()
             err_px_abs = 0.0;
             return false;
         }
+
+        double const h = std::max(0.0, d->bbox.size.y);
         double const x_norm = d->bbox.center.position.x / Wf;
+
         err_norm = x_norm - exp_norm;
-        size_w = sigmoid_height(std::max(0.0, d->bbox.size.y), size_center, size_div);
+        size_w = sigmoid_height(h, size_center, size_div);
+
+        // outward == error is in the pole's desired away-from-center direction.
+        bool const outward = (err_norm > 0.0) == expected_right;
+        bool const pole_big = (h >= outward_keep);
+        if (outward && !pole_big)
+            err_norm = 0.0;  // discount: this drift is good, command nothing.
+
         err_px_abs = std::abs(err_norm) * Wf;
         return true;
     };
@@ -276,8 +330,8 @@ BT::NodeStatus NavChannelControl::onRunning()
     double KrS = 0.0, KwS = 0.0;
     double red_err_px = 0.0, white_err_px = 0.0;
 
-    bool const have_r = compute_pole(best_r, red_exp_norm, red_e, KrS, red_err_px);
-    bool const have_w = compute_pole(best_w, white_exp_norm, white_e, KwS, white_err_px);
+    bool const have_r = compute_pole(best_r, red_exp_norm, red_expected_right, red_e, KrS, red_err_px);
+    bool const have_w = compute_pole(best_w, white_exp_norm, white_expected_right, white_e, KwS, white_err_px);
 
     double max_abs_e = 0.0;
     if (have_r)
@@ -288,37 +342,45 @@ BT::NodeStatus NavChannelControl::onRunning()
     bool const strafe_mode = (max_abs_e > yaw_outer);
     bool const yaw_mode = !strafe_mode && (max_abs_e > yaw_dead);
 
-    double yaw_cmd = 0.0;
-    double y_cmd = 0.0;
+    double raw_yaw = 0.0;
+    double raw_y = 0.0;
 
     if (yaw_mode)
     {
-        // Per-pole signed yaw triangle, weighted by closeness. Positive err
-        // (pole drifted right of expected) -> yaw RIGHT to bring it back, which
-        // is a negative yaw_deg in REP-103 (positive yaw = CCW = LEFT).
         double const red_y = signed_ramp(red_e, yaw_dead, yaw_outer) * KrS;
         double const white_y = signed_ramp(white_e, yaw_dead, yaw_outer) * KwS;
-        int const pole_count = (int)have_r + (int)have_w;
-        double const scale = (pole_count == 1) ? 2.0 : 1.0;
-        double const raw = (red_y + white_y) * scale;
-        yaw_cmd = clamp(-max_yaw_deg * raw, -max_yaw_deg, +max_yaw_deg);
+        int const n = (int)have_r + (int)have_w;
+        double const scale = (n == 1) ? 2.0 : 1.0;
+        raw_yaw = clamp(-max_yaw_deg * (red_y + white_y) * scale, -max_yaw_deg, +max_yaw_deg);
     }
     else if (strafe_mode)
     {
-        // Per-pole signed strafe triangle. Positive err -> sub should move
-        // RIGHT (negative y in REP-103) so the pole drifts back to the left.
         double const red_s = signed_ramp(red_e, yaw_outer, strafe_sat) * KrS;
         double const white_s = signed_ramp(white_e, yaw_outer, strafe_sat) * KwS;
-        int const pole_count = (int)have_r + (int)have_w;
-        double const scale = (pole_count == 1) ? 2.0 : 1.0;
-        double const raw = (red_s + white_s) * scale;
-        y_cmd = clamp(-max_strafe_m * raw, -max_strafe_m, +max_strafe_m);
+        int const n = (int)have_r + (int)have_w;
+        double const scale = (n == 1) ? 2.0 : 1.0;
+        raw_y = clamp(-max_strafe_m * (red_s + white_s) * scale, -max_strafe_m, +max_strafe_m);
     }
 
-    setOutput("yaw_cmd", yaw_cmd);
-    setOutput("y_cmd", y_cmd);
+    // EMA smoothing to damp tick-to-tick reversals.
+    if (strafe_mode || yaw_mode)
+    {
+        smoothed_yaw_ = cmd_alpha * raw_yaw + (1.0 - cmd_alpha) * smoothed_yaw_;
+        smoothed_y_ = cmd_alpha * raw_y + (1.0 - cmd_alpha) * smoothed_y_;
+    }
+    else
+    {
+        smoothed_yaw_ *= (1.0 - cmd_alpha);
+        smoothed_y_ *= (1.0 - cmd_alpha);
+    }
+
+    setOutput("yaw_cmd", smoothed_yaw_);
+    setOutput("y_cmd", smoothed_y_);
     setOutput("mode_is_strafe", strafe_mode);
 
+    // SUCCESS check uses the DISCOUNTED error: poles drifting outward read as
+    // centered, so two outward poles (we're passing through) build the streak
+    // and the loop declares the gate done.
     double const max_err_px = std::max(have_r ? red_err_px : 0.0, have_w ? white_err_px : 0.0);
     if ((have_r || have_w) && max_err_px <= tol_px)
         centered_streak_++;
@@ -327,22 +389,20 @@ BT::NodeStatus NavChannelControl::onRunning()
 
     if (centered_streak_ >= hold_ticks)
     {
-        // Centered for hold_ticks consecutive ticks — signal the
-        // KeepRunningUntilFailure wrapper to stop the loop.
         setOutput("yaw_cmd", 0.0);
         setOutput("y_cmd", 0.0);
         setOutput("mode_is_strafe", false);
-        return BT::NodeStatus::FAILURE;
+        return BT::NodeStatus::FAILURE;  // aligned / passing through — stop the loop
     }
 
-    // Command computed — return SUCCESS so the Sequence can advance to
-    // RelativeMove immediately this tick.
-    return BT::NodeStatus::SUCCESS;
+    return BT::NodeStatus::SUCCESS;  // command computed — advance to RelativeMove
 }
 
 void NavChannelControl::onHalted()
 {
     centered_streak_ = 0;
+    smoothed_yaw_ = 0.0;
+    smoothed_y_ = 0.0;
     setOutput("yaw_cmd", 0.0);
     setOutput("y_cmd", 0.0);
     setOutput("mode_is_strafe", false);
