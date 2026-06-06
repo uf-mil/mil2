@@ -27,8 +27,6 @@ class ResetLocalizationService(Node):
             Trigger,
             "/waterlinked_dvl_driver/reset_dead_reckoning",
         )
-        while not self.dvl_reset_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info("DVL reset service not available, waiting again...")
 
     def reset_localization_callback(self, request, response):
         self.get_logger().info("Incoming request to reset localization")
