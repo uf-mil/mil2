@@ -1,23 +1,26 @@
 <root BTCPP_format="4" main_tree_to_execute="RollStyleTest">
     <BehaviorTree ID="RollStyleTest">
-        <Sequence>
+    <Sequence>
+
+            <Delay delay_msec="1000"><AlwaysSuccess/></Delay>
+
             <!-- go down -->
             <SubTree ID="RelativeMove" _autoremap="true"
-                x="0.0" y="0.0" z="-0.1"
-                pos_tol="0.05" ori_tol_deg="12.0" msec="25000"
+                x="0.0" y="0.0" z="-1.5"
+                pos_tol="0.15" ori_tol_deg="12.0" msec="25000"
                 ctx="{ctx}"/>
 
             <!-- wait -->
             <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
 
             <Sequence>
-                <RollStyle name="roll_style" milliseconds="2500" ctx="{ctx}" />
-                <Delay delay_msec="1000"><AlwaysSuccess/></Delay>
+                <RollStyle name="roll_style" milliseconds="4000" ctx="{ctx}" />
+                <Delay delay_msec="4000"><AlwaysSuccess/></Delay>
             </Sequence>
 
             <!-- surface -->
             <SubTree ID="RelativeMove" _autoremap="true"
-                x="0.0" y="0.0" z="0.0"
+                x="0.0" y="0.0" z="0.1"
                 pos_tol="0.05" ori_tol_deg="12.0" msec="25000"
                 ctx="{ctx}"/>
         </Sequence>
