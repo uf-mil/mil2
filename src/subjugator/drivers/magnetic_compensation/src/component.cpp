@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <rclcpp/rclcpp.hpp>
 
+#include <magnetic_compensation/compensator.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 #include <sensor_msgs/msg/magnetic_field.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
@@ -73,7 +74,7 @@ class HardsoftCompensator : public rclcpp::Node
 
         Eigen::Vector3d raw;
         tf2::fromMsg(msg->magnetic_field, raw);
-        Eigen::Vector3d processed = scale_inverse_ * (raw - shift_);
+        Eigen::Vector3d processed = compensate(scale_inverse_, shift_, raw);
 
         sensor_msgs::msg::MagneticField result;
         result.header = msg->header;
