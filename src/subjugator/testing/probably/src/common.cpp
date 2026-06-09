@@ -24,9 +24,13 @@ State subtract_odom(nav_msgs::msg::Odometry &odom_prev,
     double dx = pn.pose.position.x - pp.pose.position.x;
     double dy = pn.pose.position.y - pp.pose.position.y;
     s.x = dx * cos(yaw_prev)  + dy * sin(yaw_prev);
-    s.y = dx * -sin(yaw_prev) - dy * cos(yaw_prev);
+    s.y = dx * -sin(yaw_prev) + dy * cos(yaw_prev);
+    s.cov[0] = 0.1; //>0< 1  2
+    s.cov[4] = 0.1; // 3 >4< 5
+    s.cov[8] = 0.1; // 6  7 >8<
 
-    // std::cout << s.x << ", " << s.y << ", " << s.phi << std::endl;
+    // std::cout << "  " << dx * 100 << ", " << dy * 100 << std::endl;
+    // std::cout << s.x * 100 << ", " << s.y * 100 << ", " << s.phi << std::endl;
 
     return s;
 }

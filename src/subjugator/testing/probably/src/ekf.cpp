@@ -5,10 +5,10 @@ class EKFNode : public rclcpp::Node
   public:
     EKFNode() : Node("probably_ekf")
     {
-        declare_parameter("chi2_thres", 0.99);
+        declare_parameter("chi2_thres", 0.95);
 
-        slam.options.data_assoc_method = mrpt::slam::assocJCBB;
-        slam.options.data_assoc_IC_chi2_thres = get_parameter("chi2_thres").as_double();
+        // slam.options.data_assoc_method = mrpt::slam::assocJCBB;
+        // slam.options.data_assoc_IC_chi2_thres = get_parameter("chi2_thres").as_double();
         s_odom = this->create_subscription<nav_msgs::msg::Odometry>("/odometry/filtered", 10, [this](nav_msgs::msg::Odometry msg)
                                                                     { odom_cb(msg); });
         s_detections = this->create_subscription<yolo_msgs::msg::DetectionArray>(
@@ -35,16 +35,29 @@ class EKFNode : public rclcpp::Node
         auto actions = mrpt::obs::CActionCollection::Create();
         auto sensors = mrpt::obs::CSensoryFrame::Create();
 
-        auto action = mrpt::obs::CActionRobotMovement2D::Create();
-        actions->insertPtr(action);
+        mrpt::obs::CActionRobotMovement2D action{};
+        action.timestamp = mrpt::Clock::now();
         auto pose = mrpt::poses::CPosePDFGaussian::Create();
         pose->mean.x(odom_diff.x);
-        pose->mean.y(odom_diff.x);
+        pose->mean.y(odom_diff.y);
+
         pose->mean.phi(odom_diff.phi);
-        action->poseChange = pose;
+        pose->cov(0, 0) = odom_diff.cov[0];
+        pose->cov(1, 1) = odom_diff.cov[4];
+        pose->cov(2, 2) = odom_diff.cov[8];
+        action.poseChange = pose;
+
+        // auto pose = mrpt::poses::CPose2D{};
+        // pose.x(odom_diff.x);
+        // pose.y(odom_diff.x);
+        // pose.phi(odom_diff.phi);
+        // action->computeFromOdometry(pose, mrpt::obs::CActionRobotMovement2D::TMotionModelOptions{});
+
+        actions->insert(action);
 
         auto range = mrpt::obs::CObservationBearingRange::Create();
-        sensors->push_back(range);
+        range->validCovariances = false;
+        range->timestamp = mrpt::Clock::now();
 
         // std::cout << "----------" << msg.detections.size() << std::endl;
         for (auto &det : msg.detections)
@@ -58,14 +71,15 @@ class EKFNode : public rclcpp::Node
 
             mrpt::obs::CObservationBearingRange::TMeasurement measure{};
             measure.range = (320 / diag) * (0.9144 / tan(40 * M_PI / 180));
-            measure.yaw = atan2(center.x - 320, 320 / tan(40 * M_PI / 180))
-                * 180 / M_PI;
-            measure.covariance(0, 0) = 5; // range
-            measure.covariance(1, 1) = 1; // yaw
-            measure.landmarkID = -1;
+            measure.yaw = atan2(center.x - 320, 320 / tan(40 * M_PI / 180));
+            // measure.covariance(0, 0) = 5; // range
+            // measure.covariance(1, 1) = 1; // yaw
+            measure.landmarkID = 1; // -1;
             range->sensedData.push_back(measure);
             // std::cout << measure.yaw << ", " << measure.range << std::endl;;
         }
+
+        sensors->push_back(range);
 
         slam.processActionObservation(actions, sensors);
         log();
@@ -84,10 +98,12 @@ class EKFNode : public rclcpp::Node
                              fullState,
                              fullCovariance);
 
+        std::cout << pose.mean.x() << ", " << pose.mean.y() << "," << pose.mean.phi() << std::endl;
+
         std::cout << "----------" << landmarkPositions.size() << std::endl;
-        // for (int i = 0; i < landmarkPositions.size(); ++i) {
-        //     std::cout << landmarkIDs[i] << ": " << landmarkPositions[i] << std::endl;
-        // }
+        for (int i = 0; i < landmarkPositions.size(); ++i) {
+            std::cout << landmarkIDs[i] << ": " << landmarkPositions[i] << std::endl;
+        }
     }
 
   private:
