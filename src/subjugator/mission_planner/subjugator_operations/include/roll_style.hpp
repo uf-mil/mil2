@@ -29,12 +29,14 @@ class RollStyle : public BT::ActionNodeBase
         return {
             BT::InputPort<std::shared_ptr<Context>>("ctx"),
             BT::InputPort<double>("milliseconds"),
+            BT::InputPort<double>("momentum_ms"),
         };
     }
 
     void halt() override
     {
         state_rn = BT::NodeStatus::IDLE;
+        gained_momentum = false;
     }
 
     BT::NodeStatus tick() override
@@ -59,7 +61,47 @@ class RollStyle : public BT::ActionNodeBase
             return state_rn;
         }
 
-        else if (state_rn == BT::NodeStatus::RUNNING)
+        if (state_rn == BT::NodeStatus::RUNNING && gained_momentum == false)
+        {
+            // wait for controller disable to complete
+            if (controller_request_result.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+            {
+                start_time_ = std::chrono::steady_clock::now();
+                return BT::NodeStatus::RUNNING;
+            }
+
+            // roll in the OPPOSITE direction to build momentum
+            auto msg = subjugator_msgs::msg::ThrusterEfforts();
+            msg.thrust_blh = 0.0;
+            msg.thrust_brh = 0.0;
+            msg.thrust_flh = 0.0;
+            msg.thrust_frh = 0.0;
+            msg.thrust_blv = -1.0;  // opposite signs vs the main roll
+            msg.thrust_brv = 1.0;
+            msg.thrust_flv = -1.0;
+            msg.thrust_frv = 1.0;
+            ctx_->raw_effort_pub->publish(msg);
+
+            // check if the pre-roll momentum timer has elapsed
+            auto now = std::chrono::steady_clock::now();
+            if (now - start_time_ < momentum_duration)
+            {
+                return BT::NodeStatus::RUNNING;
+            }
+
+            // momentum wind-up complete — stop thrusters, flip flag
+            msg.thrust_blv = 0.0;
+            msg.thrust_brv = 0.0;
+            msg.thrust_flv = 0.0;
+            msg.thrust_frv = 0.0;
+            ctx_->raw_effort_pub->publish(msg);
+
+            gained_momentum = true;
+
+            // intentionally NOT re-enabling the controller here
+            return BT::NodeStatus::RUNNING;
+        }
+        else if (state_rn == BT::NodeStatus::RUNNING && gained_momentum == true)
         {
             // gotta wait for the request to have actually sent lol
             // once the future completes, this will always be false so think of it as a guard
@@ -159,6 +201,10 @@ class RollStyle : public BT::ActionNodeBase
         start_time_;
     // ^ fuck you c++ this type is hideous
 
+    bool gained_momentum = false;
+    double momentum_ms_;
+    std::chrono::duration<double> momentum_duration;
+
     // stuff for checking if a request went through
     rclcpp::Client<std_srvs::srv::SetBool>::SharedFuture controller_request_result;
 
@@ -179,6 +225,14 @@ class RollStyle : public BT::ActionNodeBase
             throw BT::RuntimeError("RollStyle requires [milliseconds] input");
         }
         milliseconds_ = milliseconds_res.value();
+
+        auto momentum_ms_res = getInput<double>("momentum_ms");
+        if (!momentum_ms_res)
+        {
+            throw BT::RuntimeError("RollStyle requires [momentum_ms] input");
+        }
+        momentum_ms_ = momentum_ms_res.value();
+        momentum_duration = std::chrono::duration<double>(momentum_ms_ / 1000.0);
     }
 
   protected:
