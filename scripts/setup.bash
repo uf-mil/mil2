@@ -356,16 +356,19 @@ complete -F _mp_complete mp
 # Fast cached tab completion for ros2 run / ros2 launch
 if [ -n "$ZSH_VERSION" ]; then
 	_ros2_autocomplete() {
+		# shellcheck disable=SC2154,SC1087,SC2125
 		local prev=$words[CURRENT-1]
 		local pkg_cache=/tmp/.ros2_autocomplete_pkgs
 
-		[[ $prev = run || $prev = launch ]] || return
+		[[ $prev == run || $prev == launch ]] || return
 
 		# Synchronous fallback if cache doesn't exist
 		[ ! -f "$pkg_cache" ] && ros2 pkg list >"$pkg_cache" 2>/dev/null
 
 		# Fetch the list of packages from cache
-		compadd -- ${(f)"$(cat $pkg_cache)"}
+		local -a pkgs=()
+		while IFS='' read -r line; do pkgs+=("$line"); done <"$pkg_cache"
+		compadd -- "${pkgs[@]}"
 
 		# Update cache in background (if nobody else is doing it)
 		(flock -n "$pkg_cache.new" bash -c \
