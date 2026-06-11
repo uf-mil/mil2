@@ -319,7 +319,7 @@ BT::NodeStatus NavChannelControl::onRunning()
         // outward == error is in the pole's desired away-from-center direction.
         bool const outward = (err_norm > 0.0) == expected_right;
         bool const pole_big = (h >= outward_keep);
-        if (outward && !pole_big)
+        if (outward)
             err_norm = 0.0;  // discount: this drift is good, command nothing.
 
         err_px_abs = std::abs(err_norm) * Wf;
