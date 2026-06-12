@@ -11,7 +11,7 @@ import argparse
 import Jetson.GPIO as GPIO
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Node
+from std_msgs.msg import Bool
 #**********</Dependencies>**********#
 
 
