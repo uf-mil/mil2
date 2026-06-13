@@ -5,6 +5,7 @@ project(subjugator_gazebo)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
@@ -61,6 +62,9 @@ add_library(MarbleDropper SHARED src/MarbleDropper.cc)
 # Plugin 7: Gripper Controller
 add_library(GripperControl SHARED src/GripperControl.cc)
 
+# Plugin 8: Torpedoes
+add_library(Torpedoes SHARED src/Torpedoes.cc)
+
 # Ensures plugin can see include directory to access its header files
 target_include_directories(ExamplePlugin PRIVATE include)
 
@@ -77,6 +81,8 @@ target_include_directories(ThrusterBridge PRIVATE include)
 target_include_directories(MarbleDropper PRIVATE include)
 
 target_include_directories(GripperControl PRIVATE include)
+
+target_include_directories(Torpedoes PRIVATE include)
 
 # Add additional needed libraries
 target_link_libraries(
@@ -108,6 +114,10 @@ target_link_libraries(MarbleDropper ament_index_cpp::ament_index_cpp)
 # Link libraries for GripperControl plugin
 target_link_libraries(GripperControl gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
 
+# Link libraries for Torpedoes plugin
+target_link_libraries(Torpedoes gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER})
+target_link_libraries(Torpedoes ament_index_cpp::ament_index_cpp)
+
 # Specify dependencies using ament_target_dependencies
 ament_target_dependencies(
   ExamplePlugin
@@ -126,10 +136,13 @@ ament_target_dependencies(Hydrophone rclcpp geometry_msgs mil_msgs)
 
 ament_target_dependencies(ThrusterBridge rclcpp subjugator_msgs geometry_msgs)
 
-ament_target_dependencies(MarbleDropper rclcpp subjugator_msgs geometry_msgs)
+ament_target_dependencies(MarbleDropper rclcpp subjugator_msgs geometry_msgs
+                          std_msgs std_srvs)
 
-# ROS2 / ament dependencies used by your plugin
-ament_target_dependencies(GripperControl rclcpp std_msgs)
+ament_target_dependencies(GripperControl rclcpp std_msgs std_srvs)
+
+ament_target_dependencies(Torpedoes rclcpp subjugator_msgs geometry_msgs
+                          std_msgs std_srvs)
 
 # Install the plugins
 install(
@@ -141,6 +154,7 @@ install(
           ThrusterBridge
           MarbleDropper
           GripperControl
+          Torpedoes
   LIBRARY DESTINATION lib/${PROJECT_NAME})
 
 # Install headers

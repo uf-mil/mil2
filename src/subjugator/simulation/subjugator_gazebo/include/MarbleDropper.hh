@@ -12,6 +12,7 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <gz/plugin/Register.hh>  // For GZ_ADD_PLUGIN
+#include <std_srvs/srv/set_bool.hpp>
 // 'gz' and 'sdf' includes turn into namespace::namespace::ClassName
 #include <gz/msgs/entity.pb.h>
 #include <gz/msgs/entity_factory.pb.h>
@@ -52,6 +53,10 @@ class MarbleDropper : public gz::sim::System,
     // System PostUpdate - Called every simulation step to update pinger/marble_dropper distances //
     void PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm) override;
 
+    // Service callback
+    void DropMarble(std::shared_ptr<std_srvs::srv::SetBool::Request> const request,
+                    std::shared_ptr<std_srvs::srv::SetBool::Response> response);
+
     // Callback for keypress
     void KeypressCallback(std_msgs::msg::String::SharedPtr const msg);
 
@@ -59,8 +64,9 @@ class MarbleDropper : public gz::sim::System,
     void SpawnMarble(std::string const &worldName, std::string const &sdfPath);
 
   private:
-    // ROS2 Node and Subscription for keypress //
+    // ROS2 Node, Service, and Subscription for keypress //
     rclcpp::Node::SharedPtr marble_node_;
+    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr service_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr keypress_sub_;
 
     // Sub9 SDF & Entity //
@@ -75,6 +81,7 @@ class MarbleDropper : public gz::sim::System,
     int marbleCount = 0;
     bool m_pressed = false;  // Track if 'm' key was pressed
     bool worldNameFound = false;
+    bool service_called = false;  // Track if the drop marble service was called
     std::string worldName = "bingbong";
 
     // Marble SDF Values //
