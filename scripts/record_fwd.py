@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-record_fwd: apply a constant forward force and record thruster efforts and
-orientation for a fixed duration.
+record_fwd: apply a constant force and record thruster efforts
+and odometry for a fixed duration.
 
-Publishes directly to /cmd_wrench, bypassing the PID controller, to observe
-raw drag forces without control smoothing.
+Publishes directly to /cmd_wrench and temporarily disables the PID controller
+to observe raw drag forces without control smoothing.
 
-Usage: record_fwd <forward_thrust_force> <duration_in_seconds>
-  forward_thrust_force  -- forward force in Newtons
+Usage: record_fwd <forward_force> <vertical_force> <horizontal_force> <duration_in_seconds>
+  forward_force         -- forward force in Newtons (+x, forward/backward)
+  vertical_force        -- vertical force in Newtons (+z, up/down)
+  horizontal_force      -- horizontal force in Newtons (+y, left/right strafe)
   duration_in_seconds   -- seconds to apply force and record
 """
 
@@ -21,15 +23,11 @@ from pathlib import Path
 import rclpy
 from geometry_msgs.msg import Wrench
 from nav_msgs.msg import Odometry
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation
 from std_srvs.srv import SetBool
 from subjugator_msgs.msg import ThrusterEfforts
 
 LOG_RATE_HZ = 10.0
-
-# Thruster force limits from gnc/subjugator_thruster_manager/config/thruster_manager.yaml
-MAX_FORCE_POS_N = 51.5
-MAX_FORCE_NEG_N = 40.2
 
 THRUSTER_FIELDS = [
     "thrust_flh",
@@ -43,35 +41,33 @@ THRUSTER_FIELDS = [
 ]
 
 args = sys.argv[1:]
-if len(args) != 2:
-    print("Usage: record_fwd <forward_thrust_force> <duration_in_seconds>")
-    print("  forward_thrust_force  -- forward force in Newtons")
-    print("  duration_in_seconds   -- seconds to record")
+if len(args) != 4:
+    print(
+        "Usage:\n\trecord_fwd <forward_force> <vertical_force> <horizontal_force> <duration_in_seconds>",
+    )
     exit(1)
 
 try:
-    force_n = float(args[0])
-    duration_s = float(args[1])
+    forward_n = float(args[0])
+    vertical_n = float(args[1])
+    horizontal_n = float(args[2])
+    duration_s = float(args[3])
 except ValueError:
-    print("<forward_thrust_force> and <duration_in_seconds> must be numbers.")
+    print("All forces and <duration_in_seconds> must be numbers.")
     exit(1)
 
 if duration_s <= 0:
     print("<duration_in_seconds> must be positive.")
     exit(1)
 
-cap = MAX_FORCE_POS_N if force_n >= 0 else -MAX_FORCE_NEG_N
-capped = abs(force_n) > abs(cap)
-if capped:
-    force_n = cap
-
 stamp = dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 logs_dir = Path.home() / "record-fwd-movement" / "logs"
 logs_dir.mkdir(parents=True, exist_ok=True)
-out_path = logs_dir / f"record_fwd_{force_n:.1f}N_{stamp}.csv"
+forces_str = f"fx{forward_n:.2f}_fz{vertical_n:.2f}_fy{horizontal_n:.2f}"
+out_path = logs_dir / f"record_fwd_{forces_str}_{stamp}.csv"
 counter = 1
 while out_path.exists():
-    out_path = logs_dir / f"record_fwd_{force_n:.1f}N_{stamp}_{counter}.csv"
+    out_path = logs_dir / f"record_fwd_{forces_str}_{stamp}_{counter}.csv"
     counter += 1
 
 rclpy.init()
@@ -108,7 +104,9 @@ node.create_subscription(ThrusterEfforts, "/thruster_efforts", thrust_cb, 10)
 wrench_pub = node.create_publisher(Wrench, "/cmd_wrench", 10)
 
 forward_wrench = Wrench()
-forward_wrench.force.x = force_n
+forward_wrench.force.x = forward_n  # forward/backward
+forward_wrench.force.y = horizontal_n  # left/right strafe
+forward_wrench.force.z = vertical_n  # up/down depth
 
 zero_wrench = Wrench()
 
@@ -133,8 +131,6 @@ header = [
 csv_writer.writerow(header)
 
 print(f"Logging to {out_path}")
-cap_str = " (capped)" if capped else ""
-print(f"Applying {force_n} N{cap_str} forward for {duration_s} s...")
 
 start = time.monotonic()
 period_s = 1.0 / LOG_RATE_HZ
@@ -165,7 +161,7 @@ try:
                 y = float(current_pose.position.y)
                 z = float(current_pose.position.z)
                 q = current_pose.orientation
-                rot = R.from_quat([q.x, q.y, q.z, q.w])
+                rot = Rotation.from_quat([q.x, q.y, q.z, q.w])
                 roll_deg, pitch_deg, yaw_deg = rot.as_euler("xyz", degrees=True)
 
             if current_twist is None:
