@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.9">
-  <world name="task4_2026">
+  <world name="task4_2026_v2">
     <!-- Scene -->
     <scene>
       <ambient>0.4 0.4 0.4 1</ambient>
@@ -168,57 +168,14 @@
       <static>true</static>
     </model>
 
-    <!-- Torpedo Mapping Board 2026 V1 -->
-    <!-- Switch to V2 by commenting this out and uncommenting the V2 block below -->
-    <model name='Torpedo_Board'>
-      <link name='link'>
-        <visual name='visual'>
-          <geometry>
-            <mesh>
-              <uri>
-                package://subjugator_description/models/torpedoMapping_2026_v1/torpedoMapping_2026_v1.glb
-              </uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <collision name='collision'>
-          <geometry>
-            <mesh>
-              <uri>
-                package://subjugator_description/models/torpedoMapping_2026_v1/torpedoMapping_2026_v1.glb
-              </uri>
-            </mesh>
-          </geometry>
-        </collision>
-        <pose>0 0 0 0 0 0</pose>
-        <inertial>
-          <pose>0 0 0 0 0 0</pose>
-          <mass>1</mass>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <enable_wind>false</enable_wind>
-      </link>
-      <pose>-1.19226 21.8402724 -1.0 0 0 4.14</pose>
-      <static>true</static>
-      <self_collide>false</self_collide>
-    </model>
-
     <!-- Torpedo Mapping Board 2026 V2 -->
-    <!--
     <model name='Torpedo_Board'>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/torpedoMapping_2026_v2/torpedoMapping_2026_v2.glb
+                package://subjugator_description/models/torpedoMapping_2026_v2/torpedoMapping_2026_v2.obj
               </uri>
             </mesh>
           </geometry>
@@ -227,7 +184,7 @@
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/torpedoMapping_2026_v2/torpedoMapping_2026_v2.glb
+                package://subjugator_description/models/torpedoMapping_2026_v2/torpedoMapping_2026_v2.obj
               </uri>
             </mesh>
           </geometry>
@@ -247,11 +204,9 @@
         </inertial>
         <enable_wind>false</enable_wind>
       </link>
-      <pose>-1.19226 21.8402724 -1.0 0 0 4.14</pose>
+      <pose>-4.0 20.0 -0.8 1.5708 0 -0.2618</pose>
       <static>true</static>
       <self_collide>false</self_collide>
     </model>
-    -->
-
   </world>
 </sdf>
