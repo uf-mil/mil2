@@ -61,7 +61,6 @@ class SimplePosePublisher(Node):
         # this is the cov of the previous depth sensor and should be re-measured!
 
         self.publisher_.publish(msg)
-        self.get_logger().info("Publishing PoseWithCovarianceStamped")
 
 
 def main(args=None):
