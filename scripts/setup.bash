@@ -1,7 +1,14 @@
 #! /usr/bin/env bash
 MIL_REPO="$HOME/mil2"
 
-if [ -n "$ZSH_VERSION" ]; then
+# Pixi/robostack provides its own ROS 2 + Gazebo stack. Sourcing the system
+# /opt/ros/jazzy on top of it leaks the system Gazebo vendor libs (built against
+# libprotobuf.so.32) into a pixi env that ships libprotobuf.so.31, which corrupts
+# the heap and crashes Gazebo on launch. Skip the system source inside pixi/conda.
+# See issue #454.
+if [ -n "$PIXI_PROJECT_ROOT" ] || [ -n "$CONDA_PREFIX" ]; then
+	: # in a pixi/conda env — ROS is already provided, do not source system ROS
+elif [ -n "$ZSH_VERSION" ]; then
 	source /opt/ros/jazzy/setup.zsh
 else
 	source /opt/ros/jazzy/setup.bash

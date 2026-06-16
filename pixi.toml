@@ -26,7 +26,13 @@ ros-jazzy-robot-localization = ">=3.8.3,<4"
 ros-jazzy-ros-base = ">=0.11.0,<0.12"
 ros-jazzy-ros-gz = ">=1.0.19,<2"
 ros-jazzy-vision-opencv = ">=4.1.0,<5"
+scipy = ">=1.11,<2"
 tmux = ">=3.6a,<4"
+
+[activation]
+# Strip any leaked system /opt/ros/jazzy entries (protobuf 32) out of the
+# inherited env so they can't clash with pixi's gz/protobuf 31. See issue #454.
+scripts = ["scripts/pixi_scrub_system_ros.sh"]
 
 [activation.env]
 GZ_VERSION = "harmonic"
