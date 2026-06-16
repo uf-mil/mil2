@@ -7,9 +7,9 @@ Publishes directly to /cmd_wrench and temporarily disables the PID controller
 to observe raw drag forces without control smoothing.
 
 Usage: record_fwd <forward_force> <vertical_force> <horizontal_force> <duration_in_seconds>
-  forward_force         -- forward force in Newtons (+x, forward/backward)
-  vertical_force        -- vertical force in Newtons (+z, up/down)
-  horizontal_force      -- horizontal force in Newtons (+y, left/right strafe)
+  forward_force         -- forward force in Newtons
+  vertical_force        -- vertical force in Newtons
+  horizontal_force      -- horizontal force in Newtons
   duration_in_seconds   -- seconds to apply force and record
 """
 
@@ -114,6 +114,9 @@ csv_file = out_path.open("w", newline="")
 csv_writer = csv.writer(csv_file)
 header = [
     "t_sec",
+    "input_fx",
+    "input_fy",
+    "input_fz",
     *THRUSTER_FIELDS,
     "x",
     "y",
@@ -176,6 +179,10 @@ try:
                 yaw_rate_deg_s = math.degrees(float(current_twist.angular.z))
 
             row = [f"{t_sec:.3f}"]
+
+            row.append(f"{forward_n:.3f}")
+            row.append(f"{horizontal_n:.3f}")
+            row.append(f"{vertical_n:.3f}")
 
             for val in thrust_vals:
                 row.append(f"{val:.3f}")
