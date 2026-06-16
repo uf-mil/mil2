@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
@@ -29,6 +29,7 @@ def generate_launch_description():
                 executable="mil_robogym",
                 name="mil_robogym",
                 output="screen",
+                on_exit=Shutdown(),
             ),
             Node(
                 package="mil_robogym",

@@ -112,6 +112,7 @@ def _validate_project_config_payload(project: RoboGymProjectYaml) -> None:
         "random_spawn_space",
         "input_topics",
         "output_topics",
+        "tensor_spec",
     )
     for field_name in required_fields:
         if field_name not in project:
@@ -307,6 +308,7 @@ def _build_agent_config(
     num_demos: int,
     model_file_name: str,
     checkpoint_episode: int | None,
+    preprocessor_file_name: str | None = None,
     training_settings: RoboGymTrainingYaml | None = None,
 ) -> RoboGymAgentConfig:
     cfg: RoboGymAgentConfig = {
@@ -318,6 +320,8 @@ def _build_agent_config(
     }
     if checkpoint_episode is not None:
         cfg["robogym_agent"]["checkpoint_episode"] = checkpoint_episode
+    if preprocessor_file_name is not None:
+        cfg["robogym_agent"]["preprocessor_file"] = preprocessor_file_name
     if training_settings is not None:
         cfg["robogym_agent"]["training_settings"] = dict(training_settings)
     return cfg
@@ -454,7 +458,8 @@ def initialize_demo_numerical_csv_headers(
     Initialize numerical CSV headers when the file is empty.
     """
     if not headers:
-        raise ValueError("headers must be a non-empty list of column names.")
+        # Assume project is not collecting data from numerical fields
+        return
 
     _, numerical_csv_path, _ = _ensure_demo_data_layout(demo_dir)
     if numerical_csv_path.stat().st_size != 0:
@@ -698,6 +703,8 @@ def create_agent_folder(
     model_file_name: str = "weights.pt",
     agent_name: str | None = None,
     checkpoint_episode: int | None = None,
+    preprocessor_artifact_path: Path | None = None,
+    preprocessor_file_name: str | None = None,
     training_settings: RoboGymTrainingYaml | None = None,
 ) -> Path:
     """
@@ -719,6 +726,19 @@ def create_agent_folder(
 
     if not model_file_name.strip():
         raise ValueError("model_file_name must be a non-empty string")
+    if (preprocessor_artifact_path is None) != (preprocessor_file_name is None):
+        raise ValueError(
+            "preprocessor_artifact_path and preprocessor_file_name must be provided together.",
+        )
+    if (
+        preprocessor_artifact_path is not None
+        and not preprocessor_artifact_path.is_file()
+    ):
+        raise FileNotFoundError(
+            f"preprocessor_artifact_path not found: {preprocessor_artifact_path}",
+        )
+    if preprocessor_file_name is not None and not preprocessor_file_name.strip():
+        raise ValueError("preprocessor_file_name must be a non-empty string")
 
     if not training_metrics:
         raise ValueError("training_metrics is empty")
@@ -746,6 +766,7 @@ def create_agent_folder(
         num_demos=num_demos,
         model_file_name=model_file_name,
         checkpoint_episode=checkpoint_episode,
+        preprocessor_file_name=preprocessor_file_name,
         training_settings=training_settings,
     )
     with (agent_dir / "config.yaml").open("w", encoding="utf-8") as f:
@@ -753,6 +774,11 @@ def create_agent_folder(
 
     # 2) model artifact
     shutil.copyfile(trained_model_path, agent_dir / model_file_name)
+    if preprocessor_artifact_path is not None and preprocessor_file_name is not None:
+        shutil.copyfile(
+            preprocessor_artifact_path,
+            agent_dir / preprocessor_file_name,
+        )
 
     # 3) metrics CSV
     csv_path = agent_dir / "training_metrics.csv"

@@ -35,12 +35,14 @@ class _ModelSaver(Protocol):
 class _AgentSaveRequest:
     project_dirs: tuple[Path, ...]
     trained_model_path: Path
+    preprocessor_artifact_path: Path | None
     training_metrics: TrainingMetrics
     num_demos: int
     created_at: datetime
     model_file_name: str
     agent_name: str
     checkpoint_episode: int | None
+    preprocessor_file_name: str | None
     training_settings: RoboGymTrainingYaml | None
     future: Future[list[Path]]
 
@@ -111,12 +113,14 @@ class TrainingMetricsSession:
         self,
         *,
         generator: _ModelSaver,
+        preprocessor: _ModelSaver | None = None,
         project_dirs: Sequence[Path],
         num_demos: int,
         created_at: datetime,
         model_file_name: str,
         agent_name: str,
         checkpoint_episode: int | None = None,
+        preprocessor_file_name: str | None = None,
         training_settings: RoboGymTrainingYaml | None = None,
     ) -> Future[list[Path]]:
         """Serialize the model now and persist the heavier artifacts asynchronously."""
@@ -127,22 +131,38 @@ class TrainingMetricsSession:
             agent_name=agent_name,
             model_file_name=model_file_name,
         )
+        preprocessor_artifact_path: Path | None = None
+        if (preprocessor is None) != (preprocessor_file_name is None):
+            raise ValueError(
+                "preprocessor and preprocessor_file_name must be provided together.",
+            )
+        if preprocessor is not None and preprocessor_file_name is not None:
+            preprocessor_artifact_path = self._reserve_model_path(
+                agent_name=f"{agent_name}_preprocessor",
+                model_file_name=preprocessor_file_name,
+            )
         try:
             generator.save(str(trained_model_path))
+            if preprocessor_artifact_path is not None and preprocessor is not None:
+                preprocessor.save(str(preprocessor_artifact_path))
         except Exception:
             trained_model_path.unlink(missing_ok=True)
+            if preprocessor_artifact_path is not None:
+                preprocessor_artifact_path.unlink(missing_ok=True)
             raise
 
         future: Future[list[Path]] = Future()
         request = _AgentSaveRequest(
             project_dirs=tuple(project_dirs),
             trained_model_path=trained_model_path,
+            preprocessor_artifact_path=preprocessor_artifact_path,
             training_metrics=self.snapshot(),
             num_demos=num_demos,
             created_at=created_at,
             model_file_name=model_file_name,
             agent_name=agent_name,
             checkpoint_episode=checkpoint_episode,
+            preprocessor_file_name=preprocessor_file_name,
             training_settings=training_settings,
             future=future,
         )
@@ -189,6 +209,8 @@ class TrainingMetricsSession:
                             model_file_name=request.model_file_name,
                             agent_name=request.agent_name,
                             checkpoint_episode=request.checkpoint_episode,
+                            preprocessor_artifact_path=request.preprocessor_artifact_path,
+                            preprocessor_file_name=request.preprocessor_file_name,
                             training_settings=request.training_settings,
                         )
                         for project_dir in request.project_dirs
@@ -210,6 +232,8 @@ class TrainingMetricsSession:
             finally:
                 if item is not _STOP_WORKER:
                     item.trained_model_path.unlink(missing_ok=True)
+                    if item.preprocessor_artifact_path is not None:
+                        item.preprocessor_artifact_path.unlink(missing_ok=True)
                 self._save_queue.task_done()
 
     def _reserve_model_path(self, *, agent_name: str, model_file_name: str) -> Path:

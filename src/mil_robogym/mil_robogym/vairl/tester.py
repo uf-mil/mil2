@@ -7,6 +7,8 @@ from mil_robogym.data_collection.types import Coord4D, RoboGymProjectYaml
 
 from ..clients.controller_client import ControllerClient
 from ..clients.data_collector_client import DataCollectorClient
+from ..clients.draw_marker_client import DrawMarkerClient
+from ..clients.get_pose_client import GetPoseClient
 from ..clients.localization_client import LocalizationClient
 from ..clients.move_client import MoveClient
 from ..clients.set_pose_client import SetPoseClient
@@ -20,17 +22,20 @@ class Tester:
 
     def __init__(self, project: RoboGymProjectYaml):
 
+        # Save project
+        self.project = project
+
         # Create clients
         self.data_collector_client = DataCollectorClient()
-        self.data_collector_client.establish_subscriptions(
-            list(project["input_topics"].keys()),
-        )
+        self.data_collector_client.establish_subscriptions(project)
 
         self.controller_client = ControllerClient()
         self.localization_client = LocalizationClient()
         self.move_client = MoveClient()
         self.set_pose_client = SetPoseClient()
+        self.get_pose_client = GetPoseClient()
         self.world_control_client = WorldControlClient()
+        self.draw_marker_client = DrawMarkerClient()
 
         # Agent parameters
         self.agent = None
@@ -44,6 +49,10 @@ class Tester:
 
         self.input_features = project["tensor_spec"]["input_features"]
 
+        self.x_min, self.x_max = -11.0, 11.0
+        self.y_min, self.y_max = -25.0, 25.0
+        self.z_min, self.z_max = -1.0, 0.0
+
     def set_agent(self, agent: LoadedAgent) -> None:
         """
         Set the selected agent to be tested.
@@ -51,7 +60,7 @@ class Tester:
         self.agent = agent
         self.max_step_count = agent.handle.training_settings["max_step_count"]
 
-    def test_agent(self) -> None:
+    def test_agent(self, validate: bool = False) -> None:
         """
         Run one path with the agent.
         """
@@ -60,6 +69,10 @@ class Tester:
             # Place the sub in a random position
             x, y, z, yaw = np.random.uniform(low=self.min_coord, high=self.max_coord)
             self.set_pose_client.set_pose(x, y, z, yaw=yaw)
+
+            if validate:
+                self.draw_marker_client.clear_markers()
+                self.draw_marker_client.place_marker((x, y, z, yaw))
 
             # Ready simulation
             self.world_control_client.play_simulation()
@@ -74,8 +87,9 @@ class Tester:
             for i in range(self.max_step_count):
 
                 # Get state
+                # NOTE: We do not need to interpret the data because the agent should be saved with external architecture
                 state = self.data_collector_client.get_flattened_snapshot_values(
-                    self.input_features,
+                    self.project,
                 )
 
                 # Generate action
@@ -85,7 +99,19 @@ class Tester:
                 move_coord = self._world_to_body(action)
 
                 # Move sub
-                self.move_client.move(move_coord)
+                if validate:
+                    prev_pose = [x, y, z, yaw]
+
+                    next_pose, _ = self._apply_action_with_bounds(prev_pose, action)
+
+                    self.draw_marker_client.slerp(prev_pose, next_pose)
+
+                    x, y, z, yaw = next_pose
+                    self.set_pose_client.set_pose(x, y, z, yaw=yaw)
+
+                    self.draw_marker_client.place_marker(next_pose)
+                else:
+                    self.move_client.move(move_coord)
 
             # Stop simulation
             self.world_control_client.pause_simulation()
@@ -99,14 +125,42 @@ class Tester:
             )
 
     def _world_to_body(self, move_coord: Coord4D) -> Coord4D:
-        self.move_client.get_logger().info(f"World frame vector {move_coord}")
+        sub_pose = self.get_pose_client.send_request()
+        sub_yaw = sub_pose.yaw
 
-        dx_w, dy_w, z, yaw = move_coord
+        self.move_client.get_logger().info(
+            f"World frame vector {move_coord} | Sub yaw: {sub_yaw}",
+        )
 
-        cos_y = np.cos(yaw)
-        sin_y = np.sin(yaw)
+        dx_w, dy_w, z, yaw_w = move_coord
 
-        dx_b = cos_y * dx_w + sin_y * dy_w
-        dy_b = -sin_y * dx_w + cos_y * dy_w
+        dx_b = np.cos(sub_yaw) * dx_w + np.sin(sub_yaw) * dy_w
+        dy_b = -np.sin(sub_yaw) * dx_w + np.cos(sub_yaw) * dy_w
 
-        return (dy_b, dx_b, z, yaw)
+        return (dx_b, dy_b, z, yaw_w)
+
+    def _apply_action_with_bounds(self, pose, action):
+        """
+        Applies action to pose while enforcing pool bounds.
+
+        Returns:
+            new_pose (np.ndarray): bounded pose
+            within_bounds (bool): True if no clipping occurred
+        """
+        action = np.asarray(action, dtype=np.float32)
+        pose = np.asarray(pose, dtype=np.float32)
+
+        # Proposed new pose
+        proposed = pose + action
+
+        # Clamp to bounds
+        clamped = proposed.copy()
+        clamped[0] = np.clip(proposed[0], self.x_min, self.x_max)  # x
+        clamped[1] = np.clip(proposed[1], self.y_min, self.y_max)  # y
+        clamped[2] = np.clip(proposed[2], self.z_min, self.z_max)  # z
+        clamped[3] = proposed[3]  # yaw (no bounds unless you want wrap)
+
+        # Check if anything was clipped
+        within_bounds = np.allclose(proposed[:3], clamped[:3])
+
+        return clamped, within_bounds

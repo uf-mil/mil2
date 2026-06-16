@@ -9,15 +9,38 @@ from mil_robogym.data_collection.filesystem import create_project_folder
 from mil_robogym.data_collection.utils import to_lower_snake_case
 
 
-def test_create_project_folder(tmp_path: Path, monkeypatch):
-    """Creates a project folder and writes a project config file."""
-    monkeypatch.setattr(
-        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
-        lambda: tmp_path / "projects",
-    )
+def _tensor_spec(
+    *,
+    input_topics: dict[str, list[str]],
+    output_topics: dict[str, list[str]],
+) -> dict[str, object]:
+    input_features = [
+        f"{topic}:{field}" for topic, fields in input_topics.items() for field in fields
+    ]
+    output_features = [
+        f"{topic}:{field}"
+        for topic, fields in output_topics.items()
+        for field in fields
+    ]
+    return {
+        "input_features": input_features,
+        "output_features": output_features,
+        "input_dim": len(input_features),
+        "output_dim": len(output_features),
+    }
 
-    proj = {
-        "name": "Start Gate Agent",
+
+def _project_payload(
+    name: str,
+    *,
+    input_topics: dict[str, list[str]],
+    output_topics: dict[str, list[str]],
+    input_non_numeric_topics: dict[str, list[dict[str, str]]] | None = None,
+    output_non_numeric_topics: dict[str, list[dict[str, str]]] | None = None,
+    tensor_spec: dict[str, object] | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "name": name,
         "world_file": "src/default/world/file",
         "model_name": "weights.pt",
         "random_spawn_space": {
@@ -25,12 +48,33 @@ def test_create_project_folder(tmp_path: Path, monkeypatch):
             "coord1_4d": [0.0, 0.0, 0.0, 0.0],
             "coord2_4d": [1.0, 2.0, 3.0, 4.0],
         },
-        "input_topics": {
+        "input_topics": input_topics,
+        "output_topics": output_topics,
+        "tensor_spec": tensor_spec
+        or _tensor_spec(input_topics=input_topics, output_topics=output_topics),
+    }
+    if input_non_numeric_topics is not None:
+        payload["input_non_numeric_topics"] = input_non_numeric_topics
+    if output_non_numeric_topics is not None:
+        payload["output_non_numeric_topics"] = output_non_numeric_topics
+    return payload
+
+
+def test_create_project_folder(tmp_path: Path, monkeypatch):
+    """Creates a project folder and writes a project config file."""
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.filesystem.resolve_source_projects_dir",
+        lambda: tmp_path / "projects",
+    )
+
+    proj = _project_payload(
+        "Start Gate Agent",
+        input_topics={
             "imu/processed": ["orientation.x", "orientation.y"],
             "dvl/processed": ["velocity.x"],
         },
-        "output_topics": {"trajectory/4_deg": ["yaw"]},
-    }
+        output_topics={"trajectory/4_deg": ["yaw"]},
+    )
 
     project_dir = create_project_folder(proj)
 
@@ -84,18 +128,11 @@ def test_create_project_folder_raises_if_exists(tmp_path, monkeypatch):
         lambda: tmp_path / "projects",
     )
 
-    proj = {
-        "name": "Start Gate Agent",
-        "world_file": "src/default/world/file",
-        "model_name": "weights.pt",
-        "random_spawn_space": {
-            "enabled": False,
-            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
-            "coord2_4d": [0.0, 0.0, 0.0, 0.0],
-        },
-        "input_topics": {"imu/processed": [], "dvl/processed": []},
-        "output_topics": {"trajectory/4_deg": []},
-    }
+    proj = _project_payload(
+        "Start Gate Agent",
+        input_topics={"imu/processed": [], "dvl/processed": []},
+        output_topics={"trajectory/4_deg": []},
+    )
 
     # Create the folder first time
     first = create_project_folder(proj)
@@ -113,24 +150,17 @@ def test_create_project_folder_writes_tensor_spec(tmp_path: Path, monkeypatch):
         lambda: tmp_path / "projects",
     )
 
-    proj = {
-        "name": "Tensor Spec Project",
-        "world_file": "src/default/world/file",
-        "model_name": "weights.pt",
-        "random_spawn_space": {
-            "enabled": False,
-            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
-            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
-        },
-        "input_topics": {"imu/processed": ["x", "y"]},
-        "output_topics": {"trajectory/4_deg": ["heading"]},
-        "tensor_spec": {
+    proj = _project_payload(
+        "Tensor Spec Project",
+        input_topics={"imu/processed": ["x", "y"]},
+        output_topics={"trajectory/4_deg": ["heading"]},
+        tensor_spec={
             "input_features": ["imu/processed:x", "imu/processed:y"],
             "output_features": ["trajectory/4_deg:heading"],
             "input_dim": 2,
             "output_dim": 1,
         },
-    }
+    )
 
     project_dir = create_project_folder(proj)
     cfg = yaml.safe_load((project_dir / "config.yaml").read_text(encoding="utf-8"))
@@ -160,25 +190,18 @@ def test_create_project_folder_rejects_legacy_ignored_tensor_spec_fields(
         lambda: tmp_path / "projects",
     )
 
-    proj = {
-        "name": "Legacy Tensor Spec Project",
-        "world_file": "src/default/world/file",
-        "model_name": "weights.pt",
-        "random_spawn_space": {
-            "enabled": False,
-            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
-            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
-        },
-        "input_topics": {"imu/processed": ["x"]},
-        "output_topics": {"trajectory/4_deg": ["heading"]},
-        "tensor_spec": {
+    proj = _project_payload(
+        "Legacy Tensor Spec Project",
+        input_topics={"imu/processed": ["x"]},
+        output_topics={"trajectory/4_deg": ["heading"]},
+        tensor_spec={
             "input_features": ["imu/processed:x"],
             "output_features": ["trajectory/4_deg:heading"],
             "input_dim": 1,
             "output_dim": 1,
             "ignored_input_features": {"imu/processed": ["frame_id"]},
         },
-    }
+    )
 
     with pytest.raises(ValueError, match="must not include ignored_input_features"):
         create_project_folder(proj)
@@ -192,18 +215,11 @@ def test_create_project_folder_writes_source_only(tmp_path: Path, monkeypatch):
         lambda: source_projects,
     )
 
-    proj = {
-        "name": "Dual Write Project",
-        "world_file": "src/default/world/file",
-        "model_name": "weights.pt",
-        "random_spawn_space": {
-            "enabled": False,
-            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
-            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
-        },
-        "input_topics": {"imu/processed": ["velocity.x"]},
-        "output_topics": {"trajectory/4_deg": ["yaw"]},
-    }
+    proj = _project_payload(
+        "Dual Write Project",
+        input_topics={"imu/processed": ["velocity.x"]},
+        output_topics={"trajectory/4_deg": ["yaw"]},
+    )
 
     created_project_dir = create_project_folder(proj)
     source_project_dir = source_projects / "dual_write_project"
@@ -222,18 +238,11 @@ def test_create_project_folder_writes_non_numeric_topic_selections(
         lambda: tmp_path / "projects",
     )
 
-    proj = {
-        "name": "Typed Topics Project",
-        "world_file": "src/default/world/file",
-        "model_name": "weights.pt",
-        "random_spawn_space": {
-            "enabled": False,
-            "coord1_4d": [0.0, 0.0, 0.0, 0.0],
-            "coord2_4d": [1.0, 2.0, 3.0, 4.0],
-        },
-        "input_topics": {"camera/image_raw": []},
-        "output_topics": {"detections": []},
-        "input_non_numeric_topics": {
+    proj = _project_payload(
+        "Typed Topics Project",
+        input_topics={"camera/image_raw": []},
+        output_topics={"detections": []},
+        input_non_numeric_topics={
             "camera/image_raw": [
                 {
                     "field_path": "data",
@@ -242,7 +251,7 @@ def test_create_project_folder_writes_non_numeric_topic_selections(
                 },
             ],
         },
-        "output_non_numeric_topics": {
+        output_non_numeric_topics={
             "detections": [
                 {
                     "field_path": "detections",
@@ -251,7 +260,7 @@ def test_create_project_folder_writes_non_numeric_topic_selections(
                 },
             ],
         },
-    }
+    )
 
     project_dir = create_project_folder(proj)
     cfg = yaml.safe_load((project_dir / "config.yaml").read_text(encoding="utf-8"))

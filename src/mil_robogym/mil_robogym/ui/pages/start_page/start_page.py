@@ -7,6 +7,7 @@ from mil_robogym.data_collection.get_all_project_config import (
     get_all_project_config,
 )
 from mil_robogym.data_collection.utils import to_lower_snake_case
+from mil_robogym.ui.components.scrollable_frame import ScrollableFrame
 
 from .project_row import ProjectRow
 
@@ -56,9 +57,9 @@ class StartPage(tk.Frame):
         title.grid(row=0, column=0, sticky="ew", pady=(0, 8))
 
         # List area
-        self.list_area = tk.Frame(container, bg="#DADADA")
+        self.list_area = ScrollableFrame(container, bg="#DADADA", fill_height=True)
         self.list_area.grid(row=1, column=0, sticky="nsew")
-        self.list_area.grid_columnconfigure(0, weight=1)
+        self.list_area.content.grid_columnconfigure(0, weight=1)
         self._render_projects()
 
         # Bottom button (Create Project +)
@@ -131,7 +132,7 @@ class StartPage(tk.Frame):
         self._render_projects()
 
     def _render_projects(self):
-        for child in self.list_area.winfo_children():
+        for child in self.list_area.content.winfo_children():
             child.destroy()
 
         projects = get_all_project_config()
@@ -143,13 +144,14 @@ class StartPage(tk.Frame):
 
         if not valid_projects:
             empty = tk.Label(
-                self.list_area,
+                self.list_area.content,
                 text="No projects found.",
                 bg="#DADADA",
                 fg="#444444",
                 anchor="w",
             )
             empty.grid(row=0, column=0, sticky="w", pady=4)
+            self.list_area.reset_scroll()
             return
 
         for i, project in enumerate(valid_projects):
@@ -157,7 +159,7 @@ class StartPage(tk.Frame):
             demos = project["num_demos"]
 
             row = ProjectRow(
-                self.list_area,
+                self.list_area.content,
                 name,
                 f"{demos} demonstrations",
                 command=lambda p=project: self._on_project(p),
@@ -170,3 +172,5 @@ class StartPage(tk.Frame):
                         grandchild.configure(font=self._row_font)
 
             row.grid(row=i, column=0, sticky="ew", pady=4)
+
+        self.list_area.reset_scroll()

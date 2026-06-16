@@ -80,6 +80,7 @@ class RoboGymAgentYaml(TypedDict):
     num_demos: int
     model_file: str
     checkpoint_episode: NotRequired[int]
+    preprocessor_file: NotRequired[str]
     training_settings: NotRequired[RoboGymTrainingYaml]
 
 
