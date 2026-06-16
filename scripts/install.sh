@@ -209,6 +209,7 @@ $(hash_header)$(color "$Res")
 EOF
 
 # Install Python 3 dependencies
+sudo pip3 install --ignore-installed typing_extensions # preinstalled
 sudo pip3 install -r requirements.txt
 
 cat <<EOF
