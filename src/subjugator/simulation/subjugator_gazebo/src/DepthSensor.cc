@@ -51,7 +51,6 @@ void DepthSensor::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf:
         this->noiseDist_ = std::normal_distribution<double>(noiseMean, this->noiseStdDev_);
     }
 
-
     if (!rclcpp::ok())
     {
         rclcpp::init(0, nullptr);
