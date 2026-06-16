@@ -209,7 +209,10 @@ $(hash_header)$(color "$Res")
 EOF
 
 # Install Python 3 dependencies
-sudo pip3 install -r requirements.txt
+# --ignore-installed: some deps (e.g. typing_extensions) are dpkg-owned on
+# Ubuntu 24.04 and lack a pip RECORD, so pip cannot uninstall them to upgrade.
+# Installing fresh avoids the uninstall step and the resulting hard failure.
+sudo pip3 install --ignore-installed -r requirements.txt
 
 cat <<EOF
 $(color "$Pur")
