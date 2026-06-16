@@ -1,7 +1,6 @@
-<root BTCPP_format="4" main_tree_to_execute="RollStyleTest">
-    <BehaviorTree ID="RollStyleTest">
-    <Sequence>
-
+<root BTCPP_format="4" main_tree_to_execute="PitchStyleTest">
+    <BehaviorTree ID="PitchStyleTest">
+        <Sequence>
             <Delay delay_msec="15000"><AlwaysSuccess/></Delay>
 
             <!-- go down -->
@@ -13,16 +12,9 @@
             <!-- wait -->
             <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
 
-            <Sequence> <!--normal battery milliseconds = 4750-->
-                <RollStyle name="roll_style" milliseconds="5250" momentum_ms="1500"ctx="{ctx}" />
-                <Delay delay_msec="4000"><AlwaysSuccess/></Delay>
-            </Sequence>
-
-	    <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
-
             <Sequence>
-                <RollStyle name="roll_style" milliseconds="5250" momentum_ms="1500"ctx="{ctx}" />
-		<Delay delay_msec="4000"><AlwaysSuccess/></Delay>
+                <PitchStyle name="pitch_style" milliseconds="7000" momentum_ms="2000" ctx="{ctx}" />
+                <Delay delay_msec="4000"><AlwaysSuccess/></Delay>
             </Sequence>
 
             <!-- surface -->
@@ -30,7 +22,6 @@
                 x="0.0" y="0.0" z="1.2"
                 pos_tol="0.05" ori_tol_deg="12.0" msec="25000"
                 ctx="{ctx}"/>
-
         </Sequence>
     </BehaviorTree>
 </root>

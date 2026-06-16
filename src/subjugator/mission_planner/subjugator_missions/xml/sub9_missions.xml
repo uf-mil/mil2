@@ -27,4 +27,5 @@
     <include path="torpedo_homing_motion.xml"/>
     <include path="torpedo_mission.xml"/>
     <include path="roll_style.xml"/>
+    <include path="pitch_style.xml"/>
 </root>
