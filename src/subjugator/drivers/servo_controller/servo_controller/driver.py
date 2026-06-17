@@ -45,9 +45,11 @@ class Servo_Controller(Node):
         # gripper range is 318(open) 210(close)
         dev.set_pwm(7, request.angle)
         if request.angle == 1:
-            dev.set_pwm(7, 318)
+            dev.set_pwm(7, 380)
         elif request.angle == 2:
-            dev.set_pwm(7, 210)
+            dev.set_pwm(7, 240)
+        # else:
+        #     dev.set_pwm(7, request.angle)
         time.sleep(0.5)
 
         return response
