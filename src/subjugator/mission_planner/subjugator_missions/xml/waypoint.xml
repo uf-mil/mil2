@@ -2,7 +2,7 @@
     <BehaviorTree ID="GoToWaypoint">
         <Sequence>
             <Action ID="LookupWaypoint"
-                    name="{name}" ctx="{ctx}"
+                    waypoint="{waypoint}" ctx="{ctx}"
                     x="{wp_x}" y="{wp_y}" z="{wp_z}"
                     qx="{wp_qx}" qy="{wp_qy}" qz="{wp_qz}" qw="{wp_qw}"/>
 

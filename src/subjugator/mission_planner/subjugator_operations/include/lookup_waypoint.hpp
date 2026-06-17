@@ -23,7 +23,7 @@ class LookupWaypoint final : public BT::SyncActionNode, public OperationBase
     static BT::PortsList providedPorts()
     {
         return {
-            BT::InputPort<std::string>("name", "Waypoint name to look up"),
+            BT::InputPort<std::string>("waypoint", "Waypoint name to look up"),
             BT::InputPort<std::shared_ptr<Context>>("ctx", "Shared Context"),
             BT::OutputPort<double>("x"),
             BT::OutputPort<double>("y"),
@@ -47,9 +47,9 @@ class LookupWaypoint final : public BT::SyncActionNode, public OperationBase
         }
 
         std::string wp_name;
-        if (!getInput("name", wp_name) || wp_name.empty())
+        if (!getInput("waypoint", wp_name) || wp_name.empty())
         {
-            RCLCPP_ERROR(ctx_->logger(), "LookupWaypoint: missing or empty 'name' input");
+            RCLCPP_ERROR(ctx_->logger(), "LookupWaypoint: missing or empty 'waypoint' input");
             return BT::NodeStatus::FAILURE;
         }
 

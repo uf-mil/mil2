@@ -13,7 +13,8 @@
 // Captures the most recently published goal pose (ctx->last_goal) and stores
 // it in ctx->waypoints under the given name. Using last_goal (instead of odom)
 // means we remember the commanded point, not where the sub physically settled.
-// FAILURE if no goal has been published yet.
+// If no goal has been published yet, defaults to the origin (0,0,0) with
+// identity orientation.
 class RememberWaypoint final : public BT::SyncActionNode, public OperationBase
 {
   public:
@@ -25,7 +26,7 @@ class RememberWaypoint final : public BT::SyncActionNode, public OperationBase
     static BT::PortsList providedPorts()
     {
         return {
-            BT::InputPort<std::string>("name", "Name to store the last goal pose under"),
+            BT::InputPort<std::string>("waypoint", "Name to store the last goal pose under"),
             BT::InputPort<bool>("overwrite", true, "Overwrite existing waypoint with same name"),
             BT::InputPort<std::shared_ptr<Context>>("ctx", "Shared Context"),
         };
@@ -43,9 +44,9 @@ class RememberWaypoint final : public BT::SyncActionNode, public OperationBase
         }
 
         std::string wp_name;
-        if (!getInput("name", wp_name) || wp_name.empty())
+        if (!getInput("waypoint", wp_name) || wp_name.empty())
         {
-            RCLCPP_ERROR(ctx_->logger(), "RememberWaypoint: missing or empty 'name' input");
+            RCLCPP_ERROR(ctx_->logger(), "RememberWaypoint: missing or empty 'waypoint' input");
             return BT::NodeStatus::FAILURE;
         }
 
@@ -57,16 +58,18 @@ class RememberWaypoint final : public BT::SyncActionNode, public OperationBase
             std::scoped_lock lk(ctx_->last_goal_mx);
             last_goal = ctx_->last_goal;
         }
-        if (!last_goal)
+        geometry_msgs::msg::Pose pose;
+        if (last_goal)
         {
-            RCLCPP_ERROR(ctx_->logger(),
-                         "RememberWaypoint '%s': no last_goal yet; publish a goal before "
-                         "remembering",
-                         wp_name.c_str());
-            return BT::NodeStatus::FAILURE;
+            pose = *last_goal;
         }
-
-        geometry_msgs::msg::Pose const pose = *last_goal;
+        else
+        {
+            // No goal published yet; default to the origin with identity orientation.
+            pose.orientation.w = 1.0;
+            RCLCPP_WARN(ctx_->logger(), "RememberWaypoint '%s': no last_goal yet; defaulting to origin (0,0,0)",
+                        wp_name.c_str());
+        }
         {
             std::scoped_lock lk(ctx_->waypoints_mx);
             auto it = ctx_->waypoints.find(wp_name);
