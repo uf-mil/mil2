@@ -1,0 +1,24 @@
+<root BTCPP_format="4" main_tree_to_execute="TorpedoMission">
+  <BehaviorTree ID="TorpedoMission">
+    <Sequence>
+
+      <!-- Home onto the first target -->
+      <SubTree ID="TorpedoHomingMotion" _autoremap="true"
+               label="Red spiral"
+               ctx="{ctx}"/>
+
+      <!-- Fire torpedo 1 -->
+      <Action ID="ActuateServo" target="torpedo" angle="1" ctx="{ctx}"/>
+      <Delay delay_msec="1500"><AlwaysSuccess/></Delay>
+
+      <!-- Re-home onto the second target (change label if it's a different YOLO class) -->
+      <SubTree ID="TorpedoHomingMotion" _autoremap="true"
+               label="Red spiral"
+               ctx="{ctx}"/>
+
+      <!-- Fire torpedo 2 -->
+      <Action ID="ActuateServo" target="torpedo" angle="2" ctx="{ctx}"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>
