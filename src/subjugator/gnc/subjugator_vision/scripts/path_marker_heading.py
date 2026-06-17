@@ -14,6 +14,7 @@ import numpy as np
 import rclpy
 from cv_bridge import CvBridge
 from geometry_msgs.msg import QuaternionStamped
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 
@@ -34,6 +35,21 @@ class PathMarkerHeading(Node):
         self.get_logger().info(
             "PathMarkerHeading: waiting for images on /down_cam/image_raw",
         )
+        self.current_yaw = 0.0  # will be updated by odometry
+
+        self.create_subscription(
+            Odometry,
+            "/odometry/filtered",
+            self.odom_callback,
+            10,
+        )
+
+    def odom_callback(self, msg: Odometry):
+        # Pull the quaternion out of the odometry message
+        q = msg.pose.pose.orientation
+        #   Convert quaternion to yaw angle using the same math as everywhere else
+        # atan2 gives us the yaw from the quaternion's z and w components
+        self.current_yaw = 2.0 * math.atan2(q.z, q.w)
 
     def image_callback(self, msg: Image):
         # convert ROS image to OpenCV format
@@ -101,7 +117,7 @@ class PathMarkerHeading(Node):
         yaw_rad = math.radians(rect_angle)
 
         # fix 180° ambiguity using current heading as a tiebreaker
-        current_yaw = 0.0  # replace with real odomentry yaw
+        current_yaw = self.current_yaw
         option_a = yaw_rad
         option_b = yaw_rad + math.pi
 
