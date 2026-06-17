@@ -23,12 +23,16 @@
 #include "nav_channel_control.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
+#include "std_srvs/srv/set_bool.hpp"
+#include "subjugator_msgs/msg/thruster_efforts.hpp"
 #include "track_best_pair.hpp"
 #include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <count_when_ticked.hpp>
 #include <go_to_pinger.hpp>
+#include <pitch_style.hpp>
+#include <roll_style.hpp>
 #include <topic_ticker.hpp>
 #include <yaw_style.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
@@ -74,6 +78,8 @@ int main(int argc, char** argv)
     ctx->dropper_client = node->create_client<subjugator_msgs::srv::Servo>("dropper");
     ctx->gripper_client = node->create_client<subjugator_msgs::srv::Servo>("gripper");
     ctx->torpedo_client = node->create_client<subjugator_msgs::srv::Servo>("torpedo");
+    ctx->controller_enable_client = node->create_client<std_srvs::srv::SetBool>("/pid_controller/enable", 10);
+    ctx->raw_effort_pub = node->create_publisher<subjugator_msgs::msg::ThrusterEfforts>("/thruster_efforts", 10);
 
     // Wait for odometry before starting mission
     RCLCPP_INFO(node->get_logger(), "Waiting for odometry...");
@@ -115,6 +121,8 @@ int main(int argc, char** argv)
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
     factory.registerNodeType<SonarFollower>("SonarFollower");
     factory.registerNodeType<YawStyle>("YawStyle");
+    factory.registerNodeType<RollStyle>("RollStyle");
+    factory.registerNodeType<PitchStyle>("PitchStyle");
 
     // Load all tree models from installed xml
     std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");
