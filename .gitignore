@@ -192,3 +192,4 @@ cython_debug/
 
 bag_files
 src/mil_common/perception/vision_stack/
+src/subjugator/mission_planner/logs/mission_debug.txt

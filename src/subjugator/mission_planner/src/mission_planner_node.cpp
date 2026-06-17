@@ -15,8 +15,12 @@
 #include "determine_channel_side.hpp"
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
+#include "hone_midpoint.hpp"
+#include "log_to_file.hpp"
+#include "nav_channel_control.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
+#include "track_best_pair.hpp"
 #include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -83,6 +87,7 @@ int main(int argc, char** argv)
     BT::BehaviorTreeFactory factory;
     factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
     factory.registerNodeType<AtGoalPose>("AtGoalPose");
+    factory.registerNodeType<LogToFile>("LogToFile");
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
     factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
@@ -91,6 +96,9 @@ int main(int argc, char** argv)
     factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
+    factory.registerNodeType<TrackBestPair>("TrackBestPair");
+    factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
+    factory.registerNodeType<NavChannelControl>("NavChannelControl");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
@@ -126,7 +134,7 @@ int main(int argc, char** argv)
     BT::StdCoutLogger logger_cout(*tree_ptr);
 
     RCLCPP_INFO(node->get_logger(), "Mission Planner started. Ticking tree…");
-    rclcpp::WallRate rate(20.0);
+    rclcpp::WallRate rate(30.0);
 
     std::string xml_models = BT::writeTreeNodesModelXML(factory);
     std::ofstream("/home/carlos/models.xml") << xml_models;

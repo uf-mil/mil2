@@ -16,7 +16,7 @@ setup(
     maintainer_email="jgoodman1@ufl.edu",
     description="TODO: Package description",
     license="Apache-2.0",
-    extras_require={"test": ["pytest"]},
+    tests_require=["pytest"],
     entry_points={
         "console_scripts": [
             "new_depth_driver = new_depth_driver.new_depth_driver:main",

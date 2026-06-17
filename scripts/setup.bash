@@ -284,6 +284,10 @@ function move_rel() {
 	python3 "$MIL_REPO/scripts/move_rel.py" "$@"
 }
 
+function largest_area_sum() {
+	python3 "$MIL_REPO/scripts/largest_area_sum.py" "$@"
+}
+
 alias list_mil_devices="list_lan_devices 192.168.37.1/24"
 
 # aliases for localization and controller service calls
@@ -322,19 +326,19 @@ torpedo() {
 # Mission Planner launcher
 mp() {
 	if [[ $# -ne 1 ]]; then
-		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission|BUSTMission|NavChannelMission|ETHAN>"
+		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission|BUSTMission|NavChannelMission|ETHAN|pcNavChannel>"
 		return 2
 	fi
 
 	local mission="$1"
 	case "$mission" in
-	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission | ETHAN)
+	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission | ETHAN | pcNavChannel)
 		echo "Launching mission_planner with mission: ${mission}"
 		ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
 		;;
 	*)
 		echo "Invalid mission: ${mission}"
-		echo "Valid missions: SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN"
+		echo "Valid missions: SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
 		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
 		return 2
 		;;
@@ -345,7 +349,7 @@ _mp_complete() {
 	local cur
 	cur=${COMP_WORDS[COMP_CWORD]}
 
-	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN"
+	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
 	COMPREPLY=()
 	while IFS='' read -r line; do
 		COMPREPLY+=("$line")
