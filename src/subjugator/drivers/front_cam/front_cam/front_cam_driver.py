@@ -44,7 +44,6 @@ class FrontCamDriver(Node):
         # say params exist
         self.declare_parameter(
             "camera-id",
-            # "/dev/v4l/by-id/usb-H264_USB_Camera_H264_USB_Camera_2020032801-video-index0" # old
             "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.3:1.0-video-index0",
         )
         self.declare_parameter("camera-topic", "front_cam/image_raw")
@@ -59,7 +58,16 @@ class FrontCamDriver(Node):
         self.get_logger().warn(topic_name)
 
         self.cv_bridge = CvBridge()
-        self.cap = cv2.VideoCapture(camera_id)
+        self.cap = cv2.VideoCapture(
+            camera_id,
+            cv2.CAP_V4L,
+            (
+                cv2.CAP_PROP_FRAME_WIDTH,
+                640,
+                cv2.CAP_PROP_FRAME_HEIGHT,
+                360,
+            ),
+        )
         if not self.cap.isOpened():
             self.get_logger().error("could not open camera")
             return
@@ -67,12 +75,9 @@ class FrontCamDriver(Node):
         # Create publisher
         self.img_pub = self.create_publisher(Image, topic_name, 10)
 
-        # run this forever
-        self.get_frame_and_publish()
-
-    def get_frame_and_publish(self):
+    def publish_forever(self):
         while True:
-            rclpy.spin_once(self, timeout_sec=0.01)
+            # rclpy.spin_once(self, timeout_sec=0.01)
             ret, frame = self.cap.read()
             if not ret:
                 self.get_logger().warn("no frame from camera")
@@ -95,8 +100,8 @@ class FrontCamDriver(Node):
 
 def main():
     rclpy.init()
-    _ = FrontCamDriver()
-    # rclpy.spin(_) # this node spins itself
+    front_cam = FrontCamDriver()
+    front_cam.publish_forever()
     rclpy.shutdown()
 
 
