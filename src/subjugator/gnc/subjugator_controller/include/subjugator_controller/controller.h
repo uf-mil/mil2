@@ -40,6 +40,8 @@ class PIDController : public rclcpp::Node
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr sub_goal_trajectory_;
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr sub_relative_goal_trajectory_;
     rclcpp::Publisher<geometry_msgs::msg::Wrench>::SharedPtr pub_cmd_wrench_;
+    rclcpp::Subscription<geometry_msgs::msg::Wrench>::SharedPtr pub_add_wrench_;
+    geometry_msgs::msg::Wrench add_wrench{};
 
     rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_service_;
     rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr enable_service_;
