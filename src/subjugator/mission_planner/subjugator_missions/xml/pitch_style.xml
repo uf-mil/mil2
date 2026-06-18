@@ -1,27 +1,8 @@
 <root BTCPP_format="4" main_tree_to_execute="PitchStyleTest">
-    <BehaviorTree ID="PitchStyleTest">
+    <BehaviorTree ID="PitchStylePoints">
         <Sequence>
-            <Delay delay_msec="15000"><AlwaysSuccess/></Delay>
-
-            <!-- go down -->
-            <SubTree ID="RelativeMove" _autoremap="true"
-                x="0.0" y="0.0" z="-1.5"
-                pos_tol="0.15" ori_tol_deg="12.0" msec="25000"
-                ctx="{ctx}"/>
-
-            <!-- wait -->
-            <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
-
-            <Sequence>
-                <PitchStyle name="pitch_style" milliseconds="7000" momentum_ms="2000" ctx="{ctx}" />
-                <Delay delay_msec="4000"><AlwaysSuccess/></Delay>
-            </Sequence>
-
-            <!-- surface -->
-            <SubTree ID="RelativeMove" _autoremap="true"
-                x="0.0" y="0.0" z="1.2"
-                pos_tol="0.05" ori_tol_deg="12.0" msec="25000"
-                ctx="{ctx}"/>
+            <PitchStyle name="pitch_style" milliseconds="{milliseconds}" momentum_ms="{momentum_ms}" ctx="{ctx}" />
+            <Delay delay_msec="4000"><AlwaysSuccess/></Delay>
         </Sequence>
     </BehaviorTree>
 </root>
