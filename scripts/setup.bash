@@ -357,6 +357,29 @@ _mp_complete() {
 }
 complete -F _mp_complete mp
 
+# Fast cached tab completion for ros2 run / ros2 launch
+_ros2_autocomplete() {
+	local prev="${COMP_WORDS[COMP_CWORD - 1]}"
+	local pkg_cache=/tmp/.ros2_autocomplete_pkgs
+
+	[[ $prev == run || $prev == launch ]] || return
+
+	# Synchronous fallback if cache doesn't exist
+	[ ! -f "$pkg_cache" ] && ros2 pkg list >"$pkg_cache" 2>/dev/null
+
+	COMPREPLY=()
+	while IFS='' read -r line; do
+		COMPREPLY+=("$line")
+	done < <(compgen -W "$(cat "$pkg_cache")" -- "${COMP_WORDS[COMP_CWORD]}")
+
+	# Update cache in background (if nobody else is doing it)
+	(flock -n "$pkg_cache.new" bash -c \
+		"source '$MIL_REPO/install/setup.bash' 2>/dev/null && \
+		 ros2 pkg list >$pkg_cache.new 2>/dev/null && \
+		 cp $pkg_cache.new $pkg_cache" &)
+}
+complete -F _ros2_autocomplete ros2
+
 # Swap yolo model
 yolo-swap() {
 	if [[ -z $1 ]]; then
