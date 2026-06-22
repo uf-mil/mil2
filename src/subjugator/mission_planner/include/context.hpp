@@ -1,6 +1,8 @@
 #pragma once
+#include <cstdint>
 #include <mutex>
 #include <optional>
+#include <string>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -19,6 +21,11 @@ struct Context
     rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr targets_sub;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub;
 
+    // Down-cam perception (Task 5). Separate streams so both YOLO nodes
+    // (front + down) can run concurrently; consumers pick a camera below.
+    rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr down_targets_sub;
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr down_image_sub;
+
     // Latest state
     std::mutex odom_mx;
     std::optional<nav_msgs::msg::Odometry> latest_odom;
@@ -33,8 +40,48 @@ struct Context
     uint32_t img_width{ 0 };
     uint32_t img_height{ 0 };
 
+    std::mutex down_detections_mx;
+    std::optional<yolo_msgs::msg::DetectionArray> latest_down_detections;
+
+    std::mutex down_img_mx;
+    uint32_t down_img_width{ 0 };
+    uint32_t down_img_height{ 0 };
+
     inline rclcpp::Logger logger() const
     {
         return node->get_logger();
+    }
+
+    // Latest detections for the requested camera ("down" selects the down-cam
+    // stream; anything else falls back to the front-cam stream). Returns a copy
+    // so callers don't hold the mutex while iterating.
+    inline std::optional<yolo_msgs::msg::DetectionArray> detections_for(std::string const& camera)
+    {
+        if (camera == "down")
+        {
+            std::scoped_lock lk(down_detections_mx);
+            return latest_down_detections;
+        }
+        std::scoped_lock lk(detections_mx);
+        return latest_detections;
+    }
+
+    // Image size for the requested camera. Fills w/h and returns true once a
+    // frame has been seen (both nonzero); false on cold start.
+    inline bool image_size_for(std::string const& camera, uint32_t& w, uint32_t& h)
+    {
+        if (camera == "down")
+        {
+            std::scoped_lock lk(down_img_mx);
+            w = down_img_width;
+            h = down_img_height;
+        }
+        else
+        {
+            std::scoped_lock lk(img_mx);
+            w = img_width;
+            h = img_height;
+        }
+        return w != 0 && h != 0;
     }
 };

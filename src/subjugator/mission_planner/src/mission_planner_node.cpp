@@ -15,6 +15,7 @@
 #include "determine_channel_side.hpp"
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
+#include "hone_over_target.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "track_largest_poles.hpp"
@@ -63,6 +64,31 @@ int main(int argc, char** argv)
                                                                             ctx->img_height = msg->height;
                                                                         });
 
+    // Down-cam perception (Task 5). Defaults are the REAL-robot topics on
+    // purpose: a forgotten sim override then breaks the local sim run (cheap to
+    // catch) instead of a pool test someone else is running.
+    node->declare_parameter<std::string>("down_detect_topic", "/yolo_down/detections");
+    node->declare_parameter<std::string>("down_image_topic", "/down_camera/rgb/image_raw");
+    std::string const down_detect_topic = node->get_parameter("down_detect_topic").as_string();
+    std::string const down_image_topic = node->get_parameter("down_image_topic").as_string();
+
+    ctx->down_targets_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(down_detect_topic, 10,
+                                                                  [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
+                                                                  {
+                                                                      std::scoped_lock lk(ctx->down_detections_mx);
+                                                                      ctx->latest_down_detections = *msg;
+                                                                  });
+
+    ctx->down_image_sub =
+        node->create_subscription<sensor_msgs::msg::Image>(down_image_topic, 10,
+                                                           [ctx](sensor_msgs::msg::Image::SharedPtr msg)
+                                                           {
+                                                               std::scoped_lock lk(ctx->down_img_mx);
+                                                               ctx->down_img_width = msg->width;
+                                                               ctx->down_img_height = msg->height;
+                                                           });
+
     // Wait for odometry before starting mission
     RCLCPP_INFO(node->get_logger(), "Waiting for odometry...");
     rclcpp::Rate wait_rate(10.0);
@@ -85,6 +111,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<AtGoalPose>("AtGoalPose");
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
+    factory.registerNodeType<HoneOverTarget>("HoneOverTarget");
     factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
     factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
     factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
