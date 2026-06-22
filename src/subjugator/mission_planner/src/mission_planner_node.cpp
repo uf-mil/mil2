@@ -67,6 +67,9 @@ int main(int argc, char** argv)
     // Down-cam perception (Task 5). Defaults are the REAL-robot topics on
     // purpose: a forgotten sim override then breaks the local sim run (cheap to
     // catch) instead of a pool test someone else is running.
+    // For sim, override down_image_topic:=/down_cam/image_raw (the gz bridge
+    // topic). down_detect_topic already matches if the down YOLO node is
+    // launched with namespace:=yolo_down (-> /yolo_down/detections).
     node->declare_parameter<std::string>("down_detect_topic", "/yolo_down/detections");
     node->declare_parameter<std::string>("down_image_topic", "/down_camera/rgb/image_raw");
     std::string const down_detect_topic = node->get_parameter("down_detect_topic").as_string();
