@@ -23,7 +23,8 @@ BT::PortsList SelectTarget::providedPorts()
              BT::InputPort<int>("consecutive_frames", 3, "Distinct frames the leader must win before locking"),
              BT::InputPort<std::string>("survey_labels", "nut_bolt,plug", "survey_repair target classes (csv)"),
              BT::InputPort<std::string>("rescue_labels", "pill,bandage", "search_rescue target classes (csv)"),
-             BT::InputPort<std::string>("exclude", "", "Class already grabbed; skip it"),
+             BT::InputPort<std::string>("exclude", "",
+                                        "Class already grabbed; skip it (unset blackboard key -> no exclusion)"),
              BT::InputPort<std::shared_ptr<Context>>("ctx"),
              BT::OutputPort<std::string>("target_label", "Chosen class for S4") };
 }
