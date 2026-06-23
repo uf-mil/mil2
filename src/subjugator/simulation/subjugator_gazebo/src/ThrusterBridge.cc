@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "gz/plugin/Register.hh"  // For GZ_ADD_PLUGIN
+#include "subjugator_thruster_manager/lut.h"
 
 #include <gz/common/Console.hh>
 
@@ -41,20 +42,6 @@ void ThrusterBridge::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
         auto pub = gz_node.Advertise<gz::msgs::Double>(topicName);
         publishers[thruster] = pub;
     }
-
-    // Get Thruster Force Parameters
-    auto parameters_client = std::make_shared<rclcpp::SyncParametersClient>(this->thrustNode, "thruster_manager");
-    while (!parameters_client->wait_for_service(std::chrono::seconds(1)))
-    {
-        if (!rclcpp::ok())
-        {
-            RCLCPP_ERROR(this->thrustNode->get_logger(), "Interrupted while waiting for the service. Exiting.");
-            rclcpp::shutdown();
-        }
-        RCLCPP_INFO(this->thrustNode->get_logger(), "service not available, waiting again...");
-    }
-    max_force_pos = parameters_client->get_parameter("max_force_pos", 1.0);
-    max_force_neg = parameters_client->get_parameter("max_force_neg", 1.0);
 }
 
 // receiveEffortCallback() -  Whenever ROS2 node receives message call this //
@@ -75,8 +62,11 @@ void ThrusterBridge::receiveEffortCallback(subjugator_msgs::msg::ThrusterEfforts
     for (auto const &[thrusterName, thrustValue] : thrusterEfforts)
     {
         gz::msgs::Double thrustMsg;
-        double scaledThrust = (thrustValue > 0) ? thrustValue * this->max_force_pos : thrustValue * this->max_force_neg;
-        thrustMsg.set_data(scaledThrust);
+        // Model the physical thruster: convert normalized effort to force (N)
+        // through the measured, nonlinear and asymmetric T200 curve so the sim
+        // plant matches the real vehicle. See subjugator_thruster_manager/lut.h.
+        double const thrust = force_from_effort(thrustValue);
+        thrustMsg.set_data(thrust);
         publishers[thrusterName].Publish(thrustMsg);
     }
 }

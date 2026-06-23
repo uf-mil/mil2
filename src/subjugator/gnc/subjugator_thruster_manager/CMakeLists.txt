@@ -26,11 +26,19 @@ target_include_directories(thruster_manager PRIVATE include)
 
 add_executable(forward_to_sim src/forward_to_sim.cpp)
 ament_target_dependencies(forward_to_sim rclcpp subjugator_msgs)
+target_include_directories(forward_to_sim PRIVATE include)
 
 install(TARGETS thruster_manager forward_to_sim DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 
-install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
+# include/ already contains the subjugator_thruster_manager/ subdir, so install
+# its contents straight into include/ (not include/${PROJECT_NAME}, which would
+# double-nest the path for downstream consumers of the exported header).
+install(DIRECTORY include/ DESTINATION include)
+
+# Export the headers (lut.h thrust curve) so other packages (e.g. the Gazebo
+# thruster plugin) can share the same force<->effort model.
+ament_export_include_directories(include)
 
 ament_package()

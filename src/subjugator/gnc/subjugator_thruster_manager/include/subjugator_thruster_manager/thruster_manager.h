@@ -20,8 +20,8 @@ class ThrusterManager : public rclcpp::Node
     int const dof_ = 6;
     int const thruster_count_ = 8;
     double thruster_cap_;
-    double max_force_pos_;
-    double max_force_neg_;
+    double cap_force_pos_;  // forward force (N) the thrusters can make at thruster_cap_
+    double cap_force_neg_;  // reverse force (N, negative) the thrusters can make at thruster_cap_
 
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr thrust_publisher_;
