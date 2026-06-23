@@ -227,7 +227,9 @@ inline double force_from_effort(double effort)
         return thrust_lut.back();
     }
     double const pos = (effort + 1.0) / thrust_lut_effort_step;
-    std::size_t const lo = static_cast<std::size_t>(pos);
+    // Clamp the base index so lo+1 stays in range: for an effort just below 1.0
+    // the division can round pos up to size()-1, which would read past the end.
+    std::size_t const lo = std::min(static_cast<std::size_t>(pos), thrust_lut.size() - 2);
     double const frac = pos - static_cast<double>(lo);
     return thrust_lut[lo] + frac * (thrust_lut[lo + 1] - thrust_lut[lo]);
 }

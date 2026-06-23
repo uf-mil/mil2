@@ -41,4 +41,12 @@ install(DIRECTORY include/ DESTINATION include)
 # thruster plugin) can share the same force<->effort model.
 ament_export_include_directories(include)
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  # Unit tests for the force<->effort thrust curve (lut.h): endpoints, clamping,
+  # monotonicity, round-trip inversion, and forward/reverse asymmetry.
+  ament_add_gtest(test_lut test/test_lut.cpp)
+  target_include_directories(test_lut PRIVATE include)
+endif()
+
 ament_package()
