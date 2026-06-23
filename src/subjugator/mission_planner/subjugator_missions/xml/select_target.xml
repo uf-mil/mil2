@@ -1,0 +1,26 @@
+<root BTCPP_format="4">
+    <!--
+        Reusable subtree: choose which role-target object to grab from the
+        DOWN-facing camera and publish its class on `target_label` for S4.
+        Decision-only (no motion). Role comes from Context (Task 1 / role param).
+
+        `exclude` is wired to `{grabbed_label}` so a two-grab <Repeat> loop skips
+        the object grabbed last cycle. On iteration 1 grabbed_label is unset ->
+        treated as "" (no exclusion). The <Timeout> bounds an undecidable case
+        (unknown role or target not visible) into FAILURE; unlike S2 there is no
+        AlwaysSuccess, because grabbing without a decision is worse than stopping.
+    -->
+    <BehaviorTree ID="SelectTargetS3">
+        <Timeout msec="15000">
+            <Action ID="SelectTarget"
+                    camera="down"
+                    min_conf="0.60"
+                    consecutive_frames="3"
+                    survey_labels="nut_bolt,plug"
+                    rescue_labels="pill,bandage"
+                    exclude="{grabbed_label}"
+                    target_label="{target_label}"
+                    ctx="{ctx}"/>
+        </Timeout>
+    </BehaviorTree>
+</root>
