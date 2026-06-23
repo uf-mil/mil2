@@ -47,6 +47,23 @@ struct Context
     uint32_t down_img_width{ 0 };
     uint32_t down_img_height{ 0 };
 
+    // Robot role (Task 5). Cross-task state: written by Task 1 (gate side) at
+    // runtime via set_role; read by SelectTarget. Seeded by a startup param
+    // until Task 1 wiring exists. "" = unknown.
+    std::mutex role_mx;
+    std::string role;
+
+    std::string get_role()
+    {
+        std::scoped_lock lk(role_mx);
+        return role;
+    }
+    void set_role(std::string const& r)
+    {
+        std::scoped_lock lk(role_mx);
+        role = r;
+    }
+
     inline rclcpp::Logger logger() const
     {
         return node->get_logger();
