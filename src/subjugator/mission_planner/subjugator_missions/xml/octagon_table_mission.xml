@@ -1,0 +1,42 @@
+<root BTCPP_format="4" main_tree_to_execute="OctagonTableMission">
+    <!--
+        Task 5 surface-and-center stage: rise to surface (octagon scoring is
+        handled elsewhere), descend to hover depth, dead-reckon to octagon
+        center, then vision-refine the sub over the table via the down cam.
+        Steps 1-3 are fail-fast: RelativeMove self-bounds with its own Timeout,
+        and a timeout there signals a real problem (stuck/current/controller),
+        so it should abort rather than be masked. Step 4 (HoneOverTarget) is the
+        single intended degradation point. The four *_dz/_dx/_dy values are
+        placeholders; measure them in sim before relying on this tree.
+    -->
+    <BehaviorTree ID="OctagonTableMission">
+        <Sequence>
+            <!-- 1. Surface (scoring action handled elsewhere) -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     z="1.5"
+                     pos_tol="0.3" ori_tol_deg="180.0" msec="30000"
+                     ctx="{ctx}"/>
+            <!-- TODO surface_dz: replace z="1.5" with measured rise -->
+
+            <!-- 2. Descend to hover depth for the down-cam refine -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     z="-1.0"
+                     pos_tol="0.3" ori_tol_deg="180.0" msec="30000"
+                     ctx="{ctx}"/>
+            <!-- TODO hover_dz: replace z="-1.0" with measured descend -->
+
+            <!-- 3. Dead-reckon to octagon center -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="0.0" y="0.0"
+                     pos_tol="0.4" ori_tol_deg="180.0" msec="45000"
+                     ctx="{ctx}"/>
+            <!-- TODO octagon_dx/dy: replace x/y with measured offset -->
+
+            <!-- 4. Vision refine: center over the table (degrades if unseen) -->
+            <SubTree ID="HoneOverTarget" _autoremap="true"
+                     label="table" camera="down"
+                     tol_norm="0.05" timeout_msec="20000"
+                     ctx="{ctx}"/>
+        </Sequence>
+    </BehaviorTree>
+</root>

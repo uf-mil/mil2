@@ -16,10 +16,10 @@
 // correction steps, waiting for each step to settle before re-evaluating.
 // Returns FAILURE when the target isn't visible so a Fallback can degrade to
 // dead-reckoning. Wrap it in an XML <Timeout> to bound the loop.
-class HoneOverTarget : public BT::StatefulActionNode
+class CenterCamera : public BT::StatefulActionNode
 {
   public:
-    HoneOverTarget(std::string const& name, const BT::NodeConfiguration& cfg);
+    CenterCamera(std::string const& name, const BT::NodeConfiguration& cfg);
     static BT::PortsList providedPorts();
 
     BT::NodeStatus onStart() override;

@@ -1,0 +1,25 @@
+<root BTCPP_format="4">
+    <!--
+        Reusable subtree: hone the sub over a labeled object on the chosen camera.
+        Closed-loop XY centering (CenterCamera) wrapped so the mission degrades
+        gracefully: if the object is never detected or centering exceeds the
+        timeout, the Timeout/CenterCamera branch fails and AlwaysSuccess lets the
+        parent continue (e.g. on dead-reckoning) instead of blocking.
+
+        Centering only: the caller positions the sub at hover depth first.
+        Pixel->body sign/axis mapping and gains are CenterCamera defaults
+        (mounting-specific, identical for every consumer), not ports here.
+    -->
+    <BehaviorTree ID="HoneOverTarget">
+        <Fallback>
+            <Timeout msec="{timeout_msec}">
+                <Action ID="CenterCamera"
+                        camera="{camera}"
+                        label="{label}"
+                        tol_norm="{tol_norm}"
+                        ctx="{ctx}"/>
+            </Timeout>
+            <AlwaysSuccess/>
+        </Fallback>
+    </BehaviorTree>
+</root>
