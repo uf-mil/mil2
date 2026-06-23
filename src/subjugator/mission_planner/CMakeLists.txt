@@ -73,4 +73,12 @@ install(DIRECTORY subjugator_operations/include/ DESTINATION include)
 install(DIRECTORY subjugator_missions/xml/ DESTINATION share/${PROJECT_NAME}/bt)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../gnc/subjugator_vision/models/
         DESTINATION share/${PROJECT_NAME}/models)
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_select_target_logic test/test_select_target_logic.cpp)
+  target_include_directories(
+    test_select_target_logic
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+endif()
+
 ament_package()
