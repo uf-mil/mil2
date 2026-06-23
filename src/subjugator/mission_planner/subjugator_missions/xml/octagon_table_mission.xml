@@ -7,7 +7,7 @@
         and a timeout there signals a real problem (stuck/current/controller),
         so it should abort rather than be masked. Step 4 (HoneOverTarget) is the
         single intended degradation point. The four *_dz/_dx/_dy values are
-        placeholders -- measure them in sim before relying on this tree.
+        placeholders; measure them in sim before relying on this tree.
     -->
     <BehaviorTree ID="OctagonTableMission">
         <Sequence>

@@ -6,7 +6,7 @@
         timeout, the Timeout/CenterCamera branch fails and AlwaysSuccess lets the
         parent continue (e.g. on dead-reckoning) instead of blocking.
 
-        Centering only -- the caller positions the sub at hover depth first.
+        Centering only: the caller positions the sub at hover depth first.
         Pixel->body sign/axis mapping and gains are CenterCamera defaults
         (mounting-specific, identical for every consumer), not ports here.
     -->
