@@ -52,6 +52,10 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
     heard_odom_ = false;
     current_orientation_ = Eigen::Quaterniond::Identity();
 
+    // Size the velocity vector so the comma-initializer in odom_callback has a
+    // 6-element destination to write into.
+    current_velocities_ = Eigen::VectorXd::Zero(6);
+
     // -----------------------------------------------------------------------
     // Existing thruster parameters (unchanged)
     // -----------------------------------------------------------------------
@@ -94,8 +98,10 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
     this->declare_parameter("vehicle_volume_m3", 0.0);
     // ^^^ DEFAULT 0.0 — replace with your calculated/measured hull volume, e.g. 0.0138
 
-    // MEASURE/TUNE: Vertical distance from CoG to CoB in meters.
-    // Positive = CoB is above CoG (stable). Start at 0.0, tune upward.
+    // MEASURE/TUNE: Distance from CoG to CoB in meters along each body axis.
+    // Positive z = CoB is above CoG (stable). Start at 0.0, tune upward.
+    this->declare_parameter("x_cog_to_cob_m", 0.0);
+    this->declare_parameter("y_cog_to_cob_m", 0.0);
     this->declare_parameter("z_cog_to_cob_m", 0.0);
     // ^^^ DEFAULT 0.0 — start here and tune empirically (see notes above)
 
@@ -103,9 +109,37 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
     // ADJUST: Change to 1025.0 if competing/testing in salt water
     this->declare_parameter("water_density_kg_m3", 1000.0);
 
+    // Mass/Inertia matrix diagonal (6x6)
+    // ADJUST: Change to match sub values from CAD or measured pendulum test
+    this->declare_parameter("m_diag", std::vector<double>(6, 0.0));
+
+    // Damping coefficients. Declared once here in the constructor — declaring
+    // them inside the timer callback would throw ParameterAlreadyDeclared on
+    // the second tick.
+    this->declare_parameter("damping_linear", std::vector<double>(6, 0.0));
+    this->declare_parameter("damping_quadratic", std::vector<double>(6, 0.0));
+
     vehicle_mass_kg_ = this->get_parameter("vehicle_mass_kg").as_double();
     vehicle_volume_m3_ = this->get_parameter("vehicle_volume_m3").as_double();
+
+    // Inertia matrix: populate the diagonal from m_diag so the Coriolis term
+    // C(nu) is non-zero. Without this M_ stays zero and C contributes nothing.
+    M_ = Eigen::MatrixXd::Zero(6, 6);
+    std::vector<double> m_diag = this->get_parameter("m_diag").as_double_array();
+    if (m_diag.size() == 6)
+    {
+        M_.diagonal() = Eigen::VectorXd::Map(m_diag.data(), 6);
+    }
+    else
+    {
+        RCLCPP_ERROR(this->get_logger(), "m_diag must have 6 elements. Leaving mass matrix at zero.");
+    }
+
+    // NOTE: <axis>_cog_to_cob_m_ collapses as single value ONLY if the sub is near buoyancy-neutral
     z_cog_to_cob_m_ = this->get_parameter("z_cog_to_cob_m").as_double();
+    x_cog_to_cob_m_ = this->get_parameter("x_cog_to_cob_m").as_double();
+    y_cog_to_cob_m_ = this->get_parameter("y_cog_to_cob_m").as_double();
+
     water_density_ = this->get_parameter("water_density_kg_m3").as_double();
 
     // Derived constants (computed once at startup)
@@ -149,6 +183,8 @@ void ThrusterManager::odom_callback(nav_msgs::msg::Odometry::SharedPtr msg)
 {
     current_orientation_ = Eigen::Quaterniond(msg->pose.pose.orientation.w, msg->pose.pose.orientation.x,
                                               msg->pose.pose.orientation.y, msg->pose.pose.orientation.z);
+    current_velocities_ << msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z,
+        msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z;
     heard_odom_ = true;
 }
 
@@ -180,6 +216,15 @@ double ThrusterManager::get_pitch(Eigen::Quaterniond const &q)
     return std::atan2(-R(2, 0), std::sqrt(R(2, 1) * R(2, 1) + R(2, 2) * R(2, 2)));
 }
 
+Eigen::Matrix3d ThrusterManager::skew_symmetric(Eigen::Vector3d const &v)
+{
+    Eigen::Matrix3d S;
+
+    S << 0, -v.z(), v.y(), v.z(), 0, -v.x(), -v.y(), v.x(), 0;
+
+    return S;
+}
+
 // ---------------------------------------------------------------------------
 // Compute and publish thruster efforts, with gravity/buoyancy compensation
 // ---------------------------------------------------------------------------
@@ -193,6 +238,46 @@ void ThrusterManager::timer_callback()
     {
         double phi = get_roll(current_orientation_);     // roll angle (rad)
         double theta = get_pitch(current_orientation_);  // pitch angle (rad)
+
+        // --- Hydrodynamic and Damping matrix ---
+        // These matrices account for the hydrodynamic effects and damping in the fluid environment.
+        // Use a quadratic and linear damping model.
+
+        std::vector<double> dl = this->get_parameter("damping_linear").as_double_array();
+        std::vector<double> dq = this->get_parameter("damping_quadratic").as_double_array();
+        D_lin_ = Eigen::VectorXd::Zero(6);
+        D_quad_ = Eigen::VectorXd::Zero(6);
+
+        if (dl.size() == 6 && dq.size() == 6)
+        {
+            D_lin_ = Eigen::VectorXd::Map(dl.data(), 6);
+            D_quad_ = Eigen::VectorXd::Map(dq.data(), 6);
+        }
+        else
+        {
+            RCLCPP_ERROR(this->get_logger(), "damping_linear/damping_quadratic must each have 6 elements. Defaulting "
+                                             "to zero.");
+        }
+
+        // --- Damping forces and torques (linear and quadratic) ---
+        damping_linear = D_lin_.cwiseProduct(current_velocities_);
+        damping_quadratic = D_quad_.cwiseProduct(current_velocities_.cwiseAbs().cwiseProduct(current_velocities_));
+
+        Eigen::VectorXd damping_forces = damping_linear + damping_quadratic;
+
+        // --- Coriolis forces and cross-coupling terms (Fossen C(ν)ν) ---
+        linear_velocities = current_velocities_.head(3);
+        angular_velocities = current_velocities_.tail(3);
+
+        // Linear/angular momentum 3-vectors (M * nu, split into upper and lower blocks)
+        Eigen::Vector3d C1 = M_.block<3, 3>(0, 0) * linear_velocities + M_.block<3, 3>(0, 3) * angular_velocities;
+        Eigen::Vector3d C2 = M_.block<3, 3>(3, 0) * linear_velocities + M_.block<3, 3>(3, 3) * angular_velocities;
+
+        // Assemble the full 6x6 Coriolis matrix
+        Eigen::MatrixXd C = Eigen::MatrixXd::Zero(6, 6);
+        C.block<3, 3>(0, 3) = -skew_symmetric(C1);
+        C.block<3, 3>(3, 0) = -skew_symmetric(C1);
+        C.block<3, 3>(3, 3) = -skew_symmetric(C2);
 
         // --- Restoring FORCES (Fossen g(eta), rows 0-2) ---
         // These are the net gravity-buoyancy force components in the body frame.
@@ -210,18 +295,20 @@ void ThrusterManager::timer_callback()
         // NOTE: If you have physically aligned CoG and CoB, set z_cog_to_cob_m=0.0
         // and only the force rows above will contribute. You can tune z_cog_to_cob_m
         // to add artificial restoring torque if the physical alignment isn't perfect.
-        double tx = z_cog_to_cob_m_ * W_ * std::cos(theta) * std::sin(phi);  // roll restoring
-        double ty = z_cog_to_cob_m_ * W_ * std::sin(theta);                  // pitch restoring
-        double tz = 0.0;  // yaw has no gravity/buoyancy restoring torque (by definition)
+        double xW = x_cog_to_cob_m_ * W_;
+        double yW = y_cog_to_cob_m_ * W_;
+        double zW = z_cog_to_cob_m_ * W_;
 
-        // Subtract restoring forces from the commanded wrench so thrusters
-        // counteract gravity/buoyancy effects on top of the PID command
-        compensated_wrench(0) -= fx;
-        compensated_wrench(1) -= fy;
-        compensated_wrench(2) -= fz;
-        compensated_wrench(3) -= tx;
-        compensated_wrench(4) -= ty;
-        // compensated_wrench(5) — yaw left unchanged
+        double tx = (zW * std::sin(phi) - yW * std::cos(phi)) * std::cos(theta);   // roll restoring
+        double ty = zW * std::sin(theta) + xW * std::cos(theta) * std::cos(phi);   // pitch restoring
+        double tz = -xW * std::cos(theta) * std::sin(phi) - yW * std::sin(theta);  // yaw restoring
+
+        Eigen::VectorXd restoring_forces(6);
+        restoring_forces << fx, fy, fz, tx, ty, tz;
+
+        // Subtract Coriolis, restoring, and damping terms from the commanded
+        // wrench so thrusters counteract these effects on top of the PID command.
+        compensated_wrench -= C * current_velocities_ + restoring_forces + damping_forces;
 
         // Uncomment to debug compensation values:
         /*

@@ -13,3 +13,25 @@
     thruster_cap: 1.0
     max_force_pos: 51.5
     max_force_neg: 40.2
+
+    # --- Gravity/buoyancy compensation ---
+    # MEASURE: total mass of the fully-assembled sub (kg). 0.0 disables compensation.
+    vehicle_mass_kg: 0.0
+    # MEASURE: total displaced water volume of the hull (m^3).
+    vehicle_volume_m3: 0.0
+    # Water density: 1000.0 fresh water, 1025.0 salt water.
+    water_density_kg_m3: 1000.0
+
+    # MEASURE/TUNE: distance from CoG to CoB along each body axis (m).
+    # Positive z = CoB above CoG (stable). Start at 0.0 and tune upward.
+    x_cog_to_cob_m: 0.0
+    y_cog_to_cob_m: 0.0
+    z_cog_to_cob_m: 0.0
+
+    # Mass/inertia matrix diagonal (6x6): [m, m, m, Ixx, Iyy, Izz].
+    # ADJUST: match sub values from CAD or a measured pendulum test.
+    m_diag: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+    # Default 0; fit using data from recording scripts
+    damping_linear:     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    damping_quadratic:  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
