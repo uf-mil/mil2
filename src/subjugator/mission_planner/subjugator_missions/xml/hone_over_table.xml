@@ -4,9 +4,9 @@
         seen by the DOWN-facing camera. Centering only -- the caller is
         responsible for reaching hover depth first (e.g. a z-only RelativeMove).
 
-        Vision honing with graceful degradation: HoneOverTarget closed-loops the
+        Vision honing with graceful degradation: CenterCamera closed-loops the
         sub's XY until the detection centroid is centered. If the table is never
-        detected or honing exceeds the timeout, the Timeout/HoneOverTarget branch
+        detected or honing exceeds the timeout, the Timeout/CenterCamera branch
         fails and AlwaysSuccess returns SUCCESS so the parent mission continues
         on dead-reckoning instead of blocking.
 
@@ -17,7 +17,7 @@
     <BehaviorTree ID="HoneOverTable">
         <Fallback>
             <Timeout msec="20000">
-                <Action ID="HoneOverTarget"
+                <Action ID="CenterCamera"
                         camera="down"
                         label="table"
                         min_conf="0.30"

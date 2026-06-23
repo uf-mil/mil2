@@ -9,13 +9,13 @@
 
 #include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
+#include "center_camera.hpp"
 #include "check_yolo_model.hpp"
 #include "context.hpp"
 #include "detect_target.hpp"
 #include "determine_channel_side.hpp"
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
-#include "hone_over_target.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "track_largest_poles.hpp"
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<AtGoalPose>("AtGoalPose");
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
-    factory.registerNodeType<HoneOverTarget>("HoneOverTarget");
+    factory.registerNodeType<CenterCamera>("CenterCamera");
     factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
     factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
     factory.registerNodeType<PolesBigEnough>("PolesBigEnough");

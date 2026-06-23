@@ -1,4 +1,4 @@
-#include "hone_over_target.hpp"
+#include "center_camera.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -9,12 +9,12 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
-HoneOverTarget::HoneOverTarget(std::string const& name, const BT::NodeConfiguration& cfg)
+CenterCamera::CenterCamera(std::string const& name, const BT::NodeConfiguration& cfg)
   : BT::StatefulActionNode(name, cfg)
 {
 }
 
-BT::PortsList HoneOverTarget::providedPorts()
+BT::PortsList CenterCamera::providedPorts()
 {
     return { BT::InputPort<std::string>("label", "table", "Target class to center on"),
              BT::InputPort<std::string>("camera", "down", "Detection stream: 'front' or 'down'"),
@@ -33,11 +33,11 @@ BT::PortsList HoneOverTarget::providedPorts()
              BT::InputPort<std::shared_ptr<Context>>("ctx") };
 }
 
-BT::NodeStatus HoneOverTarget::onStart()
+BT::NodeStatus CenterCamera::onStart()
 {
     if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "HoneOverTarget: missing ctx");
+        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "CenterCamera: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     settling_ = false;
@@ -47,7 +47,7 @@ BT::NodeStatus HoneOverTarget::onStart()
     return BT::NodeStatus::RUNNING;
 }
 
-BT::NodeStatus HoneOverTarget::onRunning()
+BT::NodeStatus CenterCamera::onRunning()
 {
     // Inputs
     std::string label = "table";
@@ -106,8 +106,8 @@ BT::NodeStatus HoneOverTarget::onRunning()
     uint32_t W = 0, H = 0;
     if (!ctx_->image_size_for(camera, W, H))
     {
-        RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000,
-                             "HoneOverTarget: waiting for %s image size", camera.c_str());
+        RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000, "CenterCamera: waiting for %s image size",
+                             camera.c_str());
         return BT::NodeStatus::RUNNING;
     }
 
@@ -152,7 +152,7 @@ BT::NodeStatus HoneOverTarget::onRunning()
         last_acted_ns_ = stamp_ns;
         if (++in_tol_count_ >= settle_ticks)
         {
-            RCLCPP_INFO(ctx_->logger(), "HoneOverTarget: centered (ex=%.3f ey=%.3f)", ex, ey);
+            RCLCPP_INFO(ctx_->logger(), "CenterCamera: centered (ex=%.3f ey=%.3f)", ex, ey);
             return BT::NodeStatus::SUCCESS;
         }
         return BT::NodeStatus::RUNNING;  // hold and confirm over fresh frames
@@ -192,11 +192,10 @@ BT::NodeStatus HoneOverTarget::onRunning()
     last_acted_ns_ = stamp_ns;
     settling_ = true;
 
-    RCLCPP_INFO(ctx_->logger(), "HoneOverTarget: ex=%.3f ey=%.3f -> surge=%.3f sway=%.3f", ex, ey, step_surge,
-                step_sway);
+    RCLCPP_INFO(ctx_->logger(), "CenterCamera: ex=%.3f ey=%.3f -> surge=%.3f sway=%.3f", ex, ey, step_surge, step_sway);
     return BT::NodeStatus::RUNNING;
 }
 
-void HoneOverTarget::onHalted()
+void CenterCamera::onHalted()
 {
 }
