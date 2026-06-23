@@ -18,6 +18,7 @@
 #include "hone_over_target.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
+#include "select_target.hpp"
 #include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -36,6 +37,11 @@ int main(int argc, char** argv)
 
     node->declare_parameter<std::string>("mission", "SonarFollowerTest");
     std::string mission_to_run = node->get_parameter("mission").as_string();
+
+    // Role for Task 5 selection. "" on the robot (Task 1 sets it at runtime via
+    // ctx->set_role); set in sim launch until that wiring exists.
+    node->declare_parameter<std::string>("role", "");
+    ctx->set_role(node->get_parameter("role").as_string());
 
     // Topics to subscribe/publish to
     ctx->goal_pub = node->create_publisher<geometry_msgs::msg::Pose>("/goal_pose", 10);
@@ -115,6 +121,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
     factory.registerNodeType<HoneOverTarget>("HoneOverTarget");
+    factory.registerNodeType<SelectTarget>("SelectTarget");
     factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
     factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
     factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
