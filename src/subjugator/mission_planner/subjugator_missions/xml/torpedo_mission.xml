@@ -1,23 +1,50 @@
+<!--
+    TorpedoMission
+    ==============
+    Full run, assembled from independently-testable pieces:
+
+      0) CheckYoloModel  - make sure the torpedo pose model is loaded
+      1) ArchToFaceBoard - orbit so we face the board head-on   (torpedo_arch.xml)
+      2) HomeAndFire     - large hole -> torpedo angle 1        (torpedo_home_fire.xml)
+      3) HomeAndFire     - small hole -> torpedo angle 2        (torpedo_home_fire.xml)
+
+    Choosing the task: this run targets SEARCH & RESCUE. To shoot the SURVEY &
+    REPAIR board instead, swap the two hole_label values to
+    "survey&amp;repair_large" / "survey&amp;repair_small".
+    (& must be written &amp; inside XML attributes; the node sees "search&rescue_large".)
+
+    Keypoints: the board's 4 corner keypoints only flow on /yolo/tracking, so run
+    the planner with the detections source pointed there (and yolo with tracking on):
+      ros2 run mission_planner mission_planner_node -'-os-args \
+        -p mission:=TorpedoMission -p detections_topic:=/yolo/tracking
+      (launch yolo with use_tracking:=True)
+
+    Test pieces in isolation with:
+      mission:=ArchToFaceBoard   (just the arch)
+      mission:=ServoTestMission  (just the torpedo servo)
+-->
 <root BTCPP_format="4" main_tree_to_execute="TorpedoMission">
   <BehaviorTree ID="TorpedoMission">
     <Sequence>
 
-      <!-- Home onto the first target -->
-      <SubTree ID="TorpedoHomingMotion" _autoremap="true"
-               label="Red spiral"
-               ctx="{ctx}"/>
+      <!-- 0) Correct YOLO model -->
+      <Action ID="CheckYoloModel"
+              model_filename="yolov26_torpedo_nano_June17.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
 
-      <!-- Fire torpedo 1 -->
-      <Action ID="ActuateServo" target="torpedo" angle="1" ctx="{ctx}"/>
-      <Delay delay_msec="1500"><AlwaysSuccess/></Delay>
 
-      <!-- Re-home onto the second target (change label if it's a different YOLO class) -->
-      <SubTree ID="TorpedoHomingMotion" _autoremap="true"
-               label="Red spiral"
-               ctx="{ctx}"/>
+      <!-- 1) Square up with the board (comment out to skip the arch). -->
+      <SubTree ID="ArchToFaceBoard" _autoremap="true" ctx="{ctx}"/>
 
-      <!-- Fire torpedo 2 -->
-      <Action ID="ActuateServo" target="torpedo" angle="2" ctx="{ctx}"/>
+      <!-- 2) Large hole, first torpedo. -->
+      <SubTree ID="HomeAndFire" ctx="{ctx}"
+               hole_label="search&amp;rescue_large" torpedo_angle="1"/>
+
+      <!-- 3) Small hole, second torpedo. -->
+      <SubTree ID="HomeAndFire" ctx="{ctx}"
+               hole_label="search&amp;rescue_small" torpedo_angle="2"/>
 
     </Sequence>
   </BehaviorTree>

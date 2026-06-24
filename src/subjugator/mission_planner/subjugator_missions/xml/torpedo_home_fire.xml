@@ -1,0 +1,65 @@
+<!--
+    HomeAndFire (reusable subtree)
+    ==============================
+    Homes onto a single hole detection until it is centred in view, then fires
+    one torpedo. Parametrised so the same subtree drives both shots:
+
+      hole_label    : YOLO class of the hole to aim at
+                      (search&rescue_large | search&rescue_small |
+                       survey&repair_large | survey&repair_small)
+      torpedo_angle : Servo angle to fire (1 = large-hole barrel, 2 = small-hole)
+
+    "Facing it / close enough to centre" is the TargetCentered gate; tune tol_norm
+    to require tighter aim before firing.
+-->
+<root BTCPP_format="4">
+  <BehaviorTree ID="HomeAndFire">
+    <Sequence>
+
+      <!-- Home until the hole sits within tol_norm of image centre. Each failed
+           gate runs one yaw + depth correction pass, then re-checks. -->
+      <Timeout msec="45000">
+        <RetryUntilSuccessful num_attempts="-1">
+          <Fallback>
+
+            <Condition ID="TargetCentered"
+                       label="{hole_label}"
+                       min_conf="0.30"
+                       tol_norm="0.10"
+                       ctx="{ctx}"/>
+
+            <Sequence>
+              <Timeout msec="20000">
+                <Action ID="AlignYaw"
+                        label="{hole_label}"
+                        min_conf="0.30"
+                        kp="1.5"
+                        yaw_tol_norm="0.08"
+                        max_yaw_deg="10.0"
+                        ori_tol_deg="4.0"
+                        ctx="{ctx}"/>
+              </Timeout>
+              <Timeout msec="20000">
+                <Action ID="AlignDepth"
+                        label="{hole_label}"
+                        min_conf="0.30"
+                        kp="0.6"
+                        depth_tol_norm="0.08"
+                        max_step_m="0.15"
+                        pos_tol="0.10"
+                        ctx="{ctx}"/>
+              </Timeout>
+              <AlwaysFailure/>
+            </Sequence>
+
+          </Fallback>
+        </RetryUntilSuccessful>
+      </Timeout>
+
+      <!-- Fire, then let the torpedo clear before the next step. -->
+      <Action ID="ActuateServo" target="torpedo" angle="{torpedo_angle}" ctx="{ctx}"/>
+      <Delay delay_msec="1500"><AlwaysSuccess/></Delay>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

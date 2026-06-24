@@ -26,6 +26,8 @@
     <include path="ETHAN.xml"/>
     <include path="servo_test_mission.xml"/>
     <include path="torpedo_homing_motion.xml"/>
+    <include path="torpedo_arch.xml"/>
+    <include path="torpedo_home_fire.xml"/>
     <include path="torpedo_mission.xml"/>
     <include path="roll_style.xml"/>
     <include path="pitch_style.xml"/>

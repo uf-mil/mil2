@@ -2,24 +2,23 @@
   <BehaviorTree ID="TorpedoHomingMotion">
     <Sequence>
 
-      <!--
-        1: Align depth (Z translation only).
-        P-controller adjusts Z until the detection bbox is vertically centred.
-        max_step_m is kept small so motion is slow and controlled.
-        Change "label" to match your YOLO model's class name for the torpedo target.
-    -->
     <!--
-      <Timeout msec="60000">
-        <Action ID="AlignDepth"
-                label="Red spiral"
-                min_conf="0.30"
-                kp="0.8"
-                depth_tol_norm="0.08"
-                max_step_m="0.15"
-                pos_tol="0.10"
-                ctx="{ctx}"/>
-      </Timeout>
-      -->
+      1: Align depth (Z translation only).
+      P-controller adjusts Z until the detection bbox is vertically centred.
+      max_step_m is kept small so motion is slow and controlled.
+      Change "label" to match your YOLO model's class name for the torpedo target.
+    -->
+    <Timeout msec="60000">
+      <Action ID="AlignDepth"
+              label="Red spiral"
+              min_conf="0.30"
+              kp="0.8"
+              depth_tol_norm="0.08"
+              max_step_m="0.15"
+              pos_tol="0.10"
+              ctx="{ctx}"/>
+    </Timeout>
+
       <!--
         2: Align yaw (rotation only, no pitch, no translation).
         P-controller yaws until the detection bbox is horizontally centred.

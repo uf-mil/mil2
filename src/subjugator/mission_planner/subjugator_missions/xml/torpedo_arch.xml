@@ -1,0 +1,50 @@
+<!--
+    ArchToFaceBoard
+    ================
+    Squares the sub up with the torpedo board by orbiting ("arching") sideways
+    until the board's left and right vertical edges look the same length.
+
+    Standalone testable: run with `mission:=ArchToFaceBoard` to tune the arch in
+    isolation. The whole step is small and bounded:
+      - step_deg     : arc commanded per orbit step (keep small)
+      - radius_m     : assumed distance to the board (orbit radius)
+      - deadband_frac: how square is "square enough" before we stop
+      - max_steps    : hard cap on how far we ever arch
+      - dir_sign     : flip to -1.0 if the arch goes the wrong way
+-->
+<root BTCPP_format="4" main_tree_to_execute="ArchToFaceBoard">
+  <BehaviorTree ID="ArchToFaceBoard">
+    <Sequence>
+
+      <!-- 1) Get the board roughly centred first so its 4 corner keypoints are
+              reliable before we start measuring left-vs-right edge length. -->
+      <Timeout msec="30000">
+        <Action ID="AlignYaw"
+                label="torpedoTarget"
+                min_conf="0.20"
+                kp="1.5"
+                yaw_tol_norm="0.20"
+                max_yaw_deg="12.0"
+                ori_tol_deg="5.0"
+                ctx="{ctx}"/>
+      </Timeout>
+
+      <!-- 2) Orbit in small steps until the board is head-on. -->
+      <Timeout msec="60000">
+        <Action ID="BoardArchStep"
+                board_label="torpedoTarget"
+                min_conf="0.20"
+                min_kp_conf="0.15"
+                radius_m="2.0"
+                step_deg="5.0"
+                deadband_frac="0.08"
+                dir_sign="1.0"
+                max_steps="8"
+                pos_tol="0.15"
+                ori_tol_deg="5.0"
+                ctx="{ctx}"/>
+      </Timeout>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

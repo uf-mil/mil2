@@ -12,6 +12,7 @@
 #include "align_yaw.hpp"
 #include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
+#include "board_arch_step.hpp"
 #include "check_yolo_model.hpp"
 #include "context.hpp"
 #include "detect_target.hpp"
@@ -30,6 +31,7 @@
 #include "std_srvs/srv/set_bool.hpp"
 #include "stop_coin_flip.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
+#include "target_centered.hpp"
 #include "track_best_pair.hpp"
 #include "track_largest_poles.hpp"
 
@@ -52,6 +54,14 @@ int main(int argc, char** argv)
     node->declare_parameter<std::string>("mission", "SonarFollowerTest");
     std::string mission_to_run = node->get_parameter("mission").as_string();
 
+    // Which YOLO topic to read detections from. Defaults to /yolo/detections so
+    // existing missions are unaffected. The torpedo mission needs the board's
+    // corner keypoints, which only flow on /yolo/tracking (the tracker copies the
+    // full detection through, see tracking_node.py); run it with
+    //   -p detections_topic:=/yolo/tracking  (and launch yolo with use_tracking:=True).
+    node->declare_parameter<std::string>("detections_topic", "/yolo/detections");
+    std::string detections_topic = node->get_parameter("detections_topic").as_string();
+
     // Topics to subscribe/publish to
     ctx->goal_pub = node->create_publisher<geometry_msgs::msg::Pose>("/goal_pose", 10);
     ctx->odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("/odometry/filtered", 10,
@@ -61,9 +71,10 @@ int main(int argc, char** argv)
                                                                            ctx->latest_odom = *msg;
                                                                        });
 
-    // Perception targets: from your YOLO node
+    // Perception targets: from your YOLO node (detections or tracking; see param above)
+    RCLCPP_INFO(node->get_logger(), "Subscribing to YOLO detections on '%s'", detections_topic.c_str());
     ctx->targets_sub =
-        node->create_subscription<yolo_msgs::msg::DetectionArray>("/yolo/detections", 10,
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(detections_topic, 10,
                                                                   [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
                                                                   {
                                                                       std::scoped_lock lk(ctx->detections_mx);
@@ -135,6 +146,8 @@ int main(int argc, char** argv)
     factory.registerNodeType<AlignYaw>("AlignYaw");
     factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
     factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
+    factory.registerNodeType<TargetCentered>("TargetCentered");
+    factory.registerNodeType<BoardArchStep>("BoardArchStep");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
