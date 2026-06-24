@@ -816,6 +816,114 @@
       <pose>-7.25 14 -1.7 0 0 0</pose>
     </model>
 
+    <model name='electric_box'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/table_2026/box_electric.obj
+              </uri>
+              <scale>0.1 0.125 0.1</scale>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/table_2026/box_electric.obj
+              </uri>
+              <scale>0.1 0.15 0.1</scale>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-7.1 13.89 -.91 1.58 0 -0.50</pose>
+    </model>
+
+    <model name='nut_cylinder'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/table_2026/cylinder_nut.obj
+              </uri>
+              <scale>1 0.75 1</scale>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/table_2026/cylinder_nut.obj
+              </uri>
+              <scale>1 0.75 1</scale>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-7.17 14.13 -0.92 1.66 0 0</pose>
+    </model>
+
+    <model name='pill_cylinder'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/table_2026/cylinder_pill.obj
+              </uri>
+              <scale>1 0.75 1</scale>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/table_2026/cylinder_pill.obj
+              </uri>
+              <scale>1 0.75 1</scale>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-7.34 13.86 -0.92 1.55 0 0</pose>
+    </model>
+
+    <model name='bandaid_box'>
+      <static>true</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/table_2026/box_bandaid.obj
+              </uri>
+              <scale>0.1 0.15 0.1</scale>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>
+                package://subjugator_description/models/table_2026/box_bandaid.obj
+              </uri>
+              <scale>0.1 0.15 0.1</scale>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+      <pose>-7.37 14.09 -0.91 1.56 0 0.40</pose>
+    </model>
+
     <model name='Pinger_A1_25000'>
       <link name='link'>
         <visual name='visual'>
