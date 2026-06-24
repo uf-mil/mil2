@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Take a single image from /down_cam/image_raw, save it, and exit.
+Continuously save frames from /down_cam/image_raw for building a YOLO dataset.
+
+Saves one out of every `save_every` frames (default 15, ~2 img/s at 30 fps) so
+the dataset isn't thousands of near-identical frames. Runs until Ctrl-C.
 """
 
 import os
@@ -18,6 +21,10 @@ class DownCamSaver(Node):
 
         default_dir = os.path.join(os.path.expanduser("~"), "sim_images/down")
         self.declare_parameter("save_dir", default_dir)
+        self.declare_parameter("save_every", 15)
+
+        self.save_every = self.get_parameter("save_every").value
+        self.count = 0
 
         topic = "/down_cam/image_raw"
         self.dir = os.path.abspath(
@@ -33,6 +40,10 @@ class DownCamSaver(Node):
         )
 
     def callback(self, msg: Image):
+        self.count += 1
+        if self.count % self.save_every != 0:
+            return
+
         img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
 
         # time for file name
@@ -41,8 +52,6 @@ class DownCamSaver(Node):
         cv2.imwrite(os.path.join(self.dir, filename), img)
 
         self.get_logger().info(f"Saved {filename}")
-
-        rclpy.shutdown()
 
 
 def main():
