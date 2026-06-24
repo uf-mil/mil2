@@ -156,6 +156,8 @@ int main(int argc, char** argv)
     factory.registerNodeType<BoardArchStep>("BoardArchStep");
     factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
     factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
+    factory.registerNodeType<TargetCentered>("TargetCentered");
+    factory.registerNodeType<BoardArchStep>("BoardArchStep");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
