@@ -2,6 +2,7 @@ import rclpy
 from dataclasses import dataclass
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
+from yolo_msgs.msg import DetectionArray
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 
@@ -20,8 +21,14 @@ class AwaitableSubscription:
     def __await__(self):
         return (yield self)
 
-odom_sub = AwaitableSubscription(Odometry, "/odometry/filtered")
+    def get(self):
+        return self.msg
 
+    def reset(self):
+        self.msg = None
+
+odom_sub = AwaitableSubscription(Odometry, "/odometry/filtered")
+yolo_sub = AwaitableSubscription(DetectionArray, "/yolo/detections")
 goal_pub = node.create_publisher(Pose, "/goal_pose", 10)
 
 @dataclass(slots=True)
@@ -35,9 +42,9 @@ def run(co):
     while tasks:
         rclpy.spin_once(node)
         for t in tasks:
-            if t.wait.msg:
+            if msg := t.wait.get():
                 try:
-                    t.wait = t.co.send(t.wait.msg)
+                    t.wait = t.co.send(msg)
                 except StopIteration:
                     t.co = None
         # clear out finished tasks
@@ -45,7 +52,7 @@ def run(co):
         for t in tasks:
             if t.co is None:
                 continue
-            t.wait.msg = None
+            t.wait.reset()
             new_tasks.append(t)
         tasks = new_tasks
     rclpy.shutdown()
