@@ -24,14 +24,28 @@ odom_sub = AwaitableSubscription(Odometry, "/odometry/filtered")
 
 goal_pub = node.create_publisher(Pose, "/goal_pose", 10)
 
-def run(mission):
-    co = mission.send(None)
-    tasks.append(co)
-    while True:
+@dataclass(slots=True)
+class Task:
+    co: any
+    wait: any
+
+def run(co):
+    global tasks
+    tasks = [Task(co, co.send(None))]
+    while tasks:
         rclpy.spin_once(node)
-        for task in tasks:
-            if task.msg:
-                msg = task.msg
-                task.msg = None
-                mission.send(msg)
+        for t in tasks:
+            if t.wait.msg:
+                try:
+                    t.wait = t.co.send(t.wait.msg)
+                except StopIteration:
+                    t.co = None
+        # clear out finished tasks
+        new_tasks = []
+        for t in tasks:
+            if t.co is None:
+                continue
+            t.wait.msg = None
+            new_tasks.append(t)
+        tasks = new_tasks
     rclpy.shutdown()
