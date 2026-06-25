@@ -1,0 +1,7 @@
+[Unit]
+
+[Service]
+ExecStart=sh -c '. /opt/ros/jazzy/setup.sh; ros2 run rmw_zenoh_cpp rmw_zenohd'
+
+[Install]
+WantedBy=default.target

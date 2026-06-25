@@ -7,9 +7,8 @@ else
 	source /opt/ros/jazzy/setup.bash
 fi
 
-# Use Cyclone DDS by default (it's super fast and amazing!)
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI=${MIL_REPO}/cyclone.xml
+# Use Zenoh by default
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
 # Setup colcon_cd
 source "/usr/share/colcon_cd/function/colcon_cd.sh"
