@@ -18,7 +18,7 @@
 
       <!-- 1) Get the board roughly centred first so its 4 corner keypoints are
               reliable before we start measuring left-vs-right edge length. -->
-      <Timeout msec="30000">
+      <Timeout msec="10000">
         <Action ID="AlignYaw"
                 label="torpedoTarget"
                 min_conf="0.20"
