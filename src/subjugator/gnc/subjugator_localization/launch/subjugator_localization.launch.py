@@ -16,7 +16,7 @@ def generate_launch_description():
         [
             Node(
                 package="robot_localization",
-                executable="ukf_node",
+                executable="ekf_node",
                 name="subjugator_localization",
                 parameters=[config_file],
                 remappings=[
