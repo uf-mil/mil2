@@ -1,0 +1,48 @@
+{
+    "planPath": "docs/superpowers/plans/2026-06-25-octagon-approach-grasp.md",
+    "tasks": [
+        {
+            "id": 6,
+            "subject": "Task 1: ApproachAndGrasp subtree (XML)",
+            "status": "completed",
+            "description":
+                "**Goal:** A reusable grasp subtree that centers over target_label, descends, closes, lifts, and records grabbed_label.\n\n**Files:**\n- Create: src/subjugator/mission_planner/subjugator_missions/xml/approach_and_grasp.xml\n- Modify: src/subjugator/mission_planner/subjugator_missions/xml/sub9_missions.xml\n\n**Acceptance Criteria:**\n- ApproachAndGrasp subtree per spec (Precondition target_label!='' -> RetryUntilSuccessful -> center/open/descend/close/settle/lift -> SetBlackboard grabbed_label)\n- knobs supplied by caller; included in sub9_missions.xml; mission_planner builds\n\n**Verify:** source scripts/setup.bash && colcon build --packages-select mission_planner\n\n```json:metadata\n{\"files\":[\"src/subjugator/mission_planner/subjugator_missions/xml/approach_and_grasp.xml\",\"src/subjugator/mission_planner/subjugator_missions/xml/sub9_missions.xml\"],\"verifyCommand\":\"source scripts/setup.bash && colcon build --packages-select mission_planner\",\"acceptanceCriteria\":[\"ApproachAndGrasp subtree defined per spec\",\"included in sub9_missions.xml\",\"mission_planner builds\"]}\n```"
+        },
+        {
+            "id": 7,
+            "subject": "Task 2: OctagonGraspMission harness + smoke test",
+            "status": "completed",
+            "blockedBy": [
+                6
+            ],
+            "description":
+                "**Goal:** A standalone mission that seeds target_label and runs ApproachAndGrasp; smoke-tests instantiation.\n\n**Files:**\n- Create: src/subjugator/mission_planner/subjugator_missions/xml/octagon_grasp_mission.xml\n- Modify: src/subjugator/mission_planner/subjugator_missions/xml/sub9_missions.xml\n\n**Acceptance Criteria:**\n- OctagonGraspMission seeds target_label, calls ApproachAndGrasp with knob literals; included; reaches Ticking tree with no parse/registration error\n\n**Verify:** ros2 run mission_planner mission_planner_node --ros-args -p mission:=OctagonGraspMission ; publish one /odometry/filtered ; see 'Ticking tree', no 'Unknown mission'\n\n```json:metadata\n{\"files\":[\"src/subjugator/mission_planner/subjugator_missions/xml/octagon_grasp_mission.xml\",\"src/subjugator/mission_planner/subjugator_missions/xml/sub9_missions.xml\"],\"verifyCommand\":\"ros2 run mission_planner mission_planner_node --ros-args -p mission:=OctagonGraspMission (publish one /odometry/filtered)\",\"acceptanceCriteria\":[\"OctagonGraspMission seeds target_label and calls ApproachAndGrasp with knob literals\",\"included in sub9_missions.xml\",\"reaches Ticking tree with no parse/registration error\"]}\n```"
+        },
+        {
+            "id": 9,
+            "subject": "Task 3: Make Task 5 props dynamic (world)",
+            "status": "completed",
+            "description":
+                "**Goal:** Pink_Bin, Yellow_Bin, Yellow_Cup, Pink_Spoon become non-static with inertia so the gripper can lift them; table/octagon stay static.\n\n**Files:**\n- Modify: src/subjugator/simulation/subjugator_gazebo/worlds/robosub_2025.world\n\n**Acceptance Criteria:**\n- 4 props static=false + inertial (mass 0.3, ixx/iyy/izz 0.0005); table/octagon stay static; subjugator_gazebo builds\n\n**Verify:** source scripts/setup.bash && colcon build --packages-select subjugator_gazebo ; GUI: props rest on table, movable\n\n```json:metadata\n{\"files\":[\"src/subjugator/simulation/subjugator_gazebo/worlds/robosub_2025.world\"],\"verifyCommand\":\"source scripts/setup.bash && colcon build --packages-select subjugator_gazebo\",\"acceptanceCriteria\":[\"4 props static=false + inertial\",\"table/octagon stay static\",\"subjugator_gazebo builds\"]}\n```"
+        },
+        {
+            "id": 8,
+            "subject": "Task 4: GripperControl advertises Servo \"gripper\" service",
+            "status": "completed",
+            "description":
+                "**Goal:** The sim gripper responds to the same /gripper Servo service ActuateServo calls, mapping angle -> joint open/closed.\n\n**Files:**\n- Modify: src/subjugator/simulation/subjugator_gazebo/include/GripperControl.hh\n- Modify: src/subjugator/simulation/subjugator_gazebo/src/GripperControl.cc\n- Modify: src/subjugator/simulation/subjugator_gazebo/CMakeLists.txt\n\n**Acceptance Criteria:**\n- advertises subjugator_msgs/srv/Servo 'gripper'; angle 0->closed, 85->open (OPEN_ANGLE=85, clamp); callback sets targets directly; subjugator_msgs added to CMake dep; builds\n\n**Verify:** colcon build --packages-select subjugator_gazebo ; GUI: ros2 service call /gripper subjugator_msgs/srv/Servo '{angle: 85}' opens, '{angle: 0}' closes\n\n```json:metadata\n{\"files\":[\"src/subjugator/simulation/subjugator_gazebo/include/GripperControl.hh\",\"src/subjugator/simulation/subjugator_gazebo/src/GripperControl.cc\",\"src/subjugator/simulation/subjugator_gazebo/CMakeLists.txt\"],\"verifyCommand\":\"source scripts/setup.bash && colcon build --packages-select subjugator_gazebo\",\"acceptanceCriteria\":[\"advertises /gripper Servo service\",\"angle 0->closed, 85->open with interpolation\",\"subjugator_msgs added to CMake deps\",\"builds\"]}\n```"
+        },
+        {
+            "id": 10,
+            "subject": "Task 5: Proximity attach/detach in GripperControl",
+            "status": "completed",
+            "blockedBy": [
+                8,
+                9
+            ],
+            "description":
+                "**Goal:** On close, hold the nearest allowlisted prop within attach_radius of the gripper link so it lifts with the sub; on open, release it.\n\n**Files:**\n- Modify: src/subjugator/simulation/subjugator_gazebo/include/GripperControl.hh\n- Modify: src/subjugator/simulation/subjugator_gazebo/src/GripperControl.cc\n- Modify: src/subjugator/simulation/subjugator_description/urdf/sub9_sim.urdf.xacro\n\n**Acceptance Criteria:**\n- SDF allowlist + attach_radius + gripper_link_name parsed; nearest allowlisted model within radius held on close, released on open (edge-triggered); held prop lifts with sub in GUI (kinematic-follow via SetWorldPoseCmd); table/octagon never held; builds\n\n**Verify:** GUI: gripper over Pink_Bin, '{angle: 0}' -> bin follows as sub rises; '{angle: 85}' -> drops\n\n```json:metadata\n{\"files\":[\"src/subjugator/simulation/subjugator_gazebo/include/GripperControl.hh\",\"src/subjugator/simulation/subjugator_gazebo/src/GripperControl.cc\",\"src/subjugator/simulation/subjugator_description/urdf/sub9_sim.urdf.xacro\"],\"verifyCommand\":\"source scripts/setup.bash && colcon build --packages-select subjugator_gazebo subjugator_description\",\"acceptanceCriteria\":[\"SDF allowlist + attach_radius parsed\",\"nearest allowlisted prop held on close, released on open\",\"held prop lifts with sub in GUI\",\"table/octagon never held\",\"builds\"]}\n```"
+        }
+    ],
+    "lastUpdated": "2026-06-25"
+}
