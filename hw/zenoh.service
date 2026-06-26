@@ -2,6 +2,8 @@
 
 [Service]
 ExecStart=sh -c '. /opt/ros/jazzy/setup.sh; ros2 run rmw_zenoh_cpp rmw_zenohd'
+Environment=ZENOH_ROUTER_CONFIG_URI=/home/sub9/mil2/zenoh_config.json5
+Environment=ROS_DOMAIN_ID=37
 
 [Install]
 WantedBy=default.target
