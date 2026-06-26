@@ -9,6 +9,7 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <subjugator_msgs/srv/servo.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
 struct Context
@@ -25,6 +26,12 @@ struct Context
     // (front + down) can run concurrently; consumers pick a camera below.
     rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr down_targets_sub;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr down_image_sub;
+
+    // Servo service clients (matched to services exposed by servo_controller/driver.py
+    // on the real robot, or the GripperControl plugin in sim). Used by ActuateServo.
+    rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr dropper_client;
+    rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr gripper_client;
+    rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr torpedo_client;
 
     // Latest state
     std::mutex odom_mx;

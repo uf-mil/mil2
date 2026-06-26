@@ -14,6 +14,7 @@ find_package(behaviortree_cpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(yolo_msgs REQUIRED)
+find_package(subjugator_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 
@@ -34,7 +35,8 @@ add_library(
   subjugator_operations/src/determine_channel_side.cpp
   subjugator_operations/src/select_target.cpp
   subjugator_operations/src/any_poles_detected.cpp
-  subjugator_operations/src/has_found_pair.cpp)
+  subjugator_operations/src/has_found_pair.cpp
+  subjugator_operations/src/actuate_servo.cpp)
 
 ament_target_dependencies(
   operations
@@ -44,6 +46,7 @@ ament_target_dependencies(
   mil_msgs
   sensor_msgs
   yolo_msgs
+  subjugator_msgs
   behaviortree_cpp
   lifecycle_msgs
   rcl_interfaces
@@ -60,6 +63,7 @@ ament_target_dependencies(
   mil_msgs
   sensor_msgs
   yolo_msgs
+  subjugator_msgs
   behaviortree_cpp
   ament_index_cpp)
 
