@@ -8,6 +8,7 @@
     <include path="relative_move.xml"/>
     <include path="hone_over_target.xml"/>
     <include path="approach_and_grasp.xml"/>
+    <include path="octagon_grasp_mission.xml"/>
     <include path="center_camera_test_mission.xml"/>
     <include path="octagon_table_mission.xml"/>
     <include path="select_target.xml"/>

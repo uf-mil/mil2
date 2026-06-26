@@ -1,0 +1,18 @@
+<root BTCPP_format="4" main_tree_to_execute="OctagonGraspMission">
+    <BehaviorTree ID="OctagonGraspMission">
+        <Sequence>
+            <!-- No upstream S3 in this harness; seed the target. TODO: replace with the
+                 exact YOLO class string (case-sensitive; a wrong label passes the
+                 non-empty guard but HoneOverTarget then never detects it). -->
+            <SetBlackboard output_key="target_label" value="Pink_Bin"/>
+            <!-- Knobs supplied at the call site (like octagon_table_mission); tune here.
+                 descend_z / lift_z / angles are sim-measured placeholders. -->
+            <SubTree ID="ApproachAndGrasp" _autoremap="true" ctx="{ctx}"
+                     grasp_attempts="2"
+                     center_tol_norm="0.05" center_timeout_msec="20000"
+                     open_angle="85" close_angle="0"
+                     descend_z="-0.6" lift_z="0.6"
+                     grip_settle_msec="1500" move_timeout_msec="30000"/>
+        </Sequence>
+    </BehaviorTree>
+</root>
