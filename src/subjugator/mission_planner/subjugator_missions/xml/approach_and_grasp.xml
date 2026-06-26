@@ -1,0 +1,34 @@
+<root BTCPP_format="4">
+    <BehaviorTree ID="ApproachAndGrasp">
+        <!-- Fail-fast guard: never grab without a decided target (S3 sets target_label) -->
+        <Precondition if="target_label != ''" else="FAILURE">
+            <Sequence>
+                <RetryUntilSuccessful num_attempts="{grasp_attempts}">
+                    <Sequence name="grasp_cycle">
+                        <!-- 1. Center over the selected object (HoneOverTarget degrades to
+                             dead-reckoning internally on timeout; see hone_over_target.xml) -->
+                        <SubTree ID="HoneOverTarget" _autoremap="true"
+                                 label="{target_label}" camera="down"
+                                 tol_norm="{center_tol_norm}" timeout_msec="{center_timeout_msec}"
+                                 ctx="{ctx}"/>
+                        <!-- 2. Ensure the gripper is open before descending -->
+                        <Action ID="ActuateServo" target="gripper" angle="{open_angle}" ctx="{ctx}"/>
+                        <!-- 3. Dead-reckon descent to grasp depth (negative z = down) -->
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                                 z="{descend_z}" pos_tol="0.2" ori_tol_deg="180.0"
+                                 msec="{move_timeout_msec}" ctx="{ctx}"/>
+                        <!-- 4. Close to grasp, then let the joint/attach settle -->
+                        <Action ID="ActuateServo" target="gripper" angle="{close_angle}" ctx="{ctx}"/>
+                        <Delay delay_msec="{grip_settle_msec}"><AlwaysSuccess/></Delay>
+                        <!-- 5. Lift clear of the table (positive z = up) -->
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                                 z="{lift_z}" pos_tol="0.2" ori_tol_deg="180.0"
+                                 msec="{move_timeout_msec}" ctx="{ctx}"/>
+                    </Sequence>
+                </RetryUntilSuccessful>
+                <!-- 6. Record what we grabbed -> S3's exclude reads this for the S6 loop -->
+                <SetBlackboard output_key="grabbed_label" value="{target_label}"/>
+            </Sequence>
+        </Precondition>
+    </BehaviorTree>
+</root>
