@@ -6,15 +6,21 @@
 #include <algorithm>
 #include <iostream>
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <gz/math/Pose3.hh>
 #include <gz/plugin/Register.hh>
 #include <gz/sim/EntityComponentManager.hh>
 #include <gz/sim/EventManager.hh>
 #include <gz/sim/Joint.hh>
+#include <gz/sim/Link.hh>
+#include <gz/sim/Model.hh>
 #include <gz/sim/System.hh>
 #include <gz/sim/components/JointPosition.hh>
+#include <gz/sim/components/Model.hh>
 #include <gz/sim/components/Name.hh>
 #include <gz/sim/components/World.hh>
 #include <gz/transport/Node.hh>
@@ -52,6 +58,10 @@ class GripperControl : public gz::sim::System,
                          std::shared_ptr<subjugator_msgs::srv::Servo::Response>);
 
   private:
+    // Proximity grasp helpers
+    void TryGrasp(gz::sim::EntityComponentManager &ecm);
+    void ReleaseGrasp();
+
     // ROS2 Node and subscription
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr key_sub_;
@@ -93,6 +103,16 @@ class GripperControl : public gz::sim::System,
 
     // World name (for nicer logging)
     std::string world_name_{ "unknown" };
+
+    // Proximity grasp
+    std::unordered_set<std::string> graspable_names_;
+    double attach_radius_{ 0.25 };
+    std::string gripper_link_name_{ "gripper_link" };
+    gz::sim::Entity gripper_link_entity_{ gz::sim::kNullEntity };
+    gz::sim::Entity held_model_entity_{ gz::sim::kNullEntity };
+    gz::math::Pose3d held_offset_;  // gripper_link -> held model, captured at grasp
+    bool want_grasp_{ false };      // last commanded state: true=closed/grasp
+    bool grasp_active_{ false };    // currently holding something
 };
 
 }  // namespace gripper_control

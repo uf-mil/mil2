@@ -106,6 +106,12 @@
     <plugin filename="GripperControl" name="gripper_control::GripperControl">
       <left_joint_name>gripper_leftArm_joint</left_joint_name>
       <right_joint_name>gripper_rightArm_joint</right_joint_name>
+      <gripper_link_name>gripper_link</gripper_link_name>
+      <attach_radius>0.25</attach_radius>
+      <graspable>Pink_Bin</graspable>
+      <graspable>Yellow_Bin</graspable>
+      <graspable>Yellow_Cup</graspable>
+      <graspable>Pink_Spoon</graspable>
     </plugin>
   </gazebo>
 

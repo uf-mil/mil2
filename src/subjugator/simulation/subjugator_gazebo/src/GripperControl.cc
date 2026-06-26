@@ -4,6 +4,7 @@
 
 #include <gz/common/Console.hh>
 #include <gz/plugin/Register.hh>
+#include <gz/sim/Util.hh>
 
 namespace gripper_control
 {
@@ -67,6 +68,22 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
             this->right_joint_name_ = sdf->Get<std::string>("right_joint_name");
             std::cout << "[GripperControl] Right Joint Name acquired" << std::endl;
         }
+
+        // Proximity grasp parameters
+        if (sdf->HasElement("attach_radius"))
+        {
+            this->attach_radius_ = sdf->Get<double>("attach_radius");
+        }
+        if (sdf->HasElement("gripper_link_name"))
+        {
+            this->gripper_link_name_ = sdf->Get<std::string>("gripper_link_name");
+        }
+        for (auto el = sdf->FindElement("graspable"); el; el = el->GetNextElement("graspable"))
+        {
+            this->graspable_names_.insert(el->Get<std::string>());
+        }
+        std::cout << "[GripperControl] " << this->graspable_names_.size()
+                  << " graspable models, attach_radius=" << this->attach_radius_ << std::endl;
     }
 
     // Find joint entities by name so we can directly set joint positions
@@ -87,6 +104,11 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
                     this->left_pos_initialized_ = true;
                     std::cout << "[GripperControl] Left joint initial pos: " << this->left_current_pos_ << std::endl;
                 }
+            }
+            if (_name && _name->Data() == this->gripper_link_name_)
+            {
+                this->gripper_link_entity_ = _ent;
+                std::cout << "[GripperControl] Found gripper link entity: " << this->gripper_link_name_ << std::endl;
             }
             if (_name && _name->Data() == this->right_joint_name_)
             {
@@ -134,6 +156,7 @@ void GripperControl::GripperCallback(std::shared_ptr<subjugator_msgs::srv::Servo
     this->left_target_pos_ = tgt;
     this->right_target_pos_ = tgt;
     this->gripper_open_ = frac > 0.5;
+    this->want_grasp_ = frac <= 0.5;  // closing => grasp intent
 
     std::cout << "[GripperControl] Servo cmd angle=" << static_cast<int>(req->angle) << " -> target=" << tgt
               << std::endl;
@@ -146,6 +169,7 @@ void GripperControl::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
     {
         // Set targets; actual motion will be smoothed over subsequent PreUpdate calls
         this->gripper_open_ = !this->gripper_open_;
+        this->want_grasp_ = !this->gripper_open_;  // closed => grasp intent
         double tgt = this->gripper_open_ ? this->open_pos_ : this->closed_pos_;
         this->left_target_pos_ = tgt;
         this->right_target_pos_ = tgt;
@@ -198,6 +222,74 @@ void GripperControl::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
         gz::sim::Joint right(this->right_joint_entity_);
         right.ResetPosition(_ecm, std::vector<double>{ this->right_current_pos_ });
     }
+
+    // Edge-triggered grasp / release
+    if (this->want_grasp_ && !this->grasp_active_)
+    {
+        this->TryGrasp(_ecm);
+    }
+    else if (!this->want_grasp_ && this->grasp_active_)
+    {
+        this->ReleaseGrasp();
+    }
+
+    // While holding, keep the prop locked to the gripper (kinematic follow)
+    if (this->grasp_active_ && this->held_model_entity_ != gz::sim::kNullEntity &&
+        this->gripper_link_entity_ != gz::sim::kNullEntity)
+    {
+        gz::sim::Link link(this->gripper_link_entity_);
+        auto linkPose = link.WorldPose(_ecm);
+        if (linkPose)
+        {
+            gz::math::Pose3d const target = *linkPose * this->held_offset_;
+            gz::sim::Model(this->held_model_entity_).SetWorldPoseCmd(_ecm, target);
+        }
+    }
+}
+
+void GripperControl::TryGrasp(gz::sim::EntityComponentManager &ecm)
+{
+    if (this->gripper_link_entity_ == gz::sim::kNullEntity)
+        return;
+    gz::sim::Link gripperLink(this->gripper_link_entity_);
+    auto gpOpt = gripperLink.WorldPose(ecm);
+    if (!gpOpt)
+        return;
+    gz::math::Pose3d const gripperPose = *gpOpt;
+
+    gz::sim::Entity best = gz::sim::kNullEntity;
+    double bestDist = this->attach_radius_;
+    ecm.Each<gz::sim::components::Model, gz::sim::components::Name>(
+        [&](gz::sim::Entity const &ent, gz::sim::components::Model const *,
+            gz::sim::components::Name const *name) -> bool
+        {
+            if (!name || this->graspable_names_.find(name->Data()) == this->graspable_names_.end())
+                return true;
+            gz::math::Pose3d const modelPose = gz::sim::worldPose(ent, ecm);
+            double const d = (modelPose.Pos() - gripperPose.Pos()).Length();
+            if (d < bestDist)
+            {
+                bestDist = d;
+                best = ent;
+            }
+            return true;
+        });
+
+    if (best == gz::sim::kNullEntity)
+        return;
+
+    gz::math::Pose3d const modelPose = gz::sim::worldPose(best, ecm);
+    this->held_model_entity_ = best;
+    this->held_offset_ = gripperPose.Inverse() * modelPose;  // gripper_link -> model
+    this->grasp_active_ = true;
+    std::cout << "[GripperControl] Grasped model entity " << best << " at dist " << bestDist << std::endl;
+}
+
+void GripperControl::ReleaseGrasp()
+{
+    this->grasp_active_ = false;
+    this->held_model_entity_ = gz::sim::kNullEntity;
+    std::cout << "[GripperControl] Released grasp" << std::endl;
 }
 
 void GripperControl::PostUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager const &ecm)
