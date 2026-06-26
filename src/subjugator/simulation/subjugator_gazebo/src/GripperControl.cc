@@ -32,6 +32,10 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
     this->key_sub_ = this->node_->create_subscription<std_msgs::msg::String>(
         "/keyboard/keypress", 10, std::bind(&GripperControl::KeypressCallback, this, std::placeholders::_1));
 
+    this->gripper_srv_ = this->node_->create_service<subjugator_msgs::srv::Servo>(
+        "gripper", std::bind(&GripperControl::GripperCallback, this, std::placeholders::_1, std::placeholders::_2));
+    std::cout << "[GripperControl] Advertised Servo service '/gripper'" << std::endl;
+
     std::cout << "[GripperControl] ROS2 node created and subscribed to /keyboard/keypress" << std::endl;
 
     // Try to obtain model name (from Entity Name component or SDF attribute)
@@ -116,6 +120,23 @@ void GripperControl::KeypressCallback(std_msgs::msg::String::SharedPtr const msg
     {
         this->u_pressed_ = true;
     }
+}
+
+void GripperControl::GripperCallback(std::shared_ptr<subjugator_msgs::srv::Servo::Request> const req,
+                                     std::shared_ptr<subjugator_msgs::srv::Servo::Response> /*res*/)
+{
+    double frac = static_cast<double>(req->angle) / OPEN_ANGLE;
+    frac = std::clamp(frac, 0.0, 1.0);
+    double const tgt = this->closed_pos_ + frac * (this->open_pos_ - this->closed_pos_);
+
+    // Service callback runs inside spin_some() in PostUpdate (gz thread), same
+    // thread as PreUpdate -- safe to set targets directly.
+    this->left_target_pos_ = tgt;
+    this->right_target_pos_ = tgt;
+    this->gripper_open_ = frac > 0.5;
+
+    std::cout << "[GripperControl] Servo cmd angle=" << static_cast<int>(req->angle) << " -> target=" << tgt
+              << std::endl;
 }
 
 void GripperControl::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &_ecm)

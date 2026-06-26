@@ -3,6 +3,7 @@
 
 #include <gz/msgs/double.pb.h>
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 
@@ -19,6 +20,7 @@
 #include <gz/transport/Node.hh>
 #include <sdf/Element.hh>
 #include <std_msgs/msg/string.hpp>
+#include <subjugator_msgs/srv/servo.hpp>
 
 namespace gripper_control
 {
@@ -45,10 +47,15 @@ class GripperControl : public gz::sim::System,
     // Keypress callback
     void KeypressCallback(std_msgs::msg::String::SharedPtr const msg);
 
+    // Servo service callback (response is intentionally unused)
+    void GripperCallback(std::shared_ptr<subjugator_msgs::srv::Servo::Request> const req,
+                         std::shared_ptr<subjugator_msgs::srv::Servo::Response>);
+
   private:
     // ROS2 Node and subscription
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr key_sub_;
+    rclcpp::Service<subjugator_msgs::srv::Servo>::SharedPtr gripper_srv_;
 
     // Gazebo transport node + publishers for left and right joints
     gz::transport::Node gz_node_;
@@ -58,6 +65,10 @@ class GripperControl : public gz::sim::System,
     // State & settings
     bool u_pressed_{ false };
     bool gripper_open_{ false };
+    // Service-protocol constant (Servo.angle units): the requested angle that maps to
+    // frac=1.0 (fully open). NOT a physical angle -- the physical positions are
+    // open_pos_/closed_pos_ below, in radians.
+    static constexpr double OPEN_ANGLE{ 85.0 };
     double open_pos_{ 0.85 };   // radians (default)
     double closed_pos_{ 0.0 };  // radians (default)
 
