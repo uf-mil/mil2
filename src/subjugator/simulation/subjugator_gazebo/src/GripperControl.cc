@@ -127,6 +127,18 @@ void GripperControl::Configure(gz::sim::Entity const &entity, std::shared_ptr<sd
             }
             return true;  // continue iterating
         });
+
+    if (this->gripper_link_entity_ == gz::sim::kNullEntity)
+    {
+        std::cout << "[GripperControl] WARNING: gripper link '" << this->gripper_link_name_
+                  << "' not found; proximity grasp disabled." << std::endl;
+    }
+    if (this->graspable_names_.empty())
+    {
+        std::cout << "[GripperControl] WARNING: no <graspable> models configured; "
+                     "proximity grasp will never attach anything."
+                  << std::endl;
+    }
 }
 
 void GripperControl::KeypressCallback(std_msgs::msg::String::SharedPtr const msg)
@@ -233,6 +245,13 @@ void GripperControl::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
         this->ReleaseGrasp();
     }
 
+    // If the held model was removed from the sim, drop the grasp.
+    if (this->grasp_active_ && this->held_model_entity_ != gz::sim::kNullEntity &&
+        !_ecm.HasEntity(this->held_model_entity_))
+    {
+        this->ReleaseGrasp();
+    }
+
     // While holding, keep the prop locked to the gripper (kinematic follow)
     if (this->grasp_active_ && this->held_model_entity_ != gz::sim::kNullEntity &&
         this->gripper_link_entity_ != gz::sim::kNullEntity)
@@ -258,7 +277,7 @@ void GripperControl::TryGrasp(gz::sim::EntityComponentManager &ecm)
     gz::math::Pose3d const gripperPose = *gpOpt;
 
     gz::sim::Entity best = gz::sim::kNullEntity;
-    double bestDist = this->attach_radius_;
+    double bestDist = this->attach_radius_;  // also serves as the radius cutoff (d < bestDist)
     ecm.Each<gz::sim::components::Model, gz::sim::components::Name>(
         [&](gz::sim::Entity const &ent, gz::sim::components::Model const *,
             gz::sim::components::Name const *name) -> bool
@@ -287,6 +306,9 @@ void GripperControl::TryGrasp(gz::sim::EntityComponentManager &ecm)
 
 void GripperControl::ReleaseGrasp()
 {
+    // Note: the prop's velocity is not zeroed here, so on release it keeps whatever
+    // the physics engine last had. A follow-up could zero linear/angular velocity for
+    // a cleaner drop if props fling on release.
     this->grasp_active_ = false;
     this->held_model_entity_ = gz::sim::kNullEntity;
     std::cout << "[GripperControl] Released grasp" << std::endl;
