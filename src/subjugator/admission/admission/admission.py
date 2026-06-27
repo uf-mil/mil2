@@ -57,9 +57,33 @@ def run(co):
     except KeyboardInterrupt:
         pass
     finally:
+        asyncio_shutdown()
+
+def asyncio_shutdown():
+    try:
+        # Lib/asyncio/runners.py : _cancel_all_tasks
         to_cancel = asyncio.all_tasks(loop)
         if not to_cancel:
             return
+
         for task in to_cancel:
             task.cancel()
+
         loop.run_until_complete(asyncio.gather(*to_cancel, return_exceptions=True))
+
+        for task in to_cancel:
+            if task.cancelled():
+                continue
+            if task.exception() is not None:
+                loop.call_exception_handler({
+                    'message': 'unhandled exception during asyncio.run() shutdown',
+                    'exception': task.exception(),
+                    'task': task,
+                })
+
+        # Runner.close
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.run_until_complete(
+            loop.shutdown_default_executor(300))
+    finally:
+        loop.close()
