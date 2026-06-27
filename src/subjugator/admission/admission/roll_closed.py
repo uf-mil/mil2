@@ -3,8 +3,8 @@ import transforms3d
 import admission as adm
 from geometry_msgs.msg import Pose, Quaternion, Wrench
 
-def quat(r, p, y):
-    q = transforms3d.euler.euler2quat(r, p, y)
+def quatRPY(r, p, y):
+    q = transforms3d.taitbryan.euler2quat(y, p, r)
     quat = Quaternion()
     quat.w = q[0]
     quat.x = q[1]
@@ -15,7 +15,7 @@ def quat(r, p, y):
 async def roll_closed():
     goal = Pose()
     goal.position.z = -1.0
-    goal.orientation = quat(0, 0, 0)
+    goal.orientation = quatRPY(0, 0, 0)
     adm.goal_pub.publish(goal)
 
     while odom := await adm.odom_sub():
@@ -27,9 +27,8 @@ async def roll_closed():
         if dist < 0.2:
             break
 
-    q = odom.pose.pose.orientation
-    roll_prev, _, yaw_prev = transforms3d.euler.quat2euler([q.w, q.x, q.y, q.z])
     roll_amt = 0
+    roll_prev = 0
 
     wrench = Wrench()
     wrench.torque.x = 10.0
@@ -37,9 +36,9 @@ async def roll_closed():
 
     while odom := await adm.odom_sub():
         q = odom.pose.pose.orientation
-        roll, _, _ = transforms3d.euler.quat2euler([q.w, q.x, q.y, q.z])
+        _, _, roll = transforms3d.taitbryan.quat2euler([q.w, q.x, q.y, q.z])
 
-        goal.orientation = quat(roll + 0.5, 0, yaw_prev)
+        goal.orientation = quatRPY(roll + 0.5, 0, 0)
         adm.goal_pub.publish(goal)
 
         roll_amt += math.remainder(roll - roll_prev, math.tau)
@@ -48,7 +47,7 @@ async def roll_closed():
         if roll_amt >= 315 * (math.pi / 180):
             break
 
-    goal.orientation = quat(0, 0, yaw_prev)
+    goal.orientation = quatRPY(0, 0, 0)
     adm.goal_pub.publish(goal)
 
 if __name__ == "__main__":
