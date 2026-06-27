@@ -136,6 +136,7 @@ jobs:
           source scripts/setup.bash
           set -u
           echo $RMW_IMPLEMENTATION
+          ros2 run rmw_zenoh_cpp rmw_zenohd &
           colcon test --event-handlers console_cohesion+ \
             --executor sequential \
             --return-code-on-test-failure
