@@ -1,4 +1,5 @@
 import asyncio
+from collections import deque
 from dataclasses import dataclass
 
 import rclpy
@@ -48,6 +49,26 @@ yolo_sub = Sub(DetectionArray, "/yolo/detections")
 
 goal_pub = node.create_publisher(Pose, "/goal_pose", 10)
 add_wrench_pub = node.create_publisher(Wrench, "/add_wrench", 10)
+
+class Join:
+    def __init__(self, *subs):
+        self.futs = {s(): s for s in subs}
+        self.done = deque()
+
+    async def __call__(self):
+        if self.done:
+            return await self.done.popleft()
+        done, _ = await asyncio.wait(
+            self.futs.keys(),
+            return_when=asyncio.FIRST_COMPLETED
+        )
+
+        for fut in done:
+            self.done.append(fut)
+            sub = self.futs.pop(fut)
+            self.futs[sub()] = sub
+
+        return await self.done.popleft()
 
 def run(co):
     task = loop.create_task(co)
