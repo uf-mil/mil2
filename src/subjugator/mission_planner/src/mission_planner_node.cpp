@@ -15,6 +15,7 @@
 #include "check_yolo_model.hpp"
 #include "context.hpp"
 #include "detect_target.hpp"
+#include "detect_wall_direction.hpp"
 #include "determine_channel_side.hpp"
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
@@ -25,7 +26,9 @@
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "remember_waypoint.hpp"
+#include "start_coin_flip.hpp"
 #include "std_srvs/srv/set_bool.hpp"
+#include "stop_coin_flip.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 #include "track_best_pair.hpp"
 #include "track_largest_poles.hpp"
@@ -66,6 +69,15 @@ int main(int argc, char** argv)
                                                                       std::scoped_lock lk(ctx->detections_mx);
                                                                       ctx->latest_detections = *msg;
                                                                   });
+
+    // Wall orientation from the coin_flip classifier node (subjugator_vision)
+    ctx->wall_direction_sub =
+        node->create_subscription<std_msgs::msg::String>("/coin_flip/direction", 10,
+                                                         [ctx](std_msgs::msg::String::SharedPtr msg)
+                                                         {
+                                                             std::scoped_lock lk(ctx->wall_direction_mx);
+                                                             ctx->latest_wall_direction = msg->data;
+                                                         });
 
     // Image size (for pixel->angle mapping). Probably do not need
     ctx->image_sub = node->create_subscription<sensor_msgs::msg::Image>("/front_cam/image_raw", 10,
@@ -110,6 +122,9 @@ int main(int argc, char** argv)
     factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
     factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
     factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
+    factory.registerNodeType<DetectWallDirection>("DetectWallDirection");
+    factory.registerNodeType<StartCoinFlip>("StartCoinFlip");
+    factory.registerNodeType<StopCoinFlip>("StopCoinFlip");
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
     factory.registerNodeType<TrackBestPair>("TrackBestPair");
@@ -176,6 +191,10 @@ int main(int argc, char** argv)
         }
         rate.sleep();
     }
+
+    // Kill any helper node the mission launched (e.g. coin_flip_node). Runs on
+    // every exit path, including Ctrl-C, since the loop ends when ok() is false.
+    stopCoinFlip(*ctx);
 
     rclcpp::shutdown();
     return 0;
