@@ -12,6 +12,9 @@
     <include path="center_camera_test_mission.xml"/>
     <include path="octagon_table_mission.xml"/>
     <include path="select_target.xml"/>
+    <include path="hone_over_table_only_mission.xml"/>
+    <include path="select_only_mission.xml"/>
+    <include path="hone_over_table_select_mission.xml"/>
     <include path="square_test_mission.xml"/>
     <include path="BUST_mission.xml"/>
     <include path="start_gate_mission.xml"/>

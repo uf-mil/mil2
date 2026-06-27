@@ -1,0 +1,14 @@
+<root BTCPP_format="4" main_tree_to_execute="HoneOverTableSelect">
+    <!--
+        Pool-test Stage 4 (S2+S3 milestone): center over the table, then select
+        the role target, in ONE process. Exercises the in-tree {target_label}
+        handoff (remapped to root scope) the future S3->S4 chain depends on.
+    -->
+    <BehaviorTree ID="HoneOverTableSelect">
+        <Sequence>
+            <SubTree ID="HoneOverTarget" label="table" camera="down"
+                     tol_norm="0.05" timeout_msec="30000" ctx="{ctx}"/>
+            <SubTree ID="SelectTargetS3" ctx="{ctx}" target_label="{target_label}"/>
+        </Sequence>
+    </BehaviorTree>
+</root>

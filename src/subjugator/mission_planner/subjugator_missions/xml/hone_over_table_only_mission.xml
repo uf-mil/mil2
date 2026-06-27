@@ -1,0 +1,11 @@
+<root BTCPP_format="4" main_tree_to_execute="HoneOverTableOnly">
+    <!--
+        Pool-test Stage 2: center over the table on the down cam, standalone.
+        Thin wrapper around the HoneOverTarget subtree so it runs as a root
+        mission. The sub must already hover over the table (hand-placed).
+    -->
+    <BehaviorTree ID="HoneOverTableOnly">
+        <SubTree ID="HoneOverTarget" label="table" camera="down"
+                 tol_norm="0.05" timeout_msec="30000" ctx="{ctx}"/>
+    </BehaviorTree>
+</root>

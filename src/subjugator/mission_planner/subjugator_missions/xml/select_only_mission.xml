@@ -1,0 +1,11 @@
+<root BTCPP_format="4" main_tree_to_execute="SelectOnly">
+    <!--
+        Pool-test Stage 3: run the S3 target selection standalone. Wrapper binds
+        the SelectTargetS3 subtree's ports so it can be a root mission. role is
+        provided via the `role` ROS param. Sub positioned so objects are in the
+        down-cam frame.
+    -->
+    <BehaviorTree ID="SelectOnly">
+        <SubTree ID="SelectTargetS3" ctx="{ctx}" target_label="{target_label}"/>
+    </BehaviorTree>
+</root>
