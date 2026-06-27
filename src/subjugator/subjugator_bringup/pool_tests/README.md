@@ -15,6 +15,8 @@ cd src/subjugator/subjugator_bringup/pool_tests
 ./pooltest.sh --help          # all stages + flags
 ```
 
+Replace `<ws>` with your ROS 2 workspace root (e.g. `~/mil2`).
+
 **After you type `GO` you have 30 s (default) to disconnect and clear the sub.**
 It then runs autonomously. Detach tmux with `Ctrl-b d`; reattach with
 `tmux attach -t pooltest` to fill in the results form.
@@ -49,9 +51,9 @@ Pass with `--role survey_repair` (or you'll be prompted).
 | preflight | n/a | (none) | all topics live | MISSING items |
 | calib | ~1 m over table, level | `GO` | self-centers & holds | converging signs + gains |
 | hone | ~1 m over table | `GO` | holds center | confidence, altitude, stability |
-| select | objects in down-cam view | `--role`, `GO` | `locked '<class>'` | locked label, conf, frames |
-| combined | ~1 m over table, objects in view | `--role`, `GO` | centers then locks | label, total time, handoff y/n |
-| deadreckon | drive to CP1..CP4 | `SNAP` x4 | constants printed | constants.txt values |
+| select | objects in down-cam view | role (flag or prompt), `GO` | `locked '<class>'` | locked label, conf, frames |
+| combined | ~1 m over table, objects in view | role (flag or prompt), `GO` | centers then locks | label, total time, handoff y/n |
+| deadreckon | drive to each CP in order | `SNAP` x4 | constants printed | constants.txt values |
 | full_s2 | S1-arrival start pose | `GO` | ends over table | which step failed |
 
 ## Outputs

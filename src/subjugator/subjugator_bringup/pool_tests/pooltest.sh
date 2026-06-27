@@ -56,7 +56,7 @@ FLAGS:
 WHAT YOU NEED before running a real test:
   * sub powered and in the water
   * the down-cam YOLO node running with the required model(s) loaded
-      - 'table' model for calib/hone/combined
+      - 'table' model for calib/hone/combined/full_s2
       - role object model (nut_bolt/plug or pill/bandage) for select/combined
   * the ROLE for this run (survey_repair or search_rescue)
   * a diver/teleop to position the sub before each motion stage
@@ -254,7 +254,7 @@ collect_form() {
 stage_preflight() {
 	hr
 	say "STAGE 0 — PREFLIGHT (no motion). Confirms the rig before we move the sub."
-	say "Required model(s): 'table' (calib/hone/combined), role object model (select/combined)."
+	say "Required model(s): 'table' (calib/hone/combined/full_s2), role object model (select/combined)."
 	local img="/down_camera/rgb/image_raw"
 	[ "$SIM" -eq 1 ] && img="$SIM_IMAGE_TOPIC"
 	if [ "$DRYRUN" -eq 1 ]; then
