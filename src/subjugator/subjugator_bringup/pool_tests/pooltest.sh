@@ -206,6 +206,11 @@ briefing() {
 
 # ---- helpers for stage preconditions / data collection ----------------------
 ensure_role() {
+	if [ "$DRYRUN" -eq 1 ] && [ -z "$ROLE" ]; then
+		say "DRY RUN: would prompt for role; defaulting to survey_repair"
+		ROLE="survey_repair"
+		return 0
+	fi
 	while [ "$ROLE" != "survey_repair" ] && [ "$ROLE" != "search_rescue" ]; do
 		say "This stage needs a ROLE. Valid values:"
 		say "  survey_repair  -> objects: nut_bolt, plug"
