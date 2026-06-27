@@ -16,6 +16,7 @@
     imu0_differential: false
     imu0_relative: true
     imu0_remove_gravitational_acceleration: true
+    gravitational_acceleration: 9.67
     imu0_queue_size: 10
 
     odom0: "/dvl/odom"
