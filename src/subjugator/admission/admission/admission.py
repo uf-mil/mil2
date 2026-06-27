@@ -1,6 +1,6 @@
 import rclpy
 from dataclasses import dataclass
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, Wrench
 from nav_msgs.msg import Odometry
 from yolo_msgs.msg import DetectionArray
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
@@ -29,7 +29,9 @@ class AwaitableSubscription:
 
 odom_sub = AwaitableSubscription(Odometry, "/odometry/filtered")
 yolo_sub = AwaitableSubscription(DetectionArray, "/yolo/detections")
+
 goal_pub = node.create_publisher(Pose, "/goal_pose", 10)
+add_wrench_pub = node.create_publisher(Wrench, "/add_wrench", 10)
 
 @dataclass(slots=True)
 class Task:
