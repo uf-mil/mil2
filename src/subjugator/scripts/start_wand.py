@@ -42,7 +42,8 @@ STACK_STARTUP_DELAY = 5.0
 # Long-running processes. These are launched in the background and kept alive
 # for the lifetime of the run.
 LAUNCH_CMD = ["ros2", "launch", "subjugator_bringup", "sub9.launch.py"]
-MISSION_CMD = ["ros2", "run", "subjugator_mission_planner", "mission_planner"]
+MISSION_CMD = ["ros2", "run", "mission_planner", "mission_planner_node"]
+
 
 # One-shot service calls, run in order once the stack is up. These mirror the
 # start-localization -> reset-localization -> start-controller -> unkill aliases
@@ -121,7 +122,7 @@ class StartupSequencer:
 
         # 6. Run the mission planner.
         self._logger.info("Starting mission planner.")
-        # self._start_background("mission_planner", MISSION_CMD)
+        self._start_background("mission_planner", MISSION_CMD)
 
         self._logger.info("Bring-up sequence complete.")
 
