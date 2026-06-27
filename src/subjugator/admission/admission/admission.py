@@ -52,23 +52,30 @@ add_wrench_pub = node.create_publisher(Wrench, "/add_wrench", 10)
 
 class Join:
     def __init__(self, *subs):
-        self.futs = {s(): s for s in subs}
+        self.subs = subs
+        self.futs = {s(): i for i, s in enumerate(subs)}
         self.done = deque()
 
-    async def __call__(self):
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
         if self.done:
-            return await self.done.popleft()
+            return self.done.popleft()
+
         done, _ = await asyncio.wait(
             self.futs.keys(),
             return_when=asyncio.FIRST_COMPLETED
         )
 
         for fut in done:
-            self.done.append(fut)
-            sub = self.futs.pop(fut)
-            self.futs[sub()] = sub
+            i = self.futs.pop(fut)
+            lst = [None] * len(self.subs)
+            lst[i] = fut.result()
+            self.done.append(lst)
+            self.futs[self.subs[i]()] = i
 
-        return await self.done.popleft()
+        return self.done.popleft()
 
 def run(co):
     task = loop.create_task(co)
