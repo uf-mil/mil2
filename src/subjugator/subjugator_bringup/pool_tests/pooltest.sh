@@ -13,13 +13,17 @@ STAGE=""
 RUN_ROOT="${POOLTEST_RUNS:-$PWD/pooltest_runs}"
 SIM_IMAGE_TOPIC="/down_cam/image_raw"
 BAG_TOPICS=(/odometry/filtered /goal_pose /yolo_down/detections)
-# shellcheck disable=SC2034  # referenced by Tasks 3-4 stage stubs
 ORDERED_STAGES=(preflight calib hone select combined deadreckon full_s2)
 BAG_PID="" # set by start_bag; cleared by stop_bag
 
 # ---- cleanup trap -----------------------------------------------------------
 _cleanup() { stop_bag; }
-trap _cleanup EXIT INT TERM
+_on_signal() {
+	stop_bag
+	exit 130
+}
+trap _cleanup EXIT
+trap _on_signal INT TERM
 
 # ---- small ui helpers -------------------------------------------------------
 hr() { printf '%s\n' "------------------------------------------------------------"; }
@@ -139,14 +143,22 @@ make_run_dir() { # $1 = stage name -> echoes the path
 	printf '%s' "$d"
 }
 
-start_bag() { # $1 = run dir; sets BAG_PID
+start_bag() { # $1 = run dir; sets BAG_PID (empty if recording failed to start). Always returns 0.
 	if [ "$DRYRUN" -eq 1 ]; then
 		say "DRY RUN: would record bag of: ${BAG_TOPICS[*]}"
 		BAG_PID=""
-		return
+		return 0
 	fi
 	setsid ros2 bag record -o "$1/bag" "${BAG_TOPICS[@]}" >"$1/bag.log" 2>&1 &
 	BAG_PID=$!
+	sleep 1
+	if ! kill -0 "$BAG_PID" 2>/dev/null; then
+		say "WARNING: ros2 bag record did not start (see $1/bag.log)."
+		say "  This run will NOT be recorded. Ctrl-C to abort and fix, or continue unrecorded."
+		: >"$1/BAG_FAILED"
+		BAG_PID=""
+	fi
+	return 0
 }
 
 stop_bag() { # uses global BAG_PID set by start_bag
@@ -156,7 +168,7 @@ stop_bag() { # uses global BAG_PID set by start_bag
 	BAG_PID=""
 }
 
-run_mission() { # $1 = run dir, $2 = mission name. Launches + waits. Always returns 0; mission SUCCESS/FAILURE is in console.log (stages always proceed to the results form).
+run_mission() { # $1 = run dir, $2 = mission name. Launches + waits. Always returns 0 (a normal mission FAILURE must not abort the stage); a startup/fatal crash is detected and surfaced. Detail is in console.log.
 	local dir="$1" mission="$2"
 	local args=(--ros-args -p mission:="$mission")
 	[ -n "$ROLE" ] && args+=(-p role:="$ROLE")
@@ -165,12 +177,26 @@ run_mission() { # $1 = run dir, $2 = mission name. Launches + waits. Always retu
 		say "DRY RUN: would launch mission:=$mission ${ROLE:+role:=$ROLE}$([ "$SIM" -eq 1 ] && printf ' (sim)')"
 		return 0
 	fi
-	# setsid -> own session so it survives if the live view (tail) is interrupted.
+	# Mission runs in its own session (setsid) so a terminal Ctrl-C never reaches it.
 	setsid ros2 run mission_planner mission_planner_node "${args[@]}" >"$dir/console.log" 2>&1 &
 	local mpid=$!
-	say "Mission running (pid $mpid). Live log (Ctrl-C just stops the view, not the mission):"
-	tail -f --pid="$mpid" "$dir/console.log" || true
+	say "Mission running (pid $mpid). Ctrl-C here stops ONLY this live view; the mission and bag keep running."
+	# Live view in foreground. Ctrl-C must kill only this tail, not stop_bag: point
+	# INT at killing the tail. The bag and mission are setsid'd away from the
+	# terminal, so the terminal SIGINT never reaches them anyway.
+	tail -f --pid="$mpid" "$dir/console.log" &
+	local tpid=$!
+	trap 'kill "$tpid" 2>/dev/null || true' INT
+	wait "$tpid" 2>/dev/null || true
+	trap _on_signal INT
 	wait "$mpid" 2>/dev/null || true
+	# Catch a node that crashed/aborted at startup (e.g. workspace not rebuilt after
+	# adding missions -> "Unknown mission"). A normal mission FAILURE is fine here.
+	if grep -qiE "Unknown mission|terminate called|what\(\):|\[FATAL\]" "$dir/console.log" 2>/dev/null; then
+		say "WARNING: the mission node reported a startup/fatal error (see $dir/console.log)."
+		say "  If you just added missions, rebuild + re-source the workspace — this stage likely did NOT run."
+	fi
+	return 0
 }
 
 # ---- gates / briefing -------------------------------------------------------
@@ -256,6 +282,18 @@ collect_form() {
 }
 
 # ---- stage implementations --------------------------------------------------
+check_topic_alive() { # $1 = label, $2 = topic; prints rate or MISSING; returns 0 if publishing, 1 if not
+	local out
+	out="$(timeout 5 ros2 topic hz "$2" 2>/dev/null | head -n 2 || true)"
+	say "-- $1 ($2):"
+	if [ -n "$out" ]; then
+		say "$out"
+		return 0
+	fi
+	say "  MISSING"
+	return 1
+}
+
 stage_preflight() {
 	hr
 	say "STAGE 0 — PREFLIGHT (no motion). Confirms the rig before we move the sub."
@@ -267,25 +305,9 @@ stage_preflight() {
 		return 0
 	fi
 	local ok=1
-	local hz_out
-	say "-- down image ($img):"
-	hz_out="$(timeout 5 ros2 topic hz "$img" 2>/dev/null | head -n 2 || true)"
-	if [ -n "$hz_out" ]; then say "$hz_out"; else
-		say "  MISSING"
-		ok=0
-	fi
-	say "-- detections (/yolo_down/detections):"
-	hz_out="$(timeout 5 ros2 topic hz /yolo_down/detections 2>/dev/null | head -n 2 || true)"
-	if [ -n "$hz_out" ]; then say "$hz_out"; else
-		say "  MISSING"
-		ok=0
-	fi
-	say "-- odometry (/odometry/filtered):"
-	hz_out="$(timeout 5 ros2 topic hz /odometry/filtered 2>/dev/null | head -n 2 || true)"
-	if [ -n "$hz_out" ]; then say "$hz_out"; else
-		say "  MISSING"
-		ok=0
-	fi
+	check_topic_alive "down image" "$img" || ok=0
+	check_topic_alive "detections" "/yolo_down/detections" || ok=0
+	check_topic_alive "odometry" "/odometry/filtered" || ok=0
 	say "-- classes currently detected:"
 	local classes
 	classes="$(timeout 5 ros2 topic echo --once /yolo_down/detections 2>/dev/null | grep -i "class_name" || true)"
@@ -310,10 +332,10 @@ stage_calib() {
 	say '  try:  set swap_axes="true", or flip map_x_sign / map_y_sign between 1.0 and -1.0'
 	say "  then: source scripts/setup.bash && colcon build --packages-select mission_planner && source install/setup.bash"
 	go_gate || return 0
-	countdown
 	local dir
 	dir="$(make_run_dir calib)"
 	start_bag "$dir"
+	countdown
 	run_mission "$dir" CenterCameraTest
 	stop_bag
 	collect_form "$dir" \
@@ -336,10 +358,10 @@ stage_hone() {
 	say "  4. SUCCESS LOOKS LIKE: sub holds centered over the table using the calibrated signs."
 	require_down_detections || return 0
 	go_gate || return 0
-	countdown
 	local dir
 	dir="$(make_run_dir hone)"
 	start_bag "$dir"
+	countdown
 	run_mission "$dir" HoneOverTableOnly
 	stop_bag
 	collect_form "$dir" \
@@ -363,10 +385,10 @@ stage_select() {
 	say "  ROLE this run: $ROLE"
 	require_down_detections || return 0
 	go_gate || return 0
-	countdown
 	local dir
 	dir="$(make_run_dir select)"
 	start_bag "$dir"
+	countdown
 	run_mission "$dir" SelectOnly
 	stop_bag
 	collect_form "$dir" \
@@ -391,10 +413,10 @@ stage_combined() {
 	say "  ROLE this run: $ROLE"
 	require_down_detections || return 0
 	go_gate || return 0
-	countdown
 	local dir
 	dir="$(make_run_dir combined)"
 	start_bag "$dir"
+	countdown
 	run_mission "$dir" HoneOverTableSelect
 	stop_bag
 	collect_form "$dir" \
@@ -485,10 +507,10 @@ stage_full_s2() {
 	say "  3. TYPE: GO (sub will surface, descend, dead-reckon to center, then hone — autonomous)."
 	say "  4. SUCCESS LOOKS LIKE: sub ends centered over the table."
 	go_gate || return 0
-	countdown
 	local dir
 	dir="$(make_run_dir full_s2)"
 	start_bag "$dir"
+	countdown
 	run_mission "$dir" OctagonTableMission
 	stop_bag
 	collect_form "$dir" \
