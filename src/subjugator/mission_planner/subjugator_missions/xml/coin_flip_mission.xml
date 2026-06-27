@@ -1,0 +1,86 @@
+<root BTCPP_format="4" main_tree_to_execute="CoinFlipMission">
+  <!--
+    Coin-flip wall avoidance.
+
+    The coin_flip classifier node (subjugator_vision) publishes where the wall is
+    on /coin_flip/direction. DetectWallDirection reads it (with frame stability)
+    and outputs wall_side. We then Switch on wall_side; all strafes are 1 m and
+    REP-103 holds (+y = left, +yaw = left / CCW):
+
+        left  -> strafe right 1 m, then yaw 90 deg right
+        right -> strafe left  1 m, then yaw 90 deg left
+        wall  -> strafe back  1 m, then rotate 180 deg
+        front -> move forward 1 m
+  -->
+  <BehaviorTree ID="CoinFlipMission">
+    <Sequence>
+
+      <!-- Launch the classifier node and wait until it is actually publishing.
+           The mission planner kills it again on shutdown. -->
+      <Action ID="StartCoinFlip" timeout_s="30.0" ctx="{ctx}"/>
+
+      <Repeat num_cycles="-1">
+        <Sequence>
+
+        <!-- Block (RUNNING) until a side is seen for several frames. -->
+        <Action ID="DetectWallDirection"
+                consecutive_frames="3"
+                wall_side="{wall_side}"
+                ctx="{ctx}"/>
+
+        <Switch4 variable="{wall_side}"
+                 case_1="left" case_2="right" case_3="front" case_4="wall">
+
+          <!-- case_1: wall on left -> strafe right, then yaw right 90 -->
+          <Sequence>
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     y="-1.0"
+                     pos_tol="0.25" ori_tol_deg="180.0" msec="20000"
+                     ctx="{ctx}"/>
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     yaw_deg="-90.0"
+                     pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
+                     ctx="{ctx}"/>
+          </Sequence>
+
+          <!-- case_2: wall on right -> strafe left, then yaw left 90 -->
+          <Sequence>
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     y="1.0"
+                     pos_tol="0.25" ori_tol_deg="180.0" msec="20000"
+                     ctx="{ctx}"/>
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     yaw_deg="90.0"
+                     pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
+                     ctx="{ctx}"/>
+          </Sequence>
+
+          <!-- case_3: front -> move forward 1 m -->
+          <SubTree ID="RelativeMove" _autoremap="true"
+                   x="1.0"
+                   pos_tol="0.25" ori_tol_deg="180.0" msec="20000"
+                   ctx="{ctx}"/>
+
+          <!-- case_4: wall -> strafe back, then rotate 180 -->
+          <Sequence>
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="-1.0"
+                     pos_tol="0.25" ori_tol_deg="180.0" msec="20000"
+                     ctx="{ctx}"/>
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     yaw_deg="180.0"
+                     pos_tol="0.25" ori_tol_deg="8.0" msec="20000"
+                     ctx="{ctx}"/>
+          </Sequence>
+
+          <!-- default (e.g. "other"): do nothing this cycle -->
+          <AlwaysSuccess/>
+
+        </Switch4>
+
+        </Sequence>
+      </Repeat>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

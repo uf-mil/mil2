@@ -9,6 +9,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(mil_msgs REQUIRED)
@@ -35,6 +36,9 @@ add_library(
   subjugator_operations/src/track_largest_poles.cpp
   subjugator_operations/src/poles_big_enough.cpp
   subjugator_operations/src/determine_channel_side.cpp
+  subjugator_operations/src/detect_wall_direction.cpp
+  subjugator_operations/src/start_coin_flip.cpp
+  subjugator_operations/src/stop_coin_flip.cpp
   subjugator_operations/src/any_poles_detected.cpp
   subjugator_operations/src/has_found_pair.cpp
   subjugator_operations/src/track_best_pair.cpp
@@ -50,6 +54,7 @@ ament_target_dependencies(
   rclcpp
   geometry_msgs
   std_srvs
+  std_msgs
   nav_msgs
   mil_msgs
   tf2
@@ -69,6 +74,7 @@ ament_target_dependencies(
   mission_planner_node
   rclcpp
   geometry_msgs
+  std_msgs
   nav_msgs
   mil_msgs
   sensor_msgs

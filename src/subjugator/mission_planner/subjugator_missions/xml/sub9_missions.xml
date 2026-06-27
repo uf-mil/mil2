@@ -8,6 +8,7 @@
     <include path="relative_move.xml"/>
     <include path="start_gate_mission.xml"/>
     <include path="nav_channel_mission.xml"/>
+    <include path="coin_flip_mission.xml"/>
     <include path="yaw_style.xml"/>
     <include path="pc_nav_channel.xml"/>
     <include path="pc_nav_channel_v2.xml"/>
