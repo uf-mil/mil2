@@ -1,60 +1,65 @@
-import rclpy
+import asyncio
 from dataclasses import dataclass
+
+import rclpy
+from rclpy.node import Node
+
 from geometry_msgs.msg import Pose, Wrench
 from nav_msgs.msg import Odometry
 from yolo_msgs.msg import DetectionArray
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
-from rclpy.node import Node
 
 rclpy.init()
 node = Node("admission")
-tasks = []
+executor = rclpy.executors.SingleThreadedExecutor()
+executor.add_node(node)
 
-class AwaitableSubscription:
+class ROSSelector:
+    def select(self, timeout):
+        if rclpy.ok():
+            executor.spin_once(timeout)
+
+class ROSLoop(asyncio.BaseEventLoop):
+    def __init__(self):
+        super().__init__()
+        self._selector = ROSSelector()
+
+    def _process_events(self, events_list):
+        pass
+
+loop = ROSLoop()
+
+class Sub:
     def __init__(self, typ, topic):
-        self.msg = None
         self.sub = node.create_subscription(typ, topic, self.cb, 10)
+        self.futs = []
 
     def cb(self, msg):
-        self.msg = msg
+        for fut in self.futs:
+            fut.set_result(msg)
+        self.futs = []
 
-    def __await__(self):
-        return (yield self)
+    def __call__(self):
+        fut = loop.create_future()
+        self.futs.append(fut)
+        return fut
 
-    def get(self):
-        return self.msg
-
-    def reset(self):
-        self.msg = None
-
-odom_sub = AwaitableSubscription(Odometry, "/odometry/filtered")
-yolo_sub = AwaitableSubscription(DetectionArray, "/yolo/detections")
+odom_sub = Sub(Odometry, "/odometry/filtered")
+yolo_sub = Sub(DetectionArray, "/yolo/detections")
 
 goal_pub = node.create_publisher(Pose, "/goal_pose", 10)
 add_wrench_pub = node.create_publisher(Wrench, "/add_wrench", 10)
 
-@dataclass(slots=True)
-class Task:
-    co: any
-    wait: any
-
 def run(co):
-    global tasks
-    tasks = [Task(co, co.send(None))]
-    while tasks:
-        rclpy.spin_once(node)
-        for t in tasks:
-            if msg := t.wait.get():
-                try:
-                    t.wait = t.co.send(msg)
-                except StopIteration:
-                    t.co = None
-        # clear out finished tasks
-        new_tasks = []
-        for t in tasks:
-            if t.co is None:
-                continue
-            t.wait.reset()
-            new_tasks.append(t)
-        tasks = new_tasks
-    rclpy.shutdown()
+    task = loop.create_task(co)
+    try:
+        loop.run_until_complete(task)
+        rclpy.shutdown()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        to_cancel = asyncio.all_tasks(loop)
+        if not to_cancel:
+            return
+        for task in to_cancel:
+            task.cancel()
+        loop.run_until_complete(asyncio.gather(*to_cancel, return_exceptions=True))
