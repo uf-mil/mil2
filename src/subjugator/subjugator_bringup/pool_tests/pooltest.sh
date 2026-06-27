@@ -400,8 +400,75 @@ stage_combined() {
 		"Notes|free text"
 }
 
-# Task 4 owns this stub — do NOT modify.
-stage_deadreckon() { say "[deadreckon] stub"; }
+# Echo "x y z" of one /odometry/filtered pose, or nothing on failure. Dry-run returns zeros.
+snap_pose() {
+	if [ "$DRYRUN" -eq 1 ]; then
+		printf '0 0 0'
+		return 0
+	fi
+	local out
+	out="$(ros2 topic echo --once /odometry/filtered --field pose.pose.position 2>/dev/null |
+		awk '/^x:/{x=$2} /^y:/{y=$2} /^z:/{z=$2} END{if(x!=""&&y!=""&&z!="") printf "%s %s %s", x, y, z}' || true)"
+	printf '%s' "$out"
+}
+
+stage_deadreckon() {
+	hr
+	say "STAGE 5 — MEASURE DEAD-RECKON CONSTANTS (Tier B). Manual teleop — NO autonomous delay."
+	say "You drive the sub; type SNAP at each checkpoint to record its pose. Order matters."
+	say "  CP1 = S1-arrival start pose (a pool marker)"
+	say "  CP2 = at the surface"
+	say "  CP3 = at down-cam hover depth (table fills the frame)"
+	say "  CP4 = centered over the table"
+	if [ "$DRYRUN" -eq 1 ]; then
+		say "DRY RUN: would snapshot CP1..CP4 and compute the 4 constants."
+		return 0
+	fi
+	local dir
+	dir="$(make_run_dir deadreckon)"
+	local cp cp1 cp2 cp3 cp4 a
+	for cp in CP1 CP2 CP3 CP4; do
+		a="$(ask "Drive to $cp, then type SNAP: ")" || {
+			say "Aborted (no input)."
+			return 1
+		}
+		[ "$a" = "SNAP" ] || {
+			say "Expected SNAP; aborting."
+			return 1
+		}
+		local pose
+		pose="$(snap_pose)"
+		if [ -z "$pose" ]; then
+			say "ERROR: no data from /odometry/filtered at $cp — is odom publishing? Aborting."
+			return 1
+		fi
+		case "$cp" in
+		CP1) cp1="$pose" ;;
+		CP2) cp2="$pose" ;;
+		CP3) cp3="$pose" ;;
+		CP4) cp4="$pose" ;;
+		esac
+		say "  $cp = $pose"
+	done
+	# deltas: surface_dz=z2-z1, hover_dz=z3-z2, octagon_dx=x4-x1, octagon_dy=y4-y1
+	local x1 y1 z1 z2 z3 x4 y4
+	read -r x1 y1 z1 <<<"$cp1"
+	read -r _ _ z2 <<<"$cp2"
+	read -r _ _ z3 <<<"$cp3"
+	read -r x4 y4 _ <<<"$cp4"
+	{
+		echo "# Dead-reckon constants (measured $(date -u +%FT%TZ))"
+		echo "# VALID ONLY for this start pose; RE-MEASURE at competition vs the real S1 arrival."
+		awk -v z1="$z1" -v z2="$z2" -v z3="$z3" -v x1="$x1" -v y1="$y1" -v x4="$x4" -v y4="$y4" 'BEGIN{
+			printf "surface_dz = %.3f\n", z2 - z1
+			printf "hover_dz   = %.3f\n", z3 - z2
+			printf "octagon_dx = %.3f\n", x4 - x1
+			printf "octagon_dy = %.3f\n", y4 - y1
+		}'
+		echo "# Edit these into octagon_table_mission.xml (steps 1-3) before running 'full_s2'."
+	} | tee "$dir/constants.txt"
+	say "Saved -> $dir/constants.txt"
+}
 
 stage_full_s2() {
 	hr
