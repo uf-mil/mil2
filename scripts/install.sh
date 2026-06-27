@@ -198,7 +198,8 @@ sudo apt install -y \
 	ros-jazzy-tf-transformations \
 	ros-jazzy-velodyne \
 	ros-jazzy-vision-msgs \
-	ros-jazzy-nav2-util
+	ros-jazzy-nav2-util \
+	ros-jazzy-rmw-zenoh-cpp
 
 cat <<EOF
 $(color "$Pur")
@@ -233,6 +234,12 @@ if [[ $SCRIPT_DIR != "$HOME/mil2/scripts" && -z ${ALLOW_NONSTANDARD_DIR:-} ]]; t
 	echo "${Red}Error: This script must be located in ~/mil2/scripts/install.sh. Please review the installation guide and try again.${Res}"
 	exit 1
 fi
+
+install_zenoh() {
+	sudo cp "$SCRIPT_DIR/../hw/zenoh.service" /etc/systemd/system
+	systemctl enable zenoh --now || true
+}
+install_zenoh
 
 # Add line to user's bashrc which source the repo's setup files
 # This allows us to update aliases, environment variables, etc
