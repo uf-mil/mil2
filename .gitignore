@@ -192,3 +192,6 @@ cython_debug/
 
 bag_files
 src/mil_common/perception/vision_stack/
+
+# Poolside test run artifacts (bags, logs, forms)
+pooltest_runs/
