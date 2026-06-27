@@ -18,7 +18,7 @@ async def roll_closed():
     goal.orientation = quat(0, 0, 0)
     adm.goal_pub.publish(goal)
 
-    while odom := await adm.odom_sub:
+    while odom := await adm.odom_sub():
         dx = odom.pose.pose.position.x - goal.position.x
         dy = odom.pose.pose.position.y - goal.position.y
         dz = odom.pose.pose.position.z - goal.position.z
@@ -35,7 +35,7 @@ async def roll_closed():
     wrench.torque.x = 10.0
     adm.add_wrench_pub.publish(wrench)
 
-    while odom := await adm.odom_sub:
+    while odom := await adm.odom_sub():
         q = odom.pose.pose.orientation
         roll, _, _ = transforms3d.euler.quat2euler([q.w, q.x, q.y, q.z])
 
