@@ -28,8 +28,8 @@ Gazebo: add `--sim` (also launch a `yolo_down` node on `/down_cam/image_raw`).
 
 | role | object classes |
 |------|----------------|
-| `survey_repair` | nut_bolt, plug |
-| `search_rescue` | pill, bandage |
+| `survey_repair` | nut_cylinder, electric_box |
+| `search_rescue` | pill_cylinder, bandaid_box |
 
 Pass with `--role survey_repair` (or you'll be prompted).
 

@@ -51,7 +51,7 @@ STAGES (smallest whole unit first):
   full_s2     (Tier B) full surface->descend->dead-reckon->hone (mission: OctagonTableMission)
 
 FLAGS:
-  --role R    R = survey_repair (nut_bolt,plug) | search_rescue (pill,bandage)
+  --role R    R = survey_repair (nut_cylinder,electric_box) | search_rescue (pill_cylinder,bandaid_box)
   --sim       rehearse the harness in Gazebo (adds down_image_topic override)
   --delay N   autonomous-start countdown seconds after GO (default 30)
   --dry-run   print directions and prompts but do NOT launch missions or record
@@ -61,7 +61,7 @@ WHAT YOU NEED before running a real test:
   * sub powered and in the water
   * the down-cam YOLO node running with the required model(s) loaded
       - 'table' model for calib/hone/combined/full_s2
-      - role object model (nut_bolt/plug or pill/bandage) for select/combined
+      - role object model (nut_cylinder/electric_box or pill_cylinder/bandaid_box) for select/combined
   * the ROLE for this run (survey_repair or search_rescue)
   * a diver/teleop to position the sub before each motion stage
   * clear pool space
@@ -239,8 +239,8 @@ ensure_role() {
 	fi
 	while [ "$ROLE" != "survey_repair" ] && [ "$ROLE" != "search_rescue" ]; do
 		say "This stage needs a ROLE. Valid values:"
-		say "  survey_repair  -> objects: nut_bolt, plug"
-		say "  search_rescue  -> objects: pill, bandage"
+		say "  survey_repair  -> objects: nut_cylinder, electric_box"
+		say "  search_rescue  -> objects: pill_cylinder, bandaid_box"
 		read -r -p 'Enter role: ' ROLE || {
 			say "No role provided; aborting."
 			exit 2
@@ -375,7 +375,7 @@ stage_hone() {
 
 stage_select() {
 	hr
-	say "STAGE 3 — SELECT (mission: SelectOnly). Decision only, no motion."
+	say "STAGE 3 — SELECT (mission: SelectOnly). Holds station, then decides (no travel)."
 	ensure_role
 	say "DO THIS:"
 	say "  1. POSITION: sub so the TASK OBJECTS are in the down-cam frame (over the table)."
@@ -392,10 +392,10 @@ stage_select() {
 	run_mission "$dir" SelectOnly
 	stop_bag
 	collect_form "$dir" \
-		"Locked label|text e.g. nut_bolt" \
+		"Locked label|text e.g. nut_cylinder" \
 		"Was it correct|y/n e.g. y" \
 		"Lock time / frames|text e.g. 2s/3" \
-		"Per-class confidence seen|text e.g. nut_bolt 0.8, plug 0.6" \
+		"Per-class confidence seen|text e.g. nut_cylinder 0.8, electric_box 0.6" \
 		"Any false picks|y/n e.g. n" \
 		"min_conf / consecutive_frames used|text e.g. 0.60/3" \
 		"Notes|free text"
@@ -421,7 +421,7 @@ stage_combined() {
 	stop_bag
 	collect_form "$dir" \
 		"Centered then locked|y/n e.g. y" \
-		"Locked label|text e.g. nut_bolt" \
+		"Locked label|text e.g. nut_cylinder" \
 		"Total time|seconds e.g. 35" \
 		"Handoff worked (target_label populated)|y/n e.g. y" \
 		"Notes|free text"
@@ -544,7 +544,14 @@ main() {
 	briefing
 	warn_if_not_detachable
 	if [ -n "$STAGE" ]; then
-		"stage_$STAGE"
+		# Run one stage in an `if` so a stage's nonzero return is a clean exit code
+		# (set -e would otherwise abort mid-handler); guided mode handles per-stage.
+		if "stage_$STAGE"; then
+			exit 0
+		else
+			say "Stage '$STAGE' reported failure."
+			exit 1
+		fi
 	else
 		run_guided_sequence
 	fi

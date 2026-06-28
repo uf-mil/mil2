@@ -16,8 +16,8 @@
                     camera="down"
                     min_conf="0.60"
                     consecutive_frames="3"
-                    survey_labels="nut_bolt,plug"
-                    rescue_labels="pill,bandage"
+                    survey_labels="nut_cylinder,electric_box"
+                    rescue_labels="pill_cylinder,bandaid_box"
                     exclude="{grabbed_label}"
                     target_label="{target_label}"
                     ctx="{ctx}"/>

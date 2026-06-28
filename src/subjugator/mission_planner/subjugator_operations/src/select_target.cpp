@@ -18,15 +18,17 @@ SelectTarget::SelectTarget(std::string const& name, const BT::NodeConfiguration&
 
 BT::PortsList SelectTarget::providedPorts()
 {
-    return { BT::InputPort<std::string>("camera", "down", "Detection stream: 'front' or 'down'"),
-             BT::InputPort<double>("min_conf", 0.60, "Confidence floor (stricter than YOLO publish threshold)"),
-             BT::InputPort<int>("consecutive_frames", 3, "Distinct frames the leader must win before locking"),
-             BT::InputPort<std::string>("survey_labels", "nut_bolt,plug", "survey_repair target classes (csv)"),
-             BT::InputPort<std::string>("rescue_labels", "pill,bandage", "search_rescue target classes (csv)"),
-             BT::InputPort<std::string>("exclude", "",
-                                        "Class already grabbed; skip it (unset blackboard key -> no exclusion)"),
-             BT::InputPort<std::shared_ptr<Context>>("ctx"),
-             BT::OutputPort<std::string>("target_label", "Chosen class for S4") };
+    return {
+        BT::InputPort<std::string>("camera", "down", "Detection stream: 'front' or 'down'"),
+        BT::InputPort<double>("min_conf", 0.60, "Confidence floor (stricter than YOLO publish threshold)"),
+        BT::InputPort<int>("consecutive_frames", 3, "Distinct frames the leader must win before locking"),
+        BT::InputPort<std::string>("survey_labels", "nut_cylinder,electric_box", "survey_repair target classes (csv)"),
+        BT::InputPort<std::string>("rescue_labels", "pill_cylinder,bandaid_box", "search_rescue target classes (csv)"),
+        BT::InputPort<std::string>("exclude", "",
+                                   "Class already grabbed; skip it (unset blackboard key -> no exclusion)"),
+        BT::InputPort<std::shared_ptr<Context>>("ctx"),
+        BT::OutputPort<std::string>("target_label", "Chosen class for S4")
+    };
 }
 
 BT::NodeStatus SelectTarget::onStart()
@@ -45,8 +47,8 @@ BT::NodeStatus SelectTarget::onStart()
 BT::NodeStatus SelectTarget::onRunning()
 {
     std::string camera = "down";
-    std::string survey_csv = "nut_bolt,plug";
-    std::string rescue_csv = "pill,bandage";
+    std::string survey_csv = "nut_cylinder,electric_box";
+    std::string rescue_csv = "pill_cylinder,bandaid_box";
     std::string exclude;
     double min_conf = 0.60;
     int need = 3;
