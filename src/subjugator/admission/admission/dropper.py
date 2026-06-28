@@ -1,9 +1,13 @@
+import numpy as np
 import gtsam
 import admission as adm
 from geometry_msgs.msg import Pose
-from gtsam.symbol_shorthand import X
+from gtsam.symbol_shorthand import X, L
 
 NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1] * 6)
+DET_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.5] * 3)
+CAL = gtsam.Cal3_S2(80, 640, 360)
+CAM = gtsam.PinholeCameraCal3_S2(gtsam.Pose3(), CAL)
 
 def odom_pose(odom):
     o_p = odom.pose.pose.position
@@ -22,24 +26,47 @@ async def estimate_bins():
     odom_prev, initial_noise = odom_pose(await adm.odom_sub())
 
     # initialize smoother
-    smoother = gtsam.IncrementalFixedLagSmoother()
+    smoother = gtsam.IncrementalFixedLagSmoother(100)
     factors = gtsam.NonlinearFactorGraph()
     values = gtsam.Values()
-    ix = 0
+    ix, il = 0, 0
 
-    noise = gtsam.noiseModel.Diagonal.Sigmas([0.1] * 6)
-    factors.addPriorPose3(X(0), odom_prev, noise)
+    factors.addPriorPose3(X(0), odom_prev, NOISE)
     values.insert(X(0), odom_prev)
 
     smoother.update(factors, values, {X(0): 0})
     estimate = smoother.calculateEstimate()
 
+    # landmarks
+    landmarks = []
+
     async for yolo, odom in adm.Join(adm.yolo_sub, adm.odom_sub):
         if yolo:
-            # for det in yolo.detections:
-            #     print(det.bbox.center.position.x, det.bbox.center.position.y)
-            # print("-" * 40)
-            pass
+            factors = gtsam.NonlinearFactorGraph()
+            values = gtsam.Values()
+            timestamps = {}
+
+            for det in yolo.detections:
+                landmark = CAM.backproject([
+                    det.bbox.center.position.x,
+                    det.bbox.center.position.y
+                ], 1)
+
+                planar_dist = 10
+                factors.add(gtsam.BearingRangeFactor3D(
+                    X(ix), L(il), gtsam.Unit3(landmark),
+                    planar_dist * np.linalg.norm(landmark), DET_NOISE
+                ))
+
+                pose_estimate = estimate.atPose3(X(ix))
+                values.insert(
+                    L(il), pose_estimate.transformFrom(landmark * planar_dist)
+                )
+                timestamps[L(il)] = ix
+                il += 1
+
+            smoother_result = smoother.update(factors, values, timestamps)
+            estimate = smoother.calculateEstimate()
         elif odom:
             odom_next, _ = odom_pose(odom)
             odom_diff = odom_prev.between(odom_next)
@@ -53,8 +80,9 @@ async def estimate_bins():
             pose_estimate = estimate.atPose3(X(ix))
             values.insert(X(ix + 1), pose_estimate.compose(odom_diff))
 
-            smoother_result = smoother.update(factors, values, {X(1): 1})
+            smoother_result = smoother.update(factors, values, {X(ix + 1): ix + 1})
             estimate = smoother.calculateEstimate()
+            print(pose_estimate)
 
             odom_prev = odom_next
             ix += 1
