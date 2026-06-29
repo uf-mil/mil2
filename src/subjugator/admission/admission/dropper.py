@@ -135,7 +135,14 @@ async def estimate_bins():
                     il += 1
                 elif not estimate.exists(sym) and not values.exists(sym):
                     # restore previous landmark
-                    values.insert(sym, landmarks[sym].mean)
+                    readd = landmarks[sym]
+                    values.insert(sym, readd.mean)
+                    factors.addPriorPoint3(
+                        sym, readd.mean,
+                        gtsam.noiseModel.Gaussian.Covariance(
+                            np.linalg.inv(readd.cov_inv)
+                        )
+                    )
 
                 factors.add(gtsam.BearingRangeFactor3D(
                     X(ix), sym, gtsam.Unit3(landmark_vec),
