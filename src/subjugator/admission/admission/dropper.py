@@ -7,6 +7,7 @@ import gtsam
 import admission as adm
 from geometry_msgs.msg import Pose
 from gtsam.symbol_shorthand import X, L
+from visualization_msgs.msg import Marker
 
 ODOM_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1] * 6)
 LANDMARK_COV_INV = np.linalg.inv(np.diag([2, 1, 1]))
@@ -52,8 +53,6 @@ async def estimate_bins():
 
     async for yolo, odom in adm.Join(adm.yolo_sub, adm.odom_sub):
         if yolo:
-            # if not yolo.detections: continue
-
             for key, landmark in landmarks.items():
                 if not estimate.exists(key): continue
                 landmark.mean = estimate.atPoint3(key)
@@ -61,13 +60,33 @@ async def estimate_bins():
                     smoother.marginalCovariance(key)
                 )
 
-            try:
-                goal = list(landmarks.values())[0]
-                pose = Pose()
-                pose.position.x, pose.position.y, pose.position.z = goal.mean
-                adm.goal_pub.publish(pose)
-            except IndexError:
-                pass
+            for i, landmark in enumerate(landmarks.values()):
+                if landmark.mean is None: continue
+
+                marker = Marker()
+                marker.header.frame_id = "odom"
+                marker.type = Marker.SPHERE
+                marker.action = Marker.ADD
+                marker.scale.x = 1.0
+                marker.scale.y = 1.0
+                marker.scale.z = 1.0
+                marker.color.a = marker.color.g = 1.0
+                (
+                    marker.pose.position.x,
+                    marker.pose.position.y,
+                    marker.pose.position.z
+                ) = landmark_pos
+                adm.marker_pub.publish(marker)
+
+            # try:
+            #     goal = [l.mean for l in landmarks.values()][0]
+            #     pose = Pose()
+            #     pose.position.x, pose.position.y, pose.position.z = goal
+            #     adm.goal_pub.publish(pose)
+            # except IndexError:
+            #     pass
+
+            if not yolo.detections: continue
 
             factors = gtsam.NonlinearFactorGraph()
             values = gtsam.Values()
@@ -85,7 +104,7 @@ async def estimate_bins():
                 # neg x     pos x
                 #      pos y
                 # depth: z=1
-                landmark_vec[:] = 1, landmark_vec[0], -landmark_vec[1]
+                landmark_vec[:] = 1, -landmark_vec[0], -landmark_vec[1]
 
                 size = math.sqrt(det.bbox.size.x ** 2 + det.bbox.size.y ** 2)
                 planar_dist = 320 * 0.4 / (math.tan(40 * math.pi / 180) * size)
