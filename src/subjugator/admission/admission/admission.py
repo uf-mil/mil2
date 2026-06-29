@@ -5,8 +5,9 @@ from dataclasses import dataclass
 import rclpy
 from rclpy.node import Node
 
-from geometry_msgs.msg import Pose, Wrench
+from geometry_msgs.msg import Pose, PoseStamped, Wrench
 from nav_msgs.msg import Odometry
+from visualization_msgs.msg import Marker
 from yolo_msgs.msg import DetectionArray
 
 rclpy.init()
@@ -49,6 +50,20 @@ yolo_sub = Sub(DetectionArray, "/yolo/detections")
 
 goal_pub = node.create_publisher(Pose, "/goal_pose", 10)
 add_wrench_pub = node.create_publisher(Wrench, "/add_wrench", 10)
+
+# republish for rviz
+goal_pub_publish = goal_pub.publish
+goal_stamped_pub = node.create_publisher(PoseStamped, "/goal_pose_stamped", 10)
+def publish_stamped(pose):
+    goal_pub_publish(pose)
+
+    stamped = PoseStamped()
+    stamped.pose = pose
+    stamped.header.frame_id = "odom"
+    goal_stamped_pub.publish(stamped)
+goal_pub.publish = publish_stamped
+
+marker_pub = node.create_publisher(Marker, "/markers", 10)
 
 class Join:
     def __init__(self, *subs):
