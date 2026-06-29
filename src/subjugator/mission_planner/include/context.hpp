@@ -1,10 +1,13 @@
 #pragma once
+#include <sys/types.h>
+
 #include <mutex>
 #include <optional>
 
 #include <rclcpp/client.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include "std_msgs/msg/string.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 
@@ -25,6 +28,7 @@ struct Context
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
     rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr targets_sub;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr wall_direction_sub;
 
     // Service clients to actuate servos (driver.py services)
     rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr dropper_client;
@@ -42,6 +46,15 @@ struct Context
 
     std::mutex detections_mx;
     std::optional<yolo_msgs::msg::DetectionArray> latest_detections;
+
+    // Latest class from the coin_flip classifier node (/coin_flip/direction).
+    std::mutex wall_direction_mx;
+    std::optional<std::string> latest_wall_direction;
+
+    // PID of the coin_flip_node the mission launched (-1 = none), so it can be
+    // killed on shutdown.
+    std::mutex child_mx;
+    pid_t coin_flip_pid{ -1 };
 
     std::mutex img_mx;
     uint32_t img_width{ 0 };
