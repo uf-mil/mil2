@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.16)
 project(mission_planner)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -61,6 +61,23 @@ ament_target_dependencies(
   lifecycle_msgs
   rcl_interfaces
   ament_index_cpp)
+
+target_precompile_headers(
+  operations
+  PRIVATE
+  <behaviortree_cpp/bt_factory.h>
+  <behaviortree_cpp/action_node.h>
+  <behaviortree_cpp/basic_types.h>
+  <rclcpp/rclcpp.hpp>
+  <yolo_msgs/msg/detection_array.hpp>
+  <geometry_msgs/msg/pose.hpp>
+  <memory>
+  <string>
+  <vector>
+  <optional>
+  <algorithm>
+  <cmath>
+  <chrono>)
 
 # Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
