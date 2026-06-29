@@ -1,10 +1,12 @@
 <root BTCPP_format="4" main_tree_to_execute="OctagonGraspMission">
     <BehaviorTree ID="OctagonGraspMission">
         <Sequence>
-            <!-- No upstream S3 in this harness; seed the target. TODO: replace with the
-                 exact YOLO class string (case-sensitive; a wrong label passes the
-                 non-empty guard but HoneOverTarget then never detects it). -->
-            <SetBlackboard output_key="target_label" value="Pink_Bin"/>
+            <!-- No upstream S3 in this harness; seed the target with a real YOLO grab
+                 class from octagon_sim.pt (case-sensitive). Valid grab classes:
+                 nut_cylinder, electric_box, pill_cylinder, bandaid_box. The seeded
+                 class must be present in the test world and detectable by the down
+                 YOLO model, or HoneOverTarget never sees it. Change to suit the test. -->
+            <SetBlackboard output_key="target_label" value="nut_cylinder"/>
             <!-- Knobs supplied at the call site (like octagon_table_mission); tune here.
                  descend_z / lift_z / angles are sim-measured placeholders. -->
             <SubTree ID="ApproachAndGrasp" _autoremap="true" ctx="{ctx}"
