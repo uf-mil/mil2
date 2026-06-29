@@ -1,12 +1,26 @@
 #include "start_coin_flip.hpp"
 
+#include <signal.h>
+#include <spawn.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <chrono>
-#include <csignal>
-#include <cstdlib>
+#include <filesystem>
 #include <thread>
+
+#include <ament_index_cpp/get_package_prefix.hpp>
+
+extern char** environ;
+
+namespace
+{
+// Installed path of the classifier script: <prefix>/lib/subjugator_vision/coin_flip_node.py
+std::string coinFlipScriptPath()
+{
+    return ament_index_cpp::get_package_prefix("subjugator_vision") + "/lib/subjugator_vision/coin_flip_node.py";
+}
+}  // namespace
 
 void stopCoinFlip(Context& ctx)
 {
@@ -15,23 +29,20 @@ void stopCoinFlip(Context& ctx)
         return;
 
     RCLCPP_INFO(ctx.logger(), "Stopping coin_flip_node (pid=%d)", ctx.coin_flip_pid);
-    killpg(ctx.coin_flip_pid, SIGINT);
+    kill(ctx.coin_flip_pid, SIGINT);  // ask rclpy to shut down cleanly
 
-    bool reaped = false;
-    for (int i = 0; i < 30; ++i)  // up to ~3s for a graceful shutdown
+    // Wait up to ~3s for it to exit, then force it.
+    for (int i = 0; i < 30; ++i)
     {
         if (waitpid(ctx.coin_flip_pid, nullptr, WNOHANG) != 0)
         {
-            reaped = true;
-            break;
+            ctx.coin_flip_pid = -1;
+            return;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-    if (!reaped)
-    {
-        killpg(ctx.coin_flip_pid, SIGKILL);
-        waitpid(ctx.coin_flip_pid, nullptr, 0);
-    }
+    kill(ctx.coin_flip_pid, SIGKILL);
+    waitpid(ctx.coin_flip_pid, nullptr, 0);
     ctx.coin_flip_pid = -1;
 }
 
@@ -56,36 +67,49 @@ BT::NodeStatus StartCoinFlip::onStart()
         std::scoped_lock lk(ctx_->child_mx);
         if (ctx_->coin_flip_pid > 0)
         {
-            RCLCPP_INFO(ctx_->logger(), "StartCoinFlip: coin_flip_node already launched (pid=%d)", ctx_->coin_flip_pid);
+            RCLCPP_INFO(ctx_->logger(), "StartCoinFlip: coin_flip_node already running (pid=%d)", ctx_->coin_flip_pid);
         }
-        else
+        else if (!launchNode())
         {
-            pid_t pid = fork();
-            if (pid < 0)
-            {
-                RCLCPP_ERROR(ctx_->logger(), "StartCoinFlip: fork() failed");
-                return BT::NodeStatus::FAILURE;
-            }
-            if (pid == 0)
-            {
-                // Child: become its own process group leader so a terminal SIGINT
-                // does not reach it; the mission planner kills it explicitly.
-                setpgid(0, 0);
-                execlp("ros2", "ros2", "run", "subjugator_vision", "coin_flip_node.py", static_cast<char*>(nullptr));
-                _exit(127);  // execlp only returns on failure
-            }
-            ctx_->coin_flip_pid = pid;
-            RCLCPP_INFO(ctx_->logger(), "StartCoinFlip: launched coin_flip_node (pid=%d)", pid);
+            return BT::NodeStatus::FAILURE;
         }
     }
 
-    // Wait for *fresh* data so we know the node is really up this run.
+    // Clear any stale class so we wait for *fresh* data from this run.
     {
         std::scoped_lock lk(ctx_->wall_direction_mx);
         ctx_->latest_wall_direction.reset();
     }
     start_time_ = std::chrono::steady_clock::now();
     return BT::NodeStatus::RUNNING;
+}
+
+// Spawns "python3 <coin_flip_node.py>" as a child process and records its PID.
+// Caller must hold ctx_->child_mx. Returns false on failure.
+bool StartCoinFlip::launchNode()
+{
+    std::string const script = coinFlipScriptPath();
+    if (!std::filesystem::exists(script))
+    {
+        RCLCPP_ERROR(ctx_->logger(), "StartCoinFlip: script not found at %s (rebuild subjugator_vision?)",
+                     script.c_str());
+        return false;
+    }
+
+    // posix_spawnp searches PATH for python3 and inherits our (ROS-sourced)
+    // environment, so rclpy and the package are already on PYTHONPATH.
+    char* argv[] = { const_cast<char*>("python3"), const_cast<char*>(script.c_str()), nullptr };
+    pid_t pid = 0;
+    int const rc = posix_spawnp(&pid, "python3", nullptr, nullptr, argv, environ);
+    if (rc != 0)
+    {
+        RCLCPP_ERROR(ctx_->logger(), "StartCoinFlip: posix_spawnp(python3) failed (rc=%d)", rc);
+        return false;
+    }
+
+    ctx_->coin_flip_pid = pid;
+    RCLCPP_INFO(ctx_->logger(), "StartCoinFlip: launched coin_flip_node (pid=%d)", pid);
+    return true;
 }
 
 BT::NodeStatus StartCoinFlip::onRunning()

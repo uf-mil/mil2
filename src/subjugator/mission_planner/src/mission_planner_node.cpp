@@ -192,8 +192,8 @@ int main(int argc, char** argv)
         rate.sleep();
     }
 
-    // Kill any helper node the mission launched (e.g. coin_flip_node). Runs on
-    // every exit path, including Ctrl-C, since the loop ends when ok() is false.
+    // Kill the coin_flip_node if the mission launched it. Runs on every exit
+    // path, including Ctrl-C, since the loop ends when ok() is false.
     stopCoinFlip(*ctx);
 
     rclcpp::shutdown();

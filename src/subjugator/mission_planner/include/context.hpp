@@ -53,8 +53,8 @@ struct Context
     std::mutex wall_direction_mx;
     std::optional<std::string> latest_wall_direction;
 
-    // PID of a helper node the mission launched (e.g. coin_flip_node); its own
-    // process group so it can be killed independently of the terminal. -1 = none.
+    // PID of the coin_flip_node the mission launched (-1 = none), so it can be
+    // killed on shutdown.
     std::mutex child_mx;
     pid_t coin_flip_pid{ -1 };
 

@@ -12,6 +12,9 @@
         right -> strafe left  1 m, then yaw 90 deg left
         wall  -> strafe back  1 m, then rotate 180 deg
         front -> move forward 1 m
+
+    The mission launches the classifier node itself (StartCoinFlip) and stops it
+    when done (StopCoinFlip); the planner also kills it on shutdown.
   -->
   <BehaviorTree ID="CoinFlipMission">
     <Sequence>
