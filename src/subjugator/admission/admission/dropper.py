@@ -3,15 +3,17 @@ import math
 from operator import itemgetter
 
 import numpy as np
+import scipy.linalg
+
 import gtsam
 import admission as adm
 from geometry_msgs.msg import Pose
 from gtsam.symbol_shorthand import X, L
 from visualization_msgs.msg import Marker
 
-ODOM_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1] * 6)
+ODOM_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.01] * 6)
 LANDMARK_COV_INV = np.linalg.inv(np.diag([2, 1, 1]))
-LANDMARK_NOISE = gtsam.noiseModel.Diagonal.Sigmas([1, 1, 2])
+LANDMARK_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1, 0.1, 2])
 CAL = gtsam.Cal3_S2(80, 640, 360)
 CAM = gtsam.PinholePoseCal3_S2(gtsam.Pose3(), CAL)
 
@@ -67,10 +69,19 @@ async def estimate_bins():
                 marker.header.frame_id = "odom"
                 marker.type = Marker.SPHERE
                 marker.action = Marker.ADD
-                marker.scale.x = 1.0
-                marker.scale.y = 1.0
-                marker.scale.z = 1.0
                 marker.color.a = marker.color.g = 1.0
+
+                u, p = scipy.linalg.polar(np.linalg.inv(landmark.cov_inv))
+
+                marker.scale.x, marker.scale.y, marker.scale.z = np.fmax(
+                    np.full(3, 1), p.diagonal()
+                )
+                (
+                    marker.pose.orientation.w,
+                    marker.pose.orientation.x,
+                    marker.pose.orientation.y,
+                    marker.pose.orientation.z,
+                ) = gtsam.Rot3(u).toQuaternion().coeffs()
                 (
                     marker.pose.position.x,
                     marker.pose.position.y,
@@ -127,7 +138,7 @@ async def estimate_bins():
                 else:
                     maha, sym = 99, None
 
-                if maha > 10:
+                if maha > 1:
                     # create new landmark
                     sym = L(il)
                     landmarks[sym] = Landmark(None, None)
