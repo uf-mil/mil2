@@ -30,10 +30,10 @@
 //     Or submerge the sub in a known container and measure water displaced.
 //     Convert liters to m^3 if needed (1 liter = 0.001 m^3).
 //
-//   Z_COG_TO_COB_M:
-//     This is the vertical distance (in meters) from the Center of Gravity
-//     to the Center of Buoyancy, measured along the sub's body Z-axis.
-//     Positive means CoB is ABOVE CoG (this is the stable configuration).
+//   X/Y/Z_COG_TO_COB_M:
+//     Distance (in meters) from the Center of Gravity to the Center of
+//     Buoyancy, measured along each body axis. Positive z means CoB is
+//     ABOVE CoG (this is the stable configuration).
 //
 //     To estimate empirically:
 //       1. Command a known pitch angle (e.g. 10 degrees)
@@ -41,7 +41,26 @@
 //       3. z_G = steady_state_torque / (VEHICLE_MASS_KG * 9.81 * sin(pitch_rad))
 //
 //     Start with 0.0 and tune upward in small increments (e.g. 0.01 m steps)
-//     until roll is stable. Typical values for a small AUV: 0.02 to 0.10 m.
+//     until roll/pitch is stable. Typical values for a small AUV: 0.02 to 0.10 m.
+//
+//   M_DIAG (mass/inertia matrix diagonal):
+//     6 values: [m, m, m, Ixx, Iyy, Izz] — translational mass (same value
+//     repeated 3x, in kg) followed by moments of inertia about each body
+//     axis (kg*m^2). For a rigid body this is measurable via CAD (preferred)
+//     or a bifilar/trifilar pendulum test for the rotational components.
+//     NOTE: this is RIGID BODY mass/inertia only. It does NOT include added
+//     mass (the apparent extra mass from accelerating fluid around the hull).
+//     Added mass can be 10-100% of rigid body mass for some AUV hull shapes
+//     and is normally folded into this same matrix in a full Fossen model.
+//     Left out here for simplicity — ask your team if this matters for your
+//     hull shape before relying heavily on this term.
+//
+//   DAMPING_LINEAR / DAMPING_QUADRATIC:
+//     6 values each, one per DOF (x,y,z,roll,pitch,yaw). These must be
+//     fitted from real test data (e.g. command a constant velocity in each
+//     DOF and measure thrust needed to sustain it, or do a deceleration
+//     coast-down test and fit the drag curve). No default exists that will
+//     be physically meaningful — leave at 0 until fitted.
 //
 // ============================================================================
 
@@ -55,6 +74,22 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
     // Size the velocity vector so the comma-initializer in odom_callback has a
     // 6-element destination to write into.
     current_velocities_ = Eigen::VectorXd::Zero(6);
+
+    // Acceleration state for the M*v_dot term. previous_velocities_ and
+    // previous_odom_time_ are used to finite-difference v_dot in odom_callback.
+    // filtered_accel_ holds the EMA-smoothed result actually used in the
+    // compensation. has_previous_odom_ guards against differencing against
+    // an uninitialized previous sample on the very first odom message.
+    previous_velocities_ = Eigen::VectorXd::Zero(6);
+    filtered_accel_ = Eigen::VectorXd::Zero(6);
+    has_previous_odom_ = false;
+
+    // EMA smoothing factor for finite-differenced acceleration (0 < alpha <= 1).
+    // Lower = smoother but laggier, higher = more responsive but noisier.
+    // alpha=0.2 chosen as a balanced default; expose as a param so it can be
+    // tuned without recompiling once real data is available.
+    this->declare_parameter("accel_filter_alpha", 0.2);
+    accel_filter_alpha_ = this->get_parameter("accel_filter_alpha").as_double();
 
     // -----------------------------------------------------------------------
     // Existing thruster parameters (unchanged)
@@ -109,13 +144,15 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
     // ADJUST: Change to 1025.0 if competing/testing in salt water
     this->declare_parameter("water_density_kg_m3", 1000.0);
 
-    // Mass/Inertia matrix diagonal (6x6)
-    // ADJUST: Change to match sub values from CAD or measured pendulum test
+    // Mass/Inertia matrix diagonal (6x6): [m, m, m, Ixx, Iyy, Izz]
+    // MEASURE: From CAD (preferred) or pendulum test. See notes above.
+    // This is rigid-body only — does NOT include added mass (see notes above).
     this->declare_parameter("m_diag", std::vector<double>(6, 0.0));
 
     // Damping coefficients. Declared once here in the constructor — declaring
     // them inside the timer callback would throw ParameterAlreadyDeclared on
     // the second tick.
+    // MEASURE/FIT: from constant-velocity or coast-down test data. See notes above.
     this->declare_parameter("damping_linear", std::vector<double>(6, 0.0));
     this->declare_parameter("damping_quadratic", std::vector<double>(6, 0.0));
 
@@ -123,7 +160,8 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
     vehicle_volume_m3_ = this->get_parameter("vehicle_volume_m3").as_double();
 
     // Inertia matrix: populate the diagonal from m_diag so the Coriolis term
-    // C(nu) is non-zero. Without this M_ stays zero and C contributes nothing.
+    // C(nu) and the new M*v_dot term are both non-zero. Without this, both
+    // contribute nothing.
     M_ = Eigen::MatrixXd::Zero(6, 6);
     std::vector<double> m_diag = this->get_parameter("m_diag").as_double_array();
     if (m_diag.size() == 6)
@@ -133,6 +171,24 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
     else
     {
         RCLCPP_ERROR(this->get_logger(), "m_diag must have 6 elements. Leaving mass matrix at zero.");
+    }
+
+    // Cache damping parameters once at startup rather than re-reading them
+    // every timer tick (they were previously re-parsed every 250ms in
+    // timer_callback, which is unnecessary parameter-server traffic).
+    std::vector<double> dl = this->get_parameter("damping_linear").as_double_array();
+    std::vector<double> dq = this->get_parameter("damping_quadratic").as_double_array();
+    D_lin_ = Eigen::VectorXd::Zero(6);
+    D_quad_ = Eigen::VectorXd::Zero(6);
+    if (dl.size() == 6 && dq.size() == 6)
+    {
+        D_lin_ = Eigen::VectorXd::Map(dl.data(), 6);
+        D_quad_ = Eigen::VectorXd::Map(dq.data(), 6);
+    }
+    else
+    {
+        RCLCPP_ERROR(this->get_logger(), "damping_linear/damping_quadratic must each have 6 elements. Defaulting "
+                                         "to zero.");
     }
 
     // NOTE: <axis>_cog_to_cob_m_ collapses as single value ONLY if the sub is near buoyancy-neutral
@@ -157,6 +213,12 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
                                         "Set this parameter in your launch/config file.");
     }
 
+    if (M_.isZero())
+    {
+        RCLCPP_WARN(this->get_logger(), "m_diag is all zero — M*v_dot inertia term and Coriolis term will "
+                                        "contribute nothing until m_diag is set.");
+    }
+
     // -----------------------------------------------------------------------
     // Subscriptions and publishers
     // -----------------------------------------------------------------------
@@ -177,14 +239,53 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
 }
 
 // ---------------------------------------------------------------------------
-// Store the latest odometry orientation
+// Store the latest odometry orientation, velocity, and finite-differenced,
+// EMA-filtered acceleration (v_dot) for use in the M*v_dot inertia term.
+//
+// IMPORTANT: nav_msgs/Odometry does NOT carry an acceleration field — only
+// pose and twist (velocity). Acceleration is not published anywhere upstream
+// as far as we've confirmed, so it is computed here via finite difference of
+// consecutive velocity samples, then smoothed with an EMA filter to reduce
+// noise amplification. If a cleaner acceleration source becomes available
+// later (e.g. a dedicated IMU topic or robot_localization accel output),
+// this is the only function that needs to change.
 // ---------------------------------------------------------------------------
 void ThrusterManager::odom_callback(nav_msgs::msg::Odometry::SharedPtr msg)
 {
     current_orientation_ = Eigen::Quaterniond(msg->pose.pose.orientation.w, msg->pose.pose.orientation.x,
                                               msg->pose.pose.orientation.y, msg->pose.pose.orientation.z);
-    current_velocities_ << msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z,
+
+    Eigen::VectorXd new_velocities(6);
+    new_velocities << msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z,
         msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z;
+
+    rclcpp::Time const odom_time(msg->header.stamp);
+
+    if (has_previous_odom_)
+    {
+        double const dt_s = (odom_time - previous_odom_time_).seconds();
+
+        // Guard against dt being zero or negative (duplicate/out-of-order
+        // messages) which would produce inf/garbage in the finite difference.
+        if (dt_s > 1e-6)
+        {
+            Eigen::VectorXd raw_accel = (new_velocities - previous_velocities_) / dt_s;
+
+            // EMA filter: filtered = alpha * raw + (1 - alpha) * filtered_prev
+            filtered_accel_ = accel_filter_alpha_ * raw_accel + (1.0 - accel_filter_alpha_) * filtered_accel_;
+        }
+    }
+    else
+    {
+        // First odom message — no previous sample to difference against.
+        // filtered_accel_ stays at its zero-initialized value this tick.
+        has_previous_odom_ = true;
+    }
+
+    previous_velocities_ = current_velocities_;  // keep pre-update value for next diff
+    current_velocities_ = new_velocities;
+    previous_odom_time_ = odom_time;
+
     heard_odom_ = true;
 }
 
@@ -232,34 +333,21 @@ void ThrusterManager::timer_callback()
 {
     Eigen::VectorXd compensated_wrench = reference_wrench_;
 
-    // Apply gravity/buoyancy restoring force compensation (Fossen g(eta) vector)
-    // Only apply if we have a valid orientation reading and mass is configured
+    // Apply full Fossen compensation (M*v_dot + C(v)*v + D(v)*v + g(eta))
+    // Only apply if we have a valid orientation/velocity reading and mass is configured
     if (heard_odom_ && std::abs(vehicle_mass_kg_) > 1e-6)
     {
         double phi = get_roll(current_orientation_);     // roll angle (rad)
         double theta = get_pitch(current_orientation_);  // pitch angle (rad)
 
-        // --- Hydrodynamic and Damping matrix ---
-        // These matrices account for the hydrodynamic effects and damping in the fluid environment.
-        // Use a quadratic and linear damping model.
-
-        std::vector<double> dl = this->get_parameter("damping_linear").as_double_array();
-        std::vector<double> dq = this->get_parameter("damping_quadratic").as_double_array();
-        D_lin_ = Eigen::VectorXd::Zero(6);
-        D_quad_ = Eigen::VectorXd::Zero(6);
-
-        if (dl.size() == 6 && dq.size() == 6)
-        {
-            D_lin_ = Eigen::VectorXd::Map(dl.data(), 6);
-            D_quad_ = Eigen::VectorXd::Map(dq.data(), 6);
-        }
-        else
-        {
-            RCLCPP_ERROR(this->get_logger(), "damping_linear/damping_quadratic must each have 6 elements. Defaulting "
-                                             "to zero.");
-        }
+        // --- Inertial forces/torques: M*v_dot ---
+        // filtered_accel_ is computed in odom_callback via finite difference
+        // + EMA filtering of consecutive velocity samples (see notes there).
+        // Stays zero until the second odom message arrives (has_previous_odom_).
+        Eigen::VectorXd inertial_forces = M_ * filtered_accel_;
 
         // --- Damping forces and torques (linear and quadratic) ---
+        // D_lin_/D_quad_ cached once in the constructor (see notes there).
         damping_linear = D_lin_.cwiseProduct(current_velocities_);
         damping_quadratic = D_quad_.cwiseProduct(current_velocities_.cwiseAbs().cwiseProduct(current_velocities_));
 
@@ -289,12 +377,9 @@ void ThrusterManager::timer_callback()
 
         // --- Restoring TORQUES (Fossen g(eta), rows 3-5) ---
         // These are the dominant terms for pitch/roll stability.
-        // They are proportional to z_cog_to_cob_m_ — if CoG and CoB are perfectly
-        // aligned (z=0), these vanish entirely and no torque compensation is needed.
-        //
-        // NOTE: If you have physically aligned CoG and CoB, set z_cog_to_cob_m=0.0
-        // and only the force rows above will contribute. You can tune z_cog_to_cob_m
-        // to add artificial restoring torque if the physical alignment isn't perfect.
+        // They are proportional to x/y/z_cog_to_cob_m_ — if CoG and CoB are
+        // perfectly aligned (all zero), these vanish entirely and no torque
+        // compensation is needed.
         double xW = x_cog_to_cob_m_ * W_;
         double yW = y_cog_to_cob_m_ * W_;
         double zW = z_cog_to_cob_m_ * W_;
@@ -306,15 +391,21 @@ void ThrusterManager::timer_callback()
         Eigen::VectorXd restoring_forces(6);
         restoring_forces << fx, fy, fz, tx, ty, tz;
 
-        // Subtract Coriolis, restoring, and damping terms from the commanded
-        // wrench so thrusters counteract these effects on top of the PID command.
-        compensated_wrench -= C * current_velocities_ + restoring_forces + damping_forces;
+        // Subtract inertial, Coriolis, restoring, and damping terms from the
+        // commanded wrench so thrusters counteract these effects on top of
+        // the PID command. This is the full Fossen model:
+        //   M*v_dot + C(v)*v + D(v)*v + g(eta) = w(u)
+        // Rearranged so the thruster manager outputs the wrench that
+        // compensates for everything except the PID's desired wrench.
+        compensated_wrench -= inertial_forces + C * current_velocities_ + restoring_forces + damping_forces;
 
         // Uncomment to debug compensation values:
         /*
         RCLCPP_INFO(this->get_logger(),
-                    "Compensation: phi=%.3f theta=%.3f | F=[%.2f %.2f %.2f] T=[%.2f %.2f]",
-                    phi, theta, fx, fy, fz, tx, ty);
+                    "Compensation: phi=%.3f theta=%.3f | accel=[%.2f %.2f %.2f %.2f %.2f %.2f] | "
+                    "F=[%.2f %.2f %.2f] T=[%.2f %.2f]",
+                    phi, theta, filtered_accel_(0), filtered_accel_(1), filtered_accel_(2),
+                    filtered_accel_(3), filtered_accel_(4), filtered_accel_(5), fx, fy, fz, tx, ty);
         */
     }
     else if (!heard_odom_)

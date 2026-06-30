@@ -1,5 +1,4 @@
 #pragma once
-
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
@@ -28,7 +27,6 @@ class ThrusterManager : public rclcpp::Node
     double thruster_cap_;
     double max_force_pos_;
     double max_force_neg_;
-
     // Gravity/buoyancy compensation parameters and derived constants
     double vehicle_mass_kg_;
     double vehicle_volume_m3_;
@@ -38,24 +36,29 @@ class ThrusterManager : public rclcpp::Node
     double z_cog_to_cob_m_;
     double W_;  // weight force (N)
     double B_;  // buoyancy force (N)
-
     // Damping coefficients (linear and quadratic), 6-element diagonals
     Eigen::VectorXd D_lin_;
     Eigen::VectorXd D_quad_;
-
     // Working vectors reused in the timer callback
     Eigen::Vector3d linear_velocities;
     Eigen::Vector3d angular_velocities;
     Eigen::VectorXd damping_linear;
     Eigen::VectorXd damping_quadratic;
-
+    // --- M*v_dot inertial term: acceleration estimation state ---
+    // v_dot is not published by odometry/filtered (nav_msgs/Odometry has no
+    // acceleration field), so it is estimated via finite difference of
+    // consecutive velocity samples, then smoothed with an EMA filter.
+    // See odom_callback() in the .cpp for the full computation.
+    Eigen::VectorXd previous_velocities_;  // velocity sample from the prior odom message
+    Eigen::VectorXd filtered_accel_;       // EMA-filtered v_dot, used directly in M_ * filtered_accel_
+    bool has_previous_odom_;               // false until the second odom message arrives
+    rclcpp::Time previous_odom_time_;      // timestamp of the prior odom message, for dt computation
+    double accel_filter_alpha_;            // EMA smoothing factor (0 < alpha <= 1), set via accel_filter_alpha param
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr thrust_publisher_;
-
     Eigen::Matrix3d skew_symmetric(Eigen::Vector3d const &v);
     double get_roll(Eigen::Quaterniond const &q);
     double get_pitch(Eigen::Quaterniond const &q);
-
     void odom_callback(nav_msgs::msg::Odometry::SharedPtr msg);
     void wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg);
     void timer_callback();

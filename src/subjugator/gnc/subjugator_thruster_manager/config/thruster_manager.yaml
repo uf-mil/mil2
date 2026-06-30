@@ -35,3 +35,7 @@
     # Default 0; fit using data from recording scripts
     damping_linear:     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     damping_quadratic:  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    # EMA smoothing factor for finite-differenced acceleration (0 < alpha <= 1).
+    # Lower = smoother but laggier. Higher = more responsive but noisier.
+    # 0.2 is a balanced default — retune once real motion data is available.
+    accel_filter_alpha: 0.2
