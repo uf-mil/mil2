@@ -39,6 +39,7 @@ add_library(
   subjugator_operations/src/poles_big_enough.cpp
   subjugator_operations/src/determine_channel_side.cpp
   subjugator_operations/src/select_target.cpp
+  subjugator_operations/src/select_face_symbol.cpp
   subjugator_operations/src/any_poles_detected.cpp
   subjugator_operations/src/has_found_pair.cpp
   subjugator_operations/src/actuate_servo.cpp
