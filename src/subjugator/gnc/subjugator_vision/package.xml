@@ -20,6 +20,7 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>ultralytics</exec_depend>
   <exec_depend>vision_msgs</exec_depend>
+  <exec_depend>yolo_msgs</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
