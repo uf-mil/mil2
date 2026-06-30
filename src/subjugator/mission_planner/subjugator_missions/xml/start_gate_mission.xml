@@ -58,13 +58,17 @@
 
       </Parallel>
 
-      <!-- 2) Hone orientation toward the shark with offset -->
-      <Action ID="HoneBearing"
-              label="shark"
-              offset_deg="0.0"
-              fov_deg="110.0"
-              min_conf="0.40"
-              ctx="{ctx}"/>
+      <!-- 2) Hone orientation with offset -->
+      <Timeout msec="8000">
+        <Action ID="AlignYaw"
+                label="search&amp;rescue"
+                min_conf="0.40"
+                kp="1.5"
+                yaw_tol_norm="0.06"
+                max_yaw_deg="12.0"
+                ori_tol_deg="4.0"
+                ctx="{ctx}"/>
+      </Timeout>
 
       <!-- 3) Then down and forward -->
       <SubTree ID="RelativeMove" _autoremap="true"

@@ -1,0 +1,58 @@
+<!--
+    StartGateTorpedoMission
+    =======================
+    Combines the start-gate approach with the torpedo shoot, reusing both as
+    subtrees. The P-controller hone in StartGateApproach locks onto the
+    search&rescue board; we then square up and fire at that same board's large
+    and small holes.
+
+      0) CheckYoloModel    - load the torpedo pose model
+      1) StartGateApproach - survey + P-controller hone onto search&rescue_large
+                             (start_gate_mission.xml)
+      2) ArchToFaceBoard   - orbit so we face the board head-on (torpedo_arch.xml)
+      3) HomeAndFire       - search&rescue_large -> torpedo angle 1
+      4) HomeAndFire       - search&rescue_small -> torpedo angle 2
+
+    To target survey&repair instead, swap the three search&amp;rescue_* labels
+    to survey&amp;repair_*. (& must be written &amp; inside XML attributes.)
+
+    Keypoints flow on /yolo/tracking, so launch the planner with the params
+    (ros-args) mission:=StartGateTorpedoMission and
+    detections_topic:=/yolo/tracking, and launch yolo with use_tracking:=True.
+-->
+<root BTCPP_format="4" main_tree_to_execute="StartGateTorpedoMission">
+  <BehaviorTree ID="StartGateTorpedoMission">
+    <Sequence>
+
+      <!-- Correct YOLO model -->
+      <Action ID="CheckYoloModel"
+              model_filename="yolov26_torpedo_nano_June17.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- 1) Survey + P-controller hone onto the board, then move forward -->
+      <SubTree ID="StartGateApproach" _autoremap="true" ctx="{ctx}"/>
+
+
+      <!-- Correct YOLO model -->
+      <Action ID="CheckYoloModel"
+              model_filename="yolov26_torpedo_nano_June17.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- 2) Square up with the board (comment out to skip the arch). -->
+      <SubTree ID="ArchToFaceBoard" _autoremap="true" ctx="{ctx}"/>
+
+      <!-- 3) Large hole, first torpedo. -->
+      <SubTree ID="HomeAndFire" ctx="{ctx}"
+               hole_label="search&amp;rescue_large" torpedo_angle="1"/>
+
+      <!-- 4) Small hole, second torpedo. -->
+      <SubTree ID="HomeAndFire" ctx="{ctx}"
+               hole_label="search&amp;rescue_small" torpedo_angle="2"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>
