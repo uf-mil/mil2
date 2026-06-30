@@ -23,6 +23,11 @@ inline std::string symbol_for(std::string const& role, int items_collected)
 
 // The full four-symbol set as a CSV, for HoneBearing's multi-label `labels` port
 // (the face-any fallback). Order is fixed so tests can assert on it.
+//
+// IMPORTANT: keep this CSV in sync with the labels returned by symbol_for()
+// above. These four classes (compass, hammer_pick, life_ring, sos) must match
+// both what symbol_for() can return and the trained YOLO model's class names.
+// Nothing enforces this coupling automatically -- update all three together.
 inline std::string all_symbols()
 {
     return "compass,hammer_pick,life_ring,sos";
