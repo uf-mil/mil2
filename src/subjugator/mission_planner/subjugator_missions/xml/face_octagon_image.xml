@@ -1,0 +1,30 @@
+<root BTCPP_format="4">
+    <!--
+        S7 face step. Try to face the correct symbol; if it is never detected,
+        fall back to facing the best of all four symbols (still scores "any image").
+        HoneBearing returns FAILURE when no matching detection is present, which
+        fails the Repeat fast and triggers the Fallback. Iterating with a settle
+        converges the bearing instead of a single coarse correction.
+        Tuning constants are placeholders, to be measured in GUI sim.
+    -->
+    <BehaviorTree ID="FaceOctagonImage">
+        <Fallback>
+            <Timeout msec="20000">
+                <Repeat num_cycles="4">
+                    <Sequence>
+                        <Action ID="HoneBearing" label="{target_symbol}" fov_deg="110" ctx="{ctx}"/>
+                        <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
+                    </Sequence>
+                </Repeat>
+            </Timeout>
+            <Timeout msec="20000">
+                <Repeat num_cycles="4">
+                    <Sequence>
+                        <Action ID="HoneBearing" labels="compass,hammer_pick,life_ring,sos" fov_deg="110" ctx="{ctx}"/>
+                        <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
+                    </Sequence>
+                </Repeat>
+            </Timeout>
+        </Fallback>
+    </BehaviorTree>
+</root>
