@@ -1,0 +1,20 @@
+<root BTCPP_format="4" main_tree_to_execute="HoneOverTableSelect">
+    <!--
+        Pool-test Stage 4 (S2+S3 milestone): center over the table, then select
+        the role target, in ONE process. Centering uses CenterCamera DIRECTLY under
+        a bare Timeout (NOT the HoneOverTarget subtree), so a centering failure makes
+        the Sequence FAIL and selection does NOT run; this prevents a false-positive
+        milestone where the table was never actually centered. SelectTargetS3 writes
+        the chosen class to {target_label} on the root blackboard for a future S4
+        consumer to read (no consumer exists yet).
+    -->
+    <BehaviorTree ID="HoneOverTableSelect">
+        <Sequence>
+            <Timeout msec="30000">
+                <Action ID="CenterCamera"
+                        camera="down" label="table" tol_norm="0.05" ctx="{ctx}"/>
+            </Timeout>
+            <SubTree ID="SelectTargetS3" ctx="{ctx}" target_label="{target_label}"/>
+        </Sequence>
+    </BehaviorTree>
+</root>

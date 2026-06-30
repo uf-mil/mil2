@@ -17,6 +17,7 @@ class DetectTarget : public BT::ConditionNode
     {
         return { BT::InputPort<std::string>("label", "shark", "Target label (single)"),
                  BT::InputPort<double>("min_conf", 0.40, "Minimum confidence"),
+                 BT::InputPort<std::string>("camera", "front", "Detection stream: 'front' or 'down'"),
                  BT::InputPort<std::shared_ptr<Context>>("ctx") };
     }
 

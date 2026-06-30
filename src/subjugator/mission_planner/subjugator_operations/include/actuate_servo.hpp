@@ -26,8 +26,16 @@ class ActuateServo : public BT::StatefulActionNode
   private:
     using Servo = subjugator_msgs::srv::Servo;
 
+    // Sends the request and transitions to the in-flight (RUNNING) state.
+    BT::NodeStatus sendRequest();
+
     std::shared_ptr<Context> ctx_;
+    rclcpp::Client<Servo>::SharedPtr client_;
     rclcpp::Client<Servo>::SharedFuture future_;
     bool in_flight_{ false };
+    bool awaiting_service_{ false };  // waiting for the service to be discovered
+    rclcpp::Time deadline_;           // when to give up waiting for the service
+    uint16_t angle_{ 0 };             // validated command, sent once the service is ready
+    int service_timeout_msec_{ 3000 };
     std::string target_;
 };

@@ -20,8 +20,10 @@ BT::NodeStatus DetectTarget::tick()
 
     std::string label;
     double min_conf = 0.40;
+    std::string camera = "front";
     (void)getInput("label", label);
     (void)getInput("min_conf", min_conf);
+    (void)getInput("camera", camera);
 
     if (label.empty())
     {
@@ -29,11 +31,7 @@ BT::NodeStatus DetectTarget::tick()
         return BT::NodeStatus::FAILURE;
     }
 
-    std::optional<yolo_msgs::msg::DetectionArray> arr;
-    {
-        std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_detections;
-    }
+    std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for(camera);
 
     if (!arr)
     {

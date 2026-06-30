@@ -2,6 +2,7 @@
 #include <behaviortree_cpp/loggers/bt_cout_logger.h>
 #include <behaviortree_cpp/loggers/groot2_publisher.h>
 #include <behaviortree_cpp/xml_parsing.h>
+#include <yaml-cpp/yaml.h>
 
 #include <fstream>
 
@@ -12,7 +13,9 @@
 #include "align_yaw.hpp"
 #include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
+#include "center_camera.hpp"
 #include "check_yolo_model.hpp"
+#include "confirm_grasp_by_scale.hpp"
 #include "context.hpp"
 #include "detect_target.hpp"
 #include "determine_channel_side.hpp"
@@ -23,6 +26,8 @@
 #include "nav_channel_control.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
+#include "record_target_scale.hpp"
+#include "select_target.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 #include "track_best_pair.hpp"
@@ -46,6 +51,11 @@ int main(int argc, char** argv)
 
     node->declare_parameter<std::string>("mission", "SonarFollowerTest");
     std::string mission_to_run = node->get_parameter("mission").as_string();
+
+    // Role for Task 5 selection. "" on the robot (Task 1 sets it at runtime via
+    // ctx->set_role); set in sim launch until that wiring exists.
+    node->declare_parameter<std::string>("role", "");
+    ctx->set_role(node->get_parameter("role").as_string());
 
     // Topics to subscribe/publish to
     ctx->goal_pub = node->create_publisher<geometry_msgs::msg::Pose>("/goal_pose", 10);
@@ -74,10 +84,40 @@ int main(int argc, char** argv)
                                                                             ctx->img_height = msg->height;
                                                                         });
 
-    // Servo service clients (matched to services exposed by servo_controller/driver.py)
+    // Down-cam perception (Task 5). Defaults are the REAL-robot topics on
+    // purpose: a forgotten sim override then breaks the local sim run (cheap to
+    // catch) instead of a pool test someone else is running.
+    // For sim, override down_image_topic:=/down_cam/image_raw (the gz bridge
+    // topic). down_detect_topic already matches if the down YOLO node is
+    // launched with namespace:=yolo_down (-> /yolo_down/detections).
+    node->declare_parameter<std::string>("down_detect_topic", "/yolo_down/detections");
+    node->declare_parameter<std::string>("down_image_topic", "/down_camera/rgb/image_raw");
+    std::string const down_detect_topic = node->get_parameter("down_detect_topic").as_string();
+    std::string const down_image_topic = node->get_parameter("down_image_topic").as_string();
+
+    ctx->down_targets_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(down_detect_topic, 10,
+                                                                  [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
+                                                                  {
+                                                                      std::scoped_lock lk(ctx->down_detections_mx);
+                                                                      ctx->latest_down_detections = *msg;
+                                                                  });
+
+    ctx->down_image_sub =
+        node->create_subscription<sensor_msgs::msg::Image>(down_image_topic, 10,
+                                                           [ctx](sensor_msgs::msg::Image::SharedPtr msg)
+                                                           {
+                                                               std::scoped_lock lk(ctx->down_img_mx);
+                                                               ctx->down_img_width = msg->width;
+                                                               ctx->down_img_height = msg->height;
+                                                           });
+
+    // Servo service clients (matched to services exposed by servo_controller/driver.py
+    // on the real robot, or the GripperControl plugin in sim). Used by ActuateServo.
     ctx->dropper_client = node->create_client<subjugator_msgs::srv::Servo>("dropper");
     ctx->gripper_client = node->create_client<subjugator_msgs::srv::Servo>("gripper");
     ctx->torpedo_client = node->create_client<subjugator_msgs::srv::Servo>("torpedo");
+    // Servo service clients (matched to services exposed by servo_controller/driver.py)
     ctx->controller_enable_client = node->create_client<std_srvs::srv::SetBool>("/pid_controller/enable", 10);
     ctx->raw_effort_pub = node->create_publisher<subjugator_msgs::msg::ThrusterEfforts>("/thruster_efforts", 10);
 
@@ -104,16 +144,20 @@ int main(int argc, char** argv)
     factory.registerNodeType<LogToFile>("LogToFile");
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
+    factory.registerNodeType<CenterCamera>("CenterCamera");
+    factory.registerNodeType<SelectTarget>("SelectTarget");
     factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
     factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
     factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
     factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
+    factory.registerNodeType<ActuateServo>("ActuateServo");
+    factory.registerNodeType<RecordTargetScale>("RecordTargetScale");
+    factory.registerNodeType<ConfirmGraspByScale>("ConfirmGraspByScale");
     factory.registerNodeType<TrackBestPair>("TrackBestPair");
     factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
     factory.registerNodeType<NavChannelControl>("NavChannelControl");
-    factory.registerNodeType<ActuateServo>("ActuateServo");
     factory.registerNodeType<AlignDepth>("AlignDepth");
     factory.registerNodeType<AlignYaw>("AlignYaw");
 
@@ -133,6 +177,34 @@ int main(int argc, char** argv)
     // Create by name
     auto blackboard = BT::Blackboard::create();
     blackboard->set("ctx", ctx);
+
+    // Load the canonical Task-5 grasp-target list and expose it on the blackboard, so
+    // the grasp missions and the sim <graspable> allowlist (sub9_sim.urdf.xacro reads
+    // the same file) draw labels from one source instead of hard-coding them.
+    node->declare_parameter<std::string>("grasp_targets_file", "");
+    std::string grasp_targets_file = node->get_parameter("grasp_targets_file").as_string();
+    if (grasp_targets_file.empty())
+    {
+        grasp_targets_file = (std::filesystem::path(pkg_share) / "config" / "grasp_targets.yaml").string();
+    }
+    std::vector<std::string> grasp_targets;
+    try
+    {
+        YAML::Node const gt = YAML::LoadFile(grasp_targets_file);
+        for (auto const& n : gt["grasp_targets"])
+        {
+            grasp_targets.push_back(n.as<std::string>());
+        }
+    }
+    catch (std::exception const& e)
+    {
+        RCLCPP_WARN(node->get_logger(), "Could not load grasp_targets from '%s': %s", grasp_targets_file.c_str(),
+                    e.what());
+    }
+    blackboard->set("grasp_targets", grasp_targets);
+    blackboard->set("grasp_target", grasp_targets.empty() ? std::string{} : grasp_targets.front());
+    RCLCPP_INFO(node->get_logger(), "Loaded %zu grasp target(s) from %s", grasp_targets.size(),
+                grasp_targets_file.c_str());
 
     std::unique_ptr<BT::Tree> tree_ptr;
     try

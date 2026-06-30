@@ -791,14 +791,14 @@
       <pose>-6.25 14 0.4 0 0 0</pose>
     </model>
 
-    <model name='Task5_Table'>
+    <model name='table'>
       <static>true</static>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/table.dae
+                package://subjugator_description/models/table_2026/table.obj
               </uri>
             </mesh>
           </geometry>
@@ -807,113 +807,162 @@
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/table.dae
+                package://subjugator_description/models/table_2026/table.obj
               </uri>
             </mesh>
           </geometry>
         </collision>
       </link>
-      <pose>-7.25 14 -1.5 0 0 0</pose>
+      <pose>-7.25 14 -1.7 0 0 0</pose>
     </model>
 
-    <model name='Pink_Bin'>
-      <static>true</static>
+    <model name='electric_box'>
+      <static>false</static>
       <link name='link'>
+        <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
+             holds its authored pose (graded buoyancy only supports box/sphere collision,
+             not the mesh). Box size/mass are sim placeholders; tune against the mesh. -->
+        <inertial>
+          <mass>6.0</mass>
+          <inertia>
+            <ixx>0.0272</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.0385</iyy>
+            <iyz>0</iyz>
+            <izz>0.0513</izz>
+          </inertia>
+        </inertial>
         <visual name='visual'>
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/pink_bin.dae
+                package://subjugator_description/models/table_2026/box_electric.obj
               </uri>
+              <scale>0.1 0.125 0.1</scale>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
-            <mesh>
-              <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/pink_bin.dae
-              </uri>
-            </mesh>
+            <box>
+              <size>0.25 0.20 0.12</size>
+            </box>
           </geometry>
         </collision>
       </link>
-      <pose>-6.403 14.58 -1 0 0 0</pose>
+      <pose>-7.1 13.89 -.91 1.58 0 -0.50</pose>
     </model>
 
-    <model name='Yellow_Bin'>
-      <static>true</static>
+    <model name='nut_cylinder'>
+      <static>false</static>
       <link name='link'>
+        <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
+             holds its authored pose. Box size/mass are sim placeholders; tune against the mesh. -->
+        <inertial>
+          <mass>6.0</mass>
+          <inertia>
+            <ixx>0.0272</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.0385</iyy>
+            <iyz>0</iyz>
+            <izz>0.0513</izz>
+          </inertia>
+        </inertial>
         <visual name='visual'>
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/yellow_bin.dae
+                package://subjugator_description/models/table_2026/cylinder_nut.obj
               </uri>
+              <scale>1 0.75 1</scale>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
-            <mesh>
-              <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/yellow_bin.dae
-              </uri>
-            </mesh>
+            <box>
+              <size>0.25 0.20 0.12</size>
+            </box>
           </geometry>
         </collision>
       </link>
-      <pose>-6.403 13.45 -1 0 0 0</pose>
+      <pose>-7.17 14.13 -0.92 1.66 0 0</pose>
     </model>
 
-    <model name='Yellow_Cup'>
-      <static>true</static>
+    <model name='pill_cylinder'>
+      <static>false</static>
       <link name='link'>
+        <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
+             holds its authored pose. Box size/mass are sim placeholders; tune against the mesh. -->
+        <inertial>
+          <mass>1.28</mass>
+          <inertia>
+            <ixx>0.005</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.005</iyy>
+            <iyz>0</iyz>
+            <izz>0.0014</izz>
+          </inertia>
+        </inertial>
         <visual name='visual'>
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/yellow_bottle.dae
+                package://subjugator_description/models/table_2026/cylinder_pill.obj
               </uri>
+              <scale>1 0.75 1</scale>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
-            <mesh>
-              <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/yellow_bottle.dae
-              </uri>
-            </mesh>
+            <box>
+              <size>0.08 0.08 0.20</size>
+            </box>
           </geometry>
         </collision>
       </link>
-      <pose>-6.95 14 -0.847 0 1.57 0</pose>
+      <pose>-7.34 13.86 -0.92 1.55 0 0</pose>
     </model>
 
-    <model name='Pink_Spoon'>
-      <static>true</static>
+    <model name='bandaid_box'>
+      <static>false</static>
       <link name='link'>
+        <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
+             holds its authored pose. Box size/mass are sim placeholders; tune against the mesh. -->
+        <inertial>
+          <mass>0.24</mass>
+          <inertia>
+            <ixx>0.00005</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.00082</iyy>
+            <iyz>0</iyz>
+            <izz>0.00083</izz>
+          </inertia>
+        </inertial>
         <visual name='visual'>
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/pink_spoon.dae
+                package://subjugator_description/models/table_2026/box_bandaid.obj
               </uri>
+              <scale>0.1 0.15 0.1</scale>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
-            <mesh>
-              <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/pink_spoon.dae
-              </uri>
-            </mesh>
+            <box>
+              <size>0.20 0.04 0.03</size>
+            </box>
           </geometry>
         </collision>
       </link>
-      <pose>-6.945 14.0762 -0.98 0.785 1.748 0</pose>
+      <pose>-7.37 14.09 -0.91 1.56 0 0.40</pose>
     </model>
 
     <model name='Pinger_A1_25000'>
