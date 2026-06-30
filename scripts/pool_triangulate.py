@@ -154,6 +154,7 @@ class CameraView:
         )
         if not ok:
             print("ERROR: solvePnP failed — verify corner click order TL→TR→BR→BL.")
+            self.corners_2d = []  # reset so user can re-click all 4 corners
             return
         self.R, _ = cv2.Rodrigues(rvec)
         self.t = tvec.flatten()
