@@ -11,6 +11,7 @@
     <include path="octagon_grasp_mission.xml"/>
     <include path="face_octagon_image.xml"/>
     <include path="orient_to_octagon_image.xml"/>
+    <include path="octagon_face_mission.xml"/>
     <include path="center_camera_test_mission.xml"/>
     <include path="octagon_table_mission.xml"/>
     <include path="select_target.xml"/>
