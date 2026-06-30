@@ -1,0 +1,15 @@
+---
+# sim_objects config for task4_2026_v1.world
+# Sub spawns at (2, 6, -0.3) yaw=1 rad
+
+world_name: "task4_2026_v1"
+model_name: "sub9"
+camera_link: "front_cam_link"
+gz_pose_topic: "/world/task4_2026_v1/dynamic_pose/info"
+
+objects:
+  - name: "Torpedo_Board"
+    position: [-4.0, 20.0, -0.8]
+    half_extents: [0.25, 0.61, 0.35]
+    class_id: 0
+    class_name: "torpedo_board"

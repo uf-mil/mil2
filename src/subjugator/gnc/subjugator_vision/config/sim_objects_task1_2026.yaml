@@ -1,0 +1,21 @@
+---
+# sim_objects config for task1_2026.world (robosub_2026 world)
+# Sub spawns at (0, 0, 0) yaw=0
+
+world_name: "robosub_2026"
+model_name: "sub9"
+camera_link: "front_cam_link"
+gz_pose_topic: "/world/robosub_2026/dynamic_pose/info"
+
+objects:
+  - name: "StartGate_A"
+    position: [7.57, 22.28, -0.4]
+    half_extents: [1.58, 0.78, 0.05]
+    class_id: 0
+    class_name: "start_gate"
+
+  - name: "StartGate_B"
+    position: [7.57, 22.28, -0.4]
+    half_extents: [1.58, 0.78, 0.05]
+    class_id: 0
+    class_name: "start_gate"
