@@ -791,14 +791,14 @@
       <pose>-6.25 14 0.4 0 0 0</pose>
     </model>
 
-    <model name='Task5_Table'>
+    <model name='table'>
       <static>true</static>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/table.dae
+                package://subjugator_description/models/table_2026/table.obj
               </uri>
             </mesh>
           </geometry>
@@ -807,16 +807,16 @@
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/table.dae
+                package://subjugator_description/models/table_2026/table.obj
               </uri>
             </mesh>
           </geometry>
         </collision>
       </link>
-      <pose>-7.25 14 -1.5 0 0 0</pose>
+      <pose>-7.25 14 -1.7 0 0 0</pose>
     </model>
 
-    <model name='Pink_Bin'>
+    <model name='electric_box'>
       <static>false</static>
       <link name='link'>
         <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
@@ -837,8 +837,9 @@
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/pink_bin.dae
+                package://subjugator_description/models/table_2026/box_electric.obj
               </uri>
+              <scale>0.1 0.125 0.1</scale>
             </mesh>
           </geometry>
         </visual>
@@ -850,10 +851,10 @@
           </geometry>
         </collision>
       </link>
-      <pose>-6.403 14.58 -1 0 0 0</pose>
+      <pose>-7.1 13.89 -.91 1.58 0 -0.50</pose>
     </model>
 
-    <model name='Yellow_Bin'>
+    <model name='nut_cylinder'>
       <static>false</static>
       <link name='link'>
         <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
@@ -873,8 +874,9 @@
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/yellow_bin.dae
+                package://subjugator_description/models/table_2026/cylinder_nut.obj
               </uri>
+              <scale>1 0.75 1</scale>
             </mesh>
           </geometry>
         </visual>
@@ -886,10 +888,10 @@
           </geometry>
         </collision>
       </link>
-      <pose>-6.403 13.45 -1 0 0 0</pose>
+      <pose>-7.17 14.13 -0.92 1.66 0 0</pose>
     </model>
 
-    <model name='Yellow_Cup'>
+    <model name='pill_cylinder'>
       <static>false</static>
       <link name='link'>
         <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
@@ -909,8 +911,9 @@
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/yellow_bottle.dae
+                package://subjugator_description/models/table_2026/cylinder_pill.obj
               </uri>
+              <scale>1 0.75 1</scale>
             </mesh>
           </geometry>
         </visual>
@@ -922,10 +925,10 @@
           </geometry>
         </collision>
       </link>
-      <pose>-6.95 14 -0.847 0 1.57 0</pose>
+      <pose>-7.34 13.86 -0.92 1.55 0 0</pose>
     </model>
 
-    <model name='Pink_Spoon'>
+    <model name='bandaid_box'>
       <static>false</static>
       <link name='link'>
         <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
@@ -945,8 +948,9 @@
           <geometry>
             <mesh>
               <uri>
-                package://subjugator_description/models/RobotX_2025/Task5/pink_spoon.dae
+                package://subjugator_description/models/table_2026/box_bandaid.obj
               </uri>
+              <scale>0.1 0.15 0.1</scale>
             </mesh>
           </geometry>
         </visual>
@@ -958,7 +962,7 @@
           </geometry>
         </collision>
       </link>
-      <pose>-6.945 14.0762 -0.98 0.785 1.748 0</pose>
+      <pose>-7.37 14.09 -0.91 1.56 0 0.40</pose>
     </model>
 
     <model name='Pinger_A1_25000'>
