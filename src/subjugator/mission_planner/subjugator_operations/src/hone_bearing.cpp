@@ -6,6 +6,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "select_target_logic.hpp"  // reuse parse_labels (already unit-tested)
+
 #include <geometry_msgs/msg/pose.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
@@ -21,6 +23,8 @@ HoneBearing::HoneBearing(std::string const& name, const BT::NodeConfiguration& c
 BT::PortsList HoneBearing::providedPorts()
 {
     return { BT::InputPort<std::string>("label", "shark", "Target label (single)"),
+             BT::InputPort<std::string>("labels", "",
+                                        "CSV of classes; if set, hone the best detection among them (overrides label)"),
              BT::InputPort<double>("offset_deg", 0.0, "Positive=left yaw bias, negative=right"),
              BT::InputPort<double>("fov_deg", 110.0, "Horizontal FOV of camera"),
              BT::InputPort<double>("min_conf", 0.30, "Minimum confidence"),
@@ -56,6 +60,11 @@ BT::NodeStatus HoneBearing::onRunning()
     (void)getInput("fov_deg", fov);
     (void)getInput("min_conf", min_conf);
 
+    std::string labels_csv;
+    (void)getInput("labels", labels_csv);
+    std::vector<std::string> const label_set =
+        labels_csv.empty() ? std::vector<std::string>{} : select_target::parse_labels(labels_csv);
+
     // Get image width
     uint32_t W = 0;
     {
@@ -85,7 +94,10 @@ BT::NodeStatus HoneBearing::onRunning()
     double best_conf = 0.0;
     for (auto const& d : arr->detections)
     {
-        if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
+        bool const matches = label_set.empty() ?
+                                 (d.class_name == label) :
+                                 (std::find(label_set.begin(), label_set.end(), d.class_name) != label_set.end());
+        if (matches && d.score >= min_conf && d.score > best_conf)
         {
             best = &d;
             best_conf = d.score;
