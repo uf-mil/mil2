@@ -64,7 +64,10 @@ class MovePoses(Node):
 
         self.goal_pub = self.create_publisher(Pose, "/goal/trajectory", 1)
         self.odom_sub = self.create_subscription(
-            Odometry, "/odometry/filtered", self._odom_cb, 10
+            Odometry,
+            "/odometry/filtered",
+            self._odom_cb,
+            10,
         )
 
     def _odom_cb(self, msg: Odometry) -> None:
@@ -77,12 +80,14 @@ class MovePoses(Node):
 
         print(
             f"Moving through {len(self.poses)} pose(s) "
-            f"[tolerance={self.tolerance}m  timeout={self.timeout}s]"
+            f"[tolerance={self.tolerance}m  timeout={self.timeout}s]",
         )
 
         for i, pose in enumerate(self.poses):
             p = pose.position
-            print(f"\n[{i + 1}/{len(self.poses)}] Goal → x={p.x:.2f}  y={p.y:.2f}  z={p.z:.2f}")
+            print(
+                f"\n[{i + 1}/{len(self.poses)}] Goal → x={p.x:.2f}  y={p.y:.2f}  z={p.z:.2f}",
+            )
             self.goal_pub.publish(pose)
 
             start = time.monotonic()
@@ -96,7 +101,9 @@ class MovePoses(Node):
                     break
 
                 if elapsed > self.timeout:
-                    print(f"  Timeout after {elapsed:.1f}s  (dist={dist:.3f}m) — advancing anyway")
+                    print(
+                        f"  Timeout after {elapsed:.1f}s  (dist={dist:.3f}m) — advancing anyway",
+                    )
                     break
 
         print("\nDone.")
@@ -120,7 +127,10 @@ def _load_yaml(path: str) -> list[Pose]:
         data = yaml.safe_load(f)
     return [
         _make_pose(
-            float(e["x"]), float(e["y"]), float(e["z"]), float(e.get("yaw_deg", 0.0))
+            float(e["x"]),
+            float(e["y"]),
+            float(e["z"]),
+            float(e.get("yaw_deg", 0.0)),
         )
         for e in data["poses"]
     ]
@@ -132,12 +142,20 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="Example: python3 move_poses.py --poses 0,0,-1,0  2,0,-1,90",
     )
-    parser.add_argument(
-        "--poses", nargs="+", type=_parse_pose, metavar="x,y,z,yaw_deg"
-    )
+    parser.add_argument("--poses", nargs="+", type=_parse_pose, metavar="x,y,z,yaw_deg")
     parser.add_argument("--file", metavar="PATH", help="YAML file with pose list")
-    parser.add_argument("--tolerance", type=float, default=0.3, help="Goal tolerance in meters (default: 0.3)")
-    parser.add_argument("--timeout", type=float, default=60.0, help="Per-pose timeout in seconds (default: 60)")
+    parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.3,
+        help="Goal tolerance in meters (default: 0.3)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=60.0,
+        help="Per-pose timeout in seconds (default: 60)",
+    )
 
     args, _ = parser.parse_known_args()
 

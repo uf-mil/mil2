@@ -16,7 +16,9 @@ import argparse
 import math
 
 import rclpy
-from geometry_msgs.msg import Pose, PoseWithCovariance, PoseWithCovarianceStamped, Quaternion
+from geometry_msgs.msg import (
+    Pose,
+)
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 
@@ -30,7 +32,10 @@ class MockOdom(Node):
 
         self.odom_pub = self.create_publisher(Odometry, "/odometry/filtered", 10)
         self.goal_sub = self.create_subscription(
-            Pose, "/goal/trajectory", self._goal_cb, 1
+            Pose,
+            "/goal/trajectory",
+            self._goal_cb,
+            1,
         )
 
         # update at 20 Hz
@@ -88,9 +93,21 @@ def _parse_start(s: str) -> Pose:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Simulate sub odometry for testing move_poses.py")
-    parser.add_argument("--speed", type=float, default=0.3, help="Simulated movement speed in m/s (default: 0.3)")
-    parser.add_argument("--start", default="0,0,-1,0", metavar="x,y,z,yaw_deg", help="Starting pose (default: 0,0,-1,0)")
+    parser = argparse.ArgumentParser(
+        description="Simulate sub odometry for testing move_poses.py",
+    )
+    parser.add_argument(
+        "--speed",
+        type=float,
+        default=0.3,
+        help="Simulated movement speed in m/s (default: 0.3)",
+    )
+    parser.add_argument(
+        "--start",
+        default="0,0,-1,0",
+        metavar="x,y,z,yaw_deg",
+        help="Starting pose (default: 0,0,-1,0)",
+    )
 
     args, _ = parser.parse_known_args()
     start_pose = _parse_start(args.start)
