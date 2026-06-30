@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 
