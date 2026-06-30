@@ -1,5 +1,16 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="sub9">
+  <!-- Canonical Task-5 grasp-target list, loaded once from mission_planner so the
+       GripperControl <graspable> allowlist below and the mission target labels share a
+       single source (mission_planner/config/grasp_targets.yaml). -->
+  <xacro:property name="grasp_cfg" value="${xacro.load_yaml('$(find mission_planner)/config/grasp_targets.yaml')}"/>
+  <xacro:macro name="graspables" params="names">
+    <xacro:if value="${names}">
+      <graspable>${names[0]}</graspable>
+      <xacro:graspables names="${names[1:]}"/>
+    </xacro:if>
+  </xacro:macro>
+
   <!-- XACRO INCLUDES -->
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/fixed_link.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
@@ -108,10 +119,7 @@
       <right_joint_name>gripper_rightArm_joint</right_joint_name>
       <gripper_link_name>gripper_link</gripper_link_name>
       <attach_radius>0.25</attach_radius>
-      <graspable>Pink_Bin</graspable>
-      <graspable>Yellow_Bin</graspable>
-      <graspable>Yellow_Cup</graspable>
-      <graspable>Pink_Spoon</graspable>
+      <xacro:graspables names="${grasp_cfg['grasp_targets']}"/>
     </plugin>
   </gazebo>
 

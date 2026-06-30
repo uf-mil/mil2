@@ -17,6 +17,7 @@
   <depend>rcl_interfaces</depend>
   <depend>rclcpp</depend>
   <depend>subjugator_msgs</depend>
+  <depend>yaml-cpp</depend>
   <depend>yolo_msgs</depend>
 
   <build_depend>sensor_msgs</build_depend>

@@ -20,10 +20,21 @@
                         <!-- 4. Close to grasp, then let the joint/attach settle -->
                         <Action ID="ActuateServo" target="gripper" angle="{close_angle}" ctx="{ctx}"/>
                         <Delay delay_msec="{grip_settle_msec}"><AlwaysSuccess/></Delay>
+                        <!-- 4b. Record the centered apparent (bbox) size of the target before lifting.
+                             No detection (e.g. down-cam model not landed) -> baseline 0 -> step 5b
+                             stays open-loop. Always SUCCEEDs. -->
+                        <Action ID="RecordTargetScale" label="{target_label}" camera="down"
+                                min_conf="0.30" baseline_area="{grasp_baseline_area}" ctx="{ctx}"/>
                         <!-- 5. Lift clear of the table (positive z = up) -->
                         <SubTree ID="RelativeMove" _autoremap="true"
                                  z="{lift_z}" pos_tol="0.2" ori_tol_deg="180.0"
                                  msec="{move_timeout_msec}" ctx="{ctx}"/>
+                        <!-- 5b. Confirm the grab: a held object keeps its apparent size, a missed one
+                             shrinks as the sub lifts away. FAILURE retries the cycle; with no baseline
+                             it degrades to SUCCESS (open-loop). -->
+                        <Condition ID="ConfirmGraspByScale" label="{target_label}" camera="down"
+                                   min_conf="0.30" baseline_area="{grasp_baseline_area}"
+                                   keep_ratio="{grasp_keep_ratio}" ctx="{ctx}"/>
                     </Sequence>
                 </RetryUntilSuccessful>
                 <!-- 6. Record what we grabbed -> S3's exclude reads this for the S6 loop -->

@@ -235,35 +235,33 @@ void GripperControl::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityC
         right.ResetPosition(_ecm, std::vector<double>{ this->right_current_pos_ });
     }
 
-    // Edge-triggered grasp / release
-    if (this->want_grasp_ && !this->grasp_active_)
+    // Edge-triggered grasp / release. Only attach once the jaws have physically
+    // settled at their commanded close position -- not the instant the close command
+    // arrives -- so the grasp reflects actual closure rather than mere intent and a
+    // prop the jaws never reach is not snapped on.
+    if (this->want_grasp_ && !this->grasp_active_ && this->JawsClosed())
     {
         this->TryGrasp(_ecm);
     }
     else if (!this->want_grasp_ && this->grasp_active_)
     {
-        this->ReleaseGrasp();
+        this->ReleaseGrasp(_ecm);
     }
 
     // If the held model was removed from the sim, drop the grasp.
     if (this->grasp_active_ && this->held_model_entity_ != gz::sim::kNullEntity &&
         !_ecm.HasEntity(this->held_model_entity_))
     {
-        this->ReleaseGrasp();
+        this->ReleaseGrasp(_ecm);
     }
+    // The fixed joint holds the prop to the gripper -- no kinematic follow needed.
+}
 
-    // While holding, keep the prop locked to the gripper (kinematic follow)
-    if (this->grasp_active_ && this->held_model_entity_ != gz::sim::kNullEntity &&
-        this->gripper_link_entity_ != gz::sim::kNullEntity)
-    {
-        gz::sim::Link link(this->gripper_link_entity_);
-        auto linkPose = link.WorldPose(_ecm);
-        if (linkPose)
-        {
-            gz::math::Pose3d const target = *linkPose * this->held_offset_;
-            gz::sim::Model(this->held_model_entity_).SetWorldPoseCmd(_ecm, target);
-        }
-    }
+bool GripperControl::JawsClosed() const
+{
+    // Both jaws within tolerance of their (closing) targets => done smoothing shut.
+    return std::fabs(this->left_current_pos_ - this->left_target_pos_) <= this->grasp_close_tol_ &&
+           std::fabs(this->right_current_pos_ - this->right_target_pos_) <= this->grasp_close_tol_;
 }
 
 void GripperControl::TryGrasp(gz::sim::EntityComponentManager &ecm)
@@ -297,18 +295,34 @@ void GripperControl::TryGrasp(gz::sim::EntityComponentManager &ecm)
     if (best == gz::sim::kNullEntity)
         return;
 
-    gz::math::Pose3d const modelPose = gz::sim::worldPose(best, ecm);
+    // Attach via a real fixed (detachable) joint between the gripper link and the held
+    // model's canonical link, so the prop is held by a physics constraint -- respecting
+    // mass, collision and velocity -- instead of being teleported each tick. The Physics
+    // system turns the DetachableJoint component into the actual constraint.
+    gz::sim::Entity const childLink = gz::sim::Model(best).CanonicalLink(ecm);
+    if (childLink == gz::sim::kNullEntity)
+    {
+        std::cout << "[GripperControl] Cannot grasp entity " << best << ": no canonical link" << std::endl;
+        return;
+    }
+
+    this->joint_entity_ = ecm.CreateEntity();
+    ecm.CreateComponent(this->joint_entity_,
+                        gz::sim::components::DetachableJoint({ this->gripper_link_entity_, childLink, "fixed" }));
     this->held_model_entity_ = best;
-    this->held_offset_ = gripperPose.Inverse() * modelPose;  // gripper_link -> model
     this->grasp_active_ = true;
-    std::cout << "[GripperControl] Grasped model entity " << best << " at dist " << bestDist << std::endl;
+    std::cout << "[GripperControl] Grasped model entity " << best << " (fixed joint) at dist " << bestDist << std::endl;
 }
 
-void GripperControl::ReleaseGrasp()
+void GripperControl::ReleaseGrasp(gz::sim::EntityComponentManager &ecm)
 {
-    // Note: the prop's velocity is not zeroed here, so on release it keeps whatever
-    // the physics engine last had. A follow-up could zero linear/angular velocity for
-    // a cleaner drop if props fling on release.
+    // Removing the detachable-joint entity dissolves the fixed constraint. The prop's
+    // velocity is not zeroed, so it keeps whatever the physics engine last gave it.
+    if (this->joint_entity_ != gz::sim::kNullEntity)
+    {
+        ecm.RequestRemoveEntity(this->joint_entity_);
+        this->joint_entity_ = gz::sim::kNullEntity;
+    }
     this->grasp_active_ = false;
     this->held_model_entity_ = gz::sim::kNullEntity;
     std::cout << "[GripperControl] Released grasp" << std::endl;

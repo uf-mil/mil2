@@ -1,0 +1,21 @@
+---
+# Canonical Task-5 grasp-target names: the single source of truth for
+#   - the mission target labels (loaded onto the blackboard as grasp_targets /
+#     grasp_target by mission_planner_node, used by the grasp missions)
+#   - the sim GripperControl <graspable> allowlist (sub9_sim.urdf.xacro loads
+#     this same file via xacro.load_yaml)
+#
+# These names MUST match the prop <model name="..."> entries in
+# robosub_2025.world (the Gazebo entity names) and, once it exists, the
+# down-cam YOLO class strings. Edit the list here only.
+#
+# NOTE: these are PLACEHOLDER props (generic shapes), kept consistent with the
+# matching <model name> entries in robosub_2025.world so the sim grasp test
+# works. Swapping in the real Task-5 objects (nut_cylinder, electric_box,
+# pill_cylinder, bandaid_box, using Jack's table_2026 meshes) is a follow-up
+# sim task -- update this list AND the world props together.
+grasp_targets:
+  - Pink_Bin
+  - Yellow_Bin
+  - Yellow_Cup
+  - Pink_Spoon

@@ -17,6 +17,7 @@ find_package(yolo_msgs REQUIRED)
 find_package(subjugator_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
@@ -36,7 +37,9 @@ add_library(
   subjugator_operations/src/select_target.cpp
   subjugator_operations/src/any_poles_detected.cpp
   subjugator_operations/src/has_found_pair.cpp
-  subjugator_operations/src/actuate_servo.cpp)
+  subjugator_operations/src/actuate_servo.cpp
+  subjugator_operations/src/record_target_scale.cpp
+  subjugator_operations/src/confirm_grasp_by_scale.cpp)
 
 ament_target_dependencies(
   operations
@@ -54,7 +57,7 @@ ament_target_dependencies(
 
 # Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
-target_link_libraries(mission_planner_node operations)
+target_link_libraries(mission_planner_node operations yaml-cpp)
 ament_target_dependencies(
   mission_planner_node
   rclcpp
@@ -76,6 +79,7 @@ install(
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY subjugator_operations/include/ DESTINATION include)
 install(DIRECTORY subjugator_missions/xml/ DESTINATION share/${PROJECT_NAME}/bt)
+install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../gnc/subjugator_vision/models/
         DESTINATION share/${PROJECT_NAME}/models)
 if(BUILD_TESTING)

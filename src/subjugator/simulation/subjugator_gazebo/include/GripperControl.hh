@@ -19,6 +19,7 @@
 #include <gz/sim/Link.hh>
 #include <gz/sim/Model.hh>
 #include <gz/sim/System.hh>
+#include <gz/sim/components/DetachableJoint.hh>
 #include <gz/sim/components/JointPosition.hh>
 #include <gz/sim/components/Model.hh>
 #include <gz/sim/components/Name.hh>
@@ -60,7 +61,9 @@ class GripperControl : public gz::sim::System,
   private:
     // Proximity grasp helpers
     void TryGrasp(gz::sim::EntityComponentManager &ecm);
-    void ReleaseGrasp();
+    void ReleaseGrasp(gz::sim::EntityComponentManager &ecm);
+    // True once both jaws have smoothed to within grasp_close_tol_ of their targets.
+    bool JawsClosed() const;
 
     // ROS2 Node and subscription
     rclcpp::Node::SharedPtr node_;
@@ -75,9 +78,11 @@ class GripperControl : public gz::sim::System,
     // State & settings
     bool u_pressed_{ false };
     bool gripper_open_{ false };
-    // Service-protocol constant (Servo.angle units): the requested angle that maps to
-    // frac=1.0 (fully open). NOT a physical angle -- the physical positions are
-    // open_pos_/closed_pos_ below, in radians.
+    // Service-protocol constant (Servo.angle units -- PWM duty x10; see Servo.srv for the
+    // shared angle contract). The requested angle that maps to frac=1.0 (fully open). NOT a
+    // physical angle -- the physical positions are open_pos_/closed_pos_ below, in radians.
+    // Keep this and the mission's open/close angles consistent with the hardware values
+    // documented in Servo.srv so a tree tuned here transfers to the real gripper.
     static constexpr double OPEN_ANGLE{ 85.0 };
     double open_pos_{ 0.85 };   // radians (default)
     double closed_pos_{ 0.0 };  // radians (default)
@@ -110,9 +115,10 @@ class GripperControl : public gz::sim::System,
     std::string gripper_link_name_{ "gripper_link" };
     gz::sim::Entity gripper_link_entity_{ gz::sim::kNullEntity };
     gz::sim::Entity held_model_entity_{ gz::sim::kNullEntity };
-    gz::math::Pose3d held_offset_;  // gripper_link -> held model, captured at grasp
-    bool want_grasp_{ false };      // last commanded state: true=closed/grasp
-    bool grasp_active_{ false };    // currently holding something
+    gz::sim::Entity joint_entity_{ gz::sim::kNullEntity };  // fixed detachable joint while holding
+    bool want_grasp_{ false };                              // last commanded state: true=closed/grasp
+    bool grasp_active_{ false };                            // currently holding something
+    double grasp_close_tol_{ 0.05 };                        // radians; jaws within this of target => closed
 };
 
 }  // namespace gripper_control

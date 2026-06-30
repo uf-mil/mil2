@@ -2,6 +2,7 @@
 #include <behaviortree_cpp/loggers/bt_cout_logger.h>
 #include <behaviortree_cpp/loggers/groot2_publisher.h>
 #include <behaviortree_cpp/xml_parsing.h>
+#include <yaml-cpp/yaml.h>
 
 #include <fstream>
 
@@ -12,6 +13,7 @@
 #include "at_goal_pose.hpp"
 #include "center_camera.hpp"
 #include "check_yolo_model.hpp"
+#include "confirm_grasp_by_scale.hpp"
 #include "context.hpp"
 #include "detect_target.hpp"
 #include "determine_channel_side.hpp"
@@ -19,6 +21,7 @@
 #include "hone_bearing.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
+#include "record_target_scale.hpp"
 #include "select_target.hpp"
 #include "track_largest_poles.hpp"
 
@@ -136,6 +139,8 @@ int main(int argc, char** argv)
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
     factory.registerNodeType<ActuateServo>("ActuateServo");
+    factory.registerNodeType<RecordTargetScale>("RecordTargetScale");
+    factory.registerNodeType<ConfirmGraspByScale>("ConfirmGraspByScale");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
@@ -151,6 +156,34 @@ int main(int argc, char** argv)
     // Create by name
     auto blackboard = BT::Blackboard::create();
     blackboard->set("ctx", ctx);
+
+    // Load the canonical Task-5 grasp-target list and expose it on the blackboard, so
+    // the grasp missions and the sim <graspable> allowlist (sub9_sim.urdf.xacro reads
+    // the same file) draw labels from one source instead of hard-coding them.
+    node->declare_parameter<std::string>("grasp_targets_file", "");
+    std::string grasp_targets_file = node->get_parameter("grasp_targets_file").as_string();
+    if (grasp_targets_file.empty())
+    {
+        grasp_targets_file = (std::filesystem::path(pkg_share) / "config" / "grasp_targets.yaml").string();
+    }
+    std::vector<std::string> grasp_targets;
+    try
+    {
+        YAML::Node const gt = YAML::LoadFile(grasp_targets_file);
+        for (auto const& n : gt["grasp_targets"])
+        {
+            grasp_targets.push_back(n.as<std::string>());
+        }
+    }
+    catch (std::exception const& e)
+    {
+        RCLCPP_WARN(node->get_logger(), "Could not load grasp_targets from '%s': %s", grasp_targets_file.c_str(),
+                    e.what());
+    }
+    blackboard->set("grasp_targets", grasp_targets);
+    blackboard->set("grasp_target", grasp_targets.empty() ? std::string{} : grasp_targets.front());
+    RCLCPP_INFO(node->get_logger(), "Loaded %zu grasp target(s) from %s", grasp_targets.size(),
+                grasp_targets_file.c_str());
 
     std::unique_ptr<BT::Tree> tree_ptr;
     try
