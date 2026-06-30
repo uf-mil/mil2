@@ -8,16 +8,20 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(tf2 REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(mil_msgs REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(subjugator_msgs REQUIRED)
 find_package(yolo_msgs REQUIRED)
 find_package(subjugator_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(subjugator_msgs REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
@@ -39,14 +43,23 @@ add_library(
   subjugator_operations/src/has_found_pair.cpp
   subjugator_operations/src/actuate_servo.cpp
   subjugator_operations/src/record_target_scale.cpp
-  subjugator_operations/src/confirm_grasp_by_scale.cpp)
+  subjugator_operations/src/confirm_grasp_by_scale.cpp
+  subjugator_operations/src/track_best_pair.cpp
+  subjugator_operations/src/hone_midpoint.cpp
+  subjugator_operations/src/log_to_file.cpp
+  subjugator_operations/src/nav_channel_control.cpp
+  subjugator_operations/src/align_depth.cpp
+  subjugator_operations/src/align_yaw.cpp)
 
 ament_target_dependencies(
   operations
   rclcpp
   geometry_msgs
+  std_srvs
   nav_msgs
   mil_msgs
+  tf2
+  subjugator_msgs
   sensor_msgs
   yolo_msgs
   subjugator_msgs

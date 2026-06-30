@@ -178,6 +178,7 @@ EOF
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
 sudo apt install -y \
+	ccache \
 	libboost-all-dev \
 	nlohmann-json3-dev \
 	python3-colcon-common-extensions \
@@ -197,7 +198,8 @@ sudo apt install -y \
 	ros-jazzy-tf-transformations \
 	ros-jazzy-velodyne \
 	ros-jazzy-vision-msgs \
-	ros-jazzy-nav2-util
+	ros-jazzy-nav2-util \
+	ros-jazzy-rmw-zenoh-cpp
 
 cat <<EOF
 $(color "$Pur")
@@ -208,6 +210,7 @@ $(hash_header)$(color "$Res")
 EOF
 
 # Install Python 3 dependencies
+sudo pip3 install --ignore-installed typing_extensions # preinstalled
 sudo pip3 install -r requirements.txt
 
 cat <<EOF
@@ -231,6 +234,12 @@ if [[ $SCRIPT_DIR != "$HOME/mil2/scripts" && -z ${ALLOW_NONSTANDARD_DIR:-} ]]; t
 	echo "${Red}Error: This script must be located in ~/mil2/scripts/install.sh. Please review the installation guide and try again.${Res}"
 	exit 1
 fi
+
+install_zenoh() {
+	sudo cp "$SCRIPT_DIR/../hw/zenoh.service" /etc/systemd/system
+	systemctl enable zenoh --now || true
+}
+install_zenoh
 
 # Add line to user's bashrc which source the repo's setup files
 # This allows us to update aliases, environment variables, etc

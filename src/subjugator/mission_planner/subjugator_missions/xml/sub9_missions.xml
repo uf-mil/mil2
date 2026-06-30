@@ -15,13 +15,26 @@
     <include path="hone_over_table_only_mission.xml"/>
     <include path="select_only_mission.xml"/>
     <include path="hone_over_table_select_mission.xml"/>
-    <include path="square_test_mission.xml"/>
-    <include path="BUST_mission.xml"/>
     <include path="start_gate_mission.xml"/>
     <include path="nav_channel_mission.xml"/>
+    <include path="yaw_style.xml"/>
+    <include path="pc_nav_channel.xml"/>
+    <include path="pc_nav_channel_v2.xml"/>
+
+    <!-- Test missions -->
     <include path="topic_ticker_test_mission.xml"/>
     <include path="sonar_follower_test_mission.xml"/>
+    <include path="square_test_mission.xml"/>
+    <include path="midpoint_test_mission.xml"/>
+    <include path="best_pair_test_mission.xml"/>
+    <include path="nav_channel_control_test.xml"/>
+    <include path="BUST_mission.xml"/>
     <include path="octagon_pinger_mission.xml"/>
     <include path="yaw_style.xml"/>
     <include path="ETHAN.xml"/>
+    <include path="servo_test_mission.xml"/>
+    <include path="torpedo_homing_motion.xml"/>
+    <include path="torpedo_mission.xml"/>
+    <include path="roll_style.xml"/>
+    <include path="pitch_style.xml"/>
 </root>

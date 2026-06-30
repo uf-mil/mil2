@@ -2,51 +2,65 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import GroupAction, IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import IncludeLaunchDescription
+from launch_ros.actions import Node
+
+
+def pkg_share(pkg, *path):
+    return os.path.join(get_package_share_directory(pkg), *path)
 
 
 def generate_launch_description():
-    # Launch every launch file in hw as a hardware group
-    this_package = get_package_share_directory("subjugator_bringup")
-    launch_dir = os.path.join(this_package, "launch")
-    hw_dir = os.path.join(launch_dir, "hw")
+    dvl_launch = IncludeLaunchDescription(
+        pkg_share("waterlinked_dvl_driver", "launch", "dvl.launch.py"),
+    )
 
-    hw_actions = []
-    for file_or_dir in os.listdir(hw_dir):
-        if file_or_dir == "__pycache__":
-            continue
-        file_or_dir_path = os.path.join(hw_dir, file_or_dir)
-        if os.path.isdir(file_or_dir_path):
-            # If it's a directory, include all launch files in it
-            for launch_file in os.listdir(file_or_dir_path):
-                if launch_file.endswith(".launch.py"):
-                    hw_actions.append(
-                        IncludeLaunchDescription(
-                            PythonLaunchDescriptionSource(
-                                os.path.join(file_or_dir_path, launch_file),
-                            ),
-                        ),
-                    )
-        elif file_or_dir.endswith(".launch.py"):
-            # If it's a file, include it directly
-            hw_actions.append(
-                IncludeLaunchDescription(
-                    PythonLaunchDescriptionSource(os.path.join(hw_dir, file_or_dir)),
-                ),
-            )
+    front_cam_launch = Node(
+        package="front_cam",
+        executable="front_cam",
+        name="front_cam",
+        parameters=[
+            {
+                "camera-id": "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.3:1.0-video-index0",
+                "camera-topic": "front_cam/image_raw",
+            },
+        ],
+        output="screen",
+    )
 
-    hw_action = GroupAction(actions=hw_actions)
+    # IMU
+    # vectornav_launch = IncludeLaunchDescription(
+    #     pkg_share("vectornav", "launch", "vectornav.launch.py"),
+    # )
+    # mag_comp_launch = IncludeLaunchDescription(
+    #     pkg_share("magnetic_compensation", "launch", "mag_comp.launch.py"),
+    #     launch_arguments={
+    #         "config_file": pkg_share(
+    #             "subjugator_bringup",
+    #             "config",
+    #             "sensors",
+    #             "hardsoft.yaml",
+    #         ),
+    #     }.items(),
+    # )
+
+    thrust_launch = IncludeLaunchDescription(
+        pkg_share("thrust_and_kill_board", "launch", "thrust_and_kill_board.launch.py"),
+    )
+
+    new_depth = Node(
+        package="new_depth_driver",
+        executable="new_depth_driver",
+        name="new_depth_driver",
+        output="both",
+    )
 
     # Launch subjugator_setup.launch.py
     subjugator_setup = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(this_package, "launch", "subjugator_setup.launch.py"),
-        ),
+        pkg_share("subjugator_bringup", "launch", "common.launch.py"),
         launch_arguments={
-            "use_sim_time": "false",
-            "xacro_file": os.path.join(
-                get_package_share_directory("subjugator_description"),
+            "xacro_file": pkg_share(
+                "subjugator_description",
                 "urdf",
                 "sub9.urdf.xacro",
             ),
@@ -54,7 +68,14 @@ def generate_launch_description():
         }.items(),
     )
 
-    ld = LaunchDescription()
-    ld.add_action(hw_action)
-    ld.add_action(subjugator_setup)
-    return ld
+    return LaunchDescription(
+        [
+            new_depth,
+            dvl_launch,
+            front_cam_launch,
+            # vectornav_launch,
+            # mag_comp_launch,
+            thrust_launch,
+            subjugator_setup,
+        ],
+    )

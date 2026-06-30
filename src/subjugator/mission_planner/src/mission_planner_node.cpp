@@ -9,6 +9,8 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "actuate_servo.hpp"
+#include "align_depth.hpp"
+#include "align_yaw.hpp"
 #include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
 #include "center_camera.hpp"
@@ -19,15 +21,23 @@
 #include "determine_channel_side.hpp"
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
+#include "hone_midpoint.hpp"
+#include "log_to_file.hpp"
+#include "nav_channel_control.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "record_target_scale.hpp"
 #include "select_target.hpp"
+#include "std_srvs/srv/set_bool.hpp"
+#include "subjugator_msgs/msg/thruster_efforts.hpp"
+#include "track_best_pair.hpp"
 #include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <count_when_ticked.hpp>
 #include <go_to_pinger.hpp>
+#include <pitch_style.hpp>
+#include <roll_style.hpp>
 #include <topic_ticker.hpp>
 #include <yaw_style.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
@@ -107,6 +117,9 @@ int main(int argc, char** argv)
     ctx->dropper_client = node->create_client<subjugator_msgs::srv::Servo>("dropper");
     ctx->gripper_client = node->create_client<subjugator_msgs::srv::Servo>("gripper");
     ctx->torpedo_client = node->create_client<subjugator_msgs::srv::Servo>("torpedo");
+    // Servo service clients (matched to services exposed by servo_controller/driver.py)
+    ctx->controller_enable_client = node->create_client<std_srvs::srv::SetBool>("/pid_controller/enable", 10);
+    ctx->raw_effort_pub = node->create_publisher<subjugator_msgs::msg::ThrusterEfforts>("/thruster_efforts", 10);
 
     // Wait for odometry before starting mission
     RCLCPP_INFO(node->get_logger(), "Waiting for odometry...");
@@ -128,6 +141,7 @@ int main(int argc, char** argv)
     BT::BehaviorTreeFactory factory;
     factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
     factory.registerNodeType<AtGoalPose>("AtGoalPose");
+    factory.registerNodeType<LogToFile>("LogToFile");
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
     factory.registerNodeType<CenterCamera>("CenterCamera");
@@ -141,11 +155,18 @@ int main(int argc, char** argv)
     factory.registerNodeType<ActuateServo>("ActuateServo");
     factory.registerNodeType<RecordTargetScale>("RecordTargetScale");
     factory.registerNodeType<ConfirmGraspByScale>("ConfirmGraspByScale");
+    factory.registerNodeType<TrackBestPair>("TrackBestPair");
+    factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
+    factory.registerNodeType<NavChannelControl>("NavChannelControl");
+    factory.registerNodeType<AlignDepth>("AlignDepth");
+    factory.registerNodeType<AlignYaw>("AlignYaw");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
     factory.registerNodeType<SonarFollower>("SonarFollower");
     factory.registerNodeType<YawStyle>("YawStyle");
+    factory.registerNodeType<RollStyle>("RollStyle");
+    factory.registerNodeType<PitchStyle>("PitchStyle");
 
     // Load all tree models from installed xml
     std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");
@@ -204,7 +225,7 @@ int main(int argc, char** argv)
     BT::StdCoutLogger logger_cout(*tree_ptr);
 
     RCLCPP_INFO(node->get_logger(), "Mission Planner started. Ticking tree…");
-    rclcpp::WallRate rate(20.0);
+    rclcpp::WallRate rate(30.0);
 
     std::string xml_models = BT::writeTreeNodesModelXML(factory);
     std::ofstream("/home/carlos/models.xml") << xml_models;
