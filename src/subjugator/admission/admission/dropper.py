@@ -3,7 +3,6 @@ import math
 from operator import itemgetter
 
 import numpy as np
-import scipy.linalg
 
 import gtsam
 import admission as adm
@@ -66,22 +65,23 @@ async def estimate_bins():
                 if landmark.mean is None: continue
 
                 marker = Marker()
+                marker.id = i
                 marker.header.frame_id = "odom"
                 marker.type = Marker.SPHERE
                 marker.action = Marker.ADD
                 marker.color.a = marker.color.g = 1.0
 
-                u, p = scipy.linalg.polar(np.linalg.inv(landmark.cov_inv))
+                eigvals, eigvecs = np.linalg.eig(np.linalg.inv(landmark.cov_inv))
 
-                marker.scale.x, marker.scale.y, marker.scale.z = np.fmax(
-                    np.full(3, 1), p.diagonal()
+                marker.scale.x, marker.scale.y, marker.scale.z = (
+                    eigvals / np.linalg.norm(eigvals)
                 )
                 (
                     marker.pose.orientation.w,
                     marker.pose.orientation.x,
                     marker.pose.orientation.y,
                     marker.pose.orientation.z,
-                ) = gtsam.Rot3(u).toQuaternion().coeffs()
+                ) = gtsam.Rot3(eigvecs).toQuaternion().coeffs()
                 (
                     marker.pose.position.x,
                     marker.pose.position.y,
