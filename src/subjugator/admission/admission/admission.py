@@ -96,10 +96,11 @@ def run(co):
     task = loop.create_task(co)
     try:
         loop.run_until_complete(task)
-        rclpy.shutdown()
     except KeyboardInterrupt:
         pass
     finally:
+        if rclpy.ok():
+            rclpy.shutdown()
         asyncio_shutdown()
 
 def asyncio_shutdown():
