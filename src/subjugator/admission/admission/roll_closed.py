@@ -1,10 +1,10 @@
 import math
+import numpy as np
 import transforms3d
 import admission as adm
 from geometry_msgs.msg import Pose, Quaternion, Wrench
 
-def quatRPY(r, p, y):
-    q = transforms3d.taitbryan.euler2quat(y, p, r)
+def quat(q):
     quat = Quaternion()
     quat.w = q[0]
     quat.x = q[1]
@@ -15,7 +15,6 @@ def quatRPY(r, p, y):
 async def roll_closed():
     goal = Pose()
     goal.position.z = -1.0
-    goal.orientation = quatRPY(0, 0, 0)
     adm.goal_pub.publish(goal)
 
     while odom := await adm.odom_sub():
@@ -36,18 +35,28 @@ async def roll_closed():
 
     while odom := await adm.odom_sub():
         q = odom.pose.pose.orientation
-        _, _, roll = transforms3d.taitbryan.quat2euler([q.w, q.x, q.y, q.z])
+        mat = transforms3d.quaternions.quat2mat([q.w, q.x, q.y, q.z])
 
-        goal.orientation = quatRPY(roll + 0.5, 0, 0)
+        mat[:, 0] = [1, 0, 0] # x
+
+        y = mat[:, 1]
+        y[0] = 0
+        y /= np.linalg.norm(y)
+
+        roll = math.atan2(y[2], y[1]) + 1
+        y[1], y[2] = math.cos(roll), math.sin(roll)
+
+        mat[:, 2] = np.cross(mat[:, 0], y) # z
+
+        goal.orientation = quat(transforms3d.quaternions.mat2quat(mat))
         adm.goal_pub.publish(goal)
 
         roll_amt += math.remainder(roll - roll_prev, math.tau)
         roll_prev = roll
-        print(roll + 0.5, roll_amt)
         if roll_amt >= 315 * (math.pi / 180):
             break
 
-    goal.orientation = quatRPY(0, 0, 0)
+    goal.orientation = Quaternion()
     adm.goal_pub.publish(goal)
 
 if __name__ == "__main__":
