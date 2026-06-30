@@ -11,8 +11,10 @@
 #include "at_goal_pose.hpp"
 #include "check_yolo_model.hpp"
 #include "context.hpp"
+#include "detect_orange_marker.hpp"
 #include "detect_target.hpp"
 #include "determine_channel_side.hpp"
+#include "get_path_marker_heading.hpp"
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
 #include "poles_big_enough.hpp"
@@ -58,11 +60,24 @@ int main(int argc, char** argv)
     ctx->image_sub = node->create_subscription<sensor_msgs::msg::Image>("/front_cam/image_raw", 10,
                                                                         [ctx](sensor_msgs::msg::Image::SharedPtr msg)
                                                                         {
-                                                                            std::scoped_lock lk(ctx->img_mx);
-                                                                            ctx->img_width = msg->width;
-                                                                            ctx->img_height = msg->height;
+                                                                            {
+                                                                                std::scoped_lock lk(ctx->img_mx);
+                                                                                ctx->img_width = msg->width;
+                                                                                ctx->img_height = msg->height;
+                                                                            }
+                                                                            {
+                                                                                std::scoped_lock lk(ctx->front_img_mx);
+                                                                                ctx->latest_front_image = msg;
+                                                                            }
                                                                         });
 
+    ctx->path_marker_sub = node->create_subscription<geometry_msgs::msg::QuaternionStamped>(
+        "/path_marker/heading", 10,
+        [ctx](geometry_msgs::msg::QuaternionStamped::SharedPtr msg)
+        {
+            std::scoped_lock lk(ctx->path_marker_mx);
+            ctx->latest_path_marker_heading = *msg;
+        });
     // Wait for odometry before starting mission
     RCLCPP_INFO(node->get_logger(), "Waiting for odometry...");
     rclcpp::Rate wait_rate(10.0);
@@ -91,6 +106,9 @@ int main(int argc, char** argv)
     factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
+
+    factory.registerNodeType<DetectOrangeMarker>("DetectOrangeMarker");
+    factory.registerNodeType<GetPathMarkerHeading>("GetPathMarkerHeading");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");

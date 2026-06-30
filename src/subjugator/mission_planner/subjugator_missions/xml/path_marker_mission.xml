@@ -1,0 +1,82 @@
+<root BTCPP_format="4" main_tree_to_execute="PathMarkerMission">
+  <BehaviorTree ID="PathMarkerMission">
+    <Sequence>
+      <!--STEP 1: Find PathMarker -->
+      <Sequence>
+        <!-- Rotate until front cam sees the orange marker -->
+        <RetryUntilSuccessful num_attempts="-1">
+          <Sequence>
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="15.0"
+                       pos_tol="0.25" ori_tol_deg="6.0"
+                       msec="3500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+            <Condition ID="DetectOrangeMarker"
+                       ctx="{ctx}" min_area_px="1000.0"/>
+          </Sequence>
+        </RetryUntilSuccessful>
+        <!-- Move forward once -->
+        <SubTree ID="RelativeMove" _autoremap="true"
+                 x="0.5"
+                 pos_tol="0.25" ori_tol_deg="30.0"
+                 msec="6000" ctx="{ctx}"/>
+        <!-- STEP 2: Move Forward / RetryUntilFailure
+             Keep moving forward as long as we can still see the marker.
+             RetryUntilFailure keeps retrying its child until it FAILS --
+             so this loop runs while DetectOrangeMarker succeeds, and
+             stops the moment it fails (marker no longer visible). -->
+        <RetryUntilFailure num_attempts="-1">
+          <Sequence>
+            <!-- "See Marker?" -->
+            <Condition ID="DetectOrangeMarker"
+                       ctx="{ctx}" min_area_px="1000.0"/>
+            <!-- "Move Forward" -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="0.3"
+                     pos_tol="0.25" ori_tol_deg="30.0"
+                     msec="4000" ctx="{ctx}"/>
+          </Sequence>
+        </RetryUntilFailure>
+      </Sequence>
+      <!-- STEP 3: Calculate heading -->
+      <!-- Waits for path_marker_heading.py to detect the marker
+            from the down cam and publish a quaternion.
+            Writes the result to the blackboard as pm_qx/qy/qz/qw. -->
+      <Action ID="GetPathMarkerHeading"
+              timeout_sec="20.0"
+              ctx="{ctx}"
+              qx="{pm_qx}" qy="{pm_qy}" qz="{pm_qz}" qw="{pm_qw}"/>
+      <!-- STEP 4: Change heading -->
+      <!-- Publish the detected quaternion as a goal pose.
+            keep_current_pos_abs="true" means only rotate, don't move. -->
+      <Action ID="PublishGoalPose"
+              use_euler_deg="false"
+              relative="false"
+              keep_current_pos_abs="true"
+              qx="{pm_qx}" qy="{pm_qy}" qz="{pm_qz}" qw="{pm_qw}"
+              ctx="{ctx}"
+              abs_x="{goal_x}" abs_y="{goal_y}" abs_z="{goal_z}"
+              abs_qx="{goal_qx}" abs_qy="{goal_qy}" abs_qz="{goal_qz}" abs_qw="{goal_qw}"/>
+      <!-- Wait until the sub actually reaches the new heading -->
+      <Timeout msec="10000">
+        <RetryUntilSuccessful num_attempts="-1">
+          <Sequence>
+            <Delay delay_msec="250"><AlwaysSuccess/></Delay>
+            <Condition ID="AtGoalPose"
+                       x="{goal_x}" y="{goal_y}" z="{goal_z}"
+                       qx="{goal_qx}" qy="{goal_qy}" qz="{goal_qz}" qw="{goal_qw}"
+                       pos_tol="0.25" ori_tol_deg="8.0"
+                       ctx="{ctx}"/>
+          </Sequence>
+        </RetryUntilSuccessful>
+      </Timeout>
+      <!-- STEP 5: Move forward in the new direction -->
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="1.0"
+               pos_tol="0.25" ori_tol_deg="30.0"
+               msec="8000" ctx="{ctx}"/>
+    </Sequence>
+  </BehaviorTree>
+</root>

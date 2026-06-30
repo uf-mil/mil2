@@ -4,8 +4,11 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <cv_bridge/cv_bridge.hpp>
 #include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/quaternion_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
@@ -18,6 +21,9 @@ struct Context
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
     rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr targets_sub;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub;
+    rclcpp::Subscription<geometry_msgs::msg::QuaternionStamped>::SharedPtr path_marker_sub;
+    std::mutex path_marker_mx;
+    std::optional<geometry_msgs::msg::QuaternionStamped> latest_path_marker_heading;
 
     // Latest state
     std::mutex odom_mx;
@@ -28,6 +34,9 @@ struct Context
 
     std::mutex detections_mx;
     std::optional<yolo_msgs::msg::DetectionArray> latest_detections;
+
+    std::mutex front_img_mx;
+    sensor_msgs::msg::Image::SharedPtr latest_front_image;
 
     std::mutex img_mx;
     uint32_t img_width{ 0 };

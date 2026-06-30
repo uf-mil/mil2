@@ -16,6 +16,8 @@ find_package(ament_index_cpp REQUIRED)
 find_package(yolo_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(OpenCV REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
@@ -27,12 +29,16 @@ add_library(
   subjugator_operations/src/at_goal_pose.cpp
   subjugator_operations/src/detect_target.cpp
   subjugator_operations/src/hone_bearing.cpp
+  subjugator_operations/src/detect_orange_marker.cpp
+  subjugator_operations/src/get_path_marker_heading.cpp
   subjugator_operations/src/check_yolo_model.cpp
   subjugator_operations/src/track_largest_poles.cpp
   subjugator_operations/src/poles_big_enough.cpp
   subjugator_operations/src/determine_channel_side.cpp
   subjugator_operations/src/any_poles_detected.cpp
   subjugator_operations/src/has_found_pair.cpp)
+
+target_link_libraries(operations ${OpenCV_LIBRARIES})
 
 ament_target_dependencies(
   operations
@@ -45,6 +51,7 @@ ament_target_dependencies(
   behaviortree_cpp
   lifecycle_msgs
   rcl_interfaces
+  cv_bridge
   ament_index_cpp)
 
 # Node
