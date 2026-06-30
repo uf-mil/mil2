@@ -12,7 +12,7 @@ from visualization_msgs.msg import Marker
 
 ODOM_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.01] * 6)
 LANDMARK_COV_INV = np.linalg.inv(np.diag([2, 1, 1]))
-LANDMARK_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1, 0.1, 2])
+LANDMARK_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1, 0.1, 4])
 CAL = gtsam.Cal3_S2(80, 640, 360)
 CAM = gtsam.PinholePoseCal3_S2(gtsam.Pose3(), CAL)
 
@@ -165,22 +165,17 @@ async def estimate_bins():
             smoother_result = smoother.update(factors, values, timestamps)
             estimate = smoother.calculateEstimate()
         elif odom:
-            odom_next, _ = odom_pose(odom)
-            odom_diff = odom_prev.between(odom_next)
+            odom, _ = odom_pose(odom)
 
             factors = gtsam.NonlinearFactorGraph()
             values = gtsam.Values()
-            factors.add(gtsam.BetweenFactorPose3(
-                X(ix), X(ix + 1), odom_diff, ODOM_NOISE
-            ))
+            factors.addPriorPose3(X(ix + 1), odom, ODOM_NOISE)
 
-            pose_estimate = estimate.atPose3(X(ix))
-            values.insert(X(ix + 1), pose_estimate.compose(odom_diff))
+            values.insert(X(ix + 1), odom)
 
             smoother_result = smoother.update(factors, values, {X(ix + 1): ix + 1})
             estimate = smoother.calculateEstimate()
 
-            odom_prev = odom_next
             ix += 1
 
 if __name__ == "__main__":
