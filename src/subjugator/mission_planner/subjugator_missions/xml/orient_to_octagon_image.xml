@@ -1,0 +1,32 @@
+<root BTCPP_format="4">
+    <!--
+        S7: orient to an octagon-wall image and (bonus) spin one full turn per item.
+        Inputs (blackboard): role (or Context role), items_collected (int, from S6),
+        score_level (int dial: 5=FACE, 6=TURNS). turn_ticks is derived here.
+        CheckYoloModel FAILS until the symbol model file exists (clean pre-model gate).
+        YawStyle composes 90 deg/tick onto last_goal; 4 ticks = one full turn, ending
+        back facing the image (the face step set last_goal). model_filename / yolo_node
+        name are placeholders pending the trained model.
+    -->
+    <BehaviorTree ID="OrientToOctagonImage">
+        <Sequence>
+            <Action ID="CheckYoloModel" model_filename="octagon_symbols"
+                    yolo_node="/yolo/yolo_node" ctx="{ctx}"/>
+            <Action ID="SelectFaceSymbol" role="{role}" items_collected="{items_collected}"
+                    target_symbol="{target_symbol}" all_symbols="{all_symbols}" ctx="{ctx}"/>
+            <Script code="turn_ticks := 4 * items_collected"/>
+            <Precondition if="score_level >= 5" else="SUCCESS">
+                <SubTree ID="FaceOctagonImage" _autoremap="true"
+                         target_symbol="{target_symbol}" all_symbols="{all_symbols}" ctx="{ctx}"/>
+            </Precondition>
+            <Precondition if="score_level >= 6" else="SUCCESS">
+                <Repeat num_cycles="{turn_ticks}">
+                    <Sequence>
+                        <Action ID="YawStyle" ctx="{ctx}"/>
+                        <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
+                    </Sequence>
+                </Repeat>
+            </Precondition>
+        </Sequence>
+    </BehaviorTree>
+</root>

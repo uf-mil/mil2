@@ -40,6 +40,7 @@ add_library(
   subjugator_operations/src/determine_channel_side.cpp
   subjugator_operations/src/select_target.cpp
   subjugator_operations/src/select_basket.cpp
+  subjugator_operations/src/select_face_symbol.cpp
   subjugator_operations/src/any_poles_detected.cpp
   subjugator_operations/src/has_found_pair.cpp
   subjugator_operations/src/actuate_servo.cpp
@@ -106,6 +107,12 @@ if(BUILD_TESTING)
   ament_add_gtest(test_select_basket_logic test/test_select_basket_logic.cpp)
   target_include_directories(
     test_select_basket_logic
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_select_face_symbol_logic
+                  test/test_select_face_symbol_logic.cpp)
+  target_include_directories(
+    test_select_face_symbol_logic
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
 endif()
 

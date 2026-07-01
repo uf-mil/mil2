@@ -28,6 +28,7 @@
 #include "publish_goal.hpp"
 #include "record_target_scale.hpp"
 #include "select_basket.hpp"
+#include "select_face_symbol.hpp"
 #include "select_target.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
@@ -148,6 +149,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<CenterCamera>("CenterCamera");
     factory.registerNodeType<SelectTarget>("SelectTarget");
     factory.registerNodeType<SelectBasket>("SelectBasket");
+    factory.registerNodeType<SelectFaceSymbol>("SelectFaceSymbol");
     factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
     factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
     factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
