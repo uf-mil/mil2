@@ -49,13 +49,10 @@ int main(int argc, char** argv)
     node->declare_parameter<std::string>("mission", "SonarFollowerTest");
     std::string mission_to_run = node->get_parameter("mission").as_string();
 
-    // Which YOLO topic to read detections from. Defaults to /yolo/detections so
-    // existing missions are unaffected. The torpedo mission needs the board's
-    // corner keypoints, which only flow on /yolo/tracking (the tracker copies the
-    // full detection through, see tracking_node.py); run it with
-    //   -p detections_topic:=/yolo/tracking  (and launch yolo with use_tracking:=True).
     node->declare_parameter<std::string>("detections_topic", "/yolo/detections");
+    node->declare_parameter<std::string>("tracking_topic", "/yolo/tracking");
     std::string detections_topic = node->get_parameter("detections_topic").as_string();
+    std::string tracking_topic = node->get_parameter("tracking_topic").as_string();
 
     // Topics to subscribe/publish to
     ctx->goal_pub = node->create_publisher<geometry_msgs::msg::Pose>("/goal_pose", 10);
@@ -66,14 +63,21 @@ int main(int argc, char** argv)
                                                                            ctx->latest_odom = *msg;
                                                                        });
 
-    // Perception targets: from your YOLO node (detections or tracking; see param above)
-    RCLCPP_INFO(node->get_logger(), "Subscribing to YOLO detections on '%s'", detections_topic.c_str());
-    ctx->targets_sub =
+    RCLCPP_INFO(node->get_logger(), "Subscribing to YOLO detections on '%s' and tracking on '%s'",
+                detections_topic.c_str(), tracking_topic.c_str());
+    ctx->detections_sub =
         node->create_subscription<yolo_msgs::msg::DetectionArray>(detections_topic, 10,
                                                                   [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
                                                                   {
                                                                       std::scoped_lock lk(ctx->detections_mx);
                                                                       ctx->latest_detections = *msg;
+                                                                  });
+    ctx->tracking_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(tracking_topic, 10,
+                                                                  [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
+                                                                  {
+                                                                      std::scoped_lock lk(ctx->tracking_mx);
+                                                                      ctx->latest_tracking = *msg;
                                                                   });
 
     // Image size (for pixel->angle mapping). Probably do not need
