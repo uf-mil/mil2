@@ -1,0 +1,22 @@
+<root BTCPP_format="4" main_tree_to_execute="OctagonPlaceMission">
+    <BehaviorTree ID="OctagonPlaceMission">
+        <Sequence>
+            <!-- No upstream S4 in this harness: pretend the sub is already holding an
+                 object so the TransportAndPlace precondition passes. Use a class the
+                 role would have grabbed (survey_repair -> nut_cylinder). The role
+                 itself comes from the `role` launch param (Context), e.g.
+                 -p role:=survey_repair. -->
+            <SetBlackboard output_key="grabbed_label" value="nut_cylinder"/>
+            <!-- Knobs supplied at the call site; descend_z / lift_z / lateral_* / angles
+                 are sim-measured placeholders to tune in the pool/sim run (Task 5). -->
+            <SubTree ID="TransportAndPlace" _autoremap="true" ctx="{ctx}"
+                     role_timeout_msec="15000"
+                     place_attempts="2"
+                     lateral_x="0.0" lateral_y="1.0"
+                     center_tol_norm="0.05" center_timeout_msec="20000"
+                     descend_z="-0.4" lift_z="0.6"
+                     open_angle="85" settle_msec="1500"
+                     move_timeout_msec="30000"/>
+        </Sequence>
+    </BehaviorTree>
+</root>
