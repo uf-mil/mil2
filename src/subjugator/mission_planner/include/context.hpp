@@ -72,6 +72,11 @@ struct Context
     // killed on shutdown.
     std::mutex child_mx;
     pid_t coin_flip_pid{ -1 };
+    // Tracker output (/yolo/tracking): smoothed boxes with track ids. The tracker
+    // copies the full detection through, so this is the stream that carries the
+    // board's corner keypoints needed for arching (see tracking_node.py).
+    std::mutex tracking_mx;
+    std::optional<yolo_msgs::msg::DetectionArray> latest_tracking;
 
     std::mutex img_mx;
     uint32_t img_width{ 0 };
