@@ -18,6 +18,7 @@ CAM = gtsam.PinholePoseCal3_S2(gtsam.Pose3(), CAL)
 
 @dataclasses.dataclass(slots=True)
 class Landmark:
+    key: int
     mean: np.ndarray
     cov_inv: np.ndarray
 
@@ -54,16 +55,14 @@ async def estimate_bins():
 
     async for yolo, odom in adm.Join(adm.yolo_sub, adm.odom_sub):
         if yolo:
-            for key, landmark in landmarks.items():
-                if not estimate.exists(key): continue
-                landmark.mean = estimate.atPoint3(key)
+            for i, landmark in landmarks.items():
+                if not estimate.exists(landmark.key): continue
+                landmark.mean = estimate.atPoint3(landmark.key)
                 landmark.cov_inv = np.linalg.inv(
-                    smoother.marginalCovariance(key)
+                    smoother.marginalCovariance(landmark.key)
                 )
 
-            for i, landmark in enumerate(landmarks.values()):
-                if landmark.mean is None: continue
-
+                # visualize
                 marker = Marker()
                 marker.id = i
                 marker.header.frame_id = "odom"
@@ -123,44 +122,22 @@ async def estimate_bins():
                 # associate closest landmark
                 landmark_pos = pose_estimate.transformFrom(landmark_vec * planar_dist)
 
-                pose_rot = pose_estimate.rotation().matrix()
-                sigma_inv = pose_rot.T @ LANDMARK_COV_INV @ pose_rot
-
-                closest_landmarks = []
-                for i, other in landmarks.items():
-                    if other.mean is None: continue
-                    error = landmark_pos - other.mean
-                    maha = error.T @ sigma_inv @ error
-                    closest_landmarks.append((maha, i))
-
-                if closest_landmarks:
-                    maha, sym = sorted(closest_landmarks)[0]
-                else:
-                    maha, sym = 99, None
-
-                if maha > 1:
+                if det.id not in landmarks
                     # create new landmark
-                    sym = L(il)
-                    landmarks[sym] = Landmark(None, None)
-                    values.insert(sym, landmark_pos)
+                    key = L(il)
+                    landmarks[det.id] = Landmark(key, None, None)
+                    values.insert(key, landmark_pos)
                     il += 1
-                elif not estimate.exists(sym) and not values.exists(sym):
-                    # restore previous landmark
-                    readd = landmarks[sym]
-                    values.insert(sym, readd.mean)
-                    factors.addPriorPoint3(
-                        sym, readd.mean,
-                        gtsam.noiseModel.Gaussian.Covariance(
-                            np.linalg.inv(readd.cov_inv)
-                        )
-                    )
+                else:
+                    key = landmarks[det.id].key
 
                 factors.add(gtsam.BearingRangeFactor3D(
                     X(ix), sym, gtsam.Unit3(landmark_vec),
                     planar_dist * np.linalg.norm(landmark_vec), LANDMARK_NOISE
                 ))
 
-                timestamps[sym] = ix
+            for landmark in landmarks:
+                timestamps[landmark.key] = ix
 
             smoother_result = smoother.update(factors, values, timestamps)
             estimate = smoother.calculateEstimate()
