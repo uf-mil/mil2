@@ -123,7 +123,7 @@ class StartWand(Node):
         self.gpio_pin = self.declare_parameter("gpio_pin", 7).value
         self.poll_hz = self.declare_parameter("poll_hz", 10.0).value
         self.topic = self.declare_parameter("topic", "/gpio9_state").value
-        self.startup_delay = self.declare_parameter("startup_delay", 5.0).value
+        self.startup_delay = self.declare_parameter("startup_delay", 15.0).value
         # Mission passed down to the mission planner node (its "mission" parameter).
         self.mission = self.declare_parameter("mission", "SonarFollowerTest").value
 

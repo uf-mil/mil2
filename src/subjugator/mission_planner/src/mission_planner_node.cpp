@@ -9,7 +9,6 @@
 #include "context.hpp"
 #include "start_coin_flip.hpp"
 #include "std_srvs/srv/set_bool.hpp"
-#include "stop_coin_flip.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -57,15 +56,6 @@ int main(int argc, char** argv)
                                                                       std::scoped_lock lk(ctx->tracking_mx);
                                                                       ctx->latest_tracking = *msg;
                                                                   });
-
-    // Wall orientation from the coin_flip classifier node (subjugator_vision)
-    ctx->wall_direction_sub =
-        node->create_subscription<std_msgs::msg::String>("/coin_flip/direction", 10,
-                                                         [ctx](std_msgs::msg::String::SharedPtr msg)
-                                                         {
-                                                             std::scoped_lock lk(ctx->wall_direction_mx);
-                                                             ctx->latest_wall_direction = msg->data;
-                                                         });
 
     // Wall orientation from the coin_flip classifier node (subjugator_vision)
     ctx->wall_direction_sub =
