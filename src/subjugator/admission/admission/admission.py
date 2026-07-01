@@ -7,6 +7,7 @@ from rclpy.node import Node
 
 from geometry_msgs.msg import Pose, PoseStamped, Wrench
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Image
 from visualization_msgs.msg import Marker
 from yolo_msgs.msg import DetectionArray
 
@@ -47,9 +48,11 @@ class Sub:
 
 odom_sub = Sub(Odometry, "/odometry/filtered")
 yolo_sub = Sub(DetectionArray, "/yolo/detections")
+frontcam_sub = Sub(Image, "/front_cam/image_raw")
 
 goal_pub = node.create_publisher(Pose, "/goal_pose", 10)
 add_wrench_pub = node.create_publisher(Wrench, "/add_wrench", 10)
+debug_pub = node.create_publisher(Image, "/debug_img", 10)
 
 # republish for rviz
 goal_pub_publish = goal_pub.publish

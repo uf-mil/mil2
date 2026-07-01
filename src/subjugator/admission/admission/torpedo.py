@@ -1,9 +1,12 @@
 import cv2
+import math
 import numpy as np
 import transforms3d
+from PIL import Image as PILImage
 
 import admission as adm
 from geometry_msgs.msg import Pose
+from sensor_msgs.msg import Image
 from visualization_msgs.msg import Marker
 
 """
@@ -19,87 +22,100 @@ from visualization_msgs.msg import Marker
 (search x2)
 """
 
-reference = [
-    (185, 68),
-    (58, 148),
-    (180, 293),
-    (307, 308),
-    (180, 180) # 0, 0
-]
-reference = [(x + (640 - 360) / 2, y) for x, y in reference]
+import torch
 
-cal = np.array([
-    381.361, 0, 320,
-    0, 381.361, 180,
-    0, 0, 1
-])
+xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = True, top_k = 4096)
 
-r_in_cv = np.array([
-    [0, 0, 1],
-    [-1, 0, 0],
-    [0, -1, 0]
-])
+#Simple inference with batch sz = 1
+img = np.array(PILImage.open("my_photo-2a.jpg").resize((360, 360)))
+reference = xfeat.detectAndCompute(img, top_k = 4096)[0]
+kpts1, descs1 = reference['keypoints'], reference['descriptors']
+kpts1 = kpts1.cpu().numpy() + [(640 - 360) / 2, 0]
 
-cv_in_r = r_in_cv.T
+def warp_points(points, H, x_offset = 0):
+    points_np = np.array(points, dtype='float32').reshape(-1,1,2)
 
-def mark(i, pos, rot):
-    marker = Marker()
-    marker.id = i
-    marker.header.frame_id = "base_link"
-    marker.type = Marker.ARROW
-    marker.action = Marker.ADD
-    marker.color.a = marker.color.g = 1.0
+    warped_points_np = cv2.perspectiveTransform(points_np, H).reshape(-1, 2)
+    # warped_points_np[:, 0] += x_offset
+    warped_points = warped_points_np.astype(int).tolist()
+    
+    return warped_points
 
-    marker.scale.x = 1.0
-    marker.scale.y = marker.scale.z = 0.1
-    (
-        marker.pose.position.x,
-        marker.pose.position.y,
-        marker.pose.position.z
-    ) = pos # r_in_cv @ pos
-
-    try:
-        (
-            marker.pose.orientation.w,
-            marker.pose.orientation.x,
-            marker.pose.orientation.y,
-            marker.pose.orientation.z,
-        ) = transforms3d.quaternions.mat2quat(rot) # (r_in_cv @ rot) @ cv_in_r)
-    except np.linalg.LinAlgError:
-        return
-    adm.marker_pub.publish(marker)
-
+def draw_quad(frame, point_list):
+    for i in range(3):
+        cv2.line(frame, tuple(point_list[i]), tuple(point_list[i + 1]), (0,255,0), 3)
+    cv2.line(frame, tuple(point_list[3]), tuple(point_list[0]), (0,255,0), 3)
 
 async def torpedo():
-    while yolo := await adm.yolo_sub():
-        dets = [None] * 5
-        for det in yolo.detections:
-            # if det.class_id == 4: continue
-            pos = det.bbox.center.position
-            if dets[det.class_id] is None or pos.y > dets[det.class_id][1]:
-                dets[det.class_id] = pos.x, pos.y
+    last_img = None
+    async for img, yolo in adm.Join(adm.frontcam_sub, adm.yolo_sub):
+        if img:
+            last_img = img
+            continue
 
-        print(dets)
+        if not last_img: continue
+        detections = sorted(
+            [
+                det
+                for det in yolo.detections
+                if det.class_id == 4 # torpedo
+            ],
+            key=lambda d: d.bbox.center.position.y
+        )
 
-        refs = [reference[i] for i in range(len(dets)) if dets[i] is not None]
-        dets = [det for det in dets if det is not None]
+        try:
+            torpedo = detections[0]
+        except IndexError:
+            continue
 
-        if len(dets) < 4: continue
+        im = np.ndarray(
+            shape=(
+                last_img.height,
+                last_img.width,
+                3
+            ),
+            dtype=np.uint8,
+            buffer=last_img.data
+        )
 
-        # dets = np.array(dets) - dets[4]
-        homo, _ = cv2.findHomography(np.array(dets), np.array(refs))
-        # print(homo)
+        bb = torpedo.bbox
+        x1 = math.floor(bb.center.position.x - bb.size.x / 2)
+        y1 = math.floor(bb.center.position.y - bb.size.y / 2)
+        x2 = math.ceil(bb.center.position.x + bb.size.x / 2)
+        y2 = math.ceil(bb.center.position.y + bb.size.y / 2)
 
-        [nsols, rots, trans, norms] = cv2.decomposeHomographyMat(homo, cal)
+        segment = np.flip(
+            im[y1:y2, x1:x2],
+            axis=-1
+        ).copy()
 
-        i = 0
-        for rot, tran in zip(rots, trans):
-            # if tran[2] <= 0: continue
-            mark(i, tran.T[0], rot)
-            i += 1
-        # for rot, trans, norm in sols[1:]:
-        #     print(rot)
-        # print("=" * 10)
+        current = xfeat.detectAndCompute(segment, top_k = 4096)[0]
+        kpts2, descs2 = current['keypoints'], current['descriptors']
+
+        idx0, idx1 = xfeat.match(descs1, descs2, 0.82)
+        points1 = kpts1[idx0.cpu()]
+        points2 = kpts2[idx1].cpu().numpy()
+
+        if len(points1) <= 10 or len(points2) <= 10:
+            continue
+
+        H, inliers = cv2.findHomography(
+            points1, points2 + [x1, y1],
+            cv2.USAC_MAGSAC
+        )
+
+        pts = warp_points([[(640 - 360) / 2, 0], [360 + (640 - 360) / 2, 0],
+                           [360 + (640 - 360) / 2, 360], [(640 - 360) / 2, 360]], H)
+        draw_quad(im, pts)
+
+        dbg_img = Image()
+        dbg_img.header = last_img.header
+        dbg_img.data = im.tobytes()
+        dbg_img.height = last_img.height
+        dbg_img.width = last_img.width
+        dbg_img.encoding = last_img.encoding
+        dbg_img.step = last_img.step
+        adm.debug_pub.publish(dbg_img)
 
 if __name__ == "__main__":
     adm.run(torpedo())
