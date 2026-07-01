@@ -13,16 +13,20 @@
     "survey&amp;repair_large" / "survey&amp;repair_small".
     (& must be written &amp; inside XML attributes; the node sees "search&rescue_large".)
 
-    Keypoints: the board's 4 corner keypoints only flow on /yolo/tracking, so run
-    the planner with the detections source pointed there (and yolo with tracking on):
-      ros2 run mission_planner mission_planner_node -'-os-args \
-        -p mission:=TorpedoMission -p detections_topic:=/yolo/tracking
+    Keypoints: the board's 4 corner keypoints only flow on /yolo/tracking. The
+    planner subscribes to both /yolo/detections and /yolo/tracking at once; the arch
+    (BoardArchStep) reads tracking for the keypoints while everything else reads the
+    plain detections, so no topic remap is needed  just make sure yolo is launched
+    with tracking on:
+      ros2 run mission_planner mission_planner_node ros-args \
+        -p mission:=TorpedoMission
       (launch yolo with use_tracking:=True)
 
     Test pieces in isolation with:
       mission:=ArchToFaceBoard   (just the arch)
       mission:=ServoTestMission  (just the torpedo servo)
 -->
+
 <root BTCPP_format="4" main_tree_to_execute="TorpedoMission">
   <BehaviorTree ID="TorpedoMission">
     <Sequence>

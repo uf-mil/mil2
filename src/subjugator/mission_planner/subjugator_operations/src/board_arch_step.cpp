@@ -124,10 +124,11 @@ BT::NodeStatus BoardArchStep::onRunning()
     }
 
     // Find the highest-confidence board detection that exposes all 4 corners.
+    // The corner keypoints only ride the tracking stream, so read /yolo/tracking here.
     std::optional<yolo_msgs::msg::DetectionArray> arr;
     {
-        std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_detections;
+        std::scoped_lock lk(ctx_->tracking_mx);
+        arr = ctx_->latest_tracking;
     }
 
     yolo_msgs::msg::Detection const* board = nullptr;
@@ -203,29 +204,35 @@ BT::NodeStatus BoardArchStep::onRunning()
     double const rel_y = -radius_m * std::sin(phi);         // +y is left
     double const rel_z = 0.0;
 
-    geometry_msgs::msg::Pose cur{};
+    // Base pose for this step: chain off the LAST COMMANDED GOAL rather than live
+    // odom, so per-step station-keeping error does not accumulate across orbit
+    // steps (same pattern as PublishGoalPose relative moves). Falls back to world
+    // origin for the very first goal.
+    geometry_msgs::msg::Pose base{};
+    base.orientation.w = 1.0;
     {
-        std::scoped_lock lk(ctx_->odom_mx);
-        if (!ctx_->latest_odom)
-            return BT::NodeStatus::RUNNING;
-        cur = ctx_->latest_odom->pose.pose;
+        std::scoped_lock lk(ctx_->last_goal_mx);
+        if (ctx_->last_goal)
+            base = *ctx_->last_goal;
+        else
+            RCLCPP_WARN(ctx_->logger(), "BoardArchStep: no last goal; arching relative to world origin");
     }
 
-    // Position: current + body->world rotation of (rel_x, rel_y, rel_z).
+    // Position: base + body->world rotation of (rel_x, rel_y, rel_z).
     double wx = 0.0, wy = 0.0, wz = 0.0;
-    rotateBodyToWorld(cur, rel_x, rel_y, rel_z, wx, wy, wz);
+    rotateBodyToWorld(base, rel_x, rel_y, rel_z, wx, wy, wz);
 
-    geometry_msgs::msg::Pose goal = cur;
-    goal.position.x = cur.position.x + wx;
-    goal.position.y = cur.position.y + wy;
-    goal.position.z = cur.position.z + wz;
+    geometry_msgs::msg::Pose goal = base;
+    goal.position.x = base.position.x + wx;
+    goal.position.y = base.position.y + wy;
+    goal.position.z = base.position.z + wz;
 
-    // Orientation: cur * yaw_delta(phi). Body-frame yaw about +Z (same as AlignYaw).
+    // Orientation: base * yaw_delta(phi). Body-frame yaw about +Z (same as AlignYaw).
     geometry_msgs::msg::Quaternion dq{};
     dq.z = std::sin(phi / 2.0);
     dq.w = std::cos(phi / 2.0);
 
-    auto const& c = cur.orientation;
+    auto const& c = base.orientation;
     auto& o = goal.orientation;
     o.x = c.w * dq.x + c.x * dq.w + c.y * dq.z - c.z * dq.y;
     o.y = c.w * dq.y - c.x * dq.z + c.y * dq.w + c.z * dq.x;

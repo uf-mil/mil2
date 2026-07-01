@@ -29,7 +29,9 @@
                 ctx="{ctx}"/>
       </Timeout>
 
-      <!-- 2) Orbit in small steps until the board is head-on. -->
+      <!-- 2) Orbit in small steps until the board is head-on. BoardArchStep reads
+              the /yolo/tracking stream internally because the corner keypoints only
+              ride that topic. -->
       <Timeout msec="60000">
         <Action ID="BoardArchStep"
                 board_label="torpedoTarget"
