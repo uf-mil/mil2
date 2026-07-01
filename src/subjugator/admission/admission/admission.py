@@ -128,6 +128,6 @@ def asyncio_shutdown():
         # Runner.close
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.run_until_complete(
-            loop.shutdown_default_executor(300))
+            loop.shutdown_default_executor())
     finally:
         loop.close()

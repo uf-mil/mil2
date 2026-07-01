@@ -15,6 +15,7 @@ LANDMARK_COV_INV = np.linalg.inv(np.diag([2, 1, 1]))
 LANDMARK_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1, 0.1, 4])
 CAL = gtsam.Cal3_S2(80, 640, 360)
 CAM = gtsam.PinholePoseCal3_S2(gtsam.Pose3(), CAL)
+print(CAL)
 
 @dataclasses.dataclass(slots=True)
 class Landmark:
@@ -122,7 +123,7 @@ async def estimate_bins():
                 # associate closest landmark
                 landmark_pos = pose_estimate.transformFrom(landmark_vec * planar_dist)
 
-                if det.id not in landmarks
+                if det.id not in landmarks:
                     # create new landmark
                     key = L(il)
                     landmarks[det.id] = Landmark(key, None, None)
