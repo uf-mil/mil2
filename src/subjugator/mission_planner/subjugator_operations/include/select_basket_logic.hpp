@@ -11,9 +11,9 @@ inline std::string marker_for_role(std::string const& role, std::string const& s
                                    std::string const& rescue_marker)
 {
     if (role == "survey_repair")
-        return survey_marker;  // default "warning"
+        return survey_marker;  // caller provides e.g. "warning"
     if (role == "search_rescue")
-        return rescue_marker;  // default "red_cross"
+        return rescue_marker;  // caller provides e.g. "red_cross"
     return {};
 }
 
