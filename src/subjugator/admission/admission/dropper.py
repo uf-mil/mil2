@@ -36,7 +36,7 @@ def odom_pose(odom):
 
 async def estimate_bins():
     # measure initial odom
-    odom_prev, initial_noise = odom_pose(await adm.odom_sub())
+    odom_prev, _ = odom_pose(await adm.odom_sub())
 
     # initialize smoother
     smoother = gtsam.IncrementalFixedLagSmoother(100)
