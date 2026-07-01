@@ -21,7 +21,11 @@ class SelectFaceSymbol : public BT::SyncActionNode
         return { BT::InputPort<std::string>("role", "", "survey_repair|search_rescue; empty -> use Context role"),
                  BT::InputPort<int>("items_collected", 0, "Items collected so far (from S6)"),
                  BT::InputPort<std::shared_ptr<Context>>("ctx"),
-                 BT::OutputPort<std::string>("target_symbol", "Correct symbol to face ('' if none)") };
+                 BT::OutputPort<std::string>("target_symbol", "Correct symbol to face ('' if none)"),
+                 BT::OutputPort<std::string>("all_symbols", "CSV of all four face symbols for the face-any fallback "
+                                                            "(from "
+                                                            "all_symbols(); single tested source, do not hardcode in "
+                                                            "XML)") };
     }
 
     BT::NodeStatus tick() override;

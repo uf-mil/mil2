@@ -2,9 +2,12 @@
     <!--
         S7 face step. Try to face the correct symbol; if it is never detected,
         fall back to facing the best of all four symbols (still scores "any image").
-        HoneBearing returns FAILURE when no matching detection is present, which
-        fails the Repeat fast and triggers the Fallback. Iterating with a settle
-        converges the bearing instead of a single coarse correction.
+        HoneBearing runs with wait_for_detection=true, so a momentary absence of
+        detections returns RUNNING (not FAILURE): the Repeat keeps waiting and the
+        Timeout, not a transient miss, is what bounds each branch and triggers the
+        Fallback. Iterating with a settle converges the bearing instead of a single
+        coarse correction. all_symbols comes from SelectFaceSymbol (all_symbols(),
+        the single tested source); do not hardcode the class list here.
         Tuning constants are placeholders, to be measured in GUI sim.
     -->
     <BehaviorTree ID="FaceOctagonImage">
@@ -12,7 +15,8 @@
             <Timeout msec="20000">
                 <Repeat num_cycles="4">
                     <Sequence>
-                        <Action ID="HoneBearing" label="{target_symbol}" fov_deg="110" ctx="{ctx}"/>
+                        <Action ID="HoneBearing" label="{target_symbol}" fov_deg="110"
+                                wait_for_detection="true" ctx="{ctx}"/>
                         <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
                     </Sequence>
                 </Repeat>
@@ -20,7 +24,8 @@
             <Timeout msec="20000">
                 <Repeat num_cycles="4">
                     <Sequence>
-                        <Action ID="HoneBearing" labels="compass,hammer_pick,life_ring,sos" fov_deg="110" ctx="{ctx}"/>
+                        <Action ID="HoneBearing" labels="{all_symbols}" fov_deg="110"
+                                wait_for_detection="true" ctx="{ctx}"/>
                         <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
                     </Sequence>
                 </Repeat>

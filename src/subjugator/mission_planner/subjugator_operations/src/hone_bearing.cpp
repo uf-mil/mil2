@@ -29,6 +29,9 @@ BT::PortsList HoneBearing::providedPorts()
              BT::InputPort<double>("offset_deg", 0.0, "Positive=left yaw bias, negative=right"),
              BT::InputPort<double>("fov_deg", 110.0, "Horizontal FOV of camera"),
              BT::InputPort<double>("min_conf", 0.30, "Minimum confidence"),
+             BT::InputPort<bool>("wait_for_detection", false,
+                                 "If true, return RUNNING (not FAILURE) while no matching detection is present, so "
+                                 "an enclosing Repeat/Timeout can wait for the image instead of aborting"),
              BT::InputPort<std::shared_ptr<Context>>("ctx") };
 }
 
@@ -63,8 +66,25 @@ BT::NodeStatus HoneBearing::onRunning()
 
     std::string labels_csv;
     (void)getInput("labels", labels_csv);
+    // A non-empty `labels` port selects multi-label mode -- even if it parses to no
+    // classes (e.g. whitespace/separators only). Such a value must match nothing, not
+    // silently fall back to the single-label `label` default ("shark").
+    bool const use_labels = !labels_csv.empty();
     std::vector<std::string> const label_set =
-        labels_csv.empty() ? std::vector<std::string>{} : select_target::parse_labels(labels_csv);
+        use_labels ? select_target::parse_labels(labels_csv) : std::vector<std::string>{};
+    if (use_labels && label_set.empty() && !warned_empty_labels_)
+    {
+        RCLCPP_WARN(ctx_->logger(), "HoneBearing: 'labels'='%s' parsed to no classes; will match nothing",
+                    labels_csv.c_str());
+        warned_empty_labels_ = true;
+    }
+
+    // When honing an image that may not be in view yet (S7), treat "not ready" (no
+    // image size, no detections, no matching class) as RUNNING so an enclosing
+    // Repeat/Timeout keeps waiting; a transient miss no longer aborts the stage.
+    bool wait_for_detection = false;
+    (void)getInput("wait_for_detection", wait_for_detection);
+    BT::NodeStatus const not_ready = wait_for_detection ? BT::NodeStatus::RUNNING : BT::NodeStatus::FAILURE;
 
     // Get image width
     uint32_t W = 0;
@@ -75,8 +95,9 @@ BT::NodeStatus HoneBearing::onRunning()
 
     if (W == 0)
     {
-        RCLCPP_WARN(ctx_->logger(), "HoneBearing: image size unknown");
-        return BT::NodeStatus::FAILURE;
+        if (!wait_for_detection)
+            RCLCPP_WARN(ctx_->logger(), "HoneBearing: image size unknown");
+        return not_ready;
     }
 
     // Best detection
@@ -88,16 +109,16 @@ BT::NodeStatus HoneBearing::onRunning()
 
     if (!arr || arr->detections.empty())
     {
-        return BT::NodeStatus::FAILURE;
+        return not_ready;
     }
 
     yolo_msgs::msg::Detection const* best = nullptr;
     double best_conf = 0.0;
     for (auto const& d : arr->detections)
     {
-        bool const matches = label_set.empty() ?
-                                 (d.class_name == label) :
-                                 (std::find(label_set.begin(), label_set.end(), d.class_name) != label_set.end());
+        bool const matches = use_labels ?
+                                 (std::find(label_set.begin(), label_set.end(), d.class_name) != label_set.end()) :
+                                 (d.class_name == label);
         if (matches && d.score >= min_conf && d.score > best_conf)
         {
             best = &d;
@@ -107,7 +128,7 @@ BT::NodeStatus HoneBearing::onRunning()
 
     if (!best)
     {
-        return BT::NodeStatus::FAILURE;
+        return not_ready;
     }
 
     // Pixel -> bearing (deg). Right positive.
