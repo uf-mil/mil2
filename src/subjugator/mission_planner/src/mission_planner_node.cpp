@@ -65,6 +65,13 @@ int main(int argc, char** argv)
     node->declare_parameter<std::string>("role", "");
     ctx->set_role(node->get_parameter("role").as_string());
 
+    // Task-5 capstone dials (read by OctagonMission). Defaults run the FULL
+    // competition sequence so a bare `mission:=OctagonMission` needs no flags.
+    node->declare_parameter<int>("score_level", 6);  // cumulative ceiling 0..6
+    node->declare_parameter<int>("do_pinger", 1);    // 1 = run S1 acoustic homing
+    int const score_level = node->get_parameter("score_level").as_int();
+    int const do_pinger = node->get_parameter("do_pinger").as_int();
+
     // Topics to subscribe/publish to
     ctx->goal_pub = node->create_publisher<geometry_msgs::msg::Pose>("/goal_pose", 10);
     ctx->odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("/odometry/filtered", 10,
@@ -189,6 +196,10 @@ int main(int argc, char** argv)
     // Create by name
     auto blackboard = BT::Blackboard::create();
     blackboard->set("ctx", ctx);
+    blackboard->set("score_level", score_level);
+    blackboard->set("do_pinger", do_pinger);
+    // Mirror role onto the blackboard for S7's role port (S3/S5 read it from Context).
+    blackboard->set("role", node->get_parameter("role").as_string());
     blackboard->set("target_freq", target_freq);
     blackboard->set("target_freq_tol", target_freq_tol);
 
