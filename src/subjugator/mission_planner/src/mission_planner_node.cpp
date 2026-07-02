@@ -28,6 +28,7 @@
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "record_target_scale.hpp"
+#include "search_for_target.hpp"
 #include "select_basket.hpp"
 #include "select_face_symbol.hpp"
 #include "select_target.hpp"
@@ -170,6 +171,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<AlignDepth>("AlignDepth");
     factory.registerNodeType<AlignYaw>("AlignYaw");
     factory.registerNodeType<DescendUntilDetected>("DescendUntilDetected");
+    factory.registerNodeType<SearchForTarget>("SearchForTarget");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
