@@ -51,7 +51,8 @@ add_library(
   subjugator_operations/src/log_to_file.cpp
   subjugator_operations/src/nav_channel_control.cpp
   subjugator_operations/src/align_depth.cpp
-  subjugator_operations/src/align_yaw.cpp)
+  subjugator_operations/src/align_yaw.cpp
+  subjugator_operations/src/go_to_pinger.cpp)
 
 ament_target_dependencies(
   operations

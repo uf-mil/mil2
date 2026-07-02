@@ -29,12 +29,23 @@ walks an ordered ladder of stages. For each stage it:
 
 1. Prints the **precondition** (how the sub must be placed) and waits for the
    operator to type `GO` (so a diver/teleop can position the sub first).
-2. Launches the stage's **mission** (real-robot topic defaults — no sim
+2. **Counts down a configurable autonomous-start delay (default 30 s)** before
+   launching, so the operator can disconnect and clear the sub. The sub runs the
+   mission untethered — the operator is not connected during autonomous motion.
+3. Launches the stage's **mission** (real-robot topic defaults — no sim
    overrides).
-3. Records a **bag** of the relevant topics and **tees** the mission console to
+4. Records a **bag** of the relevant topics and **tees** the mission console to
    a log.
-4. Prints a **results form** the operator fills in (the eyeball observations a
+5. Prints a **results form** the operator fills in (the eyeball observations a
    machine can't easily judge from a bag).
+
+The script runs on the sub's onboard machine and **must survive operator
+disconnect** (launched detached via `tmux`/`nohup`/`setsid`), so the mission, the
+bag, and the teed log keep running after the operator closes their connection
+during the autonomous-start delay. The autonomous-start delay applies to stages
+that command motion (1, 2, 4, 6). Stage 3 (select, no motion) tolerates it
+harmlessly; Stage 5 (dead-reckon) is the exception — it is manual teleop, so the
+operator stays connected and the delay is skipped.
 
 The script supports running a single stage (`./pooltest.sh calib`) or the guided
 sequence (`./pooltest.sh`).
@@ -122,6 +133,76 @@ console to `console.log`. Output folder: `pooltest_runs/<stage>_<UTC-stamp>/`.
 
 - **Stage 6 — Full S2** · `mission:=OctagonTableMission` with measured constants
   edited in.
+
+## Operator guidance (self-serve)
+
+The script must be runnable by a poolside tester who did **not** design the test
+and may not know ROS. All guidance is printed by the script itself; no external
+notes required. Plain language, no bare `ros2` commands shown to the operator.
+
+### At launch (`./pooltest.sh` with no args)
+
+Before anything else, print a briefing:
+
+- One sentence on what this is.
+- The **ladder** (each stage one line + rough time).
+- A **"What you need" checklist**: sub powered and in the water; the down-cam
+  YOLO node running with the required model(s) loaded (names listed); the
+  **role** for this run; a diver/teleop to position the sub; clear pool space.
+- The **role values** spelled out: `survey_repair` (objects: nut_bolt, plug) or
+  `search_rescue` (objects: pill, bandage).
+- Where outputs are written (`pooltest_runs/...`).
+- How to run: single stage vs. guided sequence.
+- The post-`GO` rule: "After you type GO you have 30 s to disconnect and clear
+  the sub; it then runs on its own."
+
+### Before each stage (printed above the `GO` gate)
+
+A numbered **DO THIS** block, every stage:
+
+1. **MANUAL — position the sub:** exact placement, e.g. "Diver: hold the sub
+   level, ~1 m above the table, with the table roughly centered beneath it."
+2. **TYPE:** the literal inputs expected this stage (e.g. the role, then `GO`),
+   each with its valid values.
+3. **WHAT WILL HAPPEN:** e.g. "After the 30 s delay the sub moves on its own to
+   center over the table (~20 s)."
+4. **SUCCESS LOOKS LIKE:** plain-language description (e.g. "the sub settles and
+   holds steady over the table").
+
+### What the operator types vs. does by hand
+
+The plan must implement prompts/printouts covering exactly these:
+
+- **Types:** stage selection or guided continue (`y`/`n`); `GO` at each gate;
+  `role` for Stages 3–4 (`survey_repair`/`search_rescue`); each results-form
+  value; `SNAP` at each Stage-5 checkpoint.
+- **Does by hand:** positions the sub before every motion stage; disconnects and
+  clears the sub during the post-`GO` delay; for **Stage 1**, edits the sign/gain
+  literals in `center_camera_test_mission.xml` between attempts and rebuilds —
+  the script prints the exact file, which values to change (flip `map_x_sign` /
+  `map_y_sign` or set `swap_axes="true"` if the sub drove *away* from the
+  target), and the rebuild command; for **Stage 5**, teleops the sub to each
+  named checkpoint.
+
+### Results form fields
+
+Every field is labeled with its format (y/n, number + unit, or free text) and a
+worked example, so it is answerable by someone who didn't design the test.
+
+### Fail-loud preconditions
+
+If a precondition is not met (e.g. no down-cam detections arriving), the script
+stops with a plain-language message and the likely cause ("Is the yolo_down node
+running with a model loaded?") instead of launching a motion stage blind.
+
+### End-of-run summary and README
+
+- After each stage (and at the end of a guided run) the script prints a
+  **summary of the key captured values** (signs, gains, `min_conf`/frames,
+  constants) so the tester can report them back.
+- `pool_tests/README.md` includes a **one-page printable checklist** (per-stage:
+  position → type → expect → record) and a short **glossary** (hone, role,
+  `tol_norm`) and the required model name(s) per stage.
 
 ## New mission XML
 
@@ -219,12 +300,19 @@ overridable via env var):
 - Stage registry: each stage = precondition text + launch command + bag topic
   list + form fields.
 - Arg parsing: `./pooltest.sh [stage|all]`.
-- `GO` gate before each stage.
+- `GO` gate before each stage, then a configurable autonomous-start countdown
+  (default 30 s, `--delay` / env override; skipped for Stage 5 teleop) before the
+  mission launches, giving the operator time to disconnect and clear the sub.
+- Detached execution (`tmux`/`nohup`/`setsid`) so the mission, bag, and teed log
+  survive operator disconnect during the autonomous-start delay.
 - Interactive `role` prompt for Stages 3–4 (or `--role` arg).
 - Bag start/stop wrapping each run; `tee` for console.
 - `read`-driven form appended to `results.txt`.
 - Odom-snapshot helper (`ros2 topic echo --once /odometry/filtered`) for Stage 5.
 - Preflight via `ros2 topic list` / `ros2 topic hz`.
+- Launch briefing + per-stage **DO THIS** blocks + end-of-run value summary, per
+  the Operator guidance section (self-serve for testers running without the
+  author).
 
 ### `--sim` rehearsal flag
 

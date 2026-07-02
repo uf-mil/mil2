@@ -53,6 +53,10 @@ int main(int argc, char** argv)
 
     node->declare_parameter<std::string>("mission", "SonarFollowerTest");
     std::string mission_to_run = node->get_parameter("mission").as_string();
+    node->declare_parameter<int>("target_freq", 0);
+    node->declare_parameter<int>("target_freq_tol", 500);
+    auto target_freq = static_cast<uint32_t>(node->get_parameter("target_freq").as_int());
+    auto target_freq_tol = static_cast<uint32_t>(node->get_parameter("target_freq_tol").as_int());
 
     // Role for Task 5 selection. "" on the robot (Task 1 sets it at runtime via
     // ctx->set_role); set in sim launch until that wiring exists.
@@ -181,6 +185,8 @@ int main(int argc, char** argv)
     // Create by name
     auto blackboard = BT::Blackboard::create();
     blackboard->set("ctx", ctx);
+    blackboard->set("target_freq", target_freq);
+    blackboard->set("target_freq_tol", target_freq_tol);
 
     // Load the canonical Task-5 grasp-target list and expose it on the blackboard, so
     // the grasp missions and the sim <graspable> allowlist (sub9_sim.urdf.xacro reads
