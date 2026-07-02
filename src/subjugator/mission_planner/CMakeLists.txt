@@ -115,6 +115,11 @@ if(BUILD_TESTING)
   target_include_directories(
     test_select_face_symbol_logic
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_search_pattern test/test_search_pattern.cpp)
+  target_include_directories(
+    test_search_pattern
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
 endif()
 
 ament_package()
