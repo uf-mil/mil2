@@ -10,10 +10,12 @@ SIM=0
 DRYRUN=0
 ROLE=""
 STAGE=""
+SCORE_LEVEL="" # optional override for the capstone dial (empty -> mission default 6)
+DO_PINGER=""   # optional override: 0 skips S1 pinger homing (empty -> mission default 1)
 RUN_ROOT="${POOLTEST_RUNS:-$PWD/pooltest_runs}"
 SIM_IMAGE_TOPIC="/down_cam/image_raw"
-BAG_TOPICS=(/odometry/filtered /goal_pose /yolo_down/detections)
-ORDERED_STAGES=(preflight calib hone select combined deadreckon full_s2)
+BAG_TOPICS=(/odometry/filtered /goal_pose /yolo_down/detections /yolo/detections)
+ORDERED_STAGES=(preflight calib hone select combined deadreckon full_s2 loop full)
 BAG_PID="" # set by start_bag; cleared by stop_bag
 
 # ---- cleanup trap -----------------------------------------------------------
@@ -49,13 +51,18 @@ STAGES (smallest whole unit first):
   combined    center then select, one process     (mission: HoneOverTableSelect)  [S2+S3 milestone]
   deadreckon  (Tier B) measure the 4 dead-reckon constants (manual teleop)
   full_s2     (Tier B) full surface->descend->dead-reckon->hone (mission: OctagonTableMission)
+  loop        S6: grab+place up to TWO objects     (mission: OctagonLoopMission)
+  full        WHOLE Task 5 run S1..S7              (mission: OctagonMission)
 
 FLAGS:
-  --role R    R = survey_repair (nut_cylinder,electric_box) | search_rescue (pill_cylinder,bandaid_box)
-  --sim       rehearse the harness in Gazebo (adds down_image_topic override)
-  --delay N   autonomous-start countdown seconds after GO (default 30)
-  --dry-run   print directions and prompts but do NOT launch missions or record
-  -h|--help   this help
+  --role R        R = survey_repair (nut_cylinder,electric_box) | search_rescue (pill_cylinder,bandaid_box)
+  --sim           rehearse the harness in Gazebo (adds down_image_topic override)
+  --delay N       autonomous-start countdown seconds after GO (default 30)
+  --score-level N ('full' only) how far up the ladder to run (default 6 = everything):
+                    0 pinger->table | 1 +center | 2 +grab 1 | 3 +grab 2 | 5 +face image | 6 +rotation bonus
+  --no-pinger     ('full' only) skip S1 acoustic homing; start at S2 (sub is hand-placed over the octagon)
+  --dry-run       print directions and prompts but do NOT launch missions or record
+  -h|--help       this help
 
 WHAT YOU NEED before running a real test:
   * sub powered and in the water
@@ -100,7 +107,16 @@ parse_args() {
 			ROLE="$2"
 			shift
 			;;
-		preflight | calib | hone | select | combined | deadreckon | full_s2) STAGE="$1" ;;
+		--score-level)
+			[ $# -ge 2 ] || {
+				say "Error: --score-level requires a value"
+				exit 2
+			}
+			SCORE_LEVEL="$2"
+			shift
+			;;
+		--no-pinger) DO_PINGER=0 ;;
+		preflight | calib | hone | select | combined | deadreckon | full_s2 | loop | full) STAGE="$1" ;;
 		*)
 			say "Unknown argument: $1"
 			usage
@@ -115,6 +131,14 @@ parse_args() {
 		exit 2
 		;;
 	esac
+	if [ -n "$SCORE_LEVEL" ]; then
+		case "$SCORE_LEVEL" in
+		'' | *[!0-9]*)
+			say "Error: --score-level requires a non-negative integer (0..6)"
+			exit 2
+			;;
+		esac
+	fi
 }
 
 # ---- environment guards -----------------------------------------------------
@@ -173,8 +197,11 @@ run_mission() { # $1 = run dir, $2 = mission name. Launches + waits. Always retu
 	local args=(--ros-args -p mission:="$mission")
 	[ -n "$ROLE" ] && args+=(-p role:="$ROLE")
 	[ "$SIM" -eq 1 ] && args+=(-p down_image_topic:="$SIM_IMAGE_TOPIC")
+	# Capstone dials (harmless for missions that don't read them; the node always declares them).
+	[ -n "$SCORE_LEVEL" ] && args+=(-p score_level:="$SCORE_LEVEL")
+	[ -n "$DO_PINGER" ] && args+=(-p do_pinger:="$DO_PINGER")
 	if [ "$DRYRUN" -eq 1 ]; then
-		say "DRY RUN: would launch mission:=$mission ${ROLE:+role:=$ROLE}$([ "$SIM" -eq 1 ] && printf ' (sim)')"
+		say "DRY RUN: would launch mission:=$mission ${ROLE:+role:=$ROLE}${SCORE_LEVEL:+ score_level:=$SCORE_LEVEL}${DO_PINGER:+ do_pinger:=$DO_PINGER}$([ "$SIM" -eq 1 ] && printf ' (sim)')"
 		return 0
 	fi
 	# Mission runs in its own session (setsid) so a terminal Ctrl-C never reaches it.
@@ -517,6 +544,72 @@ stage_full_s2() {
 		"Reached the table area|y/n e.g. y" \
 		"Hone centered at the end|y/n e.g. y" \
 		"Which step failed (if any)|text e.g. none" \
+		"Notes|free text"
+}
+
+stage_loop() {
+	hr
+	say "STAGE 7 — COLLECTION LOOP / S6 (mission: OctagonLoopMission)."
+	say "Grabs and places up to TWO objects: S3 select -> S4 grasp -> S5 place, twice."
+	say "The 2nd cycle skips the object already placed (grabbed_label exclusion); grabbing"
+	say "just ONE object still counts as success."
+	ensure_role
+	say "DO THIS:"
+	say "  1. PRECONDITION: sub already CENTERED over the table (run 'combined' first, or hand-hold it),"
+	say "     the task objects AND the role's basket marker in the down-cam frame, gripper service up."
+	say "  2. TYPE: GO (after the countdown the sub autonomously grabs, carries, and drops — twice)."
+	say "  3. WHAT WILL HAPPEN: for each object it centers, descends, closes the gripper, lifts,"
+	say "     moves to the basket, centers on the marker, descends, opens the gripper, lifts."
+	say "  4. SUCCESS LOOKS LIKE: one or two objects end up in the role's basket."
+	say "  ROLE this run: $ROLE  (survey_repair -> warning basket; search_rescue -> red_cross basket)"
+	require_down_detections || return 0
+	go_gate || return 0
+	local dir
+	dir="$(make_run_dir loop)"
+	start_bag "$dir"
+	countdown
+	run_mission "$dir" OctagonLoopMission
+	stop_bag
+	collect_form "$dir" \
+		"Objects placed (0/1/2)|number e.g. 2" \
+		"Object 1 label grabbed|text e.g. nut_cylinder" \
+		"Object 2 label grabbed|text e.g. electric_box" \
+		"Dropped into correct basket|y/n e.g. y" \
+		"Where it failed (if <2)|text e.g. 2nd grasp missed" \
+		"Notes|free text"
+}
+
+stage_full() {
+	hr
+	say "STAGE 8 — WHOLE TASK 5 RUN / S1..S7 (mission: OctagonMission). *** FULL MISSION ***"
+	say "DEFAULT runs EVERYTHING: pinger->table, center, grab+place 2 objects, face the wall image,"
+	say "rotation bonus. No flags needed for the competition run."
+	ensure_role
+	say "DO THIS:"
+	say "  1. PRECONDITION (default, autonomous): the Task-5 octagon PINGER is active and the sub is"
+	say "     in the water within acoustic range. S1 will home onto the table on its own."
+	say "     NO PINGER? add --no-pinger and hand-place the sub over the octagon (starts at S2)."
+	say "     S7 needs the 'octagon_symbols' forward-cam model; without it S7 fails at CheckYoloModel"
+	say "     AFTER the objects are already placed (they still score; only the final log says FAILURE)."
+	say "  2. BRING-UP: dial how far it goes with --score-level N (default 6):"
+	say "       0 pinger->table | 1 +center | 2 +grab 1 | 3 +grab 2 | 5 +face image | 6 +rotation bonus"
+	say "  3. TYPE: GO (after the countdown the sub runs the whole mission ON ITS OWN)."
+	say "  4. SUCCESS LOOKS LIKE: sub reaches the table, collects the objects into baskets, then"
+	say "     faces the octagon-wall image (and spins if score_level 6)."
+	say "  RUN: role=$ROLE  score_level=${SCORE_LEVEL:-6 (default)}  do_pinger=${DO_PINGER:-1 (default)}"
+	go_gate || return 0
+	local dir
+	dir="$(make_run_dir full)"
+	start_bag "$dir"
+	countdown
+	run_mission "$dir" OctagonMission
+	stop_bag
+	collect_form "$dir" \
+		"Farthest stage reached (S1..S7)|text e.g. S5" \
+		"Objects placed (0/1/2)|number e.g. 2" \
+		"Faced the wall image (S7)|y/n/na e.g. na" \
+		"Where it stopped/failed|text e.g. S7 no model" \
+		"End-of-mission status|SUCCESS/FAILURE e.g. FAILURE" \
 		"Notes|free text"
 }
 

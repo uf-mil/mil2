@@ -366,6 +366,54 @@ to "just work" first try; treat it as a stretch goal after Parts 6–8.
 
 ---
 
+## Part 10 — Place (S5), the collection loop (S6), and the full mission (S1→S7)
+
+These build directly on Parts 6–8.
+
+**S5 — transport & place** (`OctagonPlaceMission`): pretends the sub is already
+holding an object, moves to the role's basket, centers on the basket marker, and
+opens the gripper to drop it. Needs the basket markers detectable (`warning` for
+`survey_repair`, `red_cross` for `search_rescue`).
+
+```bash
+ros2 run mission_planner mission_planner_node --ros-args \
+  -p mission:=OctagonPlaceMission -p role:=survey_repair \
+  -p down_image_topic:=/down_cam/image_raw
+```
+
+**S6 — collection loop** (`OctagonLoopMission`): the real thing — S3 select → S4
+grasp → S5 place, repeated for up to two objects. The second pass automatically
+skips the object already placed. Position the sub centered over the table with the
+objects **and** the basket marker in the down-cam frame:
+
+```bash
+./pooltest.sh loop --sim --role survey_repair
+# GO   (sub grabs, carries, drops — twice; one object still counts)
+```
+
+**Full mission** (`OctagonMission`): the whole task, S1→S7, in one tree. It
+**defaults to running everything** — no flags needed. In sim there is usually no
+pinger, so skip S1 with `--no-pinger` and hand-place the sub over the octagon; dial
+how far it goes with `--score-level`:
+
+```bash
+# hand-placed, run up to "grab & place 2 objects" (no S7):
+./pooltest.sh full --sim --no-pinger --score-level 3 --role survey_repair
+# GO
+```
+
+`score_level` ladder: `0` pinger→table · `1` +center · `2` +grab 1 · `3` +grab 2 ·
+`5` +face image (S7) · `6` +rotation bonus (default). S7 needs an `octagon_symbols`
+forward-cam model; without it the run still places the objects and then fails
+honestly at S7's model check (end-of-run log says `FAILURE`, but collection scored).
+
+The node prints `Running mission '<name>' (role=…, score_level=…, do_pinger=…)` at
+startup — check it to confirm your params actually applied. (Bare `-p name:=value`
+is silently treated as a remap; `pooltest.sh` and the commands above use the correct
+`--ros-args -p` form.)
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause / fix |
@@ -390,7 +438,8 @@ to "just work" first try; treat it as a stretch goal after Parts 6–8.
 |---|---|
 | `/down_cam/image_raw` | down camera image (sim) |
 | `/front_cam/image_raw` | front camera image (sim) |
-| `/yolo_down/detections` | down-cam YOLO detections (S2/S3 read this) |
+| `/yolo_down/detections` | down-cam YOLO detections (S2–S6 read this) |
+| `/yolo/detections` | forward-cam YOLO detections (S7 wall image) |
 | `/odometry/filtered` | fused pose |
 
 **Service**
@@ -408,7 +457,10 @@ to "just work" first try; treat it as a stretch goal after Parts 6–8.
 | `SelectOnly` | select — lock the role's target |
 | `HoneOverTableSelect` | combined — center then select (S2+S3) |
 | `OctagonGraspMission` | approach + grasp (S4) |
+| `OctagonPlaceMission` | transport + place into the basket (S5) |
+| `OctagonLoopMission` | collection loop — grab + place up to 2 objects (S6) |
 | `OctagonTableMission` | full S2 surface→descend→dead-reckon→hone |
+| `OctagonMission` | **the whole task, S1→S7** (dials: `score_level` 0–6 default 6, `do_pinger` 1/0) |
 
 **Roles**
 
@@ -420,5 +472,7 @@ to "just work" first try; treat it as a stretch goal after Parts 6–8.
 **Grasp target / world prop / YOLO class names** (one shared set):
 `nut_cylinder  electric_box  pill_cylinder  bandaid_box`
 
-**pooltest.sh stages** (append `--sim`, and `--role <r>` for select/combined):
-`preflight  calib  hone  select  combined  deadreckon  full_s2`
+**pooltest.sh stages** (append `--sim`, and `--role <r>` where a target is needed):
+`preflight  calib  hone  select  combined  deadreckon  full_s2  loop  full`
+
+`full` extras: `--score-level N` (0–6, default 6) and `--no-pinger` (skip S1).
