@@ -1,0 +1,42 @@
+<root BTCPP_format="4" main_tree_to_execute="OctagonRestoreMission">
+    <!--
+        Calibration-free Task-5 acquisition: acoustically home on the octagon
+        pinger (frequency-gated so the Task-4 pinger is ignored), descend until
+        the down-cam sees the table, center, then hand off to the grasp mission.
+        No pool-specific dead-reckon constants. See
+        docs/superpowers/specs/2026-06-30-octagon-pinger-to-table-design.md.
+    -->
+    <BehaviorTree ID="OctagonRestoreMission">
+        <Sequence>
+            <!-- 1. Frequency-gated acoustic homing. 25000 = sim octagon value;
+                 set the announced frequency on competition day. -->
+            <SetBlackboard output_key="target_freq" value="25000"/>
+            <SetBlackboard output_key="target_freq_tol" value="2500"/>
+            <SubTree ID="OctagonPingerMission" _autoremap="true" ctx="{ctx}"/>
+
+            <!-- 2. Descend until the down-cam sees the table. -->
+            <DescendUntilDetected label="table" camera="down"
+                                  step_m="0.20" max_steps="12"
+                                  timeout_msec="45000" ctx="{ctx}"/>
+
+            <!-- 3. Center; if the table drifted off-frame, spiral-search then center. -->
+            <Fallback>
+                <SubTree ID="HoneOverTarget" _autoremap="true"
+                         label="table" camera="down"
+                         tol_norm="0.05" timeout_msec="20000" ctx="{ctx}"/>
+                <Sequence>
+                    <SearchForTarget label="table" camera="down"
+                                     step_m="0.30" max_radius_m="2.0"
+                                     timeout_msec="60000" ctx="{ctx}"/>
+                    <SubTree ID="HoneOverTarget" _autoremap="true"
+                             label="table" camera="down"
+                             tol_norm="0.05" timeout_msec="20000" ctx="{ctx}"/>
+                </Sequence>
+            </Fallback>
+
+            <!-- 4. Hand off to S4 grasp (same seam as OctagonGraspMission). -->
+            <SetBlackboard output_key="target_label" value="{grasp_target}"/>
+            <SubTree ID="ApproachAndGrasp" _autoremap="true" ctx="{ctx}"/>
+        </Sequence>
+    </BehaviorTree>
+</root>
