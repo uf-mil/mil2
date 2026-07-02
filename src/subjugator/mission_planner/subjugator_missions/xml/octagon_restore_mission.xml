@@ -19,24 +19,31 @@
                                   step_m="0.20" max_steps="12"
                                   timeout_msec="45000" ctx="{ctx}"/>
 
-            <!-- 3. Center; if the table drifted off-frame, spiral-search then center. -->
+            <!-- 3. Ensure the table is visible (spiral-search if it drifted
+                 off-frame after descent), then center over it. DetectTarget can
+                 FAIL, so the SearchForTarget fallback is actually reachable;
+                 HoneOverTarget degrades gracefully (always succeeds) and
+                 ApproachAndGrasp re-centers itself before grasping. -->
             <Fallback>
-                <SubTree ID="HoneOverTarget" _autoremap="true"
-                         label="table" camera="down"
-                         tol_norm="0.05" timeout_msec="20000" ctx="{ctx}"/>
-                <Sequence>
-                    <SearchForTarget label="table" camera="down"
-                                     step_m="0.30" max_radius_m="2.0"
-                                     timeout_msec="60000" ctx="{ctx}"/>
-                    <SubTree ID="HoneOverTarget" _autoremap="true"
-                             label="table" camera="down"
-                             tol_norm="0.05" timeout_msec="20000" ctx="{ctx}"/>
-                </Sequence>
+                <DetectTarget label="table" camera="down" min_conf="0.40" ctx="{ctx}"/>
+                <SearchForTarget label="table" camera="down"
+                                 step_m="0.30" max_radius_m="2.0"
+                                 timeout_msec="60000" ctx="{ctx}"/>
             </Fallback>
+            <SubTree ID="HoneOverTarget" _autoremap="true"
+                     label="table" camera="down"
+                     tol_norm="0.05" timeout_msec="20000" ctx="{ctx}"/>
 
-            <!-- 4. Hand off to S4 grasp (same seam as OctagonGraspMission). -->
+            <!-- 4. Hand off to S4 grasp. Knobs mirror octagon_grasp_mission.xml
+                 (descend_z / lift_z / angles are sim-measured placeholders). -->
             <SetBlackboard output_key="target_label" value="{grasp_target}"/>
-            <SubTree ID="ApproachAndGrasp" _autoremap="true" ctx="{ctx}"/>
+            <SubTree ID="ApproachAndGrasp" _autoremap="true" ctx="{ctx}"
+                     grasp_attempts="2"
+                     center_tol_norm="0.05" center_timeout_msec="20000"
+                     open_angle="85" close_angle="0"
+                     descend_z="-0.6" lift_z="0.6"
+                     grip_settle_msec="1500" move_timeout_msec="30000"
+                     grasp_keep_ratio="0.5"/>
         </Sequence>
     </BehaviorTree>
 </root>
