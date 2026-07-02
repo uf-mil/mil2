@@ -4,6 +4,8 @@
 
 #include <geometry_msgs/msg/pose.hpp>
 
+REGISTER(PublishGoalPose)
+
 BT::PortsList PublishGoalPose::providedPorts()
 {
     BT::PortsList ports;

@@ -1,8 +1,11 @@
 #include "log_to_file.hpp"
 
+#include "context.hpp"
 #include <filesystem>
 #include <fstream>
 #include <string>
+
+REGISTER(LogToFile)
 
 BT::PortsList LogToFile::providedPorts()
 {

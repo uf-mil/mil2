@@ -13,6 +13,8 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(TrackBestPair)
+
 namespace
 {
 std::uint64_t g_tick_count = 0;

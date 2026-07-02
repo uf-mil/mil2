@@ -5,6 +5,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+REGISTER(AlignDepth)
+
 AlignDepth::AlignDepth(std::string const& name, const BT::NodeConfiguration& cfg) : BT::StatefulActionNode(name, cfg)
 {
 }

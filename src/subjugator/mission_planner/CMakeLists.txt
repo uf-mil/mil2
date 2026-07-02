@@ -28,6 +28,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
 # ---- Operations library (leaf nodes)
 add_library(
   operations
+  subjugator_operations/src/header_only.cpp
   subjugator_operations/src/publish_goal.cpp
   subjugator_operations/src/at_goal_pose.cpp
   subjugator_operations/src/detect_target.cpp
@@ -74,7 +75,7 @@ ament_target_dependencies(
 
 # Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
-target_link_libraries(mission_planner_node operations)
+target_link_libraries(mission_planner_node "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
 ament_target_dependencies(
   mission_planner_node
   rclcpp

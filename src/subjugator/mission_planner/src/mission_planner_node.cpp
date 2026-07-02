@@ -1,4 +1,3 @@
-#include <behaviortree_cpp/bt_factory.h>
 #include <behaviortree_cpp/loggers/bt_cout_logger.h>
 #include <behaviortree_cpp/loggers/groot2_publisher.h>
 #include <behaviortree_cpp/xml_parsing.h>
@@ -7,45 +6,15 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "actuate_servo.hpp"
-#include "align_depth.hpp"
-#include "align_yaw.hpp"
-#include "any_poles_detected.hpp"
-#include "at_goal_pose.hpp"
-#include "board_arch_step.hpp"
-#include "check_yolo_model.hpp"
 #include "context.hpp"
-#include "detect_target.hpp"
-#include "detect_wall_direction.hpp"
-#include "determine_channel_side.hpp"
-#include "has_found_pair.hpp"
-#include "hone_bearing.hpp"
-#include "hone_midpoint.hpp"
-#include "log_to_file.hpp"
-#include "lookup_waypoint.hpp"
-#include "nav_channel_control.hpp"
-#include "poles_big_enough.hpp"
-#include "publish_goal.hpp"
-#include "remember_waypoint.hpp"
-#include "select_hole_depth.hpp"
 #include "start_coin_flip.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "stop_coin_flip.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
-#include "target_big_enough.hpp"
-#include "target_centered.hpp"
-#include "track_best_pair.hpp"
-#include "track_best_target.hpp"
-#include "track_largest_poles.hpp"
-
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <count_when_ticked.hpp>
-#include <go_to_pinger.hpp>
-#include <pitch_style.hpp>
-#include <roll_style.hpp>
-#include <topic_ticker.hpp>
-#include <yaw_style.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
+
+BT::BehaviorTreeFactory factory;
 
 int main(int argc, char** argv)
 {
@@ -129,46 +98,6 @@ int main(int argc, char** argv)
         }
         wait_rate.sleep();
     }
-
-    BT::BehaviorTreeFactory factory;
-    factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
-    factory.registerNodeType<AtGoalPose>("AtGoalPose");
-    factory.registerNodeType<LogToFile>("LogToFile");
-    factory.registerNodeType<DetectTarget>("DetectTarget");
-    factory.registerNodeType<HoneBearing>("HoneBearing");
-    factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
-    factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
-    factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
-    factory.registerNodeType<TargetBigEnough>("TargetBigEnough");
-    factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
-    factory.registerNodeType<DetectWallDirection>("DetectWallDirection");
-    factory.registerNodeType<StartCoinFlip>("StartCoinFlip");
-    factory.registerNodeType<StopCoinFlip>("StopCoinFlip");
-    factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
-    factory.registerNodeType<HasFoundPair>("HasFoundPair");
-    factory.registerNodeType<TrackBestPair>("TrackBestPair");
-    factory.registerNodeType<TrackBestTarget>("TrackBestTarget");
-    factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
-    factory.registerNodeType<NavChannelControl>("NavChannelControl");
-    factory.registerNodeType<ActuateServo>("ActuateServo");
-    factory.registerNodeType<AlignDepth>("AlignDepth");
-    factory.registerNodeType<AlignYaw>("AlignYaw");
-    factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
-    factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
-    factory.registerNodeType<TargetCentered>("TargetCentered");
-    factory.registerNodeType<BoardArchStep>("BoardArchStep");
-    factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
-    factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
-    factory.registerNodeType<SelectHoleDepth>("SelectHoleDepth");
-    factory.registerNodeType<TargetCentered>("TargetCentered");
-    factory.registerNodeType<BoardArchStep>("BoardArchStep");
-
-    factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
-    factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
-    factory.registerNodeType<SonarFollower>("SonarFollower");
-    factory.registerNodeType<YawStyle>("YawStyle");
-    factory.registerNodeType<RollStyle>("RollStyle");
-    factory.registerNodeType<PitchStyle>("PitchStyle");
 
     // Load all tree models from installed xml
     std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");

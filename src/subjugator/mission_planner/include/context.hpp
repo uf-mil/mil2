@@ -6,6 +6,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <behaviortree_cpp/bt_factory.h>
+
 #include <rclcpp/client.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -79,3 +81,9 @@ struct Context
         return node->get_logger();
     }
 };
+
+#define REGISTER(name) \
+    extern BT::BehaviorTreeFactory factory; \
+    extern "C" __attribute__((constructor)) void register ## name() { \
+        factory.registerNodeType<name>(#name);   \
+    }
