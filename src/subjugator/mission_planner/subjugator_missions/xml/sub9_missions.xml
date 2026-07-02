@@ -10,6 +10,8 @@
     <include path="approach_and_grasp.xml"/>
     <include path="transport_and_place.xml"/>
     <include path="octagon_place_mission.xml"/>
+    <include path="collect_one_object.xml"/>
+    <include path="collect_objects.xml"/>
     <include path="octagon_grasp_mission.xml"/>
     <include path="face_octagon_image.xml"/>
     <include path="orient_to_octagon_image.xml"/>
