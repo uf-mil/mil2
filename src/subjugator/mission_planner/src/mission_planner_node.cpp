@@ -17,6 +17,7 @@
 #include "check_yolo_model.hpp"
 #include "confirm_grasp_by_scale.hpp"
 #include "context.hpp"
+#include "descend_until_detected.hpp"
 #include "detect_target.hpp"
 #include "determine_channel_side.hpp"
 #include "has_found_pair.hpp"
@@ -168,6 +169,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<NavChannelControl>("NavChannelControl");
     factory.registerNodeType<AlignDepth>("AlignDepth");
     factory.registerNodeType<AlignYaw>("AlignYaw");
+    factory.registerNodeType<DescendUntilDetected>("DescendUntilDetected");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
