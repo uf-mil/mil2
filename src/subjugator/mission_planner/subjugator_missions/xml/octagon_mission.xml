@@ -1,0 +1,59 @@
+<root BTCPP_format="4" main_tree_to_execute="OctagonMission">
+    <!--
+        Task 5 capstone: S1 -> S2 -> collect (S3->S4->S5 loop) -> S7.
+
+        DEFAULT = the whole competition run: score_level defaults to 6 and
+        do_pinger to 1 (set by mission_planner_node), so a bare
+        `mission:=OctagonMission` runs everything with no flags to forget.
+
+        Dials (optional overrides, via -p):
+          score_level  cumulative ceiling; runs every phase up to N, then stops:
+                       0 S1 | 1 +S2 | 2 +collect 1 | 3 +collect 2 | 5 +S7 face | 6 +S7 turns
+          do_pinger    1 = run S1 acoustic homing; :=0 (or false) to start at S2
+                       when hand-placed (S1 sweeps forever if it never hears a ping).
+
+        role flows from the `role` param via Context to S3/S5; S7 reads {role}.
+        Phases run in a Sequence (abort-on-failure) because each stage degrades
+        internally (HoneOverTarget -> dead-reckon, ConfirmGrasp -> open-loop), so a
+        hard failure is a genuine "stop and look". The only tolerated miss is the
+        2nd object (absorbed inside CollectObjects).
+
+        NOTE: at the default score_level 6, if the octagon_symbols YOLO model is not
+        present, S7 fails honestly at CheckYoloModel. Collected objects are already
+        placed/scored by then; only the end-of-mission log reads FAILURE.
+    -->
+    <BehaviorTree ID="OctagonMission">
+        <Sequence>
+            <Script code="items_collected := 0"/>
+
+            <!-- S1: acoustic homing onto the table (skippable when hand-placed) -->
+            <Precondition if="do_pinger == 1" else="SUCCESS">
+                <SubTree ID="OctagonPingerMission" _autoremap="true" ctx="{ctx}"/>
+            </Precondition>
+
+            <!-- S2: surface, descend, dead-reckon to center, vision-refine over the table -->
+            <Precondition if="score_level >= 1" else="SUCCESS">
+                <SubTree ID="OctagonTableMission" _autoremap="true" ctx="{ctx}"/>
+            </Precondition>
+
+            <!-- S3->S4->S5 collection loop: 1 object at level 2, 2 objects at level 3+ -->
+            <Precondition if="score_level >= 2" else="SUCCESS">
+                <Sequence>
+                    <Script code="max_objects := 1"/>
+                    <Precondition if="score_level >= 3" else="SUCCESS">
+                        <Script code="max_objects := 2"/>
+                    </Precondition>
+                    <SubTree ID="CollectObjects" _autoremap="true" ctx="{ctx}"
+                             max_objects="{max_objects}" items_collected="{items_collected}"/>
+                </Sequence>
+            </Precondition>
+
+            <!-- S7: face the octagon-wall symbol (+ rotation bonus); own 5/6 gate inside -->
+            <Precondition if="score_level >= 5" else="SUCCESS">
+                <SubTree ID="OrientToOctagonImage" _autoremap="true"
+                         role="{role}" items_collected="{items_collected}"
+                         score_level="{score_level}" ctx="{ctx}"/>
+            </Precondition>
+        </Sequence>
+    </BehaviorTree>
+</root>

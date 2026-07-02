@@ -231,6 +231,9 @@ int main(int argc, char** argv)
     RCLCPP_INFO(node->get_logger(), "Loaded %zu grasp target(s) from %s", grasp_targets.size(),
                 grasp_targets_file.c_str());
 
+    RCLCPP_INFO(node->get_logger(), "Running mission '%s' (role='%s', score_level=%d, do_pinger=%d)",
+                mission_to_run.c_str(), node->get_parameter("role").as_string().c_str(), score_level, do_pinger);
+
     std::unique_ptr<BT::Tree> tree_ptr;
     try
     {
