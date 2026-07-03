@@ -10,6 +10,8 @@
     <include path="approach_and_grasp.xml"/>
     <include path="transport_and_place.xml"/>
     <include path="octagon_place_mission.xml"/>
+    <include path="home_on_octagon_pinger.xml"/>
+    <include path="acquire_table.xml"/>
     <include path="collect_one_object.xml"/>
     <include path="collect_objects.xml"/>
     <include path="octagon_loop_mission.xml"/>

@@ -392,9 +392,11 @@ objects **and** the basket marker in the down-cam frame:
 ```
 
 **Full mission** (`OctagonMission`): the whole task, S1→S7, in one tree. It
-**defaults to running everything** — no flags needed. In sim there is usually no
-pinger, so skip S1 with `--no-pinger` and hand-place the sub over the octagon; dial
-how far it goes with `--score-level`:
+**defaults to running everything** — no flags needed. Its table acquisition (S2) is
+**calibration-free** (`AcquireTable`: descend until the down-cam sees the table, then
+hone — no dead-reckon constants, unlike `OctagonTableMission`/`full_s2`). In sim
+there is usually no pinger, so skip S1 with `--no-pinger` and hand-place the sub over
+the octagon; dial how far it goes with `--score-level`:
 
 ```bash
 # hand-placed, run up to "grab & place 2 objects" (no S7):
@@ -459,8 +461,9 @@ is silently treated as a remap; `pooltest.sh` and the commands above use the cor
 | `OctagonGraspMission` | approach + grasp (S4) |
 | `OctagonPlaceMission` | transport + place into the basket (S5) |
 | `OctagonLoopMission` | collection loop — grab + place up to 2 objects (S6) |
-| `OctagonTableMission` | full S2 surface→descend→dead-reckon→hone |
-| `OctagonMission` | **the whole task, S1→S7** (dials: `score_level` 0–6 default 6, `do_pinger` 1/0) |
+| `OctagonTableMission` | S2 via dead-reckon (standalone `full_s2` test; needs constants) |
+| `OctagonRestoreMission` | calibration-free acquire (pinger→descend→center) + grab one |
+| `OctagonMission` | **the whole task, S1→S7** — calibration-free acquisition; dials: `score_level` 0–6 (default 6), `do_pinger` 1/0 |
 
 **Roles**
 

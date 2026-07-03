@@ -42,6 +42,11 @@ Two optional dials help bring-up:
 you hand-place the sub over the octagon. (With the default, S1 sweeps for a ping and
 will not proceed until it hears one.)
 
+The `full` run's table acquisition (S2) is **calibration-free**: it descends until
+the down-cam sees the table and centers on it with vision, so — unlike the `full_s2`
+stage — it needs **no** dead-reckon constants. You do not have to run `deadreckon`
+before `full`.
+
 **After you type `GO` you have 30 s (default) to disconnect and clear the sub.**
 It then runs autonomously. Detach tmux with `Ctrl-b d`; reattach with
 `tmux attach -t pooltest` to fill in the results form.

@@ -26,14 +26,17 @@
         <Sequence>
             <Script code="items_collected := 0"/>
 
-            <!-- S1: acoustic homing onto the table (skippable when hand-placed) -->
+            <!-- S1: frequency-gated acoustic homing onto the octagon (skippable
+                 when hand-placed via do_pinger:=0) -->
             <Precondition if="do_pinger == 1" else="SUCCESS">
-                <SubTree ID="OctagonPingerMission" _autoremap="true" ctx="{ctx}"/>
+                <SubTree ID="HomeOnOctagonPinger" _autoremap="true" ctx="{ctx}"/>
             </Precondition>
 
-            <!-- S2: surface, descend, dead-reckon to center, vision-refine over the table -->
+            <!-- S2: CALIBRATION-FREE descend + center over the table. No
+                 dead-reckon constants -> nothing to measure/forget; works whether
+                 the sub homed in via S1 or was hand-placed above the octagon. -->
             <Precondition if="score_level >= 1" else="SUCCESS">
-                <SubTree ID="OctagonTableMission" _autoremap="true" ctx="{ctx}"/>
+                <SubTree ID="AcquireTable" _autoremap="true" ctx="{ctx}"/>
             </Precondition>
 
             <!-- S3->S4->S5 collection loop: 1 object at level 2, 2 objects at level 3+ -->

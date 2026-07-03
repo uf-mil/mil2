@@ -1,0 +1,20 @@
+<root BTCPP_format="4">
+    <!--
+        S1 building block: frequency-gated acoustic homing onto the Task-5 octagon
+        pinger. Sets the octagon frequency (so the Task-4 pinger is ignored), then
+        sweeps for and follows the bearing (OctagonPingerMission). This is the
+        SINGLE source of the octagon pinger frequency, shared by
+        OctagonRestoreMission and the OctagonMission capstone.
+
+        25000 = sim octagon value; set the announced frequency on competition day.
+        (mission_planner also exposes -p target_freq / -p target_freq_tol, but the
+        SetBlackboard here overrides them so the octagon frequency is baked in.)
+    -->
+    <BehaviorTree ID="HomeOnOctagonPinger">
+        <Sequence>
+            <SetBlackboard output_key="target_freq" value="25000"/>
+            <SetBlackboard output_key="target_freq_tol" value="2500"/>
+            <SubTree ID="OctagonPingerMission" _autoremap="true" ctx="{ctx}"/>
+        </Sequence>
+    </BehaviorTree>
+</root>
