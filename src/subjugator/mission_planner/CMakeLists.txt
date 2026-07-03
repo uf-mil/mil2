@@ -75,7 +75,8 @@ ament_target_dependencies(
 
 # Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
-target_link_libraries(mission_planner_node "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
+target_link_libraries(mission_planner_node
+                      "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
 ament_target_dependencies(
   mission_planner_node
   rclcpp

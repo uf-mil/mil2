@@ -1,9 +1,10 @@
 #include "log_to_file.hpp"
 
-#include "context.hpp"
 #include <filesystem>
 #include <fstream>
 #include <string>
+
+#include "context.hpp"
 
 REGISTER(LogToFile)
 

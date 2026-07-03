@@ -1,12 +1,11 @@
 #pragma once
 #include <sys/types.h>
+#include <behaviortree_cpp/bt_factory.h>
 
 #include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
-
-#include <behaviortree_cpp/bt_factory.h>
 
 #include <rclcpp/client.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -82,8 +81,9 @@ struct Context
     }
 };
 
-#define REGISTER(name) \
-    extern BT::BehaviorTreeFactory factory; \
-    extern "C" __attribute__((constructor)) void register ## name() { \
-        factory.registerNodeType<name>(#name);   \
+#define REGISTER(name)                                                                                                 \
+    extern BT::BehaviorTreeFactory factory;                                                                            \
+    extern "C" __attribute__((constructor)) void register##name()                                                      \
+    {                                                                                                                  \
+        factory.registerNodeType<name>(#name);                                                                         \
     }

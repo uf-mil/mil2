@@ -1,5 +1,4 @@
 #include "context.hpp"
-
 #include "count_when_ticked.hpp"
 #include "go_to_pinger.hpp"
 #include "pitch_style.hpp"
