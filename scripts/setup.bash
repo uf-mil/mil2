@@ -252,9 +252,19 @@ function pub_wrench() {
 	local tz=$6
 	local duration=$7
 
-	echo "Publishing force for ${duration} seconds..."
+	# One-shot `ros2 topic pub` can silently lose its message under rmw_zenoh
+	# (publish lands before the writer->router->reader route is ready, or the
+	# process exits while the sample is still in flight). Losing the STOP
+	# message leaves the thrusters holding force. So both publishes: send the
+	# sample twice 1s apart (-r 1 --times 2), wait for a matched subscriber
+	# first (-w 1, bounded so a dead stack fails loud instead of hanging), and
+	# keep the session alive 2s after the last publish (--keep-alive 2).
+	# Side effect: actual thrust runs ~3s LONGER than <duration> (the extra
+	# sample + keep-alive happen between force-on and the sleep starting).
+	echo "Publishing force for ${duration} seconds (thrust runs ~3s longer than requested)..."
 
-	ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+	if ! ros2 topic pub --times 2 -r 1 -w 1 --max-wait-time-secs 10 --keep-alive 2 \
+		/cmd_wrench geometry_msgs/msg/Wrench "force:
   x: ${fx}
   y: ${fy}
   z: ${fz}
@@ -262,13 +272,18 @@ torque:
   x: ${tx}
   y: ${ty}
   z: ${tz}
-"
+"; then
+		echo "WARNING: force command NOT delivered (no /cmd_wrench subscriber within 10s)."
+		echo "         Nothing is thrusting; check the stack, then retry."
+		return 1
+	fi
 
 	sleep "${duration}"
 
 	echo "Stopping force..."
 
-	ros2 topic pub --once /cmd_wrench geometry_msgs/msg/Wrench "force:
+	if ! ros2 topic pub --times 2 -r 1 -w 1 --max-wait-time-secs 10 --keep-alive 2 \
+		/cmd_wrench geometry_msgs/msg/Wrench "force:
   x: 0.0
   y: 0.0
   z: 0.0
@@ -276,7 +291,11 @@ torque:
   x: 0.0
   y: 0.0
   z: 0.0
-"
+"; then
+		echo "WARNING: STOP wrench NOT delivered (no /cmd_wrench subscriber within 10s)."
+		echo "         Thrusters may STILL BE APPLYING FORCE — check the stack NOW."
+		return 1
+	fi
 }
 
 function move_rel() {
