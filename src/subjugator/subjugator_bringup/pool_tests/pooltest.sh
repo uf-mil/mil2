@@ -6,6 +6,8 @@ set -euo pipefail
 # ---- config / globals -------------------------------------------------------
 DEFAULT_DELAY=30
 DELAY="$DEFAULT_DELAY"
+DEFAULT_PROBE_TIMEOUT=15
+PROBE_TIMEOUT="$DEFAULT_PROBE_TIMEOUT"
 SIM=0
 DRYRUN=0
 ROLE=""
@@ -58,6 +60,9 @@ FLAGS:
   --role R        R = survey_repair (nut_cylinder,electric_box) | search_rescue (pill_cylinder,bandaid_box)
   --sim           rehearse the harness in Gazebo (adds down_image_topic override)
   --delay N       autonomous-start countdown seconds after GO (default 30)
+  --probe-timeout N  seconds to wait for ONE message when checking a topic is
+                  alive (default 15). Bump for slow rigs (sim, YOLO warmup);
+                  the old 5s hz-based probe false-failed on streams under ~1 Hz.
   --score-level N ('full' only) how far up the ladder to run (default 6 = everything):
                     0 pinger->table | 1 +center | 2 +grab 1 | 3 +grab 2 | 5 +face image | 6 +rotation bonus
   --no-pinger     ('full' only) skip S1 acoustic homing; start at S2 (sub is hand-placed over the octagon)
@@ -99,6 +104,14 @@ parse_args() {
 			DELAY="$2"
 			shift
 			;;
+		--probe-timeout)
+			[ $# -ge 2 ] || {
+				say "Error: --probe-timeout requires a value"
+				exit 2
+			}
+			PROBE_TIMEOUT="$2"
+			shift
+			;;
 		--role)
 			[ $# -ge 2 ] || {
 				say "Error: --role requires a value"
@@ -131,6 +144,20 @@ parse_args() {
 		exit 2
 		;;
 	esac
+	case "$PROBE_TIMEOUT" in
+	'' | *[!0-9]*)
+		say "Error: --probe-timeout requires a positive integer"
+		exit 2
+		;;
+	esac
+	# Base-10 normalize: a leading zero ('09') would otherwise be parsed as
+	# octal by bash arithmetic later and crash the script; '00' would pass a
+	# plain '0' reject and silently zero the probe window.
+	PROBE_TIMEOUT=$((10#$PROBE_TIMEOUT))
+	if [ "$PROBE_TIMEOUT" -le 0 ]; then
+		say "Error: --probe-timeout requires a positive integer"
+		exit 2
+	fi
 	if [ -n "$SCORE_LEVEL" ]; then
 		case "$SCORE_LEVEL" in
 		'' | *[!0-9]*)
@@ -275,16 +302,42 @@ ensure_role() {
 	done
 }
 
+# Wait up to PROBE_TIMEOUT seconds for ONE message on a topic. Aliveness needs a
+# single message, not a measurable rate: the old `timeout 5 ros2 topic hz` gate
+# needed >=2 messages inside ~2-4s of usable window (after subscriber matching),
+# so anything under ~1 Hz (slow sim, YOLO warming up) was branded MISSING while
+# perfectly healthy. `echo --once` also exits nonzero IMMEDIATELY when the
+# publisher isn't discovered yet, hence the retry loop rather than one call.
+probe_topic_capture() { # $1 = topic; prints ONE message within PROBE_TIMEOUT, else rc 1
+	local deadline=$((SECONDS + PROBE_TIMEOUT)) out
+	while :; do
+		local left=$((deadline - SECONDS))
+		[ "$left" -le 0 ] && return 1
+		if out="$(timeout "$left" ros2 topic echo --once "$1" 2>/dev/null)" && [ -n "$out" ]; then
+			printf '%s\n' "$out"
+			return 0
+		fi
+		[ "$SECONDS" -ge "$deadline" ] && return 1 # don't sleep past the deadline
+		sleep 1
+	done
+}
+
+probe_topic_once() { # $1 = topic; 0 if a message arrived within PROBE_TIMEOUT
+	probe_topic_capture "$1" >/dev/null
+}
+
 # Fail loud if the down-cam detection stream is not alive before a vision stage.
 require_down_detections() {
 	if [ "$DRYRUN" -eq 1 ]; then
 		say "DRY RUN: would verify /yolo_down/detections is publishing"
 		return 0
 	fi
-	if ! timeout 5 ros2 topic hz /yolo_down/detections >/dev/null 2>&1; then
+	if ! probe_topic_once /yolo_down/detections; then
 		hr
-		say "PRECONDITION FAILED: no detections on /yolo_down/detections."
+		say "PRECONDITION FAILED: no message on /yolo_down/detections within ${PROBE_TIMEOUT}s."
 		say "Likely cause: the down-cam YOLO node (yolo_down) is not running, or no model is loaded."
+		say "(A just-started YOLO node can take several seconds of model warmup; retry or"
+		say " raise --probe-timeout before concluding it is down.)"
 		say "Fix that, then re-run this stage. NOT launching a motion stage blind."
 		return 1
 	fi
@@ -309,16 +362,22 @@ collect_form() {
 }
 
 # ---- stage implementations --------------------------------------------------
-check_topic_alive() { # $1 = label, $2 = topic; prints rate or MISSING; returns 0 if publishing, 1 if not
+check_topic_alive() { # $1 = label, $2 = topic; gates on ONE message; rate shown only as info
+	say "-- $1 ($2):"
+	if ! probe_topic_once "$2"; then
+		say "  MISSING (no message within ${PROBE_TIMEOUT}s)"
+		return 1
+	fi
+	# Informational only — never gates. Sub-1 Hz streams won't produce a rate
+	# inside this short window; that's fine, the topic already proved alive.
 	local out
 	out="$(timeout 5 ros2 topic hz "$2" 2>/dev/null | head -n 2 || true)"
-	say "-- $1 ($2):"
 	if [ -n "$out" ]; then
 		say "$out"
-		return 0
+	else
+		say "  alive (rate too low to measure in 5s)"
 	fi
-	say "  MISSING"
-	return 1
+	return 0
 }
 
 stage_preflight() {
@@ -331,14 +390,24 @@ stage_preflight() {
 		say "DRY RUN: would check: $img publishing (+WxH), /yolo_down/detections rate, /odometry/filtered, classes seen."
 		return 0
 	fi
-	local ok=1
+	local ok=1 det_ok=1
 	check_topic_alive "down image" "$img" || ok=0
-	check_topic_alive "detections" "/yolo_down/detections" || ok=0
+	check_topic_alive "detections" "/yolo_down/detections" || {
+		ok=0
+		det_ok=0
+	}
 	check_topic_alive "odometry" "/odometry/filtered" || ok=0
 	say "-- classes currently detected:"
-	local classes
-	classes="$(timeout 5 ros2 topic echo --once /yolo_down/detections 2>/dev/null | grep -i "class_name" || true)"
-	if [ -n "$classes" ]; then say "$classes"; else say "  (none in this sample)"; fi
+	if [ "$det_ok" -eq 1 ]; then
+		# probe_topic_capture (not a bare `echo --once`): same discovery race
+		# as the aliveness gates — a single un-retried call can exit in <1s
+		# before the publisher is discovered and print a bogus "(none)".
+		local classes
+		classes="$(probe_topic_capture /yolo_down/detections | grep -i "class_name" || true)"
+		if [ -n "$classes" ]; then say "$classes"; else say "  (none in this sample)"; fi
+	else
+		say "  (skipped: detections stream not alive)"
+	fi
 	hr
 	if [ "$ok" -eq 1 ]; then say "PREFLIGHT OK."; else
 		say "PREFLIGHT FAILED — fix MISSING items before any motion stage."
@@ -358,6 +427,10 @@ stage_calib() {
 	say "  file: src/subjugator/mission_planner/subjugator_missions/xml/center_camera_test_mission.xml"
 	say '  try:  set swap_axes="true", or flip map_x_sign / map_y_sign between 1.0 and -1.0'
 	say "  then: source scripts/setup.bash && colcon build --packages-select mission_planner && source install/setup.bash"
+	# Gate like every other vision stage: CenterCamera now waits (RUNNING) for a
+	# detection stream instead of fast-failing, so with no yolo_down the mission
+	# would silently burn its whole 30s Timeout in the water.
+	require_down_detections || return 0
 	go_gate || return 0
 	local dir
 	dir="$(make_run_dir calib)"

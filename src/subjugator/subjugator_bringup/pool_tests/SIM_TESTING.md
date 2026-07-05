@@ -211,9 +211,12 @@ cd src/subjugator/subjugator_bringup/pool_tests
 ./pooltest.sh preflight --sim
 ```
 
-You should see `down image`, `detections`, and `odometry` all reporting a rate,
-the currently-detected classes listed, and `PREFLIGHT OK`. If anything says
-`MISSING`, fix it (Parts 3–4) before moving on.
+You should see `down image`, `detections`, and `odometry` all alive (a rate when
+the stream is fast enough to measure, or `alive (rate too low to measure in 5s)`
+on a slow rig — both are fine), the currently-detected classes listed, and
+`PREFLIGHT OK`. If anything says `MISSING (no message within Ns)`, fix it
+(Parts 3–4) before moving on. On a slow machine (software-rendered sim, CPU
+YOLO still warming up) pass `--probe-timeout 30` to give the probes more time.
 
 > `./pooltest.sh --help` lists every stage and flag. `--dry-run` prints what a
 > stage would do without launching anything — handy to read the script's plan.
