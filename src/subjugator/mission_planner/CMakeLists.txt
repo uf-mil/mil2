@@ -123,9 +123,9 @@ if(BUILD_TESTING)
     test_search_pattern
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
 
-  ament_add_gtest(test_center_camera_logic test/test_center_camera_logic.cpp)
+  ament_add_gtest(test_detection_gate test/test_detection_gate.cpp)
   target_include_directories(
-    test_center_camera_logic
+    test_detection_gate
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
 endif()
 

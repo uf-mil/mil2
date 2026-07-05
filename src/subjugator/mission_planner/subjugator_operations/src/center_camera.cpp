@@ -32,7 +32,7 @@ BT::PortsList CenterCamera::providedPorts()
              // NOT per BT tick, so the tolerance window is rate-independent
              // (~0.5 s at a 10 Hz pool detection stream). Caveat: an unstamped
              // publisher (stamp==0) degrades the count to per-tick — see
-             // center_camera_logic.hpp.
+             // detection_gate.hpp.
              BT::InputPort<int>("miss_frames", 5,
                                 "Consecutive fresh detection frames without the target before FAILURE"),
              // Pixel->body mapping. Defaults are placeholders; tune empirically
@@ -53,8 +53,15 @@ BT::NodeStatus CenterCamera::onStart()
     }
     settling_ = false;
     step_dist_ = 0.0;
-    gate_.reset();
     in_tol_count_ = 0;
+    // Seed the gate with whatever frame is already cached so only frames
+    // captured AFTER this activation count. Matters most for the second hone
+    // in ApproachAndGrasp: it starts right after the lift RelativeMove, and
+    // acting on a cached pre-lift frame is the overshoot bug the freshness
+    // gate exists to prevent — across node restarts, not just within one.
+    std::string camera = "down";
+    (void)getInput("camera", camera);
+    gate_.seed_from(ctx_->detections_for(camera));
     return BT::NodeStatus::RUNNING;
 }
 
@@ -145,7 +152,7 @@ BT::NodeStatus CenterCamera::onRunning()
         }
     }
 
-    // Frame gate (see center_camera_logic.hpp): only ever act on a detection
+    // Frame gate (see detection_gate.hpp): only ever act on a detection
     // frame newer than the one we last considered — never re-correct from a
     // pre-move observation (would overshoot), and settle_ticks counts distinct
     // frames rather than fast re-reads of one stale frame. A fresh frame
@@ -158,18 +165,18 @@ BT::NodeStatus CenterCamera::onRunning()
     std::int64_t stamp_ns = rclcpp::Time(arr->header.stamp).nanoseconds();
     switch (gate_.update(best != nullptr, stamp_ns, miss_frames))
     {
-        case center_camera::MissGate::Verdict::kStale:
+        case detection_gate::MissGate::Verdict::kStale:
             return BT::NodeStatus::RUNNING;  // same frame as last tick -> hold
-        case center_camera::MissGate::Verdict::kMiss:
+        case detection_gate::MissGate::Verdict::kMiss:
             // Tolerated flicker — but it still breaks the "consecutive fresh
             // centered frames" chain, so the settle confirmation starts over.
             in_tol_count_ = 0;
             return BT::NodeStatus::RUNNING;
-        case center_camera::MissGate::Verdict::kLost:
+        case detection_gate::MissGate::Verdict::kLost:
             RCLCPP_WARN(ctx_->logger(), "CenterCamera: '%s' lost (%d consecutive frames without it)", label.c_str(),
                         gate_.misses);
             return BT::NodeStatus::FAILURE;
-        case center_camera::MissGate::Verdict::kHit:
+        case detection_gate::MissGate::Verdict::kHit:
             break;  // fresh frame with the target -> evaluate below
     }
 

@@ -6,8 +6,8 @@
 #include <memory>
 #include <string>
 
-#include "center_camera_logic.hpp"
 #include "context.hpp"
+#include "detection_gate.hpp"
 
 // Closed-loop XY visual servo: nudges the sub in body-frame surge/sway until a
 // YOLO target's bounding-box centroid is centered in the (down-cam) image, then
@@ -39,6 +39,6 @@ class CenterCamera : public BT::StatefulActionNode
     double step_dist_{ 0.0 };  // horizontal length of the in-flight step (m)
     // Frame gate: freshness (never act twice on one frame) + lost-vs-flicker
     // miss counting. Owns the last-considered stamp.
-    center_camera::MissGate gate_;
+    detection_gate::MissGate gate_;
     int in_tol_count_{ 0 };  // consecutive fresh centered frames
 };

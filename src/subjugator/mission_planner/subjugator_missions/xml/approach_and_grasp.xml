@@ -32,9 +32,9 @@
                         <!-- 5b. Confirm the grab: a held object keeps its apparent size, a missed one
                              shrinks as the sub lifts away. FAILURE retries the cycle; with no baseline
                              it degrades to SUCCESS (open-loop). -->
-                        <Condition ID="ConfirmGraspByScale" label="{target_label}" camera="down"
-                                   min_conf="0.30" baseline_area="{grasp_baseline_area}"
-                                   keep_ratio="{grasp_keep_ratio}" ctx="{ctx}"/>
+                        <Action ID="ConfirmGraspByScale" label="{target_label}" camera="down"
+                                min_conf="0.30" baseline_area="{grasp_baseline_area}"
+                                keep_ratio="{grasp_keep_ratio}" ctx="{ctx}"/>
                     </Sequence>
                 </RetryUntilSuccessful>
                 <!-- 6. Record what we grabbed -> S3's exclude reads this for the S6 loop -->
