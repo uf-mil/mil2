@@ -2,9 +2,13 @@
     <!--
         Reusable subtree: hone the sub over a labeled object on the chosen camera.
         Closed-loop XY centering (CenterCamera) wrapped so the mission degrades
-        gracefully: if the object is never detected or centering exceeds the
-        timeout, the Timeout/CenterCamera branch fails and AlwaysSuccess lets the
-        parent continue (e.g. on dead-reckoning) instead of blocking.
+        gracefully: if the object stays missing for miss_frames consecutive fresh
+        detection frames (CenterCamera default 5 — a single flickered frame no
+        longer aborts) or centering exceeds the timeout, the Timeout/CenterCamera
+        branch fails and AlwaysSuccess lets the parent continue (e.g. on
+        dead-reckoning) instead of blocking. With NO detection stream at all,
+        CenterCamera waits (RUNNING), so the degrade then lands at timeout_msec
+        rather than instantly.
 
         Centering only: the caller positions the sub at hover depth first.
         Pixel->body sign/axis mapping and gains are CenterCamera defaults

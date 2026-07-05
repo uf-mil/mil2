@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 
+#include "center_camera_logic.hpp"
 #include "context.hpp"
 
 // Closed-loop XY visual servo: nudges the sub in body-frame surge/sway until a
@@ -14,8 +15,9 @@
 //
 // Unlike HoneBearing (one-shot yaw), this stays RUNNING across many small
 // correction steps, waiting for each step to settle before re-evaluating.
-// Returns FAILURE when the target isn't visible so a Fallback can degrade to
-// dead-reckoning. Wrap it in an XML <Timeout> to bound the loop.
+// Returns FAILURE only after `miss_frames` consecutive fresh detection frames
+// lack the target (transient flicker is tolerated) so a Fallback can degrade
+// to dead-reckoning. Wrap it in an XML <Timeout> to bound the loop.
 class CenterCamera : public BT::StatefulActionNode
 {
   public:
@@ -34,7 +36,9 @@ class CenterCamera : public BT::StatefulActionNode
     bool settling_{ false };      // a commanded correction is still in flight
     double step_start_x_{ 0.0 };  // sub XY when the in-flight step was issued
     double step_start_y_{ 0.0 };
-    double step_dist_{ 0.0 };           // horizontal length of the in-flight step (m)
-    std::int64_t last_acted_ns_{ -1 };  // stamp (ns) of the detection frame last acted on
-    int in_tol_count_{ 0 };             // consecutive fresh centered frames
+    double step_dist_{ 0.0 };  // horizontal length of the in-flight step (m)
+    // Frame gate: freshness (never act twice on one frame) + lost-vs-flicker
+    // miss counting. Owns the last-considered stamp.
+    center_camera::MissGate gate_;
+    int in_tol_count_{ 0 };  // consecutive fresh centered frames
 };

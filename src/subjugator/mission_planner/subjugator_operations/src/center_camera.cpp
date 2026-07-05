@@ -23,7 +23,18 @@ BT::PortsList CenterCamera::providedPorts()
              BT::InputPort<double>("kp", 0.5, "Proportional gain: normalized error -> meters/step"),
              BT::InputPort<double>("max_step", 0.25, "Max XY correction per step (m)"),
              BT::InputPort<double>("settle_pos_tol", 0.10, "Re-evaluate once within this distance of last step (m)"),
-             BT::InputPort<int>("settle_ticks", 3, "Consecutive centered reads required for SUCCESS"),
+             BT::InputPort<int>("settle_ticks", 3,
+                                "Consecutive fresh centered frames required for SUCCESS (a fresh frame that is "
+                                "off-center OR missing the target resets the count)"),
+             // Losing should be harder than winning: 3 consecutive fresh frames
+             // lock a target (SelectTarget), 5 declare it lost. 1 = legacy
+             // fail-on-first-miss. Counted per distinct detection frame (stamp),
+             // NOT per BT tick, so the tolerance window is rate-independent
+             // (~0.5 s at a 10 Hz pool detection stream). Caveat: an unstamped
+             // publisher (stamp==0) degrades the count to per-tick — see
+             // center_camera_logic.hpp.
+             BT::InputPort<int>("miss_frames", 5,
+                                "Consecutive fresh detection frames without the target before FAILURE"),
              // Pixel->body mapping. Defaults are placeholders; tune empirically
              // in sim (the down-cam is pitched 90deg + an optical-frame rotation,
              // so the surge/sway assignment and signs are not obvious).
@@ -42,7 +53,7 @@ BT::NodeStatus CenterCamera::onStart()
     }
     settling_ = false;
     step_dist_ = 0.0;
-    last_acted_ns_ = -1;
+    gate_.reset();
     in_tol_count_ = 0;
     return BT::NodeStatus::RUNNING;
 }
@@ -58,6 +69,7 @@ BT::NodeStatus CenterCamera::onRunning()
     double max_step = 0.25;
     double settle_pos_tol = 0.10;
     int settle_ticks = 3;
+    int miss_frames = 5;
     bool swap_axes = false;
     double map_x_sign = 1.0;
     double map_y_sign = 1.0;
@@ -70,6 +82,7 @@ BT::NodeStatus CenterCamera::onRunning()
     (void)getInput("max_step", max_step);
     (void)getInput("settle_pos_tol", settle_pos_tol);
     (void)getInput("settle_ticks", settle_ticks);
+    (void)getInput("miss_frames", miss_frames);
     (void)getInput("swap_axes", swap_axes);
     (void)getInput("map_x_sign", map_x_sign);
     (void)getInput("map_y_sign", map_y_sign);
@@ -111,36 +124,53 @@ BT::NodeStatus CenterCamera::onRunning()
         return BT::NodeStatus::RUNNING;
     }
 
-    // Best detection of the requested label.
+    // Best detection of the requested label. No detection message at all yet
+    // (cold start, e.g. YOLO still warming up) -> keep waiting like the image
+    // size above; the wrapping <Timeout> bounds the wait.
     std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for(camera);
+    if (!arr)
+    {
+        RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000, "CenterCamera: waiting for %s detections",
+                             camera.c_str());
+        return BT::NodeStatus::RUNNING;
+    }
     yolo_msgs::msg::Detection const* best = nullptr;
     double best_conf = 0.0;
-    if (arr)
+    for (auto const& d : arr->detections)
     {
-        for (auto const& d : arr->detections)
+        if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
         {
-            if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
-            {
-                best = &d;
-                best_conf = d.score;
-            }
+            best = &d;
+            best_conf = d.score;
         }
     }
-    if (!best)
-    {
-        // Target not visible -> let a Fallback degrade to dead-reckon.
-        return BT::NodeStatus::FAILURE;
-    }
 
-    // Only ever act on a detection frame newer than the one we last used, so we
-    // never re-correct from a pre-move observation (would overshoot) and so the
-    // settle_ticks confirmation counts distinct frames rather than fast re-reads
-    // of one stale frame. stamp==0 (publisher not stamping) -> treat as fresh so
-    // we never stall; pacing then falls back to the step-traversal gate above.
+    // Frame gate (see center_camera_logic.hpp): only ever act on a detection
+    // frame newer than the one we last considered — never re-correct from a
+    // pre-move observation (would overshoot), and settle_ticks counts distinct
+    // frames rather than fast re-reads of one stale frame. A fresh frame
+    // WITHOUT the target is a miss; only miss_frames consecutive fresh misses
+    // mean the target is genuinely lost (-> FAILURE, so a Fallback can degrade
+    // to dead-reckon). A single flickered frame no longer aborts centering.
+    // Known tradeoff: if the publisher dies mid-centering the last array stays
+    // stale forever (kStale -> RUNNING); the wrapping <Timeout> is the bound
+    // for that case, same as when the target-present frame goes stale.
     std::int64_t stamp_ns = rclcpp::Time(arr->header.stamp).nanoseconds();
-    if (stamp_ns != 0 && stamp_ns <= last_acted_ns_)
+    switch (gate_.update(best != nullptr, stamp_ns, miss_frames))
     {
-        return BT::NodeStatus::RUNNING;  // hold until a fresh frame arrives
+        case center_camera::MissGate::Verdict::kStale:
+            return BT::NodeStatus::RUNNING;  // same frame as last tick -> hold
+        case center_camera::MissGate::Verdict::kMiss:
+            // Tolerated flicker — but it still breaks the "consecutive fresh
+            // centered frames" chain, so the settle confirmation starts over.
+            in_tol_count_ = 0;
+            return BT::NodeStatus::RUNNING;
+        case center_camera::MissGate::Verdict::kLost:
+            RCLCPP_WARN(ctx_->logger(), "CenterCamera: '%s' lost (%d consecutive frames without it)", label.c_str(),
+                        gate_.misses);
+            return BT::NodeStatus::FAILURE;
+        case center_camera::MissGate::Verdict::kHit:
+            break;  // fresh frame with the target -> evaluate below
     }
 
     // Normalized centroid error: 0 = centered, +/-1 = image edge.
@@ -149,7 +179,6 @@ BT::NodeStatus CenterCamera::onRunning()
 
     if (std::abs(ex) < tol_norm && std::abs(ey) < tol_norm)
     {
-        last_acted_ns_ = stamp_ns;
         if (++in_tol_count_ >= settle_ticks)
         {
             RCLCPP_INFO(ctx_->logger(), "CenterCamera: centered (ex=%.3f ey=%.3f)", ex, ey);
@@ -183,13 +212,12 @@ BT::NodeStatus CenterCamera::onRunning()
         ctx_->last_goal = goal;
     }
 
-    // Record private settle state: the pose we issued the step from, the step's
-    // horizontal length, and the frame we acted on. The next correction waits
-    // until this step is traversed (above) and a newer frame arrives.
+    // Record private settle state: the pose we issued the step from and the
+    // step's horizontal length. The next correction waits until this step is
+    // traversed (above) and a newer frame arrives (frame gate above).
     step_start_x_ = current->position.x;
     step_start_y_ = current->position.y;
     step_dist_ = std::hypot(world_dx, world_dy);
-    last_acted_ns_ = stamp_ns;
     settling_ = true;
 
     RCLCPP_INFO(ctx_->logger(), "CenterCamera: ex=%.3f ey=%.3f -> surge=%.3f sway=%.3f", ex, ey, step_surge, step_sway);
