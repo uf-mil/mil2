@@ -223,7 +223,11 @@ run_mission() { # $1 = run dir, $2 = mission name. Launches + waits. Always retu
 	local dir="$1" mission="$2"
 	local args=(--ros-args -p mission:="$mission")
 	[ -n "$ROLE" ] && args+=(-p role:="$ROLE")
-	[ "$SIM" -eq 1 ] && args+=(-p down_image_topic:="$SIM_IMAGE_TOPIC")
+	# use_sim_time: mission time budgets (RosTimeout/RosDelay decorators and the
+	# custom nodes' timeout_msec ports, all on node->now()) then follow the gz
+	# /clock, so a slow-RTF rehearsal gets the intended SIM-seconds of motion
+	# instead of starving 20-50x. Expect wall runs to take ~1/RTF times longer.
+	[ "$SIM" -eq 1 ] && args+=(-p down_image_topic:="$SIM_IMAGE_TOPIC" -p use_sim_time:=true)
 	# Capstone dials (harmless for missions that don't read them; the node always declares them).
 	[ -n "$SCORE_LEVEL" ] && args+=(-p score_level:="$SCORE_LEVEL")
 	[ -n "$DO_PINGER" ] && args+=(-p do_pinger:="$DO_PINGER")

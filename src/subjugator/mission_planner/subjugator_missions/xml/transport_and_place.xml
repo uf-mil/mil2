@@ -22,14 +22,14 @@
         <!-- Fail-fast guard: never place without something in the gripper (S4 sets grabbed_label) -->
         <Precondition if="grabbed_label != ''" else="FAILURE">
             <Sequence>
-                <!-- Decide the target basket from role; Timeout bounds unknown/unrecognized role -> FAILURE -->
-                <Timeout msec="{role_timeout_msec}">
+                <!-- Decide the target basket from role; RosTimeout bounds unknown/unrecognized role -> FAILURE -->
+                <RosTimeout msec="{role_timeout_msec}" ctx="{ctx}">
                     <Action ID="SelectBasket"
                             survey_marker="warning"
                             rescue_marker="red_cross"
                             basket_label="{basket_label}"
                             ctx="{ctx}"/>
-                </Timeout>
+                </RosTimeout>
                 <RetryUntilSuccessful num_attempts="{place_attempts}">
                     <Sequence name="place_cycle">
                         <!-- 1. Dead-reckon laterally toward the basket region to bring the marker into FOV -->
@@ -37,10 +37,13 @@
                                  x="{lateral_x}" y="{lateral_y}" z="0.0"
                                  pos_tol="0.2" ori_tol_deg="180.0"
                                  msec="{move_timeout_msec}" ctx="{ctx}"/>
-                        <!-- 2. Center over the basket marker (degrades to dead-reckon internally on timeout) -->
+                        <!-- 2. Center over the basket marker (degrades to dead-reckon internally on timeout).
+                             miss_frames raised above the default 5: the held object hangs under the
+                             sub and can occlude the marker for longer flicker runs. Tune poolside. -->
                         <SubTree ID="HoneOverTarget" _autoremap="true"
                                  label="{basket_label}" camera="down"
                                  tol_norm="{center_tol_norm}" timeout_msec="{center_timeout_msec}"
+                                 miss_frames="8"
                                  ctx="{ctx}"/>
                         <!-- 3. Descend to lower the held object into the basket well (negative z = down) -->
                         <SubTree ID="RelativeMove" _autoremap="true"
@@ -48,7 +51,8 @@
                                  msec="{move_timeout_msec}" ctx="{ctx}"/>
                         <!-- 4. Open the gripper -> GripperControl detaches -> object drops into the basket -->
                         <Action ID="ActuateServo" target="gripper" angle="{open_angle}" ctx="{ctx}"/>
-                        <Delay delay_msec="{settle_msec}"><AlwaysSuccess/></Delay>
+                        <!-- RosDelay: the detach/drop settle is physics -> sim-seconds in sim -->
+                        <RosDelay delay_msec="{settle_msec}" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
                         <!-- 5. Lift clear of the basket/table (positive z = up) -->
                         <SubTree ID="RelativeMove" _autoremap="true"
                                  z="{lift_z}" pos_tol="0.2" ori_tol_deg="180.0"

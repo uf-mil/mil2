@@ -7,7 +7,7 @@
         (spawn pose / teleport). Run: mission:=CenterCameraTest
     -->
     <BehaviorTree ID="CenterCameraTest">
-        <Timeout msec="30000">
+        <RosTimeout msec="30000" ctx="{ctx}">
             <Action ID="CenterCamera"
                     camera="down"
                     label="table"
@@ -16,10 +16,11 @@
                     max_step="0.25"
                     settle_pos_tol="0.10"
                     settle_ticks="3"
+                    miss_frames="5"
                     swap_axes="false"
                     map_x_sign="1.0"
                     map_y_sign="1.0"
                     ctx="{ctx}"/>
-        </Timeout>
+        </RosTimeout>
     </BehaviorTree>
 </root>

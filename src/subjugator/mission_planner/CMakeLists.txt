@@ -54,7 +54,9 @@ add_library(
   subjugator_operations/src/align_yaw.cpp
   subjugator_operations/src/go_to_pinger.cpp
   subjugator_operations/src/descend_until_detected.cpp
-  subjugator_operations/src/search_for_target.cpp)
+  subjugator_operations/src/search_for_target.cpp
+  subjugator_operations/src/ros_timeout.cpp
+  subjugator_operations/src/ros_delay.cpp)
 
 ament_target_dependencies(
   operations
@@ -126,6 +128,11 @@ if(BUILD_TESTING)
   ament_add_gtest(test_detection_gate test/test_detection_gate.cpp)
   target_include_directories(
     test_detection_gate
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_ros_time_budget test/test_ros_time_budget.cpp)
+  target_include_directories(
+    test_ros_time_budget
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
 endif()
 

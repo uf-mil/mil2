@@ -23,7 +23,7 @@
                 <Repeat num_cycles="{turn_ticks}">
                     <Sequence>
                         <Action ID="YawStyle" ctx="{ctx}"/>
-                        <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
+                        <RosDelay delay_msec="3000" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
                     </Sequence>
                 </Repeat>
             </Precondition>

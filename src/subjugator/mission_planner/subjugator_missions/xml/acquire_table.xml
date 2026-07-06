@@ -28,7 +28,7 @@
             <!-- Center over the table (degrades gracefully if unseen). -->
             <SubTree ID="HoneOverTarget" _autoremap="true"
                      label="table" camera="down"
-                     tol_norm="0.05" timeout_msec="20000" ctx="{ctx}"/>
+                     tol_norm="0.05" timeout_msec="20000" miss_frames="5" ctx="{ctx}"/>
         </Sequence>
     </BehaviorTree>
 </root>

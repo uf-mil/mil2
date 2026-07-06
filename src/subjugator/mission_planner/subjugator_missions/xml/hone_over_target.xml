@@ -3,12 +3,17 @@
         Reusable subtree: hone the sub over a labeled object on the chosen camera.
         Closed-loop XY centering (CenterCamera) wrapped so the mission degrades
         gracefully: if the object stays missing for miss_frames consecutive fresh
-        detection frames (CenterCamera default 5 — a single flickered frame no
-        longer aborts) or centering exceeds the timeout, the Timeout/CenterCamera
-        branch fails and AlwaysSuccess lets the parent continue (e.g. on
-        dead-reckoning) instead of blocking. With NO detection stream at all,
-        CenterCamera waits (RUNNING), so the degrade then lands at timeout_msec
-        rather than instantly.
+        detection frames (a single flickered frame no longer aborts) or centering
+        exceeds the timeout, the RosTimeout/CenterCamera branch fails and
+        AlwaysSuccess lets the parent continue (e.g. on dead-reckoning) instead
+        of blocking. With NO detection stream at all, CenterCamera waits
+        (RUNNING), so the degrade then lands at timeout_msec rather than
+        instantly. The budget is ROS time (RosTimeout, not the wall-clock
+        builtin), so slow-RTF sim runs get the intended sim-seconds.
+
+        miss_frames is a port so callers facing extra flicker can raise it
+        (S5: the held object partially occludes the basket marker); every
+        call site passes it explicitly (CenterCamera's own default is 5).
 
         Centering only: the caller positions the sub at hover depth first.
         Pixel->body sign/axis mapping and gains are CenterCamera defaults
@@ -16,13 +21,14 @@
     -->
     <BehaviorTree ID="HoneOverTarget">
         <Fallback>
-            <Timeout msec="{timeout_msec}">
+            <RosTimeout msec="{timeout_msec}" ctx="{ctx}">
                 <Action ID="CenterCamera"
                         camera="{camera}"
                         label="{label}"
                         tol_norm="{tol_norm}"
+                        miss_frames="{miss_frames}"
                         ctx="{ctx}"/>
-            </Timeout>
+            </RosTimeout>
             <AlwaysSuccess/>
         </Fallback>
     </BehaviorTree>

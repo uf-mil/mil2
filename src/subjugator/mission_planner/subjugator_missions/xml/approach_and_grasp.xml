@@ -10,6 +10,7 @@
                         <SubTree ID="HoneOverTarget" _autoremap="true"
                                  label="{target_label}" camera="down"
                                  tol_norm="{center_tol_norm}" timeout_msec="{center_timeout_msec}"
+                                 miss_frames="5"
                                  ctx="{ctx}"/>
                         <!-- 2. Ensure the gripper is open before descending -->
                         <Action ID="ActuateServo" target="gripper" angle="{open_angle}" ctx="{ctx}"/>
@@ -19,7 +20,10 @@
                                  msec="{move_timeout_msec}" ctx="{ctx}"/>
                         <!-- 4. Close to grasp, then let the joint/attach settle -->
                         <Action ID="ActuateServo" target="gripper" angle="{close_angle}" ctx="{ctx}"/>
-                        <Delay delay_msec="{grip_settle_msec}"><AlwaysSuccess/></Delay>
+                        <!-- RosDelay: the attach settle is physics, so it must consume
+                             sim-seconds in sim (the builtin's wall delay shrinks to
+                             nothing at low RTF). Identical at the pool. -->
+                        <RosDelay delay_msec="{grip_settle_msec}" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
                         <!-- 4b. Record the centered apparent (bbox) size of the target before lifting.
                              No detection (e.g. down-cam model not landed) -> baseline 0 -> step 5b
                              stays open-loop. Always SUCCEEDs. -->

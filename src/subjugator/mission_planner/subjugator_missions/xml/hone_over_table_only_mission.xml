@@ -6,6 +6,6 @@
     -->
     <BehaviorTree ID="HoneOverTableOnly">
         <SubTree ID="HoneOverTarget" label="table" camera="down"
-                 tol_norm="0.05" timeout_msec="30000" ctx="{ctx}"/>
+                 tol_norm="0.05" timeout_msec="30000" miss_frames="5" ctx="{ctx}"/>
     </BehaviorTree>
 </root>

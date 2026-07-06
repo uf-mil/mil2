@@ -10,10 +10,10 @@
     -->
     <BehaviorTree ID="HoneOverTableSelect">
         <Sequence>
-            <Timeout msec="30000">
+            <RosTimeout msec="30000" ctx="{ctx}">
                 <Action ID="CenterCamera"
                         camera="down" label="table" tol_norm="0.05" ctx="{ctx}"/>
-            </Timeout>
+            </RosTimeout>
             <SubTree ID="SelectTargetS3" ctx="{ctx}" target_label="{target_label}"/>
         </Sequence>
     </BehaviorTree>

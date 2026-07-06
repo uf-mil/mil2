@@ -203,6 +203,15 @@ From here on, the guided runner `pooltest.sh` drives the missions. It was built
 for poolside testing but has a `--sim` flag that wires the missions to the sim
 camera topic. Run **preflight first** — it just confirms the rig, moves nothing.
 
+> **Sim time vs wall time.** `--sim` also launches the mission with
+> `use_sim_time:=true`, so **all mission time budgets elapse in SIM seconds**
+> (the `RosTimeout`/`RosDelay` decorators and every node `timeout_msec` port
+> follow the gz `/clock`). That is what makes slow-RTF rehearsals meaningful —
+> a 30 s motion budget buys 30 sim-seconds of motion no matter how slowly the
+> sim grinds. The flip side: at RTF 0.05 that same budget takes ~10 wall-clock
+> minutes to expire, so a "stuck" mission on a slow rig is usually just a
+> budget draining in slow motion. Check the gz RTF before killing anything.
+
 **Terminal 5:**
 
 ```bash
@@ -432,6 +441,8 @@ is silently treated as a remap; `pooltest.sh` and the commands above use the cor
 | Stage says it ran but nothing moved | Check the stage's `console.log` under `pooltest_runs/<stage>_<UTC>/` for the real error. |
 | Grasp closes but the prop doesn't attach | The prop name must be in `grasp_targets.yaml` **and** match the world `<model name>`. Both should be the real classes (`nut_cylinder`, …); a stale checkout may still have placeholder props. |
 | `/gripper` service not found | The `GripperControl` plugin isn't loaded — you're on a branch/world without it, or the sub didn't spawn. Confirm Part 3 launched cleanly. |
+| A one-shot `ros2 topic pub` "ran" but nothing reacted | Under rmw_zenoh a one-shot publish can be silently lost (the sample leaves before the writer→router→reader route exists, or the process exits while it is in flight). **Rule: never bare `--once` for anything that matters.** Use `--times 2 -r 1 -w 1 --max-wait-time-secs 10 --keep-alive 2` — send it twice, wait for a matched subscriber (bounded, so a dead stack fails loud), keep the session alive after the last sample. `ros2 service call` and messages from long-lived nodes are immune; only short-lived one-shot publishers race. |
+| Mission looks frozen in `--sim` but gz is still stepping | Time budgets are SIM-seconds under `--sim` (see Part 5). At RTF 0.05 a 30 s budget ≈ 10 min wall. Watch the gz RTF / `/clock` before concluding it hung. |
 
 ---
 

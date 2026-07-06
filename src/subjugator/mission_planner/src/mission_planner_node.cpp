@@ -28,6 +28,8 @@
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "record_target_scale.hpp"
+#include "ros_delay.hpp"
+#include "ros_timeout.hpp"
 #include "search_for_target.hpp"
 #include "select_basket.hpp"
 #include "select_face_symbol.hpp"
@@ -179,6 +181,9 @@ int main(int argc, char** argv)
     factory.registerNodeType<AlignYaw>("AlignYaw");
     factory.registerNodeType<DescendUntilDetected>("DescendUntilDetected");
     factory.registerNodeType<SearchForTarget>("SearchForTarget");
+    // ROS-time (sim-aware) replacements for the builtin <Timeout>/<Delay>.
+    factory.registerNodeType<RosTimeout>("RosTimeout");
+    factory.registerNodeType<RosDelay>("RosDelay");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");

@@ -4,32 +4,32 @@
         fall back to facing the best of all four symbols (still scores "any image").
         HoneBearing runs with wait_for_detection=true, so a momentary absence of
         detections returns RUNNING (not FAILURE): the Repeat keeps waiting and the
-        Timeout, not a transient miss, is what bounds each branch and triggers the
-        Fallback. Iterating with a settle converges the bearing instead of a single
-        coarse correction. all_symbols comes from SelectFaceSymbol (all_symbols(),
+        RosTimeout (ROS-time budget, sim-aware), not a transient miss, is what
+        bounds each branch and triggers the Fallback. Iterating with a settle
+        converges the bearing instead of a single coarse correction. all_symbols comes from SelectFaceSymbol (all_symbols(),
         the single tested source); do not hardcode the class list here.
         Tuning constants are placeholders, to be measured in GUI sim.
     -->
     <BehaviorTree ID="FaceOctagonImage">
         <Fallback>
-            <Timeout msec="20000">
+            <RosTimeout msec="20000" ctx="{ctx}">
                 <Repeat num_cycles="4">
                     <Sequence>
                         <Action ID="HoneBearing" label="{target_symbol}" fov_deg="110"
                                 wait_for_detection="true" ctx="{ctx}"/>
-                        <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
+                        <RosDelay delay_msec="3000" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
                     </Sequence>
                 </Repeat>
-            </Timeout>
-            <Timeout msec="20000">
+            </RosTimeout>
+            <RosTimeout msec="20000" ctx="{ctx}">
                 <Repeat num_cycles="4">
                     <Sequence>
                         <Action ID="HoneBearing" labels="{all_symbols}" fov_deg="110"
                                 wait_for_detection="true" ctx="{ctx}"/>
-                        <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
+                        <RosDelay delay_msec="3000" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
                     </Sequence>
                 </Repeat>
-            </Timeout>
+            </RosTimeout>
         </Fallback>
     </BehaviorTree>
 </root>
