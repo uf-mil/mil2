@@ -3,6 +3,7 @@ import math
 from operator import itemgetter
 
 import numpy as np
+import transforms3d
 
 import gtsam
 import admission as adm
@@ -10,18 +11,10 @@ from geometry_msgs.msg import Pose
 from gtsam.symbol_shorthand import X, L
 from visualization_msgs.msg import Marker
 
-ODOM_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.01] * 6)
-LANDMARK_COV_INV = np.linalg.inv(np.diag([2, 1, 1]))
-LANDMARK_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1, 0.1, 4])
+ODOM_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1] * 6)
+LANDMARK_NOISE = gtsam.noiseModel.Diagonal.Sigmas([1, 1, 100])
 CAL = gtsam.Cal3_S2(80, 640, 360)
 CAM = gtsam.PinholePoseCal3_S2(gtsam.Pose3(), CAL)
-print(CAL)
-
-@dataclasses.dataclass(slots=True)
-class Landmark:
-    key: int
-    mean: np.ndarray
-    cov_inv: np.ndarray
 
 def odom_pose(odom):
     o_p = odom.pose.pose.position
@@ -40,7 +33,7 @@ async def estimate_bins():
     odom_prev, _ = odom_pose(await adm.odom_sub())
 
     # initialize smoother
-    smoother = gtsam.IncrementalFixedLagSmoother(100)
+    smoother = gtsam.IncrementalFixedLagSmoother(1000)
     factors = gtsam.NonlinearFactorGraph()
     values = gtsam.Values()
     ix, il = 0, 0
@@ -56,12 +49,10 @@ async def estimate_bins():
 
     async for yolo, odom in adm.Join(adm.yolo_sub, adm.odom_sub):
         if yolo:
-            for i, landmark in landmarks.items():
-                if not estimate.exists(landmark.key): continue
-                landmark.mean = estimate.atPoint3(landmark.key)
-                landmark.cov_inv = np.linalg.inv(
-                    smoother.marginalCovariance(landmark.key)
-                )
+            for i, key in landmarks.items():
+                if not estimate.exists(key): continue
+                mean = estimate.atPoint3(key)
+                cov = smoother.marginalCovariance(key)
 
                 # visualize
                 marker = Marker()
@@ -71,7 +62,7 @@ async def estimate_bins():
                 marker.action = Marker.ADD
                 marker.color.a = marker.color.g = 1.0
 
-                eigvals, eigvecs = np.linalg.eig(np.linalg.inv(landmark.cov_inv))
+                eigvals, eigvecs = np.linalg.eig(cov)
 
                 marker.scale.x, marker.scale.y, marker.scale.z = (
                     eigvals / np.linalg.norm(eigvals)
@@ -81,12 +72,12 @@ async def estimate_bins():
                     marker.pose.orientation.x,
                     marker.pose.orientation.y,
                     marker.pose.orientation.z,
-                ) = gtsam.Rot3(eigvecs).toQuaternion().coeffs()
+                ) = transforms3d.quaternions.mat2quat(eigvecs)
                 (
                     marker.pose.position.x,
                     marker.pose.position.y,
                     marker.pose.position.z
-                ) = landmark_pos
+                ) = mean
                 adm.marker_pub.publish(marker)
 
             # try:
@@ -96,8 +87,6 @@ async def estimate_bins():
             #     adm.goal_pub.publish(pose)
             # except IndexError:
             #     pass
-
-            if not yolo.detections: continue
 
             factors = gtsam.NonlinearFactorGraph()
             values = gtsam.Values()
@@ -122,23 +111,25 @@ async def estimate_bins():
 
                 # associate closest landmark
                 landmark_pos = pose_estimate.transformFrom(landmark_vec * planar_dist)
+                det_id = int(det.id) if det.id else 0
 
-                if det.id not in landmarks:
+                if det_id not in landmarks:
                     # create new landmark
                     key = L(il)
-                    landmarks[det.id] = Landmark(key, None, None)
+                    landmarks[det_id] = key
                     values.insert(key, landmark_pos)
                     il += 1
                 else:
-                    key = landmarks[det.id].key
+                    key = landmarks[det_id]
 
                 factors.add(gtsam.BearingRangeFactor3D(
-                    X(ix), sym, gtsam.Unit3(landmark_vec),
-                    planar_dist * np.linalg.norm(landmark_vec), LANDMARK_NOISE
+                    X(ix), key, gtsam.Unit3(landmark_vec),
+                    planar_dist * np.linalg.norm(landmark_vec),
+                    gtsam.noiseModel.Diagonal.Sigmas([1, 1, planar_dist * 5])
                 ))
 
-            for landmark in landmarks:
-                timestamps[landmark.key] = ix
+            for key in landmarks.values():
+                timestamps[key] = ix
 
             smoother_result = smoother.update(factors, values, timestamps)
             estimate = smoother.calculateEstimate()
