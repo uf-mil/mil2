@@ -4,6 +4,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "detection_gate.hpp"
 #include "search_pattern.hpp"
 
 SearchForTarget::SearchForTarget(std::string const& name, const BT::NodeConfiguration& cfg)
@@ -28,12 +29,7 @@ BT::PortsList SearchForTarget::providedPorts()
 bool SearchForTarget::label_seen(std::string const& label, std::string const& camera, double min_conf)
 {
     auto arr = ctx_->detections_for(camera);
-    if (!arr)
-        return false;
-    for (auto const& d : arr->detections)
-        if (d.class_name == label && d.score >= min_conf)
-            return true;
-    return false;
+    return arr && detection_gate::contains_label(*arr, label, min_conf);
 }
 
 BT::NodeStatus SearchForTarget::onStart()
