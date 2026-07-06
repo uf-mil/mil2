@@ -28,6 +28,20 @@ def generate_launch_description():
         output="screen",
     )
 
+    down_cam_launch = Node(
+        package="front_cam",
+        executable="front_cam",
+        name="down_cam",
+        exec_name="down_cam",
+        parameters=[
+            {
+                "camera-id": "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.1:1.0-video-index0",
+                "camera-topic": "down_camera/image_raw",
+            },
+        ],
+        output="screen",
+    )
+
     # IMU
     # vectornav_launch = IncludeLaunchDescription(
     #     pkg_share("vectornav", "launch", "vectornav.launch.py"),
@@ -55,6 +69,12 @@ def generate_launch_description():
         output="both",
     )
 
+    servo_driver = Node(
+        package="servo_controller",
+        executable="servo_driver",
+        output="both",
+    )
+
     # Launch subjugator_setup.launch.py
     subjugator_setup = IncludeLaunchDescription(
         pkg_share("subjugator_bringup", "launch", "common.launch.py"),
@@ -73,6 +93,8 @@ def generate_launch_description():
             new_depth,
             dvl_launch,
             front_cam_launch,
+            down_cam_launch,
+            servo_driver,
             # vectornav_launch,
             # mag_comp_launch,
             thrust_launch,
