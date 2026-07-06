@@ -53,9 +53,8 @@ BT::PortsList BoardArchStep::providedPorts()
         BT::InputPort<double>("min_conf", 0.30, "Minimum board detection confidence"),
         BT::InputPort<double>("min_kp_conf", 0.15, "Minimum per-keypoint confidence"),
         BT::InputPort<double>("radius_m", 2.0, "Assumed distance to board / orbit radius (m)"),
-        BT::InputPort<double>("step_deg", 5.0, "Orbit arc angle commanded per step (deg)"),
-        BT::InputPort<double>("deadband_frac", 0.08, "|left-right|/mean edge below this counts as head-on"),
-        BT::InputPort<double>("dir_sign", 1.0, "Arch direction sign; set -1 to invert"),
+        BT::InputPort<double>("step_deg", 20.0, "Orbit arc angle commanded per step (deg)"),
+        BT::InputPort<double>("deadband_frac", 0.03, "|left-right|/mean edge below this counts as head-on"),
         BT::InputPort<int>("max_steps", 8, "Max orbit steps before giving up (caps total arch)"),
         BT::InputPort<double>("pos_tol", 0.15, "Arrival position tolerance (m)"),
         BT::InputPort<double>("ori_tol_deg", 5.0, "Arrival orientation tolerance (deg)"),
@@ -83,7 +82,7 @@ BT::NodeStatus BoardArchStep::onRunning()
 {
     std::string board_label = "torpedoTarget";
     double min_conf = 0.30, min_kp_conf = 0.15, radius_m = 2.0, step_deg = 5.0;
-    double deadband_frac = 0.08, dir_sign = 1.0, pos_tol = 0.15, ori_tol_deg = 5.0;
+    double deadband_frac = 0.08, pos_tol = 0.15, ori_tol_deg = 5.0;
     int max_steps = 8;
     getInput("board_label", board_label);
     getInput("min_conf", min_conf);
@@ -91,7 +90,6 @@ BT::NodeStatus BoardArchStep::onRunning()
     getInput("radius_m", radius_m);
     getInput("step_deg", step_deg);
     getInput("deadband_frac", deadband_frac);
-    getInput("dir_sign", dir_sign);
     getInput("max_steps", max_steps);
     getInput("pos_tol", pos_tol);
     getInput("ori_tol_deg", ori_tol_deg);
@@ -197,7 +195,7 @@ BT::NodeStatus BoardArchStep::onRunning()
     // Orbit by one small step. imbalance>0 (left edge longer) -> arch right -> phi>0.
     // Geometry (board straight ahead at radius_m, body x forward, y left):
     //   forward dx = R(1-cos phi), left dy = -R sin phi, yaw = +phi (re-face board).
-    double const phi_deg = dir_sign * ((imbalance > 0.0) ? step_deg : -step_deg);
+    double const phi_deg = (imbalance > 0.0) ? step_deg : -step_deg;
     double const phi = phi_deg * M_PI / 180.0;
 
     double const rel_x = radius_m * (1.0 - std::cos(phi));  // forward

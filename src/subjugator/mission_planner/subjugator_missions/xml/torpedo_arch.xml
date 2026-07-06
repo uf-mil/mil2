@@ -6,11 +6,14 @@
 
     Standalone testable: run with `mission:=ArchToFaceBoard` to tune the arch in
     isolation. The whole step is small and bounded:
-      - step_deg     : arc commanded per orbit step (keep small)
-      - radius_m     : assumed distance to the board (orbit radius)
-      - deadband_frac: how square is "square enough" before we stop
-      - max_steps    : hard cap on how far we ever arch
-      - dir_sign     : flip to -1.0 if the arch goes the wrong way
+      - step_deg      : arc commanded per orbit step (keep small)
+      - radius_m      : assumed distance to the board (orbit radius); hard-coded
+                        since we approach to a known distance before arching
+      - deadband_frac : how square is "square enough" before we stop
+      - max_steps     : hard cap on how far we ever arch
+
+    The arch direction comes straight from the left-vs-right edge imbalance
+    (keypoint-based, no manual dir_sign).
 -->
 <root BTCPP_format="4" main_tree_to_execute="ArchToFaceBoard">
   <BehaviorTree ID="ArchToFaceBoard">

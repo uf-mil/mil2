@@ -14,9 +14,12 @@
 // We compare the apparent length of the LEFT vertical edge (kp1->kp3) with the
 // RIGHT vertical edge (kp2->kp4). Viewing a planar board obliquely makes the
 // nearer edge look longer, so an imbalance means we are off to one side:
-//   left edge longer  -> board's left side is closer  -> arch RIGHT (default)
-//   right edge longer -> board's right side is closer -> arch LEFT  (default)
-// (Flip dir_sign to invert if the physical convention comes out reversed.)
+//   left edge longer  -> board's left side is closer  -> arch RIGHT
+//   right edge longer -> board's right side is closer -> arch LEFT
+// The arch direction is derived purely from this keypoint edge imbalance.
+//
+// The orbit radius (radius_m) is the assumed distance to the board; hard-code it via
+// the port since we approach to a known distance before arching.
 //
 // Each tick that needs correcting commands ONE small orbit step (sway + yaw at a
 // tunable radius) and waits for arrival, then re-evaluates. Returns SUCCESS once
