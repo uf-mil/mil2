@@ -10,8 +10,13 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <!-- sub9.urdf is expanded from sub9_sim.urdf.xacro at build time (see CMakeLists). -->
+  <build_depend>mission_planner</build_depend>
+  <build_depend>xacro</build_depend>
+
   <!-- sub9_sim.urdf.xacro loads mission_planner/config/grasp_targets.yaml at xacro
-       expansion time for the GripperControl <graspable> allowlist. -->
+       expansion time (now build time) for the GripperControl <graspable> allowlist,
+       so mission_planner must build first. -->
   <exec_depend>mission_planner</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
