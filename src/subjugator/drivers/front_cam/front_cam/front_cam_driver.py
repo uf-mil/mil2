@@ -81,6 +81,7 @@ class FrontCamDriver(Node):
             ret, frame = self.cap.read()
             if not ret:
                 self.get_logger().warn("no frame from camera")
+                continue
 
             # frame = rotate_front_cam(frame)
 
