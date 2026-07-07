@@ -43,12 +43,15 @@ class SimDetectionPublisher(Node):
         self.declare_parameter("collect_data", False)
         self.declare_parameter("camera_topic", "/front_cam")
         self.declare_parameter("output_dir", os.path.expanduser("~/sim_training_data"))
+        self.declare_parameter("save_every_n_frames", 10)
 
         config_path = self.get_parameter("config_file").value
         self.publish_detections = self.get_parameter("publish_detections").value
         self.collect_data = self.get_parameter("collect_data").value
         camera_topic = self.get_parameter("camera_topic").value
         self.output_dir = os.path.expanduser(self.get_parameter("output_dir").value)
+        self._save_every_n = self.get_parameter("save_every_n_frames").value
+        self._frame_count = 0
 
         if not config_path:
             config_path = os.path.join(
@@ -182,6 +185,10 @@ class SimDetectionPublisher(Node):
         self._det_pub.publish(msg)
 
     def _image_cb(self, msg: Image):
+        self._frame_count += 1
+        if self._frame_count % self._save_every_n != 0:
+            return
+
         with self._pose_lock:
             T = self._T_world_to_cam
         if T is None or self.fx is None:

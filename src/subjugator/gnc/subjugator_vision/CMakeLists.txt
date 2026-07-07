@@ -13,9 +13,10 @@ find_package(mil_msgs REQUIRED)
 include_directories(include)
 
 # Python scripts
-install(PROGRAMS scripts/save_down_images.py scripts/save_front_images.py
-                 scripts/swap_yolo_model.py scripts/sim_detection_publisher.py
-        DESTINATION lib/${PROJECT_NAME})
+install(
+  PROGRAMS scripts/save_down_images.py scripts/save_front_images.py
+           scripts/swap_yolo_model.py scripts/sim_detection_publisher.py
+           scripts/generate_sim_objects_yaml.py DESTINATION lib/${PROJECT_NAME})
 
 # Config files
 install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
