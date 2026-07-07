@@ -1,3 +1,5 @@
+import time
+
 import cv2
 import rclpy
 from cv2.typing import MatLike
@@ -81,6 +83,10 @@ class FrontCamDriver(Node):
             ret, frame = self.cap.read()
             if not ret:
                 self.get_logger().warn("no frame from camera")
+                # This loop has no spin_once/rate cap, so a persistently failing
+                # read (camera unplugged) would busy-spin a core and flood the
+                # logs. Back off briefly before retrying.
+                time.sleep(0.1)
                 continue
 
             # frame = rotate_front_cam(frame)
