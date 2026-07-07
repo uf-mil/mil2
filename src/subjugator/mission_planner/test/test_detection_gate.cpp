@@ -176,6 +176,29 @@ TEST(DetectionGateHelpers, ContainsLabelRespectsConfFloor)
     EXPECT_FALSE(detection_gate::contains_label(arr, "bandaid_box", 0.10));
 }
 
+TEST(DetectionGateHelpers, BestDetectionPicksHighestConfMatch)
+{
+    MockArray arr{ { { 3, 500 } },
+                   { { "table", 0.35 }, { "nut_cylinder", 0.50 }, { "nut_cylinder", 0.90 }, { "table", 0.99 } } };
+    // highest-score detection among the label matches at/above the floor
+    auto const* best = detection_gate::best_detection(arr, "nut_cylinder", 0.30);
+    ASSERT_NE(best, nullptr);
+    EXPECT_DOUBLE_EQ(best->score, 0.90);
+    EXPECT_EQ(best->class_name, "nut_cylinder");
+}
+
+TEST(DetectionGateHelpers, BestDetectionRespectsConfFloorAndMissing)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.35 }, { "nut_cylinder", 0.50 } } };
+    // every match is below the floor -> no selection
+    EXPECT_EQ(detection_gate::best_detection(arr, "table", 0.40), nullptr);
+    // label absent entirely
+    EXPECT_EQ(detection_gate::best_detection(arr, "bandaid_box", 0.10), nullptr);
+    // empty array
+    MockArray empty{ { { 0, 0 } }, {} };
+    EXPECT_EQ(detection_gate::best_detection(empty, "table", 0.10), nullptr);
+}
+
 TEST(DetectionGateHelpers, StampNsOfAndSeedFrom)
 {
     MockArray arr{ { { 3, 500 } }, {} };

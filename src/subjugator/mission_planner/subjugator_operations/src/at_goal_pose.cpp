@@ -31,9 +31,8 @@ BT::NodeStatus AtGoalPose::tick()
 {
     if (!ctx_)
     {
-        if (!getInput("ctx", ctx_) || !ctx_)
+        if (!require_ctx(*this, ctx_, "AtGoalPose"))
         {
-            RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "AtGoalPose: missing ctx on blackboard");
             return BT::NodeStatus::FAILURE;
         }
     }

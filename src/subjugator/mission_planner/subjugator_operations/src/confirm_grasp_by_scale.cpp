@@ -4,9 +4,8 @@
 
 BT::NodeStatus ConfirmGraspByScale::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "ConfirmGraspByScale"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "ConfirmGraspByScale: missing ctx on blackboard");
         return BT::NodeStatus::FAILURE;
     }
 

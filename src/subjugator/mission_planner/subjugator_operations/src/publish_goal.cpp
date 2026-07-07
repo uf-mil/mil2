@@ -117,9 +117,8 @@ BT::NodeStatus PublishGoalPose::tick()
 {
     if (!ctx_)
     {
-        if (!getInput("ctx", ctx_) || !ctx_)
+        if (!require_ctx(*this, ctx_, "PublishGoalPose"))
         {
-            RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "PublishGoalPose: missing ctx on blackboard");
             return BT::NodeStatus::FAILURE;
         }
     }
@@ -209,15 +208,9 @@ BT::NodeStatus PublishGoalPose::tick()
         z = base.position.z;
     }
 
-    // Compose absolute goal and publish
+    // Compose absolute goal, publish, and remember as last goal for chaining
     geometry_msgs::msg::Pose goal = composeAbsoluteGoal_(base, x, y, z, qx, qy, qz, qw, relative);
-    ctx_->goal_pub->publish(goal);
-
-    // Remember as last goal for chaining
-    {
-        std::scoped_lock lk(ctx_->last_goal_mx);
-        ctx_->last_goal = goal;
-    }
+    ctx_->command_goal(goal);
 
     RCLCPP_INFO(ctx_->logger(),
                 "PublishGoalPose: in(rel=%d x=%.3f y=%.3f z=%.3f yaw_deg=%.1f use_euler=%d) -> "

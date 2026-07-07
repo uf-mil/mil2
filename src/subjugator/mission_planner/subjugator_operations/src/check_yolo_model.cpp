@@ -134,7 +134,7 @@ bool CheckYoloModel::ensureModelLoaded_(std::shared_ptr<Context> const& ctx, std
 BT::NodeStatus CheckYoloModel::tick()
 {
     std::shared_ptr<Context> ctx;
-    if (!getInput("ctx", ctx) || !ctx)
+    if (!require_ctx(*this, ctx, "CheckYoloModel"))
         return BT::NodeStatus::FAILURE;
 
     std::string fname, yolo_node;

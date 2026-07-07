@@ -17,9 +17,8 @@ BT::PortsList RosTimeout::providedPorts()
 
 BT::NodeStatus RosTimeout::tick()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "RosTimeout"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "RosTimeout: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     if (!budget_.armed)

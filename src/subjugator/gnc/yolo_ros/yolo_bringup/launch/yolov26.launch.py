@@ -25,6 +25,12 @@ from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
 
+    # NOTE: This wrapper is intentionally near-duplicated with yolov11.launch.py.
+    # yolo_bringup is an ament_cmake package that only installs launch/ into
+    # share/, so there is no importable Python module to hold a shared helper.
+    # Adding a fragile import from the installed share/ path would be worse than
+    # the small duplication, so the two files are kept in sync by hand.
+
     # Absolute path to the installed weights. Relative paths break because the
     # yolo_node resolves them against its runtime cwd, not this launch file.
     # Requires `colcon build --packages-select subjugator_vision` so the .pt is

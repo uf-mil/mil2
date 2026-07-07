@@ -29,9 +29,8 @@ BT::PortsList ActuateServo::providedPorts()
 
 BT::NodeStatus ActuateServo::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "ActuateServo"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "ActuateServo: missing ctx on blackboard");
         return BT::NodeStatus::FAILURE;
     }
 

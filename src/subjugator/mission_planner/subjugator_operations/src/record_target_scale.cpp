@@ -4,9 +4,8 @@
 
 BT::NodeStatus RecordTargetScale::tick()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "RecordTargetScale"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "RecordTargetScale: missing ctx on blackboard");
         return BT::NodeStatus::FAILURE;
     }
 

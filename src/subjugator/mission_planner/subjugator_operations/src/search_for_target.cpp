@@ -34,9 +34,8 @@ bool SearchForTarget::label_seen(std::string const& label, std::string const& ca
 
 BT::NodeStatus SearchForTarget::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "SearchForTarget"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "SearchForTarget: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     double step_m = 0.30, max_radius = 2.0;
@@ -114,11 +113,7 @@ BT::NodeStatus SearchForTarget::onRunning()
     goal.position.x = center_x_ + waypoints_[wp_index_].first;
     goal.position.y = center_y_ + waypoints_[wp_index_].second;
     goal.position.z = hold_z_;
-    ctx_->goal_pub->publish(goal);
-    {
-        std::scoped_lock lk(ctx_->last_goal_mx);
-        ctx_->last_goal = goal;
-    }
+    ctx_->command_goal(goal);
     pending_goal_ = goal;
     waiting_for_goal_ = true;
     ++wp_index_;

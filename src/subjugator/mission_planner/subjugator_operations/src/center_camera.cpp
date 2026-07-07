@@ -46,9 +46,8 @@ BT::PortsList CenterCamera::providedPorts()
 
 BT::NodeStatus CenterCamera::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "CenterCamera"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "CenterCamera: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     settling_ = false;
@@ -141,16 +140,7 @@ BT::NodeStatus CenterCamera::onRunning()
                              camera.c_str());
         return BT::NodeStatus::RUNNING;
     }
-    yolo_msgs::msg::Detection const* best = nullptr;
-    double best_conf = 0.0;
-    for (auto const& d : arr->detections)
-    {
-        if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
-        {
-            best = &d;
-            best_conf = d.score;
-        }
-    }
+    auto const* best = detection_gate::best_detection(*arr, label, min_conf);
 
     // Frame gate (see detection_gate.hpp): only ever act on a detection
     // frame newer than the one we last considered — never re-correct from a
@@ -213,11 +203,7 @@ BT::NodeStatus CenterCamera::onRunning()
     goal.position.y += world_dy;
     // z and orientation held.
 
-    ctx_->goal_pub->publish(goal);
-    {
-        std::scoped_lock lk(ctx_->last_goal_mx);
-        ctx_->last_goal = goal;
-    }
+    ctx_->command_goal(goal);
 
     // Record private settle state: the pose we issued the step from and the
     // step's horizontal length. The next correction waits until this step is

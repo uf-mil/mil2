@@ -3,6 +3,8 @@
 #include <optional>
 #include <string>
 
+#include "detection_gate.hpp"
+
 #include <yolo_msgs/msg/detection_array.hpp>
 
 // Pixel area (bbox.size.x * bbox.size.y) of the highest-confidence detection whose
@@ -12,15 +14,10 @@
 inline std::optional<double> best_bbox_area(yolo_msgs::msg::DetectionArray const& arr, std::string const& label,
                                             double min_conf)
 {
-    double best_conf = -1.0;
-    std::optional<double> area;
-    for (auto const& d : arr.detections)
+    auto const* d = detection_gate::best_detection(arr, label, min_conf);
+    if (!d)
     {
-        if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
-        {
-            best_conf = d.score;
-            area = static_cast<double>(d.bbox.size.x) * static_cast<double>(d.bbox.size.y);
-        }
+        return std::nullopt;
     }
-    return area;
+    return static_cast<double>(d->bbox.size.x) * static_cast<double>(d->bbox.size.y);
 }

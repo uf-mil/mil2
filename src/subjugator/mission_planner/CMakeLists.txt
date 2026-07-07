@@ -134,6 +134,12 @@ if(BUILD_TESTING)
   target_include_directories(
     test_ros_time_budget
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_quat_math test/test_quat_math.cpp)
+  target_include_directories(
+    test_quat_math
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+  ament_target_dependencies(test_quat_math geometry_msgs)
 endif()
 
 ament_package()

@@ -19,9 +19,8 @@ BT::PortsList SelectBasket::providedPorts()
 
 BT::NodeStatus SelectBasket::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "SelectBasket"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "SelectBasket: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     return BT::NodeStatus::RUNNING;

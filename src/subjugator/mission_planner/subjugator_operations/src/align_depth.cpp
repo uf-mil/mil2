@@ -5,6 +5,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "detection_gate.hpp"
+
 AlignDepth::AlignDepth(std::string const& name, const BT::NodeConfiguration& cfg) : BT::StatefulActionNode(name, cfg)
 {
 }
@@ -24,9 +26,8 @@ BT::PortsList AlignDepth::providedPorts()
 
 BT::NodeStatus AlignDepth::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "AlignDepth"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "AlignDepth: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     waiting_for_goal_ = false;
@@ -64,11 +65,8 @@ BT::NodeStatus AlignDepth::onRunning()
     }
 
     // Image height required for normalised error
-    uint32_t H = 0;
-    {
-        std::scoped_lock lk(ctx_->img_mx);
-        H = ctx_->img_height;
-    }
+    uint32_t W = 0, H = 0;
+    ctx_->image_size_for("front", W, H);
     if (H == 0)
     {
         RCLCPP_WARN(ctx_->logger(), "AlignDepth: image height unknown, waiting");
@@ -76,25 +74,8 @@ BT::NodeStatus AlignDepth::onRunning()
     }
 
     // Best matching detection
-    std::optional<yolo_msgs::msg::DetectionArray> arr;
-    {
-        std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_detections;
-    }
-
-    yolo_msgs::msg::Detection const* best = nullptr;
-    double best_conf = 0.0;
-    if (arr)
-    {
-        for (auto const& d : arr->detections)
-        {
-            if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
-            {
-                best = &d;
-                best_conf = d.score;
-            }
-        }
-    }
+    std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for("front");
+    auto const* best = arr ? detection_gate::best_detection(*arr, label, min_conf) : nullptr;
 
     if (!best)
     {
@@ -125,11 +106,7 @@ BT::NodeStatus AlignDepth::onRunning()
     }
     goal.position.z += dz;
 
-    ctx_->goal_pub->publish(goal);
-    {
-        std::scoped_lock lk(ctx_->last_goal_mx);
-        ctx_->last_goal = goal;
-    }
+    ctx_->command_goal(goal);
     pending_goal_ = goal;
     waiting_for_goal_ = true;
 

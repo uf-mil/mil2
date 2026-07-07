@@ -35,9 +35,8 @@ BT::PortsList DescendUntilDetected::providedPorts()
 
 BT::NodeStatus DescendUntilDetected::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "DescendUntilDetected"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "DescendUntilDetected: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     waiting_for_goal_ = false;
@@ -145,11 +144,7 @@ BT::NodeStatus DescendUntilDetected::onRunning()
             goal = ctx_->latest_odom->pose.pose;
     }
     goal.position.z -= step_m;
-    ctx_->goal_pub->publish(goal);
-    {
-        std::scoped_lock lk(ctx_->last_goal_mx);
-        ctx_->last_goal = goal;
-    }
+    ctx_->command_goal(goal);
     pending_goal_ = goal;
     waiting_for_goal_ = true;
     ++steps_taken_;

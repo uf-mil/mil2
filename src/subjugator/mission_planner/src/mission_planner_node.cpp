@@ -42,8 +42,7 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <count_when_ticked.hpp>
 #include <go_to_pinger.hpp>
-#include <pitch_style.hpp>
-#include <roll_style.hpp>
+#include <spin_style.hpp>  // RollStyle + PitchStyle
 #include <topic_ticker.hpp>
 #include <yaw_style.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>

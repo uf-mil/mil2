@@ -7,9 +7,8 @@
 BT::NodeStatus SelectFaceSymbol::tick()
 {
     std::shared_ptr<Context> ctx;
-    if (!getInput("ctx", ctx) || !ctx)
+    if (!require_ctx(*this, ctx, "SelectFaceSymbol"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "SelectFaceSymbol: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
 

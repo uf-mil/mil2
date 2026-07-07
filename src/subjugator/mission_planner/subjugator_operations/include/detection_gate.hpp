@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <type_traits>
 
 // Pure frame-gating logic shared by every BT node that renders a verdict from
 // the YOLO detection stream (CenterCamera, DescendUntilDetected, DetectTarget,
@@ -121,6 +122,28 @@ bool contains_label(Arr const& arr, std::string const& label, double min_conf)
         }
     }
     return false;
+}
+
+// Argmax sibling of contains_label: pointer to the highest-`score` detection
+// whose class_name == label and score >= min_conf, or nullptr if none match.
+// The nodes that need the actual detection (its bbox, center, size) all
+// hand-rolled this same loop; fetch the array once and call this on that one
+// snapshot (see contains_label's note on pairing presence with the stamp).
+template <class Arr>
+auto const* best_detection(Arr const& arr, std::string const& label, double min_conf)
+{
+    using Det = typename std::decay_t<decltype(arr.detections)>::value_type;
+    Det const* best = nullptr;
+    double best_conf = -1.0;
+    for (auto const& d : arr.detections)
+    {
+        if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
+        {
+            best = &d;
+            best_conf = d.score;
+        }
+    }
+    return best;
 }
 
 }  // namespace detection_gate

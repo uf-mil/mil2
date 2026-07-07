@@ -7,15 +7,12 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "quat_math.hpp"
 #include "select_target_logic.hpp"  // reuse parse_labels (already unit-tested)
 
 #include <geometry_msgs/msg/pose.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 HoneBearing::HoneBearing(std::string const& name, const BT::NodeConfiguration& cfg) : BT::StatefulActionNode(name, cfg)
 {
@@ -37,9 +34,8 @@ BT::PortsList HoneBearing::providedPorts()
 
 BT::NodeStatus HoneBearing::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "HoneBearing"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "HoneBearing: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     published_ = false;
@@ -87,11 +83,8 @@ BT::NodeStatus HoneBearing::onRunning()
     BT::NodeStatus const not_ready = wait_for_detection ? BT::NodeStatus::RUNNING : BT::NodeStatus::FAILURE;
 
     // Get image width
-    uint32_t W = 0;
-    {
-        std::scoped_lock lk(ctx_->img_mx);
-        W = ctx_->img_width;
-    }
+    uint32_t W = 0, H = 0;
+    ctx_->image_size_for("front", W, H);
 
     if (W == 0)
     {
@@ -101,11 +94,7 @@ BT::NodeStatus HoneBearing::onRunning()
     }
 
     // Best detection
-    std::optional<yolo_msgs::msg::DetectionArray> arr;
-    {
-        std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_detections;
-    }
+    std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for("front");
 
     if (!arr || arr->detections.empty())
     {
@@ -138,7 +127,6 @@ BT::NodeStatus HoneBearing::onRunning()
     // Turn command (deg). Left positive.
     double yaw_cmd_deg = offset_deg - bearing;
 
-    // Compose absolute target orientation: q_out = q_cur * q_delta
     geometry_msgs::msg::Pose current{};
     {
         std::scoped_lock lk(ctx_->odom_mx);
@@ -148,43 +136,13 @@ BT::NodeStatus HoneBearing::onRunning()
         }
     }
 
-    double yaw_rad = yaw_cmd_deg * M_PI / 180.0;
-
-    geometry_msgs::msg::Quaternion delta_q{};
-    delta_q.x = 0.0;
-    delta_q.y = 0.0;
-    delta_q.z = std::sin(yaw_rad / 2.0);
-    delta_q.w = std::cos(yaw_rad / 2.0);
-
-    auto const& c = current.orientation;
+    // Compose absolute target orientation: q_out = q_cur * yaw_delta(yaw_cmd_deg)
     geometry_msgs::msg::Pose out = current;
-    auto& o = out.orientation;
-    o.x = c.w * delta_q.x + c.x * delta_q.w + c.y * delta_q.z - c.z * delta_q.y;
-    o.y = c.w * delta_q.y - c.x * delta_q.z + c.y * delta_q.w + c.z * delta_q.x;
-    o.z = c.w * delta_q.z + c.x * delta_q.y - c.y * delta_q.x + c.z * delta_q.w;
-    o.w = c.w * delta_q.w - c.x * delta_q.x - c.y * delta_q.y - c.z * delta_q.z;
-
-    // Normalize
-    double n = std::sqrt(o.x * o.x + o.y * o.y + o.z * o.z + o.w * o.w);
-    if (n < 1e-12)
-    {
-        o = geometry_msgs::msg::Quaternion{};
-        o.w = 1.0;
-    }
-    else
-    {
-        o.x /= n;
-        o.y /= n;
-        o.z /= n;
-        o.w /= n;
-    }
+    out.orientation = quat_math::multiply(current.orientation, quat_math::yaw_delta(yaw_cmd_deg));
+    quat_math::normalize(out.orientation);
 
     // Publish exactly once
-    ctx_->goal_pub->publish(out);
-    {
-        std::scoped_lock lk(ctx_->last_goal_mx);
-        ctx_->last_goal = out;
-    }
+    ctx_->command_goal(out);
     published_ = true;
 
     RCLCPP_INFO(ctx_->logger(), "HoneBearing: bearing=%.1f°, offset=%.1f°, cmd=%.1f°", bearing, offset_deg,

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -85,6 +86,18 @@ struct Context
         return node->get_logger();
     }
 
+    // Publish an orientation/position goal and cache it as last_goal in one
+    // step, so the "publish, then remember what we asked for" invariant can
+    // never drift apart. Every motion node that emits a goal (CenterCamera,
+    // HoneBearing, SearchForTarget, DescendUntilDetected, AlignDepth, AlignYaw,
+    // YawStyle) previously repeated this publish + scoped_lock pair by hand.
+    inline void command_goal(geometry_msgs::msg::Pose const& goal)
+    {
+        goal_pub->publish(goal);
+        std::scoped_lock lk(last_goal_mx);
+        last_goal = goal;
+    }
+
     // Latest detections for the requested camera ("down" selects the down-cam
     // stream; anything else falls back to the front-cam stream). Returns a copy
     // so callers don't hold the mutex while iterating.
@@ -118,3 +131,25 @@ struct Context
         return w != 0 && h != 0;
     }
 };
+
+// Fetch the shared Context from the "ctx" blackboard port into `ctx` if it is
+// not already set, logging a uniform error on failure. Returns true when `ctx`
+// is usable. Collapses the guard every BT node repeated verbatim at the top of
+// onStart/onRunning/tick:
+//   if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_)) { RCLCPP_ERROR(...); return FAILURE; }
+// Templated on the node type so this header needs no BehaviorTree dependency --
+// node.getInput is only instantiated at the (BT-aware) call site.
+template <class Node>
+inline bool require_ctx(Node& node, std::shared_ptr<Context>& ctx, char const* who)
+{
+    if (ctx)
+    {
+        return true;
+    }
+    if (!node.template getInput<std::shared_ptr<Context>>("ctx", ctx) || !ctx)
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "%s: missing ctx", who);
+        return false;
+    }
+    return true;
+}

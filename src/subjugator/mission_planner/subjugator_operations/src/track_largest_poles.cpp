@@ -3,50 +3,10 @@
 #include <algorithm>
 #include <cmath>
 
+#include "quat_math.hpp"
+
 #include <geometry_msgs/msg/pose.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-static inline void normalize_quat(geometry_msgs::msg::Quaternion& q)
-{
-    double const n = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
-    if (n < 1e-12)
-    {
-        q.x = q.y = q.z = 0.0;
-        q.w = 1.0;
-        return;
-    }
-    q.x /= n;
-    q.y /= n;
-    q.z /= n;
-    q.w /= n;
-}
-
-// yaw delta around +Z in BODY frame
-static inline geometry_msgs::msg::Quaternion yaw_delta_quat(double yaw_deg)
-{
-    double const r = (yaw_deg * M_PI / 180.0) * 0.5;
-    geometry_msgs::msg::Quaternion q{};
-    q.x = 0.0;
-    q.y = 0.0;
-    q.z = std::sin(r);
-    q.w = std::cos(r);
-    return q;
-}
-
-static inline geometry_msgs::msg::Quaternion quat_multiply(geometry_msgs::msg::Quaternion const& a,
-                                                           geometry_msgs::msg::Quaternion const& b)
-{
-    geometry_msgs::msg::Quaternion out;
-    out.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
-    out.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
-    out.y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
-    out.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
-    return out;
-}
 
 BT::PortsList TrackLargestPoles::providedPorts()
 {
@@ -78,8 +38,10 @@ BT::PortsList TrackLargestPoles::providedPorts()
 
 BT::NodeStatus TrackLargestPoles::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "TrackLargestPoles"))
+    {
         return BT::NodeStatus::FAILURE;
+    }
 
     bool reset = true;
     (void)getInput("reset_on_start", reset);
@@ -96,8 +58,10 @@ BT::NodeStatus TrackLargestPoles::onStart()
 
 BT::NodeStatus TrackLargestPoles::onRunning()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "TrackLargestPoles"))
+    {
         return BT::NodeStatus::FAILURE;
+    }
 
     double min_conf = 0.30, fov_deg = 110.0;
     bool require_red_left = false;
@@ -106,20 +70,12 @@ BT::NodeStatus TrackLargestPoles::onRunning()
     (void)getInput("require_red_left", require_red_left);
 
     // Latest frame and image size
-    std::optional<yolo_msgs::msg::DetectionArray> arr;
-    {
-        std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_detections;
-    }
+    std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for("front");
     if (!arr || arr->detections.empty())
         return BT::NodeStatus::RUNNING;
 
     uint32_t W = 0, H = 0;
-    {
-        std::scoped_lock lk(ctx_->img_mx);
-        W = ctx_->img_width;
-        H = ctx_->img_height;
-    }
+    ctx_->image_size_for("front", W, H);
     if (W == 0)
         return BT::NodeStatus::RUNNING;
 
@@ -202,12 +158,12 @@ BT::NodeStatus TrackLargestPoles::onRunning()
 
         // Snapshot quaternion
         geometry_msgs::msg::Quaternion q_snap = cur.orientation;
-        normalize_quat(q_snap);
+        quat_math::normalize(q_snap);
 
         // Target quaternion = snapshot * yaw_delta(bearing_mid)
-        geometry_msgs::msg::Quaternion q_delta = yaw_delta_quat(-bearing_mid);
-        geometry_msgs::msg::Quaternion q_target = quat_multiply(q_snap, q_delta);
-        normalize_quat(q_target);
+        geometry_msgs::msg::Quaternion q_delta = quat_math::yaw_delta(-bearing_mid);
+        geometry_msgs::msg::Quaternion q_target = quat_math::multiply(q_snap, q_delta);
+        quat_math::normalize(q_target);
 
         // Outputs
         setOutput("best_qx", q_snap.x);

@@ -33,9 +33,8 @@ BT::PortsList SelectTarget::providedPorts()
 
 BT::NodeStatus SelectTarget::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "SelectTarget"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "SelectTarget: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     leader_.clear();

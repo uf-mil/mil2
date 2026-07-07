@@ -17,9 +17,8 @@ BT::PortsList RosDelay::providedPorts()
 
 BT::NodeStatus RosDelay::tick()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "RosDelay"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "RosDelay: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     if (!budget_.armed)
