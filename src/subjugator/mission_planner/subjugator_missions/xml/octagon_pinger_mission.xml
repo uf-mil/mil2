@@ -7,6 +7,8 @@
                     name="wait_for_first_ping"
                     ctx="{ctx}"
                     stop_on_first_ping="true"
+                    target_freq="{target_freq}"
+                    target_freq_tol="{target_freq_tol}"
                     sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
                     <AlwaysSuccess/>
                 </SonarFollower>
@@ -53,6 +55,8 @@
             <SonarFollower
                 name="follow_ping_to_octagon"
                 ctx="{ctx}"
+                target_freq="{target_freq}"
+                target_freq_tol="{target_freq_tol}"
                 sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
                 <SubTree ID="RelativeMove" _autoremap="true"
                     x="{sonar_x}" y="{sonar_y}" z="0.0"

@@ -5,6 +5,9 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "detection_gate.hpp"
+#include "quat_math.hpp"
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -28,9 +31,8 @@ BT::PortsList AlignYaw::providedPorts()
 
 BT::NodeStatus AlignYaw::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "AlignYaw"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "AlignYaw: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
     waiting_for_goal_ = false;
@@ -72,11 +74,8 @@ BT::NodeStatus AlignYaw::onRunning()
     }
 
     // Image width required for normalised error
-    uint32_t W = 0;
-    {
-        std::scoped_lock lk(ctx_->img_mx);
-        W = ctx_->img_width;
-    }
+    uint32_t W = 0, H = 0;
+    ctx_->image_size_for("front", W, H);
     if (W == 0)
     {
         RCLCPP_WARN(ctx_->logger(), "AlignYaw: image width unknown, waiting");
@@ -84,25 +83,8 @@ BT::NodeStatus AlignYaw::onRunning()
     }
 
     // Best matching detection
-    std::optional<yolo_msgs::msg::DetectionArray> arr;
-    {
-        std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_detections;
-    }
-
-    yolo_msgs::msg::Detection const* best = nullptr;
-    double best_conf = 0.0;
-    if (arr)
-    {
-        for (auto const& d : arr->detections)
-        {
-            if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
-            {
-                best = &d;
-                best_conf = d.score;
-            }
-        }
-    }
+    std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for("front");
+    auto const* best = arr ? detection_gate::best_detection(*arr, label, min_conf) : nullptr;
 
     if (!best)
     {
@@ -125,7 +107,7 @@ BT::NodeStatus AlignYaw::onRunning()
     double yaw_cmd_deg = -kp * error_x * max_yaw_deg;
     yaw_cmd_deg = std::clamp(yaw_cmd_deg, -max_yaw_deg, max_yaw_deg);
 
-    // Compose: goal_q = current_q * delta_q  (same pattern as HoneBearing)
+    // Compose: goal_q = current_q * yaw_delta(yaw_cmd_deg)  (same pattern as HoneBearing)
     geometry_msgs::msg::Pose cur{};
     {
         std::scoped_lock lk(ctx_->odom_mx);
@@ -133,40 +115,11 @@ BT::NodeStatus AlignYaw::onRunning()
             cur = ctx_->latest_odom->pose.pose;
     }
 
-    double yaw_rad = yaw_cmd_deg * M_PI / 180.0;
-    geometry_msgs::msg::Quaternion dq{};
-    dq.z = std::sin(yaw_rad / 2.0);
-    dq.w = std::cos(yaw_rad / 2.0);
-
     geometry_msgs::msg::Pose goal = cur;  // copy preserves position
-    auto const& c = cur.orientation;
-    auto& o = goal.orientation;
-    o.x = c.w * dq.x + c.x * dq.w + c.y * dq.z - c.z * dq.y;
-    o.y = c.w * dq.y - c.x * dq.z + c.y * dq.w + c.z * dq.x;
-    o.z = c.w * dq.z + c.x * dq.y - c.y * dq.x + c.z * dq.w;
-    o.w = c.w * dq.w - c.x * dq.x - c.y * dq.y - c.z * dq.z;
+    goal.orientation = quat_math::multiply(cur.orientation, quat_math::yaw_delta(yaw_cmd_deg));
+    quat_math::normalize(goal.orientation);
 
-    double n = std::sqrt(o.x * o.x + o.y * o.y + o.z * o.z + o.w * o.w);
-    if (n > 1e-12)
-    {
-        o.x /= n;
-        o.y /= n;
-        o.z /= n;
-        o.w /= n;
-    }
-    else
-    {
-        o.x = 0.0;
-        o.y = 0.0;
-        o.z = 0.0;
-        o.w = 1.0;
-    }
-
-    ctx_->goal_pub->publish(goal);
-    {
-        std::scoped_lock lk(ctx_->last_goal_mx);
-        ctx_->last_goal = goal;
-    }
+    ctx_->command_goal(goal);
     pending_goal_ = goal;
     waiting_for_goal_ = true;
 

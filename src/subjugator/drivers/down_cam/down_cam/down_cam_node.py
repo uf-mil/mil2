@@ -36,7 +36,7 @@ def rotate_front_cam(frame: MatLike) -> MatLike:
 
 class DownCamDriver(Node):
     def __init__(self):
-        super().__init__("front_cam_driver")
+        super().__init__("down_cam_driver")
 
         # cam_path = "/dev/v4l/by-id/usb-Chicony_Tech._Inc._Dell_Webcam_WB7022_77A8ADD45565-video-index0"
         # cam_path = "/dev/v4l/by-id/usb-H264_USB_Camera_H264_USB_Camera_2020032801-video-index0"
@@ -60,6 +60,7 @@ class DownCamDriver(Node):
             ret, frame = self.cap.read()
             if not ret:
                 self.get_logger().warn("no frame from camera")
+                continue
 
             frame = rotate_front_cam(frame)
 

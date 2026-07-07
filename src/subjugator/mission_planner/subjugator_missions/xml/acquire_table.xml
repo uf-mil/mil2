@@ -1,0 +1,34 @@
+<root BTCPP_format="4">
+    <!--
+        S2 (CALIBRATION-FREE): descend until the down-cam sees the table, then
+        center over it with vision. Needs NO pool-specific dead-reckon constants
+        (unlike OctagonTableMission) and does NO pinger homing / NO grasp, so it is
+        reusable by both the pinger-homed OctagonRestoreMission and the
+        OctagonMission capstone. It works whether the sub arrived via S1 acoustic
+        homing or was hand-placed above the octagon.
+
+        DetectTarget can FAIL (table drifted off-frame after descent), so the
+        SearchForTarget spiral fallback is actually reachable; HoneOverTarget then
+        degrades gracefully (always succeeds) and downstream stages re-center
+        themselves before acting.
+    -->
+    <BehaviorTree ID="AcquireTable">
+        <Sequence>
+            <!-- Descend step-by-step until the table appears on the down cam. -->
+            <DescendUntilDetected label="table" camera="down"
+                                  step_m="0.20" max_steps="12"
+                                  timeout_msec="45000" ctx="{ctx}"/>
+            <!-- Make sure the table is in frame; spiral-search if it drifted off. -->
+            <Fallback>
+                <DetectTarget label="table" camera="down" min_conf="0.40" ctx="{ctx}"/>
+                <SearchForTarget label="table" camera="down"
+                                 step_m="0.30" max_radius_m="2.0"
+                                 timeout_msec="60000" ctx="{ctx}"/>
+            </Fallback>
+            <!-- Center over the table (degrades gracefully if unseen). -->
+            <SubTree ID="HoneOverTarget" _autoremap="true"
+                     label="table" camera="down"
+                     tol_norm="0.05" timeout_msec="20000" miss_frames="5" ctx="{ctx}"/>
+        </Sequence>
+    </BehaviorTree>
+</root>

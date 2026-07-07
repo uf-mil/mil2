@@ -15,17 +15,8 @@ def generate_launch_description():
         pkg_share("waterlinked_dvl_driver", "launch", "dvl.launch.py"),
     )
 
-    front_cam_launch = Node(
-        package="front_cam",
-        executable="front_cam",
-        name="front_cam",
-        parameters=[
-            {
-                "camera-id": "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.3:1.0-video-index0",
-                "camera-topic": "front_cam/image_raw",
-            },
-        ],
-        output="screen",
+    front_cam_launch = IncludeLaunchDescription(
+        pkg_share("front_cam", "launch", "front_cam.launch.py"),
     )
 
     # IMU

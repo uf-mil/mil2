@@ -12,7 +12,7 @@ BT::PortsList AnyPolesDetected::providedPorts()
 
 BT::NodeStatus AnyPolesDetected::tick()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "AnyPolesDetected"))
         return BT::NodeStatus::FAILURE;
     double min_conf = 0.30;
     (void)getInput("min_conf", min_conf);

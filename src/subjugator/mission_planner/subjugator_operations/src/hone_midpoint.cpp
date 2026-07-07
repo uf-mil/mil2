@@ -32,8 +32,10 @@ BT::PortsList HoneMidpoint::providedPorts()
 
 BT::NodeStatus HoneMidpoint::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "HoneMidpoint"))
+    {
         return BT::NodeStatus::FAILURE;
+    }
 
     centered_streak_ = 0;
     detected_midpoint_ = false;
@@ -50,8 +52,10 @@ BT::NodeStatus HoneMidpoint::onStart()
 
 BT::NodeStatus HoneMidpoint::onRunning()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "HoneMidpoint"))
+    {
         return BT::NodeStatus::FAILURE;
+    }
 
     double min_conf = 0.25, kp = 0.002, max_cmd = 0.6, tol_px = 10.0;
     int hold_ticks = 5;
@@ -63,20 +67,13 @@ BT::NodeStatus HoneMidpoint::onRunning()
     (void)getInput("hold_ticks", hold_ticks);
 
     // Read image width
-    uint32_t W = 0;
-    {
-        std::scoped_lock lk(ctx_->img_mx);
-        W = ctx_->img_width;
-    }
+    uint32_t W = 0, H = 0;
+    ctx_->image_size_for("front", W, H);
     if (W == 0)
         return BT::NodeStatus::RUNNING;
 
     // Read latest detections
-    std::optional<yolo_msgs::msg::DetectionArray> arr;
-    {
-        std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_detections;
-    }
+    std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for("front");
     if (!arr || arr->detections.empty())
         return BT::NodeStatus::RUNNING;
 

@@ -18,9 +18,8 @@ BT::PortsList PolesBigEnough::providedPorts()
 
 BT::NodeStatus PolesBigEnough::tick()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "PolesBigEnough"))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("mission_planner"), "PolesBigEnough: missing ctx");
         return BT::NodeStatus::FAILURE;
     }
 

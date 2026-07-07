@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "quat_math.hpp"
+
 #include <geometry_msgs/msg/pose.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
@@ -101,21 +103,6 @@ void append_tick_log(bool had_arr, std::size_t num_detections, std::size_t num_r
 }
 }  // namespace
 
-static inline void normalize_quat(geometry_msgs::msg::Quaternion& q)
-{
-    double const n = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
-    if (n < 1e-12)
-    {
-        q.x = q.y = q.z = 0.0;
-        q.w = 1.0;
-        return;
-    }
-    q.x /= n;
-    q.y /= n;
-    q.z /= n;
-    q.w /= n;
-}
-
 BT::PortsList TrackBestPair::providedPorts()
 {
     BT::PortsList ports;
@@ -134,8 +121,10 @@ BT::PortsList TrackBestPair::providedPorts()
 
 BT::NodeStatus TrackBestPair::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "TrackBestPair"))
+    {
         return BT::NodeStatus::FAILURE;
+    }
 
     best_pair_score_ = -1e18;
 
@@ -147,8 +136,10 @@ BT::NodeStatus TrackBestPair::onStart()
 
 BT::NodeStatus TrackBestPair::onRunning()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "TrackBestPair"))
+    {
         return BT::NodeStatus::FAILURE;
+    }
 
     double min_conf = 0.30;
     int channel_side = 0;
@@ -156,11 +147,7 @@ BT::NodeStatus TrackBestPair::onRunning()
     (void)getInput("channel_side", channel_side);
 
     // Snapshot latest detections (copy optional)
-    std::optional<yolo_msgs::msg::DetectionArray> arr;
-    {
-        std::scoped_lock lk(ctx_->detections_mx);
-        arr = ctx_->latest_detections;
-    }
+    std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for("front");
 
     // Debug fields with safe defaults
     std::size_t num_detections = arr ? arr->detections.size() : 0;
@@ -314,7 +301,7 @@ BT::NodeStatus TrackBestPair::onRunning()
         }
 
         geometry_msgs::msg::Quaternion q = current.orientation;
-        normalize_quat(q);
+        quat_math::normalize(q);
 
         best_pair_score_ = best_score_frame;
         updated_best = 1;

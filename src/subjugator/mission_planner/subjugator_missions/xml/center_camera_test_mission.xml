@@ -1,0 +1,26 @@
+<root BTCPP_format="4" main_tree_to_execute="CenterCameraTest">
+    <!--
+        Tuning harness for CenterCamera. Calls the leaf DIRECTLY (not the
+        HoneOverTarget subtree) so every tuning knob is settable here and the
+        mission SUCCESS/FAILURE actually reflects whether centering converged
+        (no AlwaysSuccess mask). Assumes the sub already sits over the table
+        (spawn pose / teleport). Run: mission:=CenterCameraTest
+    -->
+    <BehaviorTree ID="CenterCameraTest">
+        <RosTimeout msec="30000" ctx="{ctx}">
+            <Action ID="CenterCamera"
+                    camera="down"
+                    label="table"
+                    tol_norm="0.05"
+                    kp="0.5"
+                    max_step="0.25"
+                    settle_pos_tol="0.10"
+                    settle_ticks="3"
+                    miss_frames="5"
+                    swap_axes="false"
+                    map_x_sign="1.0"
+                    map_y_sign="1.0"
+                    ctx="{ctx}"/>
+        </RosTimeout>
+    </BehaviorTree>
+</root>

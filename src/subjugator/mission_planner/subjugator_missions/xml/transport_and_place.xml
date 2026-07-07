@@ -1,0 +1,69 @@
+<root BTCPP_format="4">
+    <!--
+        Reusable subtree (S5): carry the held object (grabbed_label, from S4) to the
+        basket matching the AUV's role and release it into the basket well.
+
+        SelectBasket maps role (Context) -> basket marker class on `basket_label`.
+        Navigation is hybrid: a dead-reckon lateral move brings the marker into the
+        down-cam FOV, then HoneOverTarget centers on it. Place is descend-then-open:
+        the GripperControl plugin detaches on open, dropping the object into the
+        recessed table basket. Open-loop success (the Servo call has no grasp
+        feedback); LogToFile drops a poolside timeline marker but never branches.
+
+        grabbed_label is intentionally LEFT INTACT: select_target.xml already wires
+        SelectTarget's exclude port to {grabbed_label}, so the S6 loop skips the
+        just-placed object. S5 writes no new blackboard key.
+
+        Knobs (role_timeout_msec, place_attempts, lateral_x/y, descend_z, lift_z,
+        open_angle, settle_msec, center_tol_norm, center_timeout_msec,
+        move_timeout_msec) are supplied at the call site, like ApproachAndGrasp.
+    -->
+    <BehaviorTree ID="TransportAndPlace">
+        <!-- Fail-fast guard: never place without something in the gripper (S4 sets grabbed_label) -->
+        <Precondition if="grabbed_label != ''" else="FAILURE">
+            <Sequence>
+                <!-- Decide the target basket from role; RosTimeout bounds unknown/unrecognized role -> FAILURE -->
+                <RosTimeout msec="{role_timeout_msec}" ctx="{ctx}">
+                    <Action ID="SelectBasket"
+                            survey_marker="warning"
+                            rescue_marker="red_cross"
+                            basket_label="{basket_label}"
+                            ctx="{ctx}"/>
+                </RosTimeout>
+                <RetryUntilSuccessful num_attempts="{place_attempts}">
+                    <Sequence name="place_cycle">
+                        <!-- 1. Dead-reckon laterally toward the basket region to bring the marker into FOV -->
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                                 x="{lateral_x}" y="{lateral_y}" z="0.0"
+                                 pos_tol="0.2" ori_tol_deg="180.0"
+                                 msec="{move_timeout_msec}" ctx="{ctx}"/>
+                        <!-- 2. Center over the basket marker (degrades to dead-reckon internally on timeout).
+                             miss_frames raised above the default 5: the held object hangs under the
+                             sub and can occlude the marker for longer flicker runs. Tune poolside. -->
+                        <SubTree ID="HoneOverTarget" _autoremap="true"
+                                 label="{basket_label}" camera="down"
+                                 tol_norm="{center_tol_norm}" timeout_msec="{center_timeout_msec}"
+                                 miss_frames="8"
+                                 ctx="{ctx}"/>
+                        <!-- 3. Descend to lower the held object into the basket well (negative z = down) -->
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                                 z="{descend_z}" pos_tol="0.2" ori_tol_deg="180.0"
+                                 msec="{move_timeout_msec}" ctx="{ctx}"/>
+                        <!-- 4. Open the gripper -> GripperControl detaches -> object drops into the basket -->
+                        <Action ID="ActuateServo" target="gripper" angle="{open_angle}" ctx="{ctx}"/>
+                        <!-- RosDelay: the detach/drop settle is physics -> sim-seconds in sim -->
+                        <RosDelay delay_msec="{settle_msec}" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
+                        <!-- 5. Lift clear of the basket/table (positive z = up) -->
+                        <SubTree ID="RelativeMove" _autoremap="true"
+                                 z="{lift_z}" pos_tol="0.2" ori_tol_deg="180.0"
+                                 msec="{move_timeout_msec}" ctx="{ctx}"/>
+                    </Sequence>
+                </RetryUntilSuccessful>
+                <!-- 6. Diagnostic timeline marker (observability only; LogToFile returns SUCCESS, never branches) -->
+                <Action ID="LogToFile" dir="/tmp" filename="s5_place_log.txt"
+                        message="S5: released object into basket"/>
+                <!-- grabbed_label left intact -> S3's exclude="{grabbed_label}" skips it on the S6 loop -->
+            </Sequence>
+        </Precondition>
+    </BehaviorTree>
+</root>

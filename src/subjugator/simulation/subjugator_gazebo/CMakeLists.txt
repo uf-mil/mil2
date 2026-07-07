@@ -129,7 +129,7 @@ ament_target_dependencies(ThrusterBridge rclcpp subjugator_msgs geometry_msgs)
 ament_target_dependencies(MarbleDropper rclcpp subjugator_msgs geometry_msgs)
 
 # ROS2 / ament dependencies used by your plugin
-ament_target_dependencies(GripperControl rclcpp std_msgs)
+ament_target_dependencies(GripperControl rclcpp std_msgs subjugator_msgs)
 
 # Install the plugins
 install(

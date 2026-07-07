@@ -25,7 +25,7 @@ BT::PortsList DetermineChannelSide::providedPorts()
 BT::NodeStatus DetermineChannelSide::onStart()
 {
     right_count_ = left_count_ = 0;
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "DetermineChannelSide"))
         return BT::NodeStatus::FAILURE;
     (void)getInput("min_conf", min_conf_);
     (void)getInput("consecutive_frames", need_frames_);

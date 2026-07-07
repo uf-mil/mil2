@@ -62,8 +62,10 @@ BT::PortsList NavChannelControl::providedPorts()
 
 BT::NodeStatus NavChannelControl::onStart()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "NavChannelControl"))
+    {
         return BT::NodeStatus::FAILURE;
+    }
 
     int rc_in = 0;
     (void)getInput("right_channel", rc_in);
@@ -85,8 +87,10 @@ BT::NodeStatus NavChannelControl::onStart()
 
 BT::NodeStatus NavChannelControl::onRunning()
 {
-    if (!ctx_ && (!getInput("ctx", ctx_) || !ctx_))
+    if (!require_ctx(*this, ctx_, "NavChannelControl"))
+    {
         return BT::NodeStatus::FAILURE;
+    }
 
     double min_conf = 0.15;
     double size_center = 80.0, size_div = 20.0;
