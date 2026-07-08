@@ -116,6 +116,20 @@ static inline void normalize_quat(geometry_msgs::msg::Quaternion& q)
     q.w /= n;
 }
 
+/*
+Any pitch/roll baked into this snapshotted
+orientation would tilt subsequent "forward"
+moves into world-frame z and accumulate depth drift.
+*/
+static inline void yaw_only_quat(geometry_msgs::msg::Quaternion& q)
+{
+    double const yaw = std::atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+    q.x = 0.0;
+    q.y = 0.0;
+    q.z = std::sin(yaw * 0.5);
+    q.w = std::cos(yaw * 0.5);
+}
+
 BT::PortsList TrackBestPair::providedPorts()
 {
     BT::PortsList ports;
@@ -315,6 +329,7 @@ BT::NodeStatus TrackBestPair::onRunning()
 
         geometry_msgs::msg::Quaternion q = current.orientation;
         normalize_quat(q);
+        yaw_only_quat(q);
 
         best_pair_score_ = best_score_frame;
         updated_best = 1;
