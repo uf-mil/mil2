@@ -56,7 +56,7 @@ std::vector<geometry_msgs::msg::Pose> PathPlanner::slerp(geometry_msgs::msg::Pos
     double const z_err = goal_pose.position.z - last_odom_.pose.pose.position.z;
     double const err_magnitude = std::sqrt(x_err * x_err + y_err * y_err + z_err * z_err);
 
-    // dead-zone: for short moves, skip the intermediate breadcrumbs and just send the goal directly
+    // deadzone or short moves, skip the intermediate breadcrumbs and just send the goal directly
     double const min_path_dist = 0.5;
     if (err_magnitude < min_path_dist)
     {
