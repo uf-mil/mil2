@@ -12,7 +12,7 @@ from gtsam.symbol_shorthand import X, L
 from visualization_msgs.msg import Marker
 
 ODOM_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.1] * 6)
-LANDMARK_NOISE = gtsam.noiseModel.Diagonal.Sigmas([1, 1, 100])
+LANDMARK_NOISE = gtsam.noiseModel.Diagonal.Sigmas([0.01, 0.01, 0.01])
 CAL = gtsam.Cal3_S2(80, 640, 360)
 CAM = gtsam.PinholePoseCal3_S2(gtsam.Pose3(), CAL)
 
@@ -39,7 +39,7 @@ async def estimate_bins():
     odom_prev = odom
 
     # initialize smoother
-    smoother = gtsam.IncrementalFixedLagSmoother(1000)
+    smoother = gtsam.IncrementalFixedLagSmoother(100)
     factors = gtsam.NonlinearFactorGraph()
     values = gtsam.Values()
     ix, il = 0, 0
@@ -54,15 +54,26 @@ async def estimate_bins():
     landmarks = {}
 
     async for yolo, odom in adm.Join(adm.yolo_sub, adm.odom_sub):
-        timestamps = {}
-        for landmark in landmarks.values():
-            timestamps[landmark.key] = ix
-
         if yolo:
+            factors = gtsam.NonlinearFactorGraph()
+            values = gtsam.Values()
+            timestamps = {}
+
             for i, landmark in landmarks.items():
-                if not estimate.exists(landmark.key): continue
+                # if not estimate.exists(landmark.key): continue
                 landmark.mean = estimate.atPoint3(landmark.key)
                 cov = smoother.marginalCovariance(landmark.key)
+
+                # process noise
+                next_key = L(il + 1)
+                il += 1
+                values.insert(next_key, landmark.mean)
+                factors.add(gtsam.BetweenFactorPoint3(
+                    landmark.key, next_key, [0, 0, 0],
+                    LANDMARK_NOISE,
+                ))
+                timestamps[next_key] = ix
+                landmark.key = next_key
 
                 # visualize
                 marker = Marker()
@@ -114,9 +125,6 @@ async def estimate_bins():
             except IndexError:
                 pass
 
-            factors = gtsam.NonlinearFactorGraph()
-            values = gtsam.Values()
-
             pose_estimate = estimate.atPose3(X(ix))
 
             for det in yolo.detections:
@@ -143,6 +151,7 @@ async def estimate_bins():
                     key = L(il)
                     landmarks[det_id] = Landmark(key, None)
                     values.insert(key, landmark_pos)
+                    timestamps[key] = ix
                     il += 1
                 else:
                     key = landmarks[det_id].key
@@ -165,8 +174,7 @@ async def estimate_bins():
 
             values.insert(X(ix + 1), odom)
 
-            timestamps[X(ix + 1)] = ix + 1
-            smoother_result = smoother.update(factors, values, timestamps)
+            smoother_result = smoother.update(factors, values, {X(ix + 1): ix + 1})
             estimate = smoother.calculateEstimate()
 
             ix += 1
