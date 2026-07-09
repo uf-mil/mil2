@@ -20,15 +20,15 @@
 #include "hone_bearing.hpp"
 #include "hone_midpoint.hpp"
 #include "log_to_file.hpp"
+#include "lookup_waypoint.hpp"
 #include "nav_channel_control.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
+#include "remember_waypoint.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 #include "track_best_pair.hpp"
 #include "track_largest_poles.hpp"
-#include "remember_waypoint.hpp"
-#include "lookup_waypoint.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <count_when_ticked.hpp>
