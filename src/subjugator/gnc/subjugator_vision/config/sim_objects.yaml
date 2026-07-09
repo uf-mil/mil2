@@ -1,0 +1,132 @@
+---
+# Simulation object configuration for sim_detection_publisher.py
+#
+# world_name: Gazebo world name
+# camera_link: link name in Gazebo's Pose_V message to use as camera
+# gz_pose_topic: Gazebo topic publishing gz.msgs.Pose_V of dynamic poses
+#
+# Each object entry:
+#   position: [x, y, z] in world frame
+#   half_extents: [dx, dy, dz] approximate half-sizes of the 3D bounding box
+#   class_id: YOLO class index
+#   class_name: YOLO class label
+
+world_name: "robosub_2025"
+model_name: "sub9"
+camera_link: "front_cam_link"
+gz_pose_topic: "/world/robosub_2025/dynamic_pose/info"
+
+objects:
+  - name: "StartGate_A"
+    position: [-1.57, 4.28, -0.4]
+    half_extents: [0.1, 1.5, 1.0]
+    class_id: 0
+    class_name: "start_gate"
+
+  - name: "PathMarker_A1"
+    position: [-2.47, 7.0, -1.4]
+    half_extents: [0.3, 0.15, 0.03]
+    class_id: 1
+    class_name: "path_marker"
+
+  - name: "PathMarker_A2"
+    position: [6.892, 16.840, -1.4]
+    half_extents: [0.3, 0.15, 0.03]
+    class_id: 1
+    class_name: "path_marker"
+
+  - name: "RedPole1"
+    position: [6.392, 14.840, 0.0]
+    half_extents: [0.05, 0.05, 1.0]
+    class_id: 2
+    class_name: "red_pole"
+
+  - name: "RedPole2"
+    position: [3.588, 14.188, 0.0]
+    half_extents: [0.05, 0.05, 1.0]
+    class_id: 2
+    class_name: "red_pole"
+
+  - name: "RedPole3"
+    position: [1.384, 11.536, 0.0]
+    half_extents: [0.05, 0.05, 1.0]
+    class_id: 2
+    class_name: "red_pole"
+
+  - name: "LeftWhitePole"
+    position: [7.769, 12.753, 0.0]
+    half_extents: [0.05, 0.05, 1.0]
+    class_id: 3
+    class_name: "white_pole"
+
+  - name: "RightWhitePole"
+    position: [5.016, 16.927, 0.0]
+    half_extents: [0.05, 0.05, 1.0]
+    class_id: 3
+    class_name: "white_pole"
+
+  - name: "LeftWhitePole2"
+    position: [4.965, 12.101, 0.0]
+    half_extents: [0.05, 0.05, 1.0]
+    class_id: 3
+    class_name: "white_pole"
+
+  - name: "RightWhitePole2"
+    position: [2.211, 16.275, 0.0]
+    half_extents: [0.05, 0.05, 1.0]
+    class_id: 3
+    class_name: "white_pole"
+
+  - name: "LeftWhitePole3"
+    position: [2.761, 9.449, 0.0]
+    half_extents: [0.05, 0.05, 1.0]
+    class_id: 3
+    class_name: "white_pole"
+
+  - name: "RightWhitePole3"
+    position: [0.007, 13.623, 0.0]
+    half_extents: [0.05, 0.05, 1.0]
+    class_id: 3
+    class_name: "white_pole"
+
+  - name: "Bin_A"
+    position: [7.192, 20.840, -1.4]
+    half_extents: [0.3, 0.3, 0.15]
+    class_id: 4
+    class_name: "bin"
+
+  - name: "Torpedo_Board"
+    position: [-1.192, 21.840, -1.0]
+    half_extents: [0.05, 0.6, 0.6]
+    class_id: 5
+    class_name: "torpedo_board"
+
+  - name: "Octagon_2025"
+    position: [-6.25, 14.0, 0.4]
+    half_extents: [1.5, 1.5, 0.1]
+    class_id: 6
+    class_name: "octagon"
+
+  - name: "Pink_Bin"
+    position: [-6.403, 14.58, -1.0]
+    half_extents: [0.2, 0.2, 0.15]
+    class_id: 7
+    class_name: "pink_bin"
+
+  - name: "Yellow_Bin"
+    position: [-6.403, 13.45, -1.0]
+    half_extents: [0.2, 0.2, 0.15]
+    class_id: 8
+    class_name: "yellow_bin"
+
+  - name: "Yellow_Cup"
+    position: [-6.95, 14.0, -0.847]
+    half_extents: [0.06, 0.06, 0.08]
+    class_id: 9
+    class_name: "yellow_cup"
+
+  - name: "Pink_Spoon"
+    position: [-6.945, 14.076, -0.98]
+    half_extents: [0.15, 0.04, 0.02]
+    class_id: 10
+    class_name: "pink_spoon"
