@@ -9,6 +9,7 @@
 
 #include "actuate_servo.hpp"
 #include "align_depth.hpp"
+#include "align_strafe.hpp"
 #include "align_yaw.hpp"
 #include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
@@ -116,12 +117,12 @@ int main(int argc, char** argv)
     factory.registerNodeType<TrackBestPair>("TrackBestPair");
     factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
     factory.registerNodeType<NavChannelControl>("NavChannelControl");
-    factory.registerNodeType<StartGateControl>("StartGateControl");
     factory.registerNodeType<ActuateServo>("ActuateServo");
     factory.registerNodeType<AlignDepth>("AlignDepth");
     factory.registerNodeType<AlignYaw>("AlignYaw");
     factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
     factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
+    factory.registerNodeType<AlignStrafe>("AlignStrafe");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
