@@ -1,6 +1,8 @@
 #pragma once
 #include <mutex>
 #include <optional>
+#include <string>
+#include <unordered_map>
 
 #include <rclcpp/client.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -46,6 +48,11 @@ struct Context
     std::mutex img_mx;
     uint32_t img_width{ 0 };
     uint32_t img_height{ 0 };
+
+    // Named absolute waypoints captured during a mission (or preloaded).
+    // Mission BT nodes (RememberWaypoint / LookupWaypoint) read and write this.
+    std::mutex waypoints_mx;
+    std::unordered_map<std::string, geometry_msgs::msg::Pose> waypoints;
 
     inline rclcpp::Logger logger() const
     {

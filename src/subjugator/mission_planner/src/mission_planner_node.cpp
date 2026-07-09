@@ -20,9 +20,11 @@
 #include "hone_bearing.hpp"
 #include "hone_midpoint.hpp"
 #include "log_to_file.hpp"
+#include "lookup_waypoint.hpp"
 #include "nav_channel_control.hpp"
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
+#include "remember_waypoint.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 #include "track_best_pair.hpp"
@@ -116,6 +118,8 @@ int main(int argc, char** argv)
     factory.registerNodeType<ActuateServo>("ActuateServo");
     factory.registerNodeType<AlignDepth>("AlignDepth");
     factory.registerNodeType<AlignYaw>("AlignYaw");
+    factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
+    factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");

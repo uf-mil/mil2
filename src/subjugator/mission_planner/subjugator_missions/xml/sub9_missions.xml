@@ -28,4 +28,6 @@
     <include path="torpedo_mission.xml"/>
     <include path="roll_style.xml"/>
     <include path="pitch_style.xml"/>
+    <include path="waypoint.xml"/>
+    <include path="waypoint_demo_mission.xml"/>
 </root>
