@@ -1,0 +1,31 @@
+<root BTCPP_format="4" main_tree_to_execute="pcStartGateNavChannel">
+  <!--
+    Full run: start gate, then nav channel. The gate side chosen here
+    dictates the channel side:
+      Search&Rescue (right half of gate) -> right channel (+1)
+      Survey&Repair (left half of gate)  -> left channel  (-1)
+  -->
+  <BehaviorTree ID="pcStartGateNavChannel">
+    <Sequence>
+
+      <!-- DECISION: which gate side to go through. Must be a Script (not a
+           SubTree attribute) so the value lives on THIS tree's blackboard,
+           where the Switch2 below reads it; a constant attribute would only
+           exist inside pcStartGate and the Switch would fall to default -->
+      <Script code=" gate_target := 'Search&amp;Rescue' "/>
+
+      <SubTree ID="pcStartGate" _autoremap="true"/>
+
+      <!-- Same nav-channel mission, only the side parameter changes.
+           Default child omits it, falling back to auto-detect. -->
+      <Switch2 variable="{gate_target}"
+               case_1="Search&amp;Rescue"
+               case_2="Survey&amp;Repair">
+        <SubTree ID="pcNavChannelV2" _autoremap="true" right_channel="1"/>
+        <SubTree ID="pcNavChannelV2" _autoremap="true" right_channel="-1"/>
+        <SubTree ID="pcNavChannelV2" _autoremap="true"/>
+      </Switch2>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

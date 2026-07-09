@@ -11,6 +11,8 @@
     <include path="yaw_style.xml"/>
     <include path="pc_nav_channel.xml"/>
     <include path="pc_nav_channel_v2.xml"/>
+    <include path="pc_start_gate.xml"/>
+    <include path="pc_start_gate_nav_channel.xml"/>
 
     <!-- Test missions -->
     <include path="topic_ticker_test_mission.xml"/>

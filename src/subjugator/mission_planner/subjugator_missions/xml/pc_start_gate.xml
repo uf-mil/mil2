@@ -1,0 +1,133 @@
+<root BTCPP_format="4" main_tree_to_execute="pcStartGate">
+  <!--
+    pcStartGate: home on one side image of the start gate and pass through.
+
+    Input: {gate_target} - YOLO label of the side image to go through
+    ('Search&Rescue' = right half, 'Survey&Repair' = left half). The caller
+    sets it (see pcStartGateNavChannel).
+
+    Alignment mirrors pcNavChannelV2: StartGateControl emits one bounded yaw
+    step per tick and RelativeMove executes it, so all motion chains off the
+    last goal pose (no odom-drift accumulation).
+  -->
+  <BehaviorTree ID="pcStartGate">
+    <Sequence>
+
+      <!-- Sim model; swap in the real gate model when it lands. -->
+      <Action ID="CheckYoloModel"
+              model_filename="start_gate_sim.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- Sweep until the chosen image is seen. DetectTarget succeeding
+           ends the Parallel, halting the sweep mid-step; the p-controller
+           loop below cleans up the heading. -->
+      <Parallel success_count="1" failure_count="2">
+
+        <RetryUntilSuccessful num_attempts="-1">
+          <Sequence>
+            <Delay delay_msec="200"><AlwaysSuccess/></Delay>
+            <Condition ID="DetectTarget"
+                       label="{gate_target}" min_conf="0.20" ctx="{ctx}"/>
+          </Sequence>
+        </RetryUntilSuccessful>
+
+        <Repeat num_cycles="-1">
+          <Sequence>
+            <Repeat num_cycles="4">
+              <Fallback>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="4000" ctx="{ctx}"/>
+                <AlwaysSuccess/>
+              </Fallback>
+            </Repeat>
+            <Repeat num_cycles="8">
+              <Fallback>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="4000" ctx="{ctx}"/>
+                <AlwaysSuccess/>
+              </Fallback>
+            </Repeat>
+            <Repeat num_cycles="4">
+              <Fallback>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="4000" ctx="{ctx}"/>
+                <AlwaysSuccess/>
+              </Fallback>
+            </Repeat>
+          </Sequence>
+        </Repeat>
+
+      </Parallel>
+
+      <!-- Main loop: align, advance, repeat until the image is passed. -->
+      <RetryUntilSuccessful num_attempts="-1">
+        <Fallback>
+
+          <!-- Image visible: p-control yaw until centered (StartGateControl
+               returns FAILURE = aligned, ending KeepRunningUntilFailure),
+               advance, then AlwaysFailure loops us back to re-correct. -->
+          <Sequence>
+            <Condition ID="DetectTarget"
+                       label="{gate_target}" min_conf="0.15" ctx="{ctx}"/>
+
+            <ForceSuccess>
+              <Timeout msec="8000">
+                <KeepRunningUntilFailure>
+                  <Sequence>
+                    <Action ID="StartGateControl"
+                            ctx="{ctx}"
+                            label="{gate_target}"
+                            min_conf="0.15"
+                            threshold="0.05"
+                            kp="40.0"
+                            max_yaw_deg="15.0"
+                            yaw_cmd="{sg_yaw}"/>
+                    <ForceSuccess>
+                      <SubTree ID="RelativeMove" _autoremap="true"
+                               x="0.0" y="0.0" z="0.0"
+                               roll_deg="0.0" pitch_deg="0.0" yaw_deg="{sg_yaw}"
+                               pos_tol="0.20" ori_tol_deg="6.0" msec="5000" ctx="{ctx}"/>
+                    </ForceSuccess>
+                  </Sequence>
+                </KeepRunningUntilFailure>
+              </Timeout>
+            </ForceSuccess>
+
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="0.65" y="0.0" z="0.0"
+                     roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                     pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+
+            <AlwaysFailure/>
+          </Sequence>
+
+          <!-- Image gone: confirm for 3 s (not just a dropped frame), then
+               duck under the hanging image and punch through. -->
+          <Sequence>
+            <Repeat num_cycles="15">
+              <Sequence>
+                <Delay delay_msec="200"><AlwaysSuccess/></Delay>
+                <Inverter>
+                  <Condition ID="DetectTarget"
+                             label="{gate_target}" min_conf="0.20" ctx="{ctx}"/>
+                </Inverter>
+              </Sequence>
+            </Repeat>
+
+
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="2.0" y="0.0" z="0.0"
+                     roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                     pos_tol="0.25" ori_tol_deg="30.0" msec="15000" ctx="{ctx}"/>
+
+            <AlwaysSuccess/>
+          </Sequence>
+
+        </Fallback>
+      </RetryUntilSuccessful>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

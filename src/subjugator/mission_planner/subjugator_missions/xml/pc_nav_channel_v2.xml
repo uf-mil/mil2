@@ -154,9 +154,12 @@
                 <KeepRunningUntilFailure>
                   <Sequence>
 
+                    <!-- Side is a subtree parameter: call with right_channel="1"
+                         (RIGHT) or "-1" (LEFT). Unset = auto-detect from the
+                         first confident pair, latched via resolved_channel. -->
                     <Action ID="NavChannelControl"
                             ctx="{ctx}"
-                            right_channel="-1"
+                            right_channel="{right_channel}"
                             min_conf="0.15"
                             size_center_px="45.0"
                             size_div_px="10.0"

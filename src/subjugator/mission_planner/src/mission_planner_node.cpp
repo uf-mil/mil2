@@ -25,6 +25,7 @@
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "remember_waypoint.hpp"
+#include "start_gate_control.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 #include "track_best_pair.hpp"
@@ -115,6 +116,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<TrackBestPair>("TrackBestPair");
     factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
     factory.registerNodeType<NavChannelControl>("NavChannelControl");
+    factory.registerNodeType<StartGateControl>("StartGateControl");
     factory.registerNodeType<ActuateServo>("ActuateServo");
     factory.registerNodeType<AlignDepth>("AlignDepth");
     factory.registerNodeType<AlignYaw>("AlignYaw");
