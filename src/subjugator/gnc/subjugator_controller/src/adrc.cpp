@@ -3,19 +3,27 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
+
+template <int D>
+using Mat = Eigen::Matrix<double, D, D>;
+
+template <int D>
+using Vec = Eigen::Matrix<double, D, 1>;
+
+template <int D>
 struct ADRC {
-    Eigen::Matrix2d AESO;
-    Eigen::Vector2d bESO;
+    Mat<D> AESO;
+    Vec<D> bESO;
 
     double b0;
-    Eigen::RowVector2d K;
-    Eigen::Vector2d L;
+    Eigen::Matrix<double, 1, D> K;
+    Vec<D> L;
 
     double u_min, u_max;
-    Eigen::Vector2d X;
+    Vec<D> X;
 
     double compute(double e) {
-        Eigen::Vector2d F = X + L * e;
+        Vec<D> F = X + L * e;
 
         double u = (K * F)(0) / b0;
         double u_lim = std::clamp(u, u_min, u_max);
@@ -26,10 +34,76 @@ struct ADRC {
     }
 };
 
+struct ADRC1 : public ADRC<2> {
+    void init(double b0, double omegaCL, double kESO, double Tsample) {
+        this->b0 = b0;
+
+        // locations in z-domain for pole placement
+        double zCL = exp(-omegaCL * Tsample);
+        double zESO = exp(-kESO * omegaCL * Tsample);
+
+        // controller and observer gains
+        K(0) = (1 - zCL) / Tsample;
+        K(1) = 1;
+        double l1 = 1 - zESO * zESO;
+        double l2 = (1 - zESO) * (1 - zESO) / Tsample;
+        L(0) = l1;
+        L(1) = l2;
+
+        // observer matrix
+        AESO(0, 0) = 1 - l1;
+        AESO(0, 1) = Tsample * (1 - l1);
+        AESO(1, 0) = -l2;
+        AESO(1, 1) = 1 - l2 * Tsample;
+        bESO(0) = b0 * Tsample * (1 - l1);
+        bESO(1) = -l2 * b0 * Tsample;
+    }
+};
+
+struct ADRC2 : public ADRC<3> {
+    void init(double b0, double omegaCL, double kESO, double Tsample) {
+        this->b0 = b0;
+
+        // locations in z-domain for pole placement
+        double zCL = exp(-omegaCL * Tsample);
+        double zESO = exp(-kESO * omegaCL * Tsample);
+        double z = 1 - zESO;
+
+        // controller and observer gains
+        K(0) = (1 - zCL) * (1 - zCL) / (Tsample * Tsample);
+        K(1) = (4 - (1 + zCL) * (1 + zCL)) / (2 * Tsample);
+        K(2) = 1;
+        double l1 = 1 - zESO * zESO * zESO;
+        double l2 = 3 * z * z * (1 + zESO) / (2 * Tsample);
+        double l3 = z * z * z / (Tsample * Tsample);
+        L(0) = l1;
+        L(1) = l2;
+        L(2) = l3;
+
+        // observer matrix (inner is identical to ADRC1)
+        AESO(0, 0) = 1 - l1;
+        AESO(0, 1) = Tsample * (1 - l1);
+        AESO(1, 0) = -l2;
+        AESO(1, 1) = 1 - l2 * Tsample;
+
+        // observer matrix
+        double T2 = Tsample * Tsample;
+        AESO(0, 2) = T2 * (1 - l1) / 2;
+        AESO(1, 2) = Tsample - l2 * T2 / 2;
+        AESO(2, 0) = -l3;
+        AESO(2, 1) = -l3 * Tsample;
+        AESO(2, 2) = 1 - l3 * T2 / 2;
+
+        bESO(0) = b0 * T2 * (1 - l1) / 2;
+        bESO(1) = b0 * Tsample - l2 * b0 * T2 / 2;
+        bESO(2) = -l3 * b0 * T2 / 2;
+    }
+};
+
 class ControllerNode : public rclcpp::Node {
     std::vector<double> b0s{}, omegaCLs{}, kESOs{};
     double Tsample = 0.1;
-    std::array<ADRC, 6> controllers;
+    std::array<ADRC2, 6> controllers;
 
     rclcpp::ParameterEventHandler param_subscriber;
     std::vector<std::shared_ptr<rclcpp::ParameterCallbackHandle>> param_cbs;
@@ -81,30 +155,7 @@ public:
 
     void update_params() {
         for (int i = 0; i < 6; ++i) {
-            ADRC &c = controllers[i];
-
-            // locations in z-domain for pole placement
-            double zCL = exp(-omegaCLs[i] * Tsample);
-            double zESO = exp(-kESOs[i] * omegaCLs[i] * Tsample);
-
-            // controller and observer gains
-            c.K(0) = (1.0 - zCL) / Tsample;
-            c.K(1) = 1;
-            c.b0 = b0s[i];
-            double l1 = 1.0 - zESO * zESO;
-            double l2 = (1.0 - zESO) * (1.0 - zESO) / Tsample;
-            c.L(0) = l1;
-            c.L(1) = l2;
-
-            // observer matrix
-            c.AESO(0, 0) = 1.0 - l1;
-            c.AESO(0, 1) = Tsample * (1.0 - l1);
-            c.AESO(1, 0) = -l2;
-            c.AESO(1, 1) = 1.0 - Tsample * l2;
-            c.bESO(0) = c.b0 * Tsample * (1.0 - l1);
-            c.bESO(1) = -c.b0 * Tsample * l2;
-
-            controllers[i] = c;
+            controllers[i].init(b0s[i], omegaCLs[i], kESOs[i], Tsample);
         }
     }
 
