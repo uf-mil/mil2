@@ -173,15 +173,18 @@ public:
         Eigen::Quaterniond goal_quat = Eigen::Quaterniond(gq.w, gq.x, gq.y, gq.z);
         Eigen::Quaterniond odom_quat = Eigen::Quaterniond(oq.w, oq.x, oq.y, oq.z);
 
-        Eigen::Vector3d ypr = (goal_quat * odom_quat.inverse()).canonicalEulerAngles(2, 1, 0);
+        Eigen::Matrix3d mat = (goal_quat * odom_quat.inverse()).toRotationMatrix();
+        double roll = atan2(mat(2, 1), mat(2, 2));
+        double pitch = atan2(-mat(2, 0), sqrt(mat(2, 1) * mat(2, 1) + mat(2, 2) * mat(2, 2)));
+        double yaw = atan2(mat(1, 0), mat(0, 0));
 
         std::array<double, 6> errors = {
             gp.x - op.x,
             gp.y - op.y,
             gp.z - op.z,
-            ypr(2),
-            ypr(1),
-            ypr(0),
+            roll,
+            pitch,
+            yaw,
         };
 
         // apply PID control to errors
