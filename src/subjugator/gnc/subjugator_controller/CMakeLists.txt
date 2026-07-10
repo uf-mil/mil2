@@ -26,7 +26,8 @@ target_include_directories(subjugator_controller PRIVATE ${EIGEN3_INCLUDE_DIR}
                                                          include)
 
 add_executable(adrc_controller src/adrc.cpp)
-target_link_libraries(adrc_controller rclcpp::rclcpp Eigen3::Eigen)
+target_link_libraries(adrc_controller rclcpp::rclcpp Eigen3::Eigen
+                      ${geometry_msgs_TARGETS} ${nav_msgs_TARGETS})
 
 install(TARGETS subjugator_controller DESTINATION lib/${PROJECT_NAME})
 
