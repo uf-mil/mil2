@@ -25,7 +25,12 @@ ament_target_dependencies(subjugator_controller rclcpp nav_msgs control_toolbox
 target_include_directories(subjugator_controller PRIVATE ${EIGEN3_INCLUDE_DIR}
                                                          include)
 
+add_executable(adrc_controller src/adrc.cpp)
+target_link_libraries(adrc_controller rclcpp::rclcpp Eigen3::Eigen)
+
 install(TARGETS subjugator_controller DESTINATION lib/${PROJECT_NAME})
+
+install(TARGETS adrc_controller DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 
