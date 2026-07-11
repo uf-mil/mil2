@@ -126,8 +126,7 @@ class SonarFollower : public BT::DecoratorNode
 
             BT::OutputPort<double>("sonar_x"),
             BT::OutputPort<double>("sonar_y"),
-            BT::OutputPort<double>("sonar_z"),
-            BT::OutputPort<double>("sonar_w"),
+            BT::OutputPort<double>("sonar_yaw_deg"),
         };
     }
 
@@ -199,20 +198,28 @@ class SonarFollower : public BT::DecoratorNode
         }
         x /= mag;
         y /= mag;
-        // (x, y) dot (1, 0) = 1*1*cos(theta) (1 times 1 since both are unit length)
-        // x = cos(theta)
-        auto angle_rad = acos(std::clamp(x, -1.0, 1.0));
-        auto z = std::sin(angle_rad / 2);
-        auto w = std::cos(angle_rad / 2);
+
+        // signed heading to the pinger relative to our current body frame
+        auto const yaw_deg = std::atan2(y, x) * 180.0 / M_PI;
 
         // set outputs
         setOutput("sonar_x", x * 0.5);
         setOutput("sonar_y", y * 0.5);
-        setOutput("sonar_z", z);
-        setOutput("sonar_w", w);
+        setOutput("sonar_yaw_deg", yaw_deg);
 
-        // Tick the child
-        child_node_->executeTick();
+        // restart the child so it targets the fresh bearing instead of
+        // finishing a move aimed at a stale one
+        if (child_node_->status() != BT::NodeStatus::IDLE)
+        {
+            haltChild();
+        }
+
+        auto const child_status = child_node_->executeTick();
+        if (child_status == BT::NodeStatus::FAILURE)
+        {
+            current_status_ = BT::NodeStatus::FAILURE;
+            pc.reset();
+        }
     }
 
   protected:
@@ -224,7 +231,7 @@ class SonarFollower : public BT::DecoratorNode
         }
 
         auto temp = current_status_;
-        if (current_status_ == BT::NodeStatus::SUCCESS)
+        if (current_status_ == BT::NodeStatus::SUCCESS || current_status_ == BT::NodeStatus::FAILURE)
         {
             current_status_ = BT::NodeStatus::IDLE;
         }
