@@ -20,7 +20,7 @@
     with tracking on:
       ros2 run mission_planner mission_planner_node ros-args \
         -p mission:=TorpedoMission
-      (launch yolo with use_tracking:=True)
+      (launch yolo with use_tracking:=ArchToFaceBoardTrue)
 
     Test pieces in isolation with:
       mission:=ArchToFaceBoard   (just the arch)
@@ -39,16 +39,142 @@
               ctx="{ctx}"/>
 
 
-      <!-- 1) Square up with the board (comment out to skip the arch). -->
+      <!-- 1) Square up with the board (comment out to skip the arch).
       <SubTree ID="ArchToFaceBoard" _autoremap="true" ctx="{ctx}"/>
 
-      <!-- 2) Large hole, first torpedo. -->
+      2) Creep forward toward the board until it's big enough in frame
+              (or we give up after 6s, then move on regardless).
+        <Timeout msec="20000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Fallback>
+              <Condition ID="PolesBigEnough"
+                         min_height_px="120.0"
+                         min_width_px="120.0"
+                         min_conf="0.15"
+                         consecutive_frames="2"
+                         need_both="false"
+                         ctx="{ctx}"/>
+              <Sequence>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         x="0.25" y="0.0" z="0.0"
+                         roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                         pos_tol="0.15" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+                <AlwaysFailure/>
+              </Sequence>
+            </Fallback>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </ForceSuccess>
+      -->
+
+      <!-- 3) Match the board's depth before homing on the holes.
+      <Timeout msec="80000">
+        <Action ID="AlignDepth"
+                label="torpedoTarget"
+                min_conf="0.20"
+                kp="0.6"
+                depth_tol_norm="0.08"
+                max_step_m="0.15"
+                pos_tol="0.10"
+                ctx="{ctx}"/>
+      </Timeout> -->
+
+
+      <!-- <SubTree ID="RelativeMove" _autoremap="true"
+          x="0.0" y="0.0" z="-0.4"
+          pos_tol="0.15" ori_tol_deg="12.0" msec="25000"
+          ctx="{ctx}"/>
+
+       4) Large hole, first torpedo
       <SubTree ID="HomeAndFire" ctx="{ctx}"
                hole_label="search&amp;rescue_large" torpedo_angle="1"/>
 
-      <!-- 3) Small hole, second torpedo. -->
+       5) Small hole, second torpedo.
       <SubTree ID="HomeAndFire" ctx="{ctx}"
-               hole_label="search&amp;rescue_small" torpedo_angle="2"/>
+      hole_label="search&amp;rescue_small" torpedo_angle="2"/> -->
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+          x="0.0" y="0.0" z="-0.30"
+          pos_tol="0.15" ori_tol_deg="12.0" msec="25000"
+          ctx="{ctx}"/>
+
+
+      <Timeout msec="20000">
+        <Action ID="AlignDepth"
+                label="search&amp;rescue_large"
+                min_conf="0.30"
+                kp="0.75"
+                depth_tol_norm="0.08"
+                max_step_m="0.15"
+                pos_tol="0.15"
+                ctx="{ctx}"/>
+      </Timeout>
+
+      <Delay delay_msec="7000"><AlwaysSuccess/></Delay>
+
+      <Timeout msec="20000">
+        <Action ID="AlignYaw"
+                label="search&amp;rescue_large"
+                min_conf="0.30"
+                kp="2.2"
+                yaw_tol_norm="0.08"
+                max_yaw_deg="15.0"
+                ori_tol_deg="5.0"
+                ctx="{ctx}"/>
+      </Timeout>
+
+      <ForceSuccess>
+        <Timeout msec="30000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Fallback>
+              <Condition ID="TargetBigEnough"
+                         label="search&amp;rescue_large"
+                         min_height_px="90.0"
+                         min_width_px="90.0"
+                         min_conf="0.20"
+                         consecutive_frames="2"
+                         ctx="{ctx}"/>
+              <Sequence>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         x="0.20" y="0.0" z="0.0"
+                         roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                         pos_tol="0.10" ori_tol_deg="15.0" msec="8000" ctx="{ctx}"/>
+                <AlwaysFailure/>
+              </Sequence>
+            </Fallback>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </ForceSuccess>
+
+
+      <Timeout msec="20000">
+        <Action ID="AlignDepth"
+                label="search&amp;rescue_large"
+                min_conf="0.30"
+                kp="0.75"
+                depth_tol_norm="0.08"
+                max_step_m="0.15"
+                pos_tol="0.15"
+                center_offset_px="65"
+                ctx="{ctx}"/>
+      </Timeout>
+
+      <Delay delay_msec="7000"><AlwaysSuccess/></Delay>
+
+      <Timeout msec="20000">
+        <Action ID="AlignYaw"
+                label="search&amp;rescue_large"
+                min_conf="0.30"
+                kp="2.2"
+                yaw_tol_norm="0.08"
+                max_yaw_deg="15.0"
+                ori_tol_deg="6.0"
+                ctx="{ctx}"/>
+      </Timeout>
+
+      <Delay delay_msec="9000"><AlwaysSuccess/></Delay>
+
+      <Action ID="ActuateServo" target="torpedo" angle="1" ctx="{ctx}"/>
 
     </Sequence>
   </BehaviorTree>

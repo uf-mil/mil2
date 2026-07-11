@@ -35,6 +35,7 @@ add_library(
   subjugator_operations/src/check_yolo_model.cpp
   subjugator_operations/src/track_largest_poles.cpp
   subjugator_operations/src/poles_big_enough.cpp
+  subjugator_operations/src/target_big_enough.cpp
   subjugator_operations/src/determine_channel_side.cpp
   subjugator_operations/src/detect_wall_direction.cpp
   subjugator_operations/src/start_coin_flip.cpp

@@ -22,6 +22,8 @@ BT::PortsList AlignYaw::providedPorts()
         BT::InputPort<double>("yaw_tol_norm", 0.06, "Normalised X-centre error tolerance (0-1)"),
         BT::InputPort<double>("max_yaw_deg", 12.0, "Max yaw correction per step (deg)"),
         BT::InputPort<double>("ori_tol_deg", 4.0, "Goal-reached orientation tolerance (deg)"),
+        BT::InputPort<double>("center_offset_px", 0.0,
+                              "Desired horizontal offset of target from image center (px); + = right"),
         BT::InputPort<std::shared_ptr<Context>>("ctx"),
     };
 }
@@ -41,13 +43,14 @@ BT::NodeStatus AlignYaw::onRunning()
 {
     std::string label;
     double min_conf = 0.30, kp = 0.7, yaw_tol_norm = 0.06;
-    double max_yaw_deg = 12.0, ori_tol_deg = 4.0;
+    double max_yaw_deg = 12.0, ori_tol_deg = 4.0, center_offset_px = 0.0;
     getInput("label", label);
     getInput("min_conf", min_conf);
     getInput("kp", kp);
     getInput("yaw_tol_norm", yaw_tol_norm);
     getInput("max_yaw_deg", max_yaw_deg);
     getInput("ori_tol_deg", ori_tol_deg);
+    getInput("center_offset_px", center_offset_px);
 
     // Block until sub reaches the previously commanded yaw goal before next step
     if (waiting_for_goal_)
@@ -110,9 +113,11 @@ BT::NodeStatus AlignYaw::onRunning()
         return BT::NodeStatus::RUNNING;
     }
 
-    // Normalised X error: +1 = detection at right edge, -1 = at left edge
+    // Normalised X error about the desired image point (center + offset):
+    // +1 = detection at right edge, -1 = at left edge
     double cx = best->bbox.center.position.x;
-    double error_x = (cx - static_cast<double>(W) / 2.0) / (static_cast<double>(W) / 2.0);
+    double const target_x = static_cast<double>(W) / 2.0 + center_offset_px;
+    double error_x = (cx - target_x) / (static_cast<double>(W) / 2.0);
 
     if (std::abs(error_x) < yaw_tol_norm)
     {

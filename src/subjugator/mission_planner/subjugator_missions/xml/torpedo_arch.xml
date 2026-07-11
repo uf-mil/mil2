@@ -18,18 +18,53 @@
 
       <!-- 1) Get the board roughly centred first so its 4 corner keypoints are
               reliable before we start measuring left-vs-right edge length. -->
-      <Timeout msec="10000">
+      <Timeout msec="12000">
         <Action ID="AlignYaw"
                 label="torpedoTarget"
                 min_conf="0.20"
-                kp="1.5"
+                kp="2.5"
                 yaw_tol_norm="0.20"
-                max_yaw_deg="12.0"
-                ori_tol_deg="5.0"
+                max_yaw_deg="15.0"
+                ori_tol_deg="6.5"
                 ctx="{ctx}"/>
       </Timeout>
 
-      <!-- 2) Orbit in small steps until the board is head-on. BoardArchStep reads
+      <Timeout msec="10000">
+          <Action ID="AlignDepth"
+                  label="torpedoTarget"
+                  min_conf="0.30"
+                  kp="0.75"
+                  depth_tol_norm="0.08"
+                  max_step_m="0.15"
+                  pos_tol="0.20"
+                  center_offset_px="40"
+                  ctx="{ctx}"/>
+      </Timeout>
+
+      <ForceSuccess>
+        <Timeout msec="30000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Fallback>
+              <Condition ID="TargetBigEnough"
+                         label="torpedoTarget"
+                         min_height_px="150.0"
+                         min_width_px="150.0"
+                         min_conf="0.20"
+                         consecutive_frames="2"
+                         ctx="{ctx}"/>
+              <Sequence>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         x="0.25" y="0.0" z="0.0"
+                         roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                         pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+                <AlwaysFailure/>
+              </Sequence>
+            </Fallback>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </ForceSuccess>
+
+      <!-- 3) Orbit in small steps until the board is head-on. BoardArchStep reads
               the /yolo/tracking stream internally because the corner keypoints only
               ride that topic. -->
       <Timeout msec="60000">
@@ -37,15 +72,38 @@
                 board_label="torpedoTarget"
                 min_conf="0.20"
                 min_kp_conf="0.15"
-                radius_m="2.0"
-                step_deg="5.0"
-                deadband_frac="0.08"
+                radius_m="1.5"
+                step_deg="15.0"
+                deadband_frac="0.05"
                 dir_sign="1.0"
                 max_steps="8"
-                pos_tol="0.15"
-                ori_tol_deg="5.0"
+                pos_tol="0.25"
+                ori_tol_deg="6.0"
                 ctx="{ctx}"/>
       </Timeout>
+
+      <ForceSuccess>
+        <Timeout msec="30000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Fallback>
+              <Condition ID="TargetBigEnough"
+                         label="torpedoTarget"
+                         min_height_px="160.0"
+                         min_width_px="160.0"
+                         min_conf="0.20"
+                         consecutive_frames="2"
+                         ctx="{ctx}"/>
+              <Sequence>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         x="0.25" y="0.0" z="0.0"
+                         roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                         pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+                <AlwaysFailure/>
+              </Sequence>
+            </Fallback>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </ForceSuccess>
 
     </Sequence>
   </BehaviorTree>

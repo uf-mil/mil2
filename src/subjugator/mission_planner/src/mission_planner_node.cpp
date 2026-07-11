@@ -31,6 +31,7 @@
 #include "std_srvs/srv/set_bool.hpp"
 #include "stop_coin_flip.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
+#include "target_big_enough.hpp"
 #include "target_centered.hpp"
 #include "track_best_pair.hpp"
 #include "track_largest_poles.hpp"
@@ -136,6 +137,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
     factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
     factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
+    factory.registerNodeType<TargetBigEnough>("TargetBigEnough");
     factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
     factory.registerNodeType<DetectWallDirection>("DetectWallDirection");
     factory.registerNodeType<StartCoinFlip>("StartCoinFlip");

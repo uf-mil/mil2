@@ -18,6 +18,8 @@ BT::PortsList AlignDepth::providedPorts()
         BT::InputPort<double>("depth_tol_norm", 0.08, "Normalized Y-center error tolerance (0-1)"),
         BT::InputPort<double>("max_step_m", 0.10, "Max depth correction per step (m)"),
         BT::InputPort<double>("pos_tol", 0.10, "Goal-reached position tolerance (m)"),
+        BT::InputPort<double>("center_offset_px", 0.0,
+                              "Desired vertical offset of target from image center (px); + = down"),
         BT::InputPort<std::shared_ptr<Context>>("ctx"),
     };
 }
@@ -37,12 +39,14 @@ BT::NodeStatus AlignDepth::onRunning()
 {
     std::string label;
     double min_conf = 0.30, kp = 0.4, depth_tol_norm = 0.08, max_step_m = 0.10, pos_tol = 0.10;
+    double center_offset_px = 0.0;
     getInput("label", label);
     getInput("min_conf", min_conf);
     getInput("kp", kp);
     getInput("depth_tol_norm", depth_tol_norm);
     getInput("max_step_m", max_step_m);
     getInput("pos_tol", pos_tol);
+    getInput("center_offset_px", center_offset_px);
 
     // Block until the sub reaches the previously commanded Z goal before issuing next step
     if (waiting_for_goal_)
@@ -102,9 +106,11 @@ BT::NodeStatus AlignDepth::onRunning()
         return BT::NodeStatus::RUNNING;
     }
 
-    // Normalised Y error: +1 = detection at bottom of image, -1 = at top
+    // Normalised Y error about the desired image point (center + offset):
+    // +1 = detection at bottom of image, -1 = at top
     double cy = best->bbox.center.position.y;
-    double error_y = (cy - static_cast<double>(H) / 2.0) / (static_cast<double>(H) / 2.0);
+    double const target_y = static_cast<double>(H) / 2.0 + center_offset_px;
+    double error_y = (cy - target_y) / (static_cast<double>(H) / 2.0);
 
     if (std::abs(error_y) < depth_tol_norm)
     {
@@ -116,14 +122,31 @@ BT::NodeStatus AlignDepth::onRunning()
     double dz = -kp * error_y * max_step_m;
     dz = std::clamp(dz, -max_step_m, max_step_m);
 
-    // Correct only Z; preserve current XY and orientation so nothing drifts
-    geometry_msgs::msg::Pose goal{};
+    // Chain the Z correction off the LAST COMMANDED GOAL (same pattern as RelativeMove /
+    // BoardArchStep) so per-step station-keeping error does not accumulate across steps.
+    // XY and orientation carry through unchanged; only Z is adjusted. Falls back to live
+    // odom for the very first goal, before anything has been commanded.
+    geometry_msgs::msg::Pose base{};
+    bool have_base = false;
+    {
+        std::scoped_lock lk(ctx_->last_goal_mx);
+        if (ctx_->last_goal)
+        {
+            base = *ctx_->last_goal;
+            have_base = true;
+        }
+    }
+    if (!have_base)
     {
         std::scoped_lock lk(ctx_->odom_mx);
         if (ctx_->latest_odom)
-            goal = ctx_->latest_odom->pose.pose;
+            base = ctx_->latest_odom->pose.pose;
+        else
+            base.orientation.w = 1.0;
     }
-    goal.position.z += dz;
+
+    geometry_msgs::msg::Pose goal = base;
+    goal.position.z = base.position.z + dz;
 
     ctx_->goal_pub->publish(goal);
     {
