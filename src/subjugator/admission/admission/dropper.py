@@ -36,7 +36,6 @@ def odom_pose(odom):
 async def estimate_bins():
     # measure initial odom
     odom, _ = odom_pose(await adm.odom_sub())
-    odom_prev = odom
 
     # initialize smoother
     smoother = gtsam.IncrementalFixedLagSmoother(100)
@@ -53,7 +52,7 @@ async def estimate_bins():
     # landmarks
     landmarks = {}
 
-    async for yolo, odom in adm.Join(adm.yolo_sub, adm.odom_sub):
+    async for yolo, odom_msg in adm.Join(adm.yolo_sub, adm.odom_sub):
         if yolo:
             factors = gtsam.NonlinearFactorGraph()
             values = gtsam.Values()
@@ -107,7 +106,7 @@ async def estimate_bins():
                 goal = Pose()
                 goal.position.x, goal.position.y, _ = target
 
-                target_dir = target - odom_prev.translation()
+                target_dir = target - odom.translation()
                 target_dir[2] = 0
                 target_dir /= np.linalg.norm(target_dir)
                 (
@@ -162,11 +161,10 @@ async def estimate_bins():
                     gtsam.noiseModel.Diagonal.Sigmas([1, 1, planar_dist * 50])
                 ))
 
-            smoother_result = smoother.update(factors, values, timestamps)
+            smoother.update(factors, values, timestamps)
             estimate = smoother.calculateEstimate()
-        elif odom:
-            odom, _ = odom_pose(odom)
-            odom_prev = odom
+        elif odom_msg:
+            odom, _ = odom_pose(odom_msg)
 
             factors = gtsam.NonlinearFactorGraph()
             values = gtsam.Values()
@@ -174,7 +172,7 @@ async def estimate_bins():
 
             values.insert(X(ix + 1), odom)
 
-            smoother_result = smoother.update(factors, values, {X(ix + 1): ix + 1})
+            smoother.update(factors, values, {X(ix + 1): ix + 1})
             estimate = smoother.calculateEstimate()
 
             ix += 1
