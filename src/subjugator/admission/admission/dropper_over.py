@@ -66,8 +66,7 @@ async def dropper_over():
                 odom.pose.pose.orientation.z,
             ])
             x, y = gtsam.Rot2(yaw).rotate([x, y])
-            x += odom.pose.pose.position.x
-            y += odom.pose.pose.position.y
+            dist = math.sqrt(x * x + y * y)
 
             goal = Pose()
             (
@@ -76,13 +75,19 @@ async def dropper_over():
                 goal.orientation.y,
                 goal.orientation.z
             ) = transforms3d.taitbryan.euler2quat(yaw, 0, 0)
-            goal.position.x = x
-            goal.position.y = y
+
+            goal.position.x = x + odom.pose.pose.position.x
+            goal.position.y = y + odom.pose.pose.position.y
             goal.position.z = -0.5
             adm.goal_pub.publish(goal)
 
+            if dist <= 0.1:
+                break
+
         elif odom_msg:
             odom = odom_msg
+
+    print("dropping")
 
 if __name__ == "__main__":
     adm.run(dropper_over())
