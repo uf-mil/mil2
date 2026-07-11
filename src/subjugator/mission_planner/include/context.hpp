@@ -64,6 +64,14 @@ struct Context
     // board's corner keypoints needed for arching (see tracking_node.py).
     std::mutex tracking_mx;
     std::optional<yolo_msgs::msg::DetectionArray> latest_tracking;
+    // Latest class from the coin_flip classifier node (/coin_flip/direction).
+    std::mutex wall_direction_mx;
+    std::optional<std::string> latest_wall_direction;
+
+    // PID of the coin_flip_node the mission launched (-1 = none), so it can be
+    // killed on shutdown.
+    std::mutex child_mx;
+    pid_t coin_flip_pid{ -1 };
 
     std::mutex img_mx;
     uint32_t img_width{ 0 };
