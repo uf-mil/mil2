@@ -47,7 +47,7 @@ class Sub:
         return fut
 
 odom_sub = Sub(Odometry, "/odometry/filtered")
-yolo_sub = Sub(DetectionArray, "/yolo/detections")
+yolo_sub = Sub(DetectionArray, "/yolo/tracking")
 yolo_down_sub = Sub(DetectionArray, "/yolo/down_tracking")
 frontcam_sub = Sub(Image, "/front_cam/image_raw")
 
