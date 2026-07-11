@@ -48,6 +48,7 @@ class Sub:
 
 odom_sub = Sub(Odometry, "/odometry/filtered")
 yolo_sub = Sub(DetectionArray, "/yolo/detections")
+yolo_down_sub = Sub(DetectionArray, "/yolo/down_tracking")
 frontcam_sub = Sub(Image, "/front_cam/image_raw")
 
 goal_pub = node.create_publisher(Pose, "/goal_pose", 10)
