@@ -130,12 +130,24 @@ BT::NodeStatus AlignYaw::onRunning()
     double yaw_cmd_deg = -kp * error_x * max_yaw_deg;
     yaw_cmd_deg = std::clamp(yaw_cmd_deg, -max_yaw_deg, max_yaw_deg);
 
-    // Compose: goal_q = current_q * delta_q  (same pattern as HoneBearing)
-    geometry_msgs::msg::Pose cur{};
+    // Compose: goal_q = base_q * delta_q. Base on the last commanded goal
+    // (not odom) so repeated corrections chain off clean setpoints instead of
+    // accumulating odometry drift; fall back to odom before any goal exists.
+    geometry_msgs::msg::Pose base{};
+    bool have_base = false;
+    {
+        std::scoped_lock lk(ctx_->last_goal_mx);
+        if (ctx_->last_goal)
+        {
+            base = *ctx_->last_goal;
+            have_base = true;
+        }
+    }
+    if (!have_base)
     {
         std::scoped_lock lk(ctx_->odom_mx);
         if (ctx_->latest_odom)
-            cur = ctx_->latest_odom->pose.pose;
+            base = ctx_->latest_odom->pose.pose;
     }
 
     double yaw_rad = yaw_cmd_deg * M_PI / 180.0;
@@ -143,8 +155,8 @@ BT::NodeStatus AlignYaw::onRunning()
     dq.z = std::sin(yaw_rad / 2.0);
     dq.w = std::cos(yaw_rad / 2.0);
 
-    geometry_msgs::msg::Pose goal = cur;  // copy preserves position
-    auto const& c = cur.orientation;
+    geometry_msgs::msg::Pose goal = base;  // copy preserves position
+    auto const& c = base.orientation;
     auto& o = goal.orientation;
     o.x = c.w * dq.x + c.x * dq.w + c.y * dq.z - c.z * dq.y;
     o.y = c.w * dq.y - c.x * dq.z + c.y * dq.w + c.z * dq.x;

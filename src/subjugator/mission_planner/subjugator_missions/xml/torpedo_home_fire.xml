@@ -11,13 +11,45 @@
 
     "Facing it / close enough to centre" is the TargetCentered gate; tune tol_norm
     to require tighter aim before firing.
+
+    Depth: the four holes sit at fixed, known depths; only the task labels
+    swap between board configurations. SelectHoleDepth reads which task is on
+    top from the detections and picks our hole's hard-coded depth (z_top_* /
+    z_bottom_* by label suffix); AbsDepth then goes there on odometry, so
+    vertical aim never relies on YOLO.
+
+    Each run starts by saving its pose and ends by returning to it, so a
+    following HomeAndFire begins from the same spot.
 -->
 <root BTCPP_format="4">
   <BehaviorTree ID="HomeAndFire">
     <Sequence>
 
+      <!-- Save the pose we started from; we return to it after firing. -->
+      <Action ID="RememberWaypoint" waypoint="home_fire_start" ctx="{ctx}"/>
+
+      <!-- Where is our hole? Watch until one hole of each task is visible to
+           learn which task is on top, then pick the hole's hard-coded depth
+           (each of the four holes sits at its own height). -->
+      <Timeout msec="10000">
+        <Action ID="SelectHoleDepth"
+                hole_label="{hole_label}"
+                min_conf="0.30"
+                z_top_large="-0.85" z_top_small="-0.65"
+                z_bottom_large="-1.35" z_bottom_small="-1.15"
+                z="{hole_z}"
+                ctx="{ctx}"/>
+      </Timeout>
+
+      <!-- Go to that depth on odometry instead of chasing the hole detection with AlignDepth. -->
+      <SubTree ID="AbsDepth"
+                z="{hole_z}" pos_tol="0.15" ori_tol_deg="10.0" msec="15000"
+                ctx="{ctx}"/>
+
+      <Delay delay_msec="7000"><AlwaysSuccess/></Delay>
+
       <!-- Home until the hole sits within tol_norm of image centre. Each failed
-           gate runs one yaw + depth correction pass, then re-checks. -->
+           gate runs one yaw, then re-checks. -->
       <Timeout msec="35000">
         <RetryUntilSuccessful num_attempts="-1">
           <Fallback>
@@ -39,17 +71,7 @@
                         ori_tol_deg="6.0"
                         ctx="{ctx}"/>
               </Timeout>
-              <Timeout msec="20000">
-                <Action ID="AlignDepth"
-                        label="{hole_label}"
-                        min_conf="0.30"
-                        kp="0.75"
-                        depth_tol_norm="0.08"
-                        max_step_m="0.15"
-                        pos_tol="0.15"
-                        center_offset_px="45"
-                        ctx="{ctx}"/>
-              </Timeout>
+
               <Delay delay_msec="5000"><AlwaysSuccess/></Delay>
               <AlwaysFailure/>
             </Sequence>
@@ -58,9 +80,55 @@
         </RetryUntilSuccessful>
       </Timeout>
 
+      <!-- Creep toward the hole until it's big enough in frame (or give up
+           after 30 s and fire from where we are). -->
+      <ForceSuccess>
+        <Timeout msec="30000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Fallback>
+              <Condition ID="TargetBigEnough"
+                         label="{hole_label}"
+                         min_height_px="95.0"
+                         min_width_px="95.0"
+                         min_conf="0.30"
+                         consecutive_frames="2"
+                         ctx="{ctx}"/>
+              <Sequence>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         x="0.25" y="0.0" z="0.0"
+                         roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                         pos_tol="0.15" ori_tol_deg="15.0" msec="8000" ctx="{ctx}"/>
+                <AlwaysFailure/>
+              </Sequence>
+            </Fallback>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </ForceSuccess>
+
+      <!-- The angle-2 (small hole) barrel needs the sub 0.25 m higher.
+           torpedo_angle arrives as a string port, hence the quoted '2'. -->
+      <ForceSuccess _skipIf="torpedo_angle != '2'">
+        <SubTree ID="RelativeMove" _autoremap="true"
+                 x="0.0" y="0.0" z="0.25"
+                 roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                 pos_tol="0.15" ori_tol_deg="15.0" msec="8000" ctx="{ctx}"/>
+      </ForceSuccess>
+
+      <Delay delay_msec="5000"><AlwaysSuccess/></Delay>
+
       <!-- Fire, then let the torpedo clear before the next step. -->
       <Action ID="ActuateServo" target="torpedo" angle="{torpedo_angle}" ctx="{ctx}"/>
       <Delay delay_msec="1500"><AlwaysSuccess/></Delay>
+
+      <!-- Return to the start pose so the next HomeAndFire begins from the
+           same spot. ForceSuccess: a slow return shouldn't fail the shot we
+           already took. -->
+      <ForceSuccess>
+        <SubTree ID="GoToWaypoint"
+                 waypoint="home_fire_start"
+                 pos_tol="0.20" ori_tol_deg="10.0" msec="15000"
+                 ctx="{ctx}"/>
+      </ForceSuccess>
 
     </Sequence>
   </BehaviorTree>

@@ -9,7 +9,7 @@ BT::PortsList TargetCentered::providedPorts()
     return {
         BT::InputPort<std::string>("label", "YOLO class label to check"),
         BT::InputPort<double>("min_conf", 0.30, "Minimum detection confidence"),
-        BT::InputPort<double>("tol_norm", 0.12, "Normalised center tolerance per axis (1.0 = image edge)"),
+        BT::InputPort<double>("tol_norm", 0.12, "Normalised horizontal center tolerance (1.0 = image edge)"),
         BT::InputPort<std::shared_ptr<Context>>("ctx"),
     };
 }
@@ -28,13 +28,12 @@ BT::NodeStatus TargetCentered::tick()
     (void)getInput("min_conf", min_conf);
     (void)getInput("tol_norm", tol_norm);
 
-    uint32_t W = 0, H = 0;
+    uint32_t W = 0;
     {
         std::scoped_lock lk(ctx_->img_mx);
         W = ctx_->img_width;
-        H = ctx_->img_height;
     }
-    if (W == 0 || H == 0)
+    if (W == 0)
     {
         RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000, "TargetCentered: image size unknown");
         return BT::NodeStatus::FAILURE;
@@ -63,14 +62,14 @@ BT::NodeStatus TargetCentered::tick()
     if (!best)
         return BT::NodeStatus::FAILURE;
 
+    // Horizontal only: depth is set absolutely (possibly with a deliberate
+    // offset), so vertical error must not block the gate.
     double const error_x =
         (best->bbox.center.position.x - static_cast<double>(W) / 2.0) / (static_cast<double>(W) / 2.0);
-    double const error_y =
-        (best->bbox.center.position.y - static_cast<double>(H) / 2.0) / (static_cast<double>(H) / 2.0);
 
-    bool const centered = std::abs(error_x) <= tol_norm && std::abs(error_y) <= tol_norm;
+    bool const centered = std::abs(error_x) <= tol_norm;
     RCLCPP_DEBUG_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 500,
-                          "TargetCentered[%s]: err=(%.3f,%.3f) tol=%.3f -> %s", label.c_str(), error_x, error_y,
-                          tol_norm, centered ? "SUCCESS" : "FAIL");
+                          "TargetCentered[%s]: err_x=%.3f tol=%.3f -> %s", label.c_str(), error_x, tol_norm,
+                          centered ? "SUCCESS" : "FAIL");
     return centered ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
 }

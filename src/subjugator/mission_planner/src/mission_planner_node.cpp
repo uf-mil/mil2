@@ -27,6 +27,7 @@
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "remember_waypoint.hpp"
+#include "select_hole_depth.hpp"
 #include "start_coin_flip.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "stop_coin_flip.hpp"
@@ -34,6 +35,7 @@
 #include "target_big_enough.hpp"
 #include "target_centered.hpp"
 #include "track_best_pair.hpp"
+#include "track_best_target.hpp"
 #include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -145,6 +147,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
     factory.registerNodeType<TrackBestPair>("TrackBestPair");
+    factory.registerNodeType<TrackBestTarget>("TrackBestTarget");
     factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
     factory.registerNodeType<NavChannelControl>("NavChannelControl");
     factory.registerNodeType<ActuateServo>("ActuateServo");
@@ -156,6 +159,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<BoardArchStep>("BoardArchStep");
     factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
     factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
+    factory.registerNodeType<SelectHoleDepth>("SelectHoleDepth");
     factory.registerNodeType<TargetCentered>("TargetCentered");
     factory.registerNodeType<BoardArchStep>("BoardArchStep");
 

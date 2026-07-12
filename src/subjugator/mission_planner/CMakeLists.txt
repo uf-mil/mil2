@@ -42,7 +42,9 @@ add_library(
   subjugator_operations/src/stop_coin_flip.cpp
   subjugator_operations/src/any_poles_detected.cpp
   subjugator_operations/src/has_found_pair.cpp
+  subjugator_operations/src/select_hole_depth.cpp
   subjugator_operations/src/track_best_pair.cpp
+  subjugator_operations/src/track_best_target.cpp
   subjugator_operations/src/hone_midpoint.cpp
   subjugator_operations/src/log_to_file.cpp
   subjugator_operations/src/nav_channel_control.cpp
