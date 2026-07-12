@@ -51,14 +51,6 @@ struct Context
     std::mutex detections_mx;
     std::optional<yolo_msgs::msg::DetectionArray> latest_detections;
 
-    // Latest class from the coin_flip classifier node (/coin_flip/direction).
-    std::mutex wall_direction_mx;
-    std::optional<std::string> latest_wall_direction;
-
-    // PID of the coin_flip_node the mission launched (-1 = none), so it can be
-    // killed on shutdown.
-    std::mutex child_mx;
-    pid_t coin_flip_pid{ -1 };
     // Tracker output (/yolo/tracking): smoothed boxes with track ids. The tracker
     // copies the full detection through, so this is the stream that carries the
     // board's corner keypoints needed for arching (see tracking_node.py).
