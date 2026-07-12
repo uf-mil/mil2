@@ -7,9 +7,8 @@ else
 	source /opt/ros/jazzy/setup.bash
 fi
 
-# Use Cyclone DDS by default (it's super fast and amazing!)
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI=${MIL_REPO}/cyclone.xml
+# Use Zenoh by default
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
 # Setup colcon_cd
 source "/usr/share/colcon_cd/function/colcon_cd.sh"
@@ -327,22 +326,23 @@ torpedo() {
 mp() {
 	if [[ $# -ne 1 ]]; then
 		echo "Usage: mp <mission>"
-		echo "  Competition:  SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
-		echo "  Style points: StylePointsSubmission YawStyleTest RollStyleTest PitchStyleTest"
+		echo "  Competition: SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
+		echo "  Torpedo:     TorpedoMission StartGateTorpedoMission ArchToFaceBoard"
 		return 2
 	fi
 
 	local mission="$1"
 	case "$mission" in
 	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission | ETHAN | pcNavChannel | \
-		StylePointsSubmission | YawStyleTest | RollStyleTest | PitchStyleTest)
+		TorpedoMission | StartGateTorpedoMission | ArchToFaceBoard)
 		echo "Launching mission_planner with mission: ${mission}"
 		ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
 		;;
 	*)
 		echo "Invalid mission: ${mission}"
-		echo "  Competition:  SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
-		echo "  Style points: StylePointsSubmission YawStyleTest RollStyleTest PitchStyleTest"
+		echo "Valid missions:"
+		echo "  Competition: SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
+		echo "  Torpedo:     TorpedoMission StartGateTorpedoMission ArchToFaceBoard"
 		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
 		return 2
 		;;
@@ -353,7 +353,7 @@ _mp_complete() {
 	local cur
 	cur=${COMP_WORDS[COMP_CWORD]}
 
-	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel StylePointsSubmission YawStyleTest RollStyleTest PitchStyleTest"
+	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel TorpedoMission StartGateTorpedoMission ArchToFaceBoard"
 	COMPREPLY=()
 	while IFS='' read -r line; do
 		COMPREPLY+=("$line")
