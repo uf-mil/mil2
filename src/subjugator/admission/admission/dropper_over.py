@@ -69,7 +69,7 @@ def pick_track(yolo, odom, visited):
                 math.tau
             ))
             dist = math.sqrt((x - vx) ** 2 + (y - vy) ** 2)
-            if dist < 0.25  or angle > 1:
+            if dist < 0.5 and angle < 0.5:
                 break
         else:
             # pick closest to camera
@@ -123,7 +123,7 @@ async def dropper_over():
 
                 goal.position.x = x + odom.pose.pose.position.x
                 goal.position.y = y + odom.pose.pose.position.y
-                goal.position.z = -0.5
+                goal.position.z = -0.8
                 adm.goal_pub.publish(goal)
 
                 if dist <= 0.1:
