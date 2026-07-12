@@ -13,12 +13,16 @@
     <include path="yaw_style.xml"/>
     <include path="pc_nav_channel.xml"/>
     <include path="pc_nav_channel_v2.xml"/>
+    <include path="style_points_submission.xml"/>
+    <include path="roll_style.xml"/>
+    <include path="pitch_style.xml"/>
+    <include path="yaw_style.xml"/>
 
     <!-- Test missions -->
     <include path="topic_ticker_test_mission.xml"/>
     <include path="sonar_follower_test_mission.xml"/>
     <include path="square_test_mission.xml"/>
-    <include path="midpoint_test_mission.xml"/>
+    <include path="tests/midpoint_test_mission.xml"/>
     <include path="best_pair_test_mission.xml"/>
     <include path="nav_channel_control_test.xml"/>
     <include path="BUST_mission.xml"/>
@@ -35,4 +39,7 @@
     <include path="pitch_style.xml"/>
     <include path="waypoint.xml"/>
     <include path="waypoint_demo_mission.xml"/>
+    <include path="tests/roll_style_test.xml"/>
+    <include path="tests/pitch_style_test.xml"/>
+    <include path="tests/yaw_style_test.xml"/>
 </root>

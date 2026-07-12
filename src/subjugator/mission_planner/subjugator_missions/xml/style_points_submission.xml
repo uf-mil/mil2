@@ -1,0 +1,37 @@
+
+<root BTCPP_format="4" main_tree_to_execute="StylePointsSubmission">
+    <BehaviorTree ID="StylePointsSubmission">
+        <Sequence>
+
+            <!-- Customize for going untethered -->
+            <Delay delay_msec="9000"><AlwaysSuccess/></Delay>
+
+            <!-- go down -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                x="0.0" y="0.0" z="-2.0"
+                pos_tol="0.15" ori_tol_deg="12.0" msec="25000"
+                ctx="{ctx}"/>
+
+
+            <!-- Yaws 40 degrees at a time -->
+            <SubTree ID="YawStylePoints" _autoremap="true" ctx="{ctx}"/>
+            <SubTree ID="YawStylePoints" _autoremap="true" ctx="{ctx}"/>
+
+            <Delay delay_msec="5000"><AlwaysSuccess/></Delay>
+
+            <!-- Only Rolls once, saw that in the test we had it rolling twice -->
+            <SubTree ID="RollStylePoints" _autoremap="true" milliseconds="7750" momentum_ms="1500" ctx="{ctx}"/>
+            <!--<SubTree ID="RollStylePoints" _autoremap="true" milliseconds="5250" momentum_ms="1500" ctx="{ctx}"/>-->
+
+            <Delay delay_msec="7500"><AlwaysSuccess/></Delay>
+
+
+            <!-- Pitch -->
+            <SubTree ID="PitchStylePoints" _autoremap="true" milliseconds="6500" momentum_ms="1500" ctx="{ctx}"/>
+            <Delay delay_msec="12000"><AlwaysSuccess/></Delay>
+            <SubTree ID="PitchStylePoints" _autoremap="true" milliseconds="6500" momentum_ms="1500" ctx="{ctx}"/>
+
+
+        </Sequence>
+    </BehaviorTree>
+</root>
