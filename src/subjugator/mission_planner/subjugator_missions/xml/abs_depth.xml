@@ -1,0 +1,40 @@
+<!--
+    AbsDepth (reusable subtree)
+    ===========================
+    Depth-only absolute move: go to absolute depth {z} while keeping the
+    current x/y and orientation. Publishes the goal, then polls AtGoalPose
+    until reached or {msec} runs out (FAILURE on timeout — wrap the SubTree
+    in ForceSuccess if a slow depth settle should not fail the caller).
+
+      z           : absolute depth to go to (m, negative = down)
+      pos_tol     : AtGoalPose position tolerance (m)
+      ori_tol_deg : AtGoalPose orientation tolerance (deg)
+      msec        : max time to wait for the depth to settle
+-->
+<root BTCPP_format="4">
+  <BehaviorTree ID="AbsDepth">
+    <Sequence>
+      <Action ID="PublishGoalPose"
+              relative="false"
+              keep_current_pos_abs="false"
+              keep_current_xy_abs="true"
+              keep_current_ori_abs="true"
+              z="{z}"
+              ctx="{ctx}"
+              abs_x="{goal_x}" abs_y="{goal_y}" abs_z="{goal_z}"
+              abs_qx="{goal_qx}" abs_qy="{goal_qy}" abs_qz="{goal_qz}" abs_qw="{goal_qw}"/>
+
+      <Timeout msec="{msec}">
+        <RetryUntilSuccessful num_attempts="-1">
+          <Sequence>
+            <Delay delay_msec="250"><AlwaysSuccess/></Delay>
+            <Condition ID="AtGoalPose"
+                       x="{goal_x}" y="{goal_y}" z="{goal_z}"
+                       qx="{goal_qx}" qy="{goal_qy}" qz="{goal_qz}" qw="{goal_qw}"
+                       pos_tol="{pos_tol}" ori_tol_deg="{ori_tol_deg}" ctx="{ctx}"/>
+          </Sequence>
+        </RetryUntilSuccessful>
+      </Timeout>
+    </Sequence>
+  </BehaviorTree>
+</root>

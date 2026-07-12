@@ -12,6 +12,7 @@
 #include "align_yaw.hpp"
 #include "any_poles_detected.hpp"
 #include "at_goal_pose.hpp"
+#include "board_arch_step.hpp"
 #include "check_yolo_model.hpp"
 #include "context.hpp"
 #include "detect_target.hpp"
@@ -26,11 +27,15 @@
 #include "poles_big_enough.hpp"
 #include "publish_goal.hpp"
 #include "remember_waypoint.hpp"
+#include "select_hole_depth.hpp"
 #include "start_coin_flip.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "stop_coin_flip.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
+#include "target_big_enough.hpp"
+#include "target_centered.hpp"
 #include "track_best_pair.hpp"
+#include "track_best_target.hpp"
 #include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -52,6 +57,11 @@ int main(int argc, char** argv)
     node->declare_parameter<std::string>("mission", "SonarFollowerTest");
     std::string mission_to_run = node->get_parameter("mission").as_string();
 
+    node->declare_parameter<std::string>("detections_topic", "/yolo/detections");
+    node->declare_parameter<std::string>("tracking_topic", "/yolo/tracking");
+    std::string detections_topic = node->get_parameter("detections_topic").as_string();
+    std::string tracking_topic = node->get_parameter("tracking_topic").as_string();
+
     // Topics to subscribe/publish to
     ctx->goal_pub = node->create_publisher<geometry_msgs::msg::Pose>("/goal_pose", 10);
     ctx->odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("/odometry/filtered", 10,
@@ -61,13 +71,21 @@ int main(int argc, char** argv)
                                                                            ctx->latest_odom = *msg;
                                                                        });
 
-    // Perception targets: from your YOLO node
-    ctx->targets_sub =
-        node->create_subscription<yolo_msgs::msg::DetectionArray>("/yolo/detections", 10,
+    RCLCPP_INFO(node->get_logger(), "Subscribing to YOLO detections on '%s' and tracking on '%s'",
+                detections_topic.c_str(), tracking_topic.c_str());
+    ctx->detections_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(detections_topic, 10,
                                                                   [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
                                                                   {
                                                                       std::scoped_lock lk(ctx->detections_mx);
                                                                       ctx->latest_detections = *msg;
+                                                                  });
+    ctx->tracking_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(tracking_topic, 10,
+                                                                  [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
+                                                                  {
+                                                                      std::scoped_lock lk(ctx->tracking_mx);
+                                                                      ctx->latest_tracking = *msg;
                                                                   });
 
     // Wall orientation from the coin_flip classifier node (subjugator_vision)
@@ -121,6 +139,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
     factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
     factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
+    factory.registerNodeType<TargetBigEnough>("TargetBigEnough");
     factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
     factory.registerNodeType<DetectWallDirection>("DetectWallDirection");
     factory.registerNodeType<StartCoinFlip>("StartCoinFlip");
@@ -128,6 +147,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
     factory.registerNodeType<HasFoundPair>("HasFoundPair");
     factory.registerNodeType<TrackBestPair>("TrackBestPair");
+    factory.registerNodeType<TrackBestTarget>("TrackBestTarget");
     factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
     factory.registerNodeType<NavChannelControl>("NavChannelControl");
     factory.registerNodeType<ActuateServo>("ActuateServo");
@@ -135,6 +155,13 @@ int main(int argc, char** argv)
     factory.registerNodeType<AlignYaw>("AlignYaw");
     factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
     factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
+    factory.registerNodeType<TargetCentered>("TargetCentered");
+    factory.registerNodeType<BoardArchStep>("BoardArchStep");
+    factory.registerNodeType<RememberWaypoint>("RememberWaypoint");
+    factory.registerNodeType<LookupWaypoint>("LookupWaypoint");
+    factory.registerNodeType<SelectHoleDepth>("SelectHoleDepth");
+    factory.registerNodeType<TargetCentered>("TargetCentered");
+    factory.registerNodeType<BoardArchStep>("BoardArchStep");
 
     factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
     factory.registerNodeType<CountWhenTicked>("CountWhenTicked");

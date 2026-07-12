@@ -6,6 +6,7 @@
 <root BTCPP_format="4">
     <include path="absolute_move.xml"/>
     <include path="relative_move.xml"/>
+    <include path="abs_depth.xml"/>
     <include path="start_gate_mission.xml"/>
     <include path="nav_channel_mission.xml"/>
     <include path="coin_flip_mission.xml"/>
@@ -25,8 +26,12 @@
     <include path="yaw_style.xml"/>
     <include path="ETHAN.xml"/>
     <include path="servo_test_mission.xml"/>
-    <include path="torpedo_homing_motion.xml"/>
+    <include path="torpedo_arch.xml"/>
+    <include path="torpedo_home_fire.xml"/>
     <include path="torpedo_mission.xml"/>
+    <include path="find_torpedo_target.xml"/>
+    <include path="torpedo_approach.xml"/>
+    <include path="start_gate_torpedo_mission.xml"/>
     <include path="roll_style.xml"/>
     <include path="pitch_style.xml"/>
     <include path="waypoint.xml"/>

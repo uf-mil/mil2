@@ -1,0 +1,84 @@
+<!--
+    To tune the arch in
+    isolation. The whole step is small and bounded:
+      - step_deg      : arc commanded per orbit step (keep small)
+      - radius_m      : assumed distance to the board (orbit radius); hard-coded
+                        since we approach to a known distance before arching
+      - deadband_frac : how square is "square enough" before we stop
+      - max_steps     : hard cap on how far we ever arch
+
+    The arch direction comes straight from the left-vs-right edge imbalance
+    (keypoint-based, no manual dir_sign).
+-->
+<root BTCPP_format="4" main_tree_to_execute="TorpedoApproach">
+  <BehaviorTree ID="TorpedoApproach">
+    <Sequence>
+
+      <!-- 1) Get the board roughly centred first so its 4 corner keypoints are
+              reliable before we start measuring left-vs-right edge length. -->
+      <Timeout msec="12000">
+        <Action ID="AlignYaw"
+                label="torpedoTarget"
+                min_conf="0.20"
+                kp="2.5"
+                yaw_tol_norm="0.20"
+                max_yaw_deg="15.0"
+                ori_tol_deg="6.5"
+                ctx="{ctx}"/>
+      </Timeout>
+
+       <!-- 2) Go to the hard-coded board depth (absolute z). Current x/y and
+              heading are kept; only depth changes. ForceSuccess so a slow
+              depth settle doesn't abort the mission. -->
+      <ForceSuccess>
+        <SubTree ID="AbsDepth"
+                 z="-1.0" pos_tol="0.15" ori_tol_deg="10.0" msec="15000"
+                 ctx="{ctx}"/>
+      </ForceSuccess>
+
+      <!-- 3) Approach board, its easier to distinguish keypoints for arching if were closer to the board.
+              Also this way we always arch at a consistent radius. -->
+      <ForceSuccess>
+        <Timeout msec="30000">
+          <RetryUntilSuccessful num_attempts="-1">
+            <Fallback>
+              <Condition ID="TargetBigEnough"
+                         label="torpedoTarget"
+                         min_height_px="150.0"
+                         min_width_px="150.0"
+                         min_conf="0.20"
+                         consecutive_frames="2"
+                         ctx="{ctx}"/>
+              <Sequence>
+                <SubTree ID="RelativeMove" _autoremap="true"
+                         x="0.25" y="0.0" z="0.0"
+                         roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                         pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+                <AlwaysFailure/>
+              </Sequence>
+            </Fallback>
+          </RetryUntilSuccessful>
+        </Timeout>
+      </ForceSuccess>
+
+      <!-- 4) Orbit in small steps until the board is head-on. BoardArchStep reads
+              the /yolo/tracking stream internally because the corner keypoints only
+              ride that topic. -->
+      <Timeout msec="60000">
+        <Action ID="BoardArchStep"
+                board_label="torpedoTarget"
+                min_conf="0.20"
+                min_kp_conf="0.15"
+                radius_m="1.5"
+                step_deg="15.0"
+                deadband_frac="0.05"
+                dir_sign="1.0"
+                max_steps="8"
+                pos_tol="0.25"
+                ori_tol_deg="6.0"
+                ctx="{ctx}"/>
+      </Timeout>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

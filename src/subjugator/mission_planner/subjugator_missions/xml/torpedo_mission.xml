@@ -1,23 +1,61 @@
+<!--
+    TorpedoMission
+    ==============
+    Full run, assembled from independently-testable pieces:
+
+      0) CheckYoloModel  - make sure the torpedo model is loaded
+      1) TorpedoApproach - board depth, center, close in, arch head-on   (torpedo_approach.xml)
+      2) HomeAndFire     - search&rescue_large -> torpedo angle 1        (torpedo_home_fire.xml)
+      3) HomeAndFire     - search&rescue_small -> torpedo angle 2        (torpedo_home_fire.xml)
+      4) AbsDepth        - finish at 0.75 m depth
+
+    Each HomeAndFire figures out the board configuration itself
+    (SelectHoleDepth), goes to the hole's hard-coded depth on odometry, saves
+    its start pose and returns to it after firing, so shot 2 starts where
+    shot 1 did.
+
+    Choosing the task: this run targets SEARCH & RESCUE. To shoot the SURVEY &
+    REPAIR holes instead, swap the two hole_label values to
+    "survey&amp;repair_large" / "survey&amp;repair_small".
+    (& must be written &amp; inside XML attributes; the node sees "search&rescue_large".)
+
+    Keypoints: the board's 4 corner keypoints only flow on /yolo/tracking,
+    which BoardArchStep (inside TorpedoApproach) reads - launch yolo with
+    tracking on.
+
+    Test pieces in isolation with:
+      mission:=TorpedoApproach   (approach + arch)
+      mission:=HomeAndFire       (one shot)
+      mission:=ServoTestMission  (just the torpedo servo)
+-->
+
 <root BTCPP_format="4" main_tree_to_execute="TorpedoMission">
   <BehaviorTree ID="TorpedoMission">
     <Sequence>
 
-      <!-- Home onto the first target -->
-      <SubTree ID="TorpedoHomingMotion" _autoremap="true"
-               label="Red spiral"
+      <!-- 0) Correct YOLO model -->
+      <Action ID="CheckYoloModel"
+              model_filename="yolov26_torpedo_nano_June17.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- 1) Get to board depth, center on the board, close in and arch
+              until we face it head-on -->
+      <SubTree ID="TorpedoApproach" ctx="{ctx}"/>
+
+      <!-- 2) Large hole, first torpedo -->
+      <SubTree ID="HomeAndFire" ctx="{ctx}"
+               hole_label="search&amp;rescue_large" torpedo_angle="1"/>
+
+      <!-- 3) Small hole, second torpedo -->
+      <SubTree ID="HomeAndFire" ctx="{ctx}"
+               hole_label="search&amp;rescue_small" torpedo_angle="2"/>
+
+      <!-- 4) Finish at a hard-coded depth -->
+      <SubTree ID="AbsDepth"
+               z="-0.75" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
-
-      <!-- Fire torpedo 1 -->
-      <Action ID="ActuateServo" target="torpedo" angle="1" ctx="{ctx}"/>
-      <Delay delay_msec="1500"><AlwaysSuccess/></Delay>
-
-      <!-- Re-home onto the second target (change label if it's a different YOLO class) -->
-      <SubTree ID="TorpedoHomingMotion" _autoremap="true"
-               label="Red spiral"
-               ctx="{ctx}"/>
-
-      <!-- Fire torpedo 2 -->
-      <Action ID="ActuateServo" target="torpedo" angle="2" ctx="{ctx}"/>
 
     </Sequence>
   </BehaviorTree>

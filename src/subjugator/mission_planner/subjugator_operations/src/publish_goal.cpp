@@ -23,6 +23,10 @@ BT::PortsList PublishGoalPose::providedPorts()
     ports.insert(BT::InputPort<bool>("use_euler_deg", true, "Use roll/pitch/yaw degrees"));
     ports.insert(BT::InputPort<bool>("keep_current_pos_abs", true,
                                      "If absolute orientation, keep current position instead of 0,0,0"));
+    ports.insert(BT::InputPort<bool>("keep_current_xy_abs", false,
+                                     "If absolute, keep current x/y but take z from the z port (depth-only move)"));
+    ports.insert(BT::InputPort<bool>("keep_current_ori_abs", false,
+                                     "If absolute, keep current orientation instead of the qx..qw/euler ports"));
 
     ports.insert(BT::InputPort<double>("roll_deg", 0.0, "Roll (deg)"));
     ports.insert(BT::InputPort<double>("pitch_deg", 0.0, "Pitch (deg)"));
@@ -207,6 +211,24 @@ BT::NodeStatus PublishGoalPose::tick()
         x = base.position.x;
         y = base.position.y;
         z = base.position.z;
+    }
+
+    bool keep_xy_abs = false;
+    (void)getInput("keep_current_xy_abs", keep_xy_abs);
+    if (!relative && keep_xy_abs)
+    {
+        x = base.position.x;
+        y = base.position.y;
+    }
+
+    bool keep_ori_abs = false;
+    (void)getInput("keep_current_ori_abs", keep_ori_abs);
+    if (!relative && keep_ori_abs)
+    {
+        qx = base.orientation.x;
+        qy = base.orientation.y;
+        qz = base.orientation.z;
+        qw = base.orientation.w;
     }
 
     // Compose absolute goal and publish

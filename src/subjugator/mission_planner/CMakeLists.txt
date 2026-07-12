@@ -35,19 +35,24 @@ add_library(
   subjugator_operations/src/check_yolo_model.cpp
   subjugator_operations/src/track_largest_poles.cpp
   subjugator_operations/src/poles_big_enough.cpp
+  subjugator_operations/src/target_big_enough.cpp
   subjugator_operations/src/determine_channel_side.cpp
   subjugator_operations/src/detect_wall_direction.cpp
   subjugator_operations/src/start_coin_flip.cpp
   subjugator_operations/src/stop_coin_flip.cpp
   subjugator_operations/src/any_poles_detected.cpp
   subjugator_operations/src/has_found_pair.cpp
+  subjugator_operations/src/select_hole_depth.cpp
   subjugator_operations/src/track_best_pair.cpp
+  subjugator_operations/src/track_best_target.cpp
   subjugator_operations/src/hone_midpoint.cpp
   subjugator_operations/src/log_to_file.cpp
   subjugator_operations/src/nav_channel_control.cpp
   subjugator_operations/src/align_depth.cpp
   subjugator_operations/src/align_yaw.cpp
-  subjugator_operations/src/actuate_servo.cpp)
+  subjugator_operations/src/actuate_servo.cpp
+  subjugator_operations/src/target_centered.cpp
+  subjugator_operations/src/board_arch_step.cpp)
 
 ament_target_dependencies(
   operations

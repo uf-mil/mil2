@@ -28,7 +28,8 @@ struct Context
     rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr raw_effort_pub;  // no mutex since im lazy and
                                                                                          // no-one else using this rn :P
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
-    rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr targets_sub;
+    rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr detections_sub;
+    rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr tracking_sub;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr wall_direction_sub;
 
@@ -46,9 +47,15 @@ struct Context
     std::mutex last_goal_mx;
     std::optional<geometry_msgs::msg::Pose> last_goal;
 
+    // Raw per-frame YOLO detections (/yolo/detections).
     std::mutex detections_mx;
     std::optional<yolo_msgs::msg::DetectionArray> latest_detections;
 
+    // Tracker output (/yolo/tracking): smoothed boxes with track ids. The tracker
+    // copies the full detection through, so this is the stream that carries the
+    // board's corner keypoints needed for arching (see tracking_node.py).
+    std::mutex tracking_mx;
+    std::optional<yolo_msgs::msg::DetectionArray> latest_tracking;
     // Latest class from the coin_flip classifier node (/coin_flip/direction).
     std::mutex wall_direction_mx;
     std::optional<std::string> latest_wall_direction;
