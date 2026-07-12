@@ -10,16 +10,20 @@ class Admission : public BT::StatefulActionNode
 public:
     Admission(const std::string &name, const BT::NodeConfig &_config = {}) :
         BT::StatefulActionNode(name, {}) {
-        client = node->create_client<subjugator_msgs::srv::Admission>("admission");
+        static auto client = node->create_client<subjugator_msgs::srv::Admission>("admission");
+        this->client = client;
     }
 
     static BT::PortsList providedPorts() {
-        return {};
+        return {
+            BT::InputPort<std::string>("mission", "")
+        };
     }
 
     BT::NodeStatus onStart() override {
         auto req =
             std::make_shared<subjugator_msgs::srv::Admission::Request>();
+        getInput("mission", req->name);
         future = client->async_send_request(req).share();
         return BT::NodeStatus::RUNNING;
     }

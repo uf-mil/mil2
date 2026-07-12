@@ -43,4 +43,6 @@
     <include path="tests/roll_style_test.xml"/>
     <include path="tests/pitch_style_test.xml"/>
     <include path="tests/yaw_style_test.xml"/>
+    <include path="admission_test.xml"/>
+>>>>>>> c8b941a5 (listener service)
 </root>
