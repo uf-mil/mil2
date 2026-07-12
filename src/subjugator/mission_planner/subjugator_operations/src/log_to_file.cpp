@@ -4,6 +4,10 @@
 #include <fstream>
 #include <string>
 
+#include "context.hpp"
+
+REGISTER(LogToFile)
+
 BT::PortsList LogToFile::providedPorts()
 {
     return {

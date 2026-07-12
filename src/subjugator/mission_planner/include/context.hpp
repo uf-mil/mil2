@@ -1,4 +1,5 @@
 #pragma once
+#include <behaviortree_cpp/bt_factory.h>
 #include <sys/types.h>
 
 #include <mutex>
@@ -79,3 +80,10 @@ struct Context
         return node->get_logger();
     }
 };
+
+#define REGISTER(name)                                                                                                 \
+    extern BT::BehaviorTreeFactory factory;                                                                            \
+    extern "C" __attribute__((constructor)) void register##name()                                                      \
+    {                                                                                                                  \
+        factory.registerNodeType<name>(#name);                                                                         \
+    }

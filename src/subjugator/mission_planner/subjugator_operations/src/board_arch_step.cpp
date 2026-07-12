@@ -11,6 +11,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+REGISTER(BoardArchStep)
+
 namespace
 {
 // Rotate body-frame vector (rx,ry,rz) into world frame using pose orientation.

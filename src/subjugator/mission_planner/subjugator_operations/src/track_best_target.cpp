@@ -8,6 +8,8 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(TrackBestTarget)
+
 static inline void normalize_quat(geometry_msgs::msg::Quaternion& q)
 {
     double const n = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);

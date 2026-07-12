@@ -5,6 +5,8 @@
 #include <mutex>
 #include <optional>
 
+REGISTER(DetectWallDirection)
+
 DetectWallDirection::DetectWallDirection(std::string const& name, const BT::NodeConfiguration& cfg)
   : BT::StatefulActionNode(name, cfg)
 {

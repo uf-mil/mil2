@@ -2,6 +2,8 @@
 
 #include "start_coin_flip.hpp"  // stopCoinFlip()
 
+REGISTER(StopCoinFlip)
+
 BT::NodeStatus StopCoinFlip::tick()
 {
     std::shared_ptr<Context> ctx;

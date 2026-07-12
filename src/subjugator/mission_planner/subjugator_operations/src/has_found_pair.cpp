@@ -1,5 +1,9 @@
 #include "has_found_pair.hpp"
 
+#include "context.hpp"
+
+REGISTER(HasFoundPair)
+
 BT::PortsList HasFoundPair::providedPorts()
 {
     BT::PortsList ports;
