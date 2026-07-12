@@ -4,6 +4,8 @@
 
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(TargetCentered)
+
 BT::PortsList TargetCentered::providedPorts()
 {
     return {
