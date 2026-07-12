@@ -14,7 +14,6 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(
   ${PROJECT_NAME}
-  "srv/Servo.srv"
   "msg/Alarm.msg"
   "msg/Path.msg"
   "msg/PathPoint.msg"
@@ -23,6 +22,8 @@ rosidl_generate_interfaces(
   "msg/Trajectory.msg"
   "msg/Waypoint.msg"
   "msg/Centroid.msg"
+  "srv/Admission.srv"
+  "srv/Servo.srv"
   "srv/BMatrix.srv"
   "srv/OcrRequest.srv"
   "srv/TBDetectionSwitch.srv"
