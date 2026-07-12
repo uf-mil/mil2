@@ -59,5 +59,15 @@ async def roll_closed():
     goal.orientation = Quaternion()
     adm.goal_pub.publish(goal)
 
+
+async def main():
+    try:
+        await roll_closed()
+    finally:
+        goal = Pose()
+        goal.position.z = -1.0
+        adm.goal_pub.publish(Pose())
+        adm.add_wrench_pub.publish(Wrench())
+
 if __name__ == "__main__":
-    adm.run(roll_closed())
+    adm.run(main())
