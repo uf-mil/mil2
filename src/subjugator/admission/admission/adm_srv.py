@@ -18,14 +18,14 @@ class AdmissionSrvNode(Node):
         )
 
     def srv_cb(self, msg, response):
-        print("running", msg)
+        self.get_logger().info(f"running {msg}")
         response.success = False
         try:
             adm.run(importlib.import_module(f"admission.{msg.name}").main())
             response.success = True
         except Exception as e:
-            print(e)
-        print("ran", msg, response.success)
+            self.get_logger().info(f"error {e}")
+        self.get_logger().info(f"ran {msg} {response.success}")
         return response
 
 def main():
