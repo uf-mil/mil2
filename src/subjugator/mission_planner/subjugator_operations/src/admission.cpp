@@ -8,8 +8,8 @@ class Admission : public BT::StatefulActionNode
     rclcpp::Client<subjugator_msgs::srv::Admission>::SharedFuture future;
 
 public:
-    Admission(const std::string &name, const BT::NodeConfig &_config = {}) :
-        BT::StatefulActionNode(name, {}) {
+    Admission(const std::string &name, const BT::NodeConfig &config) :
+        BT::StatefulActionNode(name, config) {
         static auto client = node->create_client<subjugator_msgs::srv::Admission>("admission");
         this->client = client;
     }

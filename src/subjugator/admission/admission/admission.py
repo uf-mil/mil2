@@ -1,17 +1,16 @@
 import asyncio
+import importlib
 from collections import deque
 from dataclasses import dataclass
 
 import rclpy
 from rclpy.node import Node
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
 from geometry_msgs.msg import Pose, PoseStamped, Wrench
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image
 from visualization_msgs.msg import Marker
 from yolo_msgs.msg import DetectionArray
-from subjugator_msgs.srv import Admission
 
 rclpy.init()
 node = Node("admission")
@@ -140,23 +139,3 @@ def asyncio_shutdown():
             loop.shutdown_default_executor())
     finally:
         loop.close()
-
-class AdmissionSrvNode(Node):
-    def __init__(self):
-        super().__init__("admission_srv")
-        self.srv = self.create_service(
-            Admission,
-            "/admission",
-            self.srv_cb,
-            callback_group=MutuallyExclusiveCallbackGroup()
-        )
-
-    def srv_cb(self, msg, response):
-        run(__import__(msg.name).main())
-        response.success = True
-        return response
-
-if __name__ == "__main__":
-    should_shutdown = False
-    rclpy.spin(AdmissionSrvNode())
-    rclpy.shutdown()
