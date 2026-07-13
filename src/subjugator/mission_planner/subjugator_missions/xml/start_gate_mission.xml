@@ -1,5 +1,20 @@
 <root BTCPP_format="4" main_tree_to_execute="StartGateMission">
+
+  <!-- Standalone entry point: picks the default gate image, then runs the
+       reusable approach. Callers that want a different image should call
+       StartGateApproach directly with gate_label="survey&amp;repair" or
+       gate_label="search&amp;rescue". -->
   <BehaviorTree ID="StartGateMission">
+    <Sequence>
+      <Script code="gate_label := 'search&amp;rescue'"/>
+      <SubTree ID="StartGateApproach" _autoremap="true"
+               gate_label="{gate_label}" ctx="{ctx}"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- Reusable approach: survey until {gate_label} is seen, hone onto it,
+       then dive and push through the gate. -->
+  <BehaviorTree ID="StartGateApproach">
     <Sequence>
 
       <!-- 1) Survey sweep 60 degrees each way -->
@@ -8,7 +23,7 @@
           <Sequence>
             <Delay delay_msec="200"><AlwaysSuccess/></Delay>
             <Condition ID="DetectTarget"
-                       label="search&amp;rescue"
+                       label="{gate_label}"
                        min_conf="0.20"
                        ctx="{ctx}"/>
           </Sequence>
@@ -61,12 +76,12 @@
       <!-- 2) Hone orientation with offset -->
       <Timeout msec="8000">
         <Action ID="AlignYaw"
-                label="search&amp;rescue"
+                label="{gate_label}"
                 min_conf="0.40"
                 kp="1.5"
                 yaw_tol_norm="0.06"
                 max_yaw_deg="12.0"
-                ori_tol_deg="4.0"
+                ori_tol_deg="7.0"
                 ctx="{ctx}"/>
       </Timeout>
 
@@ -75,14 +90,10 @@
                z="-0.50" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
       <SubTree ID="RelativeMove" _autoremap="true"
-               x="3.0"
-               pos_tol="0.25" ori_tol_deg="180.0" msec="45000"
+               x="4.0"
+               pos_tol="0.25" ori_tol_deg="12.0" msec="45000"
                ctx="{ctx}"/>
 
-      <SubTree ID="RelativeMove" _autoremap="true"
-               y="2.0"
-               pos_tol="0.25" ori_tol_deg="180.0" msec="45000"
-               ctx="{ctx}"/>
     </Sequence>
   </BehaviorTree>
 </root>
