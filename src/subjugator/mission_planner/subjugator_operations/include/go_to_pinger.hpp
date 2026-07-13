@@ -20,44 +20,57 @@ class PingChecker
   public:
     PingChecker() = default;
 
+    void set_required_passing_pings(size_t n)
+    {
+        required_passing_pings_ = std::max<size_t>(n, 1);
+    }
+
+    // how many pings so far have met the direction change threshold
+    size_t passing_ping_count() const
+    {
+        return passing_ping_count_;
+    }
+
     // true if we passed the pinger, false if not
     bool new_ping(mil_msgs::msg::ProcessedPing const& new_ping)
     {
-        // insert new ping into queue
-        this->insert_new_ping(new_ping);
-
-        // sanity check
-        if (recent_pings_.size() <= 1)
+        // does this ping's direction differ enough from any recent ping?
+        bool meets_threshold = false;
+        for (auto const& old_ping : recent_pings_)
         {
-            return false;
-        }
-
-        // check for passing pinger
-        bool passed_pinger = false;
-        for (size_t i = 0; i < recent_pings_.size() - 1; i++)
-        {  // ++i is stupid
-            passed_pinger = compare_two_pings(recent_pings_[i], recent_pings_[i + 1]);
-            if (passed_pinger == true)
+            if (compare_two_pings(old_ping, new_ping))
             {
+                meets_threshold = true;
                 break;
             }
         }
 
+        if (meets_threshold)
+        {
+            passing_ping_count_++;
+        }
+
+        // insert new ping into queue
+        this->insert_new_ping(new_ping);
+
         // trim length
         trim_to_n_elements(10);
 
-        // return result
-        return passed_pinger;
+        // passed the pinger once enough pings met the threshold
+        return passing_ping_count_ >= required_passing_pings_;
     }
 
     // delete all recent pings
     void reset()
     {
         recent_pings_.clear();
+        passing_ping_count_ = 0;
     }
 
   private:
     std::deque<mil_msgs::msg::ProcessedPing> recent_pings_;
+    size_t required_passing_pings_ = 1;
+    size_t passing_ping_count_ = 0;
 
     void insert_new_ping(mil_msgs::msg::ProcessedPing const& new_ping)
     {
@@ -123,11 +136,12 @@ class SonarFollower : public BT::DecoratorNode
         return {
             BT::InputPort<std::shared_ptr<Context>>("ctx"),
             BT::InputPort<bool>("stop_on_first_ping", false, "stop on first ping"),
+            BT::InputPort<int>("required_passing_pings", 1,
+                               "number of pings that must meet the direction change threshold before success"),
 
             BT::OutputPort<double>("sonar_x"),
             BT::OutputPort<double>("sonar_y"),
-            BT::OutputPort<double>("sonar_z"),
-            BT::OutputPort<double>("sonar_w"),
+            BT::OutputPort<double>("sonar_yaw_deg"),
         };
     }
 
@@ -136,6 +150,7 @@ class SonarFollower : public BT::DecoratorNode
     std::shared_ptr<rclcpp::Subscription<mil_msgs::msg::ProcessedPing>> sub_;
     BT::NodeStatus current_status_ = BT::NodeStatus::IDLE;
     bool stop_on_first_ping_ = false;
+    int required_passing_pings_ = 1;
 
     // other nodes
     std::unique_ptr<PublishGoalPose> goal_pub_node_;
@@ -157,6 +172,13 @@ class SonarFollower : public BT::DecoratorNode
         {
             stop_on_first_ping_ = stop_res.value();
         }
+
+        auto required_res = getInput<int>("required_passing_pings");
+        if (required_res)
+        {
+            required_passing_pings_ = std::max(required_res.value(), 1);
+        }
+        pc.set_required_passing_pings(static_cast<size_t>(required_passing_pings_));
     }
 
     // each ping we will move and check if done
@@ -175,7 +197,13 @@ class SonarFollower : public BT::DecoratorNode
         }
 
         // check ping
+        size_t const count_before = pc.passing_ping_count();
         bool passed_the_pinger = pc.new_ping(msg);
+        if (pc.passing_ping_count() > count_before)
+        {
+            RCLCPP_INFO(ctx_->node->get_logger(), "SonarFollower: ping met direction change threshold (%zu/%d)",
+                        pc.passing_ping_count(), required_passing_pings_);
+        }
         if (passed_the_pinger)
         {
             current_status_ = BT::NodeStatus::SUCCESS;
@@ -199,20 +227,28 @@ class SonarFollower : public BT::DecoratorNode
         }
         x /= mag;
         y /= mag;
-        // (x, y) dot (1, 0) = 1*1*cos(theta) (1 times 1 since both are unit length)
-        // x = cos(theta)
-        auto angle_rad = acos(std::clamp(x, -1.0, 1.0));
-        auto z = std::sin(angle_rad / 2);
-        auto w = std::cos(angle_rad / 2);
+
+        // signed heading to the pinger relative to our current body frame
+        auto const yaw_deg = std::atan2(y, x) * 180.0 / M_PI;
 
         // set outputs
         setOutput("sonar_x", x * 0.5);
         setOutput("sonar_y", y * 0.5);
-        setOutput("sonar_z", z);
-        setOutput("sonar_w", w);
+        setOutput("sonar_yaw_deg", yaw_deg);
 
-        // Tick the child
-        child_node_->executeTick();
+        // restart the child so it targets the fresh bearing instead of
+        // finishing a move aimed at a stale one
+        if (child_node_->status() != BT::NodeStatus::IDLE)
+        {
+            haltChild();
+        }
+
+        auto const child_status = child_node_->executeTick();
+        if (child_status == BT::NodeStatus::FAILURE)
+        {
+            current_status_ = BT::NodeStatus::FAILURE;
+            pc.reset();
+        }
     }
 
   protected:
@@ -224,7 +260,7 @@ class SonarFollower : public BT::DecoratorNode
         }
 
         auto temp = current_status_;
-        if (current_status_ == BT::NodeStatus::SUCCESS)
+        if (current_status_ == BT::NodeStatus::SUCCESS || current_status_ == BT::NodeStatus::FAILURE)
         {
             current_status_ = BT::NodeStatus::IDLE;
         }
