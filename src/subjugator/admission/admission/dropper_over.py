@@ -7,6 +7,7 @@ import admission as  adm
 import gtsam
 import transforms3d
 from geometry_msgs.msg import Pose, Quaternion
+from subjugator_msgs.srv import Servo
 
 """
 true front
@@ -112,10 +113,11 @@ async def dropper_over():
     visited_stack = []
 
     dropped = 0
+    seen = 0
     lost = 0 # have track_id, but lost it
     homeless = 0 # no track_id
 
-    while dropped != 4:
+    while seen != 4:
         async for yolo, odom_msg in adm.Join(adm.yolo_down_sub, adm.odom_sub):
             if backtrack:
                 if math.sqrt(
@@ -175,8 +177,15 @@ async def dropper_over():
             elif odom_msg:
                 odom = odom_msg
 
-        print("drop", track_id)
+        # while yolo := adm.yolo_down_sub():
+        #     break
+
         dropped += 1
+        servo = Servo.Request()
+        servo.angle = dropped
+        adm.dropper_srv.call_async(servo)
+
+        seen += 1
         visited.append((goal.position.x, goal.position.y))
         visited_dets.add(track_id)
         visited_stack.append((goal.position.x, goal.position.y))
