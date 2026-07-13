@@ -32,7 +32,8 @@
               ctx="{ctx}"/>
 
       <!-- 1) Survey + P-controller hone onto the board, then move forward -->
-      <SubTree ID="StartGateApproach" _autoremap="true" ctx="{ctx}"/>
+      <SubTree ID="StartGateApproach" _autoremap="true"
+               gate_label="search&amp;rescue" ctx="{ctx}"/>
 
 
       <!-- Correct YOLO model -->
