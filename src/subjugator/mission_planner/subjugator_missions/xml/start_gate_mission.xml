@@ -90,7 +90,7 @@
                z="-0.50" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
       <SubTree ID="RelativeMove" _autoremap="true"
-               x="3.0"
+               x="4.0"
                pos_tol="0.25" ori_tol_deg="12.0" msec="45000"
                ctx="{ctx}"/>
 

@@ -27,7 +27,11 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 
-# --- Model definition (matches the keys saved in coin_flip.pt) ----------------
+# --- Model definition ----------------------------------------------------------
+# Checkpoints come in two layouts with identical ResNet-18 topology:
+#   "scratch"             : stem.0/stem.1 + plain fc      (as written below)
+#   "resnet18_pretrained" : conv1/bn1 + fc.1.* (fc was Sequential(Dropout, Linear))
+# load_checkpoint_state() remaps the pretrained names onto this class's names.
 class BasicBlock(nn.Module):
     """Standard ResNet basic block."""
 
@@ -92,6 +96,19 @@ class ResNetScratch(nn.Module):
         return self.fc(self.dropout(x))
 
 
+def load_checkpoint_state(state_dict):
+    """Remap torchvision-style resnet18 keys onto ResNetScratch's names."""
+    remap = {"conv1.": "stem.0.", "bn1.": "stem.1.", "fc.1.": "fc."}
+
+    def rename(key):
+        for old, new in remap.items():
+            if key.startswith(old):
+                return new + key[len(old) :]
+        return key
+
+    return {rename(k): v for k, v in state_dict.items()}
+
+
 class CoinFlipNode(Node):
     def __init__(self):
         super().__init__("coin_flip_node")
@@ -126,7 +143,7 @@ class CoinFlipNode(Node):
             num_classes=len(self.classes),
             dropout=float(ckpt.get("dropout", 0.0)),
         )
-        self.model.load_state_dict(ckpt["model_state"])
+        self.model.load_state_dict(load_checkpoint_state(ckpt["model_state"]))
         self.model.to(self.device).eval()
 
         self.bridge = CvBridge()

@@ -55,10 +55,13 @@
            tears down its own classifier node. -->
       <SubTree ID="CoinFlipMission" _autoremap="true" ctx="{ctx}"/>
 
+
       <!-- 1b) Remember where (and which way) we face after the coin flip.
            Used twice below: orientation-only after the gate, position-only
            at the very end. -->
       <Action ID="RememberWaypoint" waypoint="home" ctx="{ctx}"/>
+
+      <SubTree ID="StylePointsSubmission" _autoremap="true" />
 
       <!-- 2) Start gate: load the gate model, then survey + hone onto the
            chosen image and push through. TUNE model_filename for the pool. -->
