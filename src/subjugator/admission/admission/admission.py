@@ -100,6 +100,13 @@ class Join:
 
         return self.done.popleft()
 
+def fut(ros_fut):
+    f = loop.create_future()
+    def cb(msg):
+        f.set_result(msg)
+    ros_fut.add_done_callback(cb)
+    return f
+
 should_shutdown = True
 
 def run(co):

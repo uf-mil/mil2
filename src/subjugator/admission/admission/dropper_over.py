@@ -183,7 +183,7 @@ async def dropper_over():
         dropped += 1
         servo = Servo.Request()
         servo.angle = dropped
-        adm.dropper_srv.call_async(servo)
+        await adm.fut(adm.dropper_srv.call_async(servo))
 
         seen += 1
         visited.append((goal.position.x, goal.position.y))
