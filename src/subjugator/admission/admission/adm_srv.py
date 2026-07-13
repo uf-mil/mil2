@@ -18,8 +18,12 @@ class AdmissionSrvNode(Node):
         )
 
     def srv_cb(self, msg, response):
-        adm.run(importlib.import_module(msg.name).main())
-        response.success = True
+        response.success = False
+        try:
+            adm.run(importlib.import_module(msg.name).main())
+            response.success = True
+        except Exception as e:
+            print(e)
         return response
 
 if __name__ == "__main__":
