@@ -22,7 +22,6 @@ class Servo_Controller(Node):
     def dropper_callback(self, request: Servo, response):
         # full range of dropper servo seems to be 488-150
         # should be 150 to load 1st, 200 to load 2nd, 255 for holding, 285 to drop 1st, 350 to drop 2nd
-        dev.set_pwm(0, request.angle)
         if request.angle == -2:
             dev.set_pwm(0, 150)
         elif request.angle == -1:
