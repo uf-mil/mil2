@@ -2,10 +2,10 @@ import importlib
 
 import rclpy
 from rclpy.node import Node
-
-import admission as adm
-from subjugator_msgs.srv import Admission
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+
+from admission import adm
+from subjugator_msgs.srv import Admission
 
 class AdmissionSrvNode(Node):
     def __init__(self):
@@ -21,7 +21,7 @@ class AdmissionSrvNode(Node):
         print("running", msg)
         response.success = False
         try:
-            adm.run(importlib.import_module(msg.name).main())
+            adm.run(importlib.import_module(f"admission.{msg.name}").main())
             response.success = True
         except Exception as e:
             print(e)
