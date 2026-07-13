@@ -122,11 +122,18 @@ def generate_launch_description():
         output="both",
     )
 
+    admission = Node(
+        package="admission",
+        executable="adm_srv",
+        output="both",
+    )
+
     # wrench_tuner = IncludeLaunchDescription(
     # pkg_share("subjugator_wrench_tuner", "launch", "wrench_tuner_launch.py")
     # )
     return LaunchDescription(
         [
+            admission,
             gui_cmd,
             xacro_file_arg,
             generate_urdf,

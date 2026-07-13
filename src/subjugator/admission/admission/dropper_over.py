@@ -22,7 +22,7 @@ theta\\+---(port)----+
 ROT = gtsam.Rot2(17.3 * math.pi / 180)
 SCALE = math.tan(40 * math.pi / 180) / 320
 
-DEPTH = -0.8
+DEPTH = -0.5
 TIMEOUT = 10
 
 def yaw_from_odom(odom):

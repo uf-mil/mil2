@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            "adm_srv = admission.adm_srv:main",
         ],
     },
 )

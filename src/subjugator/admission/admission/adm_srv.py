@@ -18,15 +18,20 @@ class AdmissionSrvNode(Node):
         )
 
     def srv_cb(self, msg, response):
+        print("running", msg)
         response.success = False
         try:
             adm.run(importlib.import_module(msg.name).main())
             response.success = True
         except Exception as e:
             print(e)
+        print("ran", msg, response.success)
         return response
 
-if __name__ == "__main__":
+def main():
     adm.should_shutdown = False
     rclpy.spin(AdmissionSrvNode())
     rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
