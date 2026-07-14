@@ -54,12 +54,14 @@ BT::PortsList LockTargetXY::providedPorts()
              BT::InputPort<double>("table_z", 0.0, "Table-top world z (m) the ray is cast onto"),
              BT::InputPort<double>("hfov", 1.919862177, "Camera horizontal FOV (rad); URDF default"),
              // Static base_link->down_cam optical basis expressed in base_link.
-             // Defaults from sub9.urdf.xacro down_cam (xyz=0.45222 0.027913 -0.22,
-             // rpy=0 1.57 0) + optical convention. Validate/flip signs with the
-             // sim geometry check (see plan Task 2 acceptance).
+             // Origin from sub9.urdf.xacro down_cam (xyz=0.45222 0.027913 -0.22,
+             // rpy=0 1.57 0). The image-axis directions match CenterCamera's
+             // sim-tuned pixel->body mapping (swap_axes=false, +x/+y): image +x
+             // (target right) => the target lies toward body +x, image +y (target
+             // down) => body +y. Re-confirm/flip with the sim geometry check.
              BT::InputPort<std::string>("cam_offset", "0.45222,0.027913,-0.22", "Camera origin in base_link x,y,z"),
-             BT::InputPort<std::string>("cam_right", "0,1,0", "Image +x dir in base_link x,y,z"),
-             BT::InputPort<std::string>("cam_down", "1,0,0", "Image +y dir in base_link x,y,z"),
+             BT::InputPort<std::string>("cam_right", "1,0,0", "Image +x dir in base_link x,y,z"),
+             BT::InputPort<std::string>("cam_down", "0,1,0", "Image +y dir in base_link x,y,z"),
              BT::InputPort<std::string>("cam_forward", "0,0,-1", "Optical view dir in base_link x,y,z"),
              BT::InputPort<double>("gripper_x", 0.0, "Gripper x offset in base_link (m)"),
              BT::InputPort<double>("gripper_y", 0.0, "Gripper y offset in base_link (m)"),
@@ -88,7 +90,7 @@ BT::NodeStatus LockTargetXY::onRunning()
     double min_conf = 0.30, tol_norm = 0.05, table_z = 0.0, hfov = 1.919862177;
     double gripper_x = 0.0, gripper_y = 0.0, ema_alpha = 0.3, max_step = 0.25;
     int settle_ticks = 3, miss_frames = 5;
-    std::string cam_offset = "0.45222,0.027913,-0.22", cam_right = "0,1,0", cam_down = "1,0,0", cam_forward = "0,0,-1";
+    std::string cam_offset = "0.45222,0.027913,-0.22", cam_right = "1,0,0", cam_down = "0,1,0", cam_forward = "0,0,-1";
 
     (void)getInput("label", label);
     (void)getInput("camera", camera);
@@ -167,8 +169,8 @@ BT::NodeStatus LockTargetXY::onRunning()
     target_projection::Vec3 const off_w = rotate_by_quat(q, parse_vec3(cam_offset, { 0.45222, 0.027913, -0.22 }));
     target_projection::CameraFrame cam;
     cam.origin = { current->position.x + off_w.x, current->position.y + off_w.y, current->position.z + off_w.z };
-    cam.right = rotate_by_quat(q, parse_vec3(cam_right, { 0.0, 1.0, 0.0 }));
-    cam.down = rotate_by_quat(q, parse_vec3(cam_down, { 1.0, 0.0, 0.0 }));
+    cam.right = rotate_by_quat(q, parse_vec3(cam_right, { 1.0, 0.0, 0.0 }));
+    cam.down = rotate_by_quat(q, parse_vec3(cam_down, { 0.0, 1.0, 0.0 }));
     cam.forward = rotate_by_quat(q, parse_vec3(cam_forward, { 0.0, 0.0, -1.0 }));
 
     auto const hit = target_projection::project_to_plane(ex, ey, hfov, static_cast<double>(H) / static_cast<double>(W),
