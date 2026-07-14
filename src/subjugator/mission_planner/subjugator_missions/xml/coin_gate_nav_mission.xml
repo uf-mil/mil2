@@ -37,12 +37,13 @@
 <root BTCPP_format="4" main_tree_to_execute="CoinGateNavMission">
   <BehaviorTree ID="CoinGateNavMission">
     <Sequence>
-      <Delay delay_msec="12000"><AlwaysSuccess/></Delay>
+      <Delay delay_msec="1000"><AlwaysSuccess/></Delay>
 
       <!-- ================= CONFIG =================
            Which gate image to hone onto. This single choice also decides the
            nav-channel side (see Switch2 below). -->
       <Script code="gate_label := 'search&amp;rescue'"/>
+      <Script code="wall_side := 'right'"/>
 
       <!-- Map the image choice to the channel side:
            case_1 survey&repair -> -1 (LEFT), case_2 search&rescue -> +1 (RIGHT),
