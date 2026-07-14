@@ -37,7 +37,7 @@ class XFeat(Node):
 
         self.create_subscription(DetectionArray, "/yolo/detections",
                                  self.yolo_cb, 10)
-        self.create_subscription(Image, "/front_camera/image_raw",
+        self.create_subscription(Image, "/front_cam/image_raw",
                                  self.img_cb, 10)
         self.debug_pub = self.create_publisher(Image, "/xfeat/debug", 10)
         self.img = None

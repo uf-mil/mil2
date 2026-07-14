@@ -12,7 +12,7 @@ rclpy.init()
 cv_bridge = CvBridge()
 node = Node("replay_video")
 
-pub = node.create_publisher(Image, "/front_camera/image_raw", 10)
+pub = node.create_publisher(Image, "/front_cam/image_raw", 10)
 
 cap = cv2.VideoCapture(sys.argv[1])
 while True:
