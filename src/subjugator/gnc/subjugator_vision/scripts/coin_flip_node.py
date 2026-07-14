@@ -122,7 +122,7 @@ class CoinFlipNode(Node):
         self.declare_parameter("image_topic", "/front_cam/image_raw")
         self.declare_parameter("output_topic", "/coin_flip/direction")
         self.declare_parameter("model_path", default_model)
-        self.declare_parameter("min_confidence", 0.5)
+        self.declare_parameter("min_confidence", 0.25)
         self.declare_parameter("device", "cpu")
         # ImageNet normalization by default; override if the model was trained
         # with different preprocessing.
@@ -163,6 +163,8 @@ class CoinFlipNode(Node):
             f"img_size={self.img_size} min_conf={self.min_conf}",
         )
 
+        self.others = 0
+
     def preprocess(self, bgr):
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
         rgb = cv2.resize(rgb, (self.img_size, self.img_size))
@@ -182,7 +184,11 @@ class CoinFlipNode(Node):
         label = self.classes[int(idx)].lower()
         conf = float(conf)
         if conf < self.min_conf:
-            label = "other"
+            if self.others <= 5:
+                label = "other"
+                self.others += 1
+            else:
+                label = "Wall"
 
         self.pub.publish(String(data=label))
         self.get_logger().debug(f"coin_flip: {label} ({conf:.2f})")

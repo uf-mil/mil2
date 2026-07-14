@@ -1,6 +1,9 @@
 <root BTCPP_format="4" main_tree_to_execute="OctagonPingerMission">
     <BehaviorTree ID="OctagonPingerMission">
         <Sequence>
+            <SubTree ID="AbsDepth"
+                     z="-0.55" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
+                     ctx="{ctx}"/>
 
             <!-- Follow pinger bearing updates until the follower marks target passed. -->
             <SonarFollower
@@ -18,7 +21,7 @@
             <!-- At the octagon: surface to -0.2 m (absolute), then settle
                  back down to -0.55 m before handing off to the next task. -->
             <SubTree ID="AbsDepth"
-                     z="-0.2" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
+                     z="-0.05" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
                      ctx="{ctx}"/>
 
             <Delay delay_msec="3000"><AlwaysSuccess/></Delay>

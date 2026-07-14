@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     std::string mission_to_run = node->get_parameter("mission").as_string();
 
     node->declare_parameter<std::string>("detections_topic", "/yolo/detections");
-    node->declare_parameter<std::string>("tracking_topic", "/yolo/tracking");
+    node->declare_parameter<std::string>("tracking_topic", "/yolo/detections");
     std::string detections_topic = node->get_parameter("detections_topic").as_string();
     std::string tracking_topic = node->get_parameter("tracking_topic").as_string();
 

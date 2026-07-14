@@ -37,6 +37,7 @@
 <root BTCPP_format="4" main_tree_to_execute="CoinGateNavMission">
   <BehaviorTree ID="CoinGateNavMission">
     <Sequence>
+      <Delay delay_msec="12000"><AlwaysSuccess/></Delay>
 
       <!-- ================= CONFIG =================
            Which gate image to hone onto. This single choice also decides the
@@ -55,12 +56,12 @@
 
       <!-- 0) Dive to coin-flip depth (absolute). TUNE z. -->
       <SubTree ID="AbsDepth"
-               z="-0.7" pos_tol="0.15" ori_tol_deg="180.0" msec="20000"
+               z="-1" pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
                ctx="{ctx}"/>
 
       <!-- 1) Coin flip: single maneuver away from the wall. Launches and
            tears down its own classifier node. -->
-      <SubTree ID="CoinFlipMission" _autoremap="true" ctx="{ctx}"/>
+	<SubTree ID="CoinFlipMission" _autoremap="true" ctx="{ctx}"/>
 
 
       <!-- 1b) Remember where (and which way) we face after the coin flip.
@@ -68,7 +69,6 @@
            at the very end. -->
       <Action ID="RememberWaypoint" waypoint="home" ctx="{ctx}"/>
 
-      <SubTree ID="StylePointsSubmission" _autoremap="true" />
 
       <!-- 2) Start gate: load the gate model, then survey + hone onto the
            chosen image and push through. TUNE model_filename for the pool. -->
@@ -77,8 +77,8 @@
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>
-      <!--<SubTree ID="StartGateApproach" _autoremap="true"
-      gate_label="{gate_label}" ctx="{ctx}"/> -->
+      <SubTree ID="StartGateApproach" _autoremap="true"
+      gate_label="{gate_label}" ctx="{ctx}"/>
 
       <!-- 2b) Turn back to the post-coin-flip heading. Orientation only:
            we stay where the gate spat us out. -->
@@ -90,10 +90,22 @@
       <!-- 3) TUNE ME: re-orient from the gate exit toward the nav channel.
            Adjust x/y/yaw_deg once we see where the gate spits us out. -->
       <SubTree ID="RelativeMove" _autoremap="true"
-               x="0.0" y="1.0" z="0.0"
+               x="0.0" y="0.5" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="3.5" y="0.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+      <!-- <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="1.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+      ctx="{ctx}"/>-->
 
       <!-- 4) Nav channel, side driven by the gate image. pcNavChannelV2
            loads its own YOLO model and dives to its operating depth with
@@ -102,25 +114,25 @@
                channel_side="{channel_side}" ctx="{ctx}"/> -->
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="3.0" y="0.0" z="0.0"
+               x="2.5" y="1.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
-     <SubTree ID="RelativeMove" _autoremap="true"
+     <!--<SubTree ID="RelativeMove" _autoremap="true"
                x="0.0" y="1.5" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
-               ctx="{ctx}"/>
+     ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
                x="3.0" y="0.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
-               ctx="{ctx}"/>
+     ctx="{ctx}"/>-->
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="0.0" y="-1.5" z="0.0"
+               x="2.5" y="-1.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
      ctx="{ctx}"/>
@@ -147,14 +159,17 @@
       <!-- 8) Sonar-follow toward the torpedo board until it is >=100x100 px
            on screen (or the follower passes the ping), then fire both
            torpedoes. Loads the torpedo YOLO model itself, up front. -->
-      <SubTree ID="SonarToTorpedoMission" _autoremap="true" ctx="{ctx}"/>
+      <!-- <SubTree ID="SonarToTorpedoMission" _autoremap="true" ctx="{ctx}"/>-->
 
       <!-- 9) Head home: back to the post-coin-flip position, keeping
-           whatever heading we finished the torpedo run with. -->
+      whatever heading we finished the torpedo run with. -->
+
       <SubTree ID="GoToWaypointPosition" _autoremap="true"
                waypoint="home"
                pos_tol="0.25" ori_tol_deg="12.0" msec="90000"
                ctx="{ctx}"/>
+
+      <SubTree ID="StylePointsSubmission" _autoremap="true" />
 
     </Sequence>
   </BehaviorTree>

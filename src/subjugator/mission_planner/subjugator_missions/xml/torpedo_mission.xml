@@ -44,7 +44,7 @@
               ctx="{ctx}"/>
 
       <SubTree ID="AbsDepth"
-                     z="-1" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
+                     z="-0.2" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
                      ctx="{ctx}"/>
 
       <!-- 1) Get to board depth, center on the board, close in and arch

@@ -47,9 +47,9 @@
                 <Action ID="AlignYaw"
                         label="{hole_label}"
                         min_conf="0.30"
-                        kp="2.5"
+                        kp="1.2"
                         yaw_tol_norm="0.08"
-                        max_yaw_deg="15.0"
+                        max_yaw_deg="13.0"
                         ori_tol_deg="6.0"
                         ctx="{ctx}"/>
               </Timeout>
@@ -70,9 +70,9 @@
           <Action ID="AlignDepth"
                   label="{hole_label}"
                   min_conf="0.30"
-                  kp="0.6"
+                  kp="0.85"
                   depth_tol_norm="0.06"
-                  max_step_m="0.15"
+                  max_step_m="0.30"
                   pos_tol="0.10"
                   center_offset_px="0.0"
                   ctx="{ctx}"/>
@@ -101,8 +101,8 @@
             <Fallback>
               <Condition ID="TargetBigEnough"
                          label="{hole_label}"
-                         min_height_px="60.0"
-                         min_width_px="60.0"
+                         min_height_px="55.0"
+                         min_width_px="55.0"
                          min_conf="0.30"
                          consecutive_frames="2"
                          ctx="{ctx}"/>
@@ -111,6 +111,7 @@
                          x="0.20" y="0.0" z="0.0"
                          roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                          pos_tol="0.15" ori_tol_deg="15.0" msec="8000" ctx="{ctx}"/>
+                <Delay delay_msec="2000"><AlwaysSuccess/></Delay>
                 <AlwaysFailure/>
               </Sequence>
             </Fallback>
