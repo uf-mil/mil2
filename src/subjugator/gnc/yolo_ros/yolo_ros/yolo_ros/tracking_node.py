@@ -150,7 +150,6 @@ class TrackingNode(LifecycleNode):
             if "frame_rate" not in str(error):
                 raise
             tracker = tracker_class(args=cfg, frame_rate=1)
-
         return tracker
 
     def detections_cb(self, img_msg: Image, detections_msg: DetectionArray) -> None:

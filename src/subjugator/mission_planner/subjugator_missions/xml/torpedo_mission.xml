@@ -3,7 +3,6 @@
     ==============
     Full run, assembled from independently-testable pieces:
 
-      0) CheckYoloModel  - make sure the torpedo model is loaded
       1) TorpedoApproach - board depth, center, close in, arch head-on   (torpedo_approach.xml)
       2) HomeAndFire     - search&rescue_large -> torpedo angle 1        (torpedo_home_fire.xml)
       3) HomeAndFire     - search&rescue_small -> torpedo angle 2        (torpedo_home_fire.xml)
@@ -19,6 +18,11 @@
     "survey&amp;repair_large" / "survey&amp;repair_small".
     (& must be written &amp; inside XML attributes; the node sees "search&rescue_large".)
 
+    NOTE: the torpedo YOLO model is NOT loaded here anymore - the caller must
+    run CheckYoloModel (yolov26_torpedo_nano_June17.pt) first. SonarToTorpedoMission
+    does this before its sonar-follow stage so torpedoTarget detections are
+    already flowing while it rides the pinger.
+
     Keypoints: the board's 4 corner keypoints only flow on /yolo/tracking,
     which BoardArchStep (inside TorpedoApproach) reads - launch yolo with
     tracking on.
@@ -33,16 +37,21 @@
   <BehaviorTree ID="TorpedoMission">
     <Sequence>
 
-      <!-- 0) Correct YOLO model -->
       <Action ID="CheckYoloModel"
-              model_filename="yolov26_torpedo_nano_June17.pt"
+              model_filename="torp_model.pt"
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>
 
+      <SubTree ID="AbsDepth"
+                     z="-1.0" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
+                     ctx="{ctx}"/>
+
       <!-- 1) Get to board depth, center on the board, close in and arch
               until we face it head-on -->
       <SubTree ID="TorpedoApproach" ctx="{ctx}"/>
+
+
 
       <!-- 2) Large hole, first torpedo -->
       <SubTree ID="HomeAndFire" ctx="{ctx}"
@@ -51,11 +60,6 @@
       <!-- 3) Small hole, second torpedo -->
       <SubTree ID="HomeAndFire" ctx="{ctx}"
                hole_label="search&amp;rescue_small" torpedo_angle="2"/>
-
-      <!-- 4) Finish at a hard-coded depth -->
-      <SubTree ID="AbsDepth"
-               z="-0.75" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
-               ctx="{ctx}"/>
 
     </Sequence>
   </BehaviorTree>

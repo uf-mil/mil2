@@ -23,10 +23,10 @@
       <Action ID="StartCoinFlip" timeout_s="30.0" ctx="{ctx}"/>
 
       <!-- Block (RUNNING) until a side is seen for several frames. -->
-      <Action ID="DetectWallDirection"
+      <!-- <Action ID="DetectWallDirection"
               consecutive_frames="3"
               wall_side="{wall_side}"
-              ctx="{ctx}"/>
+      ctx="{ctx}"/> -->
 
       <!-- One maneuver away from the wall. -->
       <Switch4 variable="{wall_side}"

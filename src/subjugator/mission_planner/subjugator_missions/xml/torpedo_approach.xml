@@ -20,9 +20,9 @@
         <Action ID="AlignYaw"
                 label="torpedoTarget"
                 min_conf="0.20"
-                kp="2.5"
+                kp="2.1"
                 yaw_tol_norm="0.20"
-                max_yaw_deg="15.0"
+                max_yaw_deg="14.0"
                 ori_tol_deg="6.5"
                 ctx="{ctx}"/>
       </Timeout>
@@ -64,7 +64,7 @@
       <!-- 4) Orbit in small steps until the board is head-on. BoardArchStep reads
               the /yolo/tracking stream internally because the corner keypoints only
               ride that topic. -->
-      <Timeout msec="60000">
+      <!-- <Timeout msec="60000">
         <Action ID="BoardArchStep"
                 board_label="torpedoTarget"
                 min_conf="0.20"
@@ -72,12 +72,11 @@
                 radius_m="1.5"
                 step_deg="15.0"
                 deadband_frac="0.05"
-                dir_sign="1.0"
                 max_steps="8"
                 pos_tol="0.25"
                 ori_tol_deg="6.0"
                 ctx="{ctx}"/>
-      </Timeout>
+        </Timeout> -->
 
     </Sequence>
   </BehaviorTree>
