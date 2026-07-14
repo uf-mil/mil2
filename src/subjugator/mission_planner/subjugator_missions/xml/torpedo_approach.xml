@@ -72,7 +72,6 @@
                 radius_m="1.5"
                 step_deg="15.0"
                 deadband_frac="0.05"
-                dir_sign="1.0"
                 max_steps="8"
                 pos_tol="0.25"
                 ori_tol_deg="6.0"

@@ -1,0 +1,69 @@
+<!--
+    SonarToTorpedoMission
+    =====================
+    Ride the pinger toward the torpedo board, break off as soon as the board
+    is close (big on screen), then shoot.
+
+      0) CheckYoloModel   - load the torpedo model BEFORE following, so
+                            torpedoTarget detections flow during the follow.
+                            (Moved out of torpedo_mission.xml for this reason.)
+      1) Parallel race    - SonarFollower chases the pinger while
+                            TargetBigEnough polls the camera. First to
+                            succeed wins (success_count=1) and halts the
+                            other:
+                              - board >= 100x100 px  -> close enough, stop following
+                              - follower passes ping -> we arrived at the pinger anyway
+      2) TorpedoMission   - approach, arch, fire both torpedoes
+                            (torpedo_mission.xml, model already loaded)
+
+    Keypoints flow on /yolo/tracking, so launch yolo with tracking on
+    (same requirement as TorpedoMission itself).
+-->
+<root BTCPP_format="4" main_tree_to_execute="SonarToTorpedoMission">
+  <BehaviorTree ID="SonarToTorpedoMission">
+    <Sequence>
+
+      <!-- 0) Torpedo model first: TargetBigEnough below needs torpedoTarget
+           detections while we are still following the pinger. -->
+      <Action ID="CheckYoloModel"
+              model_filename="yolov26_torpedo_nano_June17.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- 1) Follow the pinger until the board is big enough on screen. -->
+      <Parallel success_count="1" failure_count="2">
+
+        <RetryUntilSuccessful num_attempts="-1">
+          <Sequence>
+            <Delay delay_msec="200"><AlwaysSuccess/></Delay>
+            <Condition ID="TargetBigEnough"
+                       label="torpedoTarget"
+                       min_width_px="100.0"
+                       min_height_px="100.0"
+                       min_conf="0.30"
+                       consecutive_frames="2"
+                       ctx="{ctx}"/>
+          </Sequence>
+        </RetryUntilSuccessful>
+
+        <SonarFollower
+            name="follow_ping_to_torpedo"
+            ctx="{ctx}"
+            required_passing_pings="3"
+            sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_yaw_deg="{sonar_yaw_deg}">
+          <SubTree ID="RelativeMove" _autoremap="true"
+                   x="{sonar_x}" y="{sonar_y}" z="0.0"
+                   yaw_deg="{sonar_yaw_deg}"
+                   pos_tol="0.20" ori_tol_deg="12.0" msec="25000"
+                   ctx="{ctx}"/>
+        </SonarFollower>
+
+      </Parallel>
+
+      <!-- 2) Close enough: run the torpedo task. -->
+      <SubTree ID="TorpedoMission" _autoremap="true" ctx="{ctx}"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>
