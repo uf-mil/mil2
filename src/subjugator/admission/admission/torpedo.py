@@ -2,6 +2,7 @@ import math
 
 import cv2
 import numpy as np
+import torch
 from PIL import Image as PILImage
 from sensor_msgs.msg import Image
 
@@ -20,8 +21,6 @@ from admission import adm
 (search x2)
 """
 
-import torch
-
 xfeat = torch.hub.load(
     "verlab/accelerated_features",
     "XFeat",
@@ -33,7 +32,7 @@ xfeat = torch.hub.load(
 img = np.array(PILImage.open("my_photo-2a.jpg").resize((360, 360)))
 reference = xfeat.detectAndCompute(img, top_k=4096)[0]
 kpts1, descs1 = reference["keypoints"], reference["descriptors"]
-kpts1 = kpts1.cpu().numpy() + [(640 - 360) / 2, 0]
+kpts1 = kpts1.cpu().numpy() + np.array([(640 - 360) / 2, 0])
 
 
 def warp_points(points, H, x_offset=0):
@@ -95,7 +94,11 @@ async def torpedo():
         if len(points1) <= 10 or len(points2) <= 10:
             continue
 
-        H, inliers = cv2.findHomography(points1, points2 + [x1, y1], cv2.USAC_MAGSAC)
+        H, inliers = cv2.findHomography(
+            points1,
+            points2 + np.array([x1, y1]),
+            cv2.USAC_MAGSAC,
+        )
 
         pts = warp_points(
             [

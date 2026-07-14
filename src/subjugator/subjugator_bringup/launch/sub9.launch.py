@@ -36,7 +36,7 @@ def generate_launch_description():
         parameters=[
             {
                 "camera-id": "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.1:1.0-video-index0",
-                "camera-topic": "down_camera/image_raw",
+                "camera-topic": "down_cam/image_raw",
             },
         ],
         output="screen",
@@ -82,10 +82,10 @@ def generate_launch_description():
     yolo_down = IncludeLaunchDescription(
         pkg_share("yolo_bringup", "launch", "yolov26.launch.py"),
         launch_arguments={
-            "input_image_topic": "/front_cam/image_raw",
+            "input_image_topic": "/down_cam/image_raw",
             "namespace": "yolo_down",
             "model": "/home/sub9/mil2/src/subjugator/gnc/subjugator_vision/models/bins.pt",
-        },
+        }.items(),
     )
 
     # Launch subjugator_setup.launch.py
@@ -103,7 +103,7 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            yolo,
+            yolo_front,
             yolo_down,
             new_depth,
             dvl_launch,

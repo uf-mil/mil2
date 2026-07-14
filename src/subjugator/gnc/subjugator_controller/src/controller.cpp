@@ -17,7 +17,7 @@ PIDController::PIDController() : Node("pid_controller")
         [this](geometry_msgs::msg::Pose::UniquePtr msg) { this->relative_goal_trajectory_cb(std::move(msg)); });
     pub_cmd_wrench_ = this->create_publisher<geometry_msgs::msg::Wrench>("cmd_wrench", rclcpp::QoS(1).reliable());
     pub_add_wrench_ = this->create_subscription<geometry_msgs::msg::Wrench>(
-        "add_wrench" 10, [this](geometry_msgs::msg::Wrench msg) { this->add_wrench = msg; });
+        "add_wrench", 10, [this](geometry_msgs::msg::Wrench msg) { this->add_wrench = msg; });
 
     // create reset service
     this->reset_service_ = this->create_service<std_srvs::srv::Empty>(

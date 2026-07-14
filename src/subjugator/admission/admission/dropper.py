@@ -102,7 +102,7 @@ async def estimate_bins():
                 adm.marker_pub.publish(marker)
 
             try:
-                target = list(landmarks.values())[0].mean
+                target = next(iter(landmarks.values())).mean
 
                 goal = Pose()
                 goal.position.x, goal.position.y, _ = target
