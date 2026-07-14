@@ -1,3 +1,4 @@
+import cv2
 import torch
 import numpy as np
 from PIL import Image as PILImage
@@ -38,15 +39,18 @@ class XFeat(Node):
                                  self.yolo_cb, 10)
         self.create_subscription(Image, "/front_camera/image_raw",
                                  self.img_cb, 10)
+        self.debug_pub = self.create_publisher(Image, "/xfeat/debug", 10)
         self.img = None
 
     def img_cb(self, img):
         self.img = img
+        self.yolo_cb(None)
 
     def yolo_cb(self, yolo):
         if not self.img:
             return
 
+        """
         detections = min(
             [
                 det
@@ -60,6 +64,7 @@ class XFeat(Node):
             torpedo = detections[0]
         except IndexError:
             return
+        """
 
         im = np.ndarray(
             shape=(
@@ -71,6 +76,7 @@ class XFeat(Node):
             buffer=self.img.data
         )
 
+        """
         bb = torpedo.bbox
         x1 = math.floor(bb.center.position.x - bb.size.x / 2)
         y1 = math.floor(bb.center.position.y - bb.size.y / 2)
@@ -81,6 +87,8 @@ class XFeat(Node):
             im[y1:y2, x1:x2],
             axis=-1
         ).copy()
+        """
+        segment = np.flip(im, axis=-1).copy()
 
         # run xfeat
         current = xfeat.detectAndCompute(segment, top_k = 4096)[0]
@@ -94,7 +102,7 @@ class XFeat(Node):
             return
 
         H, inliers = cv2.findHomography(
-            points1, points2 + [x1, y1],
+            points1, points2, # + [x1, y1],
             cv2.USAC_MAGSAC
         )
 
@@ -105,13 +113,13 @@ class XFeat(Node):
         draw_quad(im, pts)
 
         dbg_img = Image()
-        dbg_img.header = last_img.header
+        dbg_img.header = self.img.header
         dbg_img.data = im.tobytes()
-        dbg_img.height = last_img.height
-        dbg_img.width = last_img.width
-        dbg_img.encoding = last_img.encoding
-        dbg_img.step = last_img.step
-        adm.debug_pub.publish(dbg_img)
+        dbg_img.height = self.img.height
+        dbg_img.width = self.img.width
+        dbg_img.encoding = self.img.encoding
+        dbg_img.step = self.img.step
+        self.debug_pub.publish(dbg_img)
 
 def main():
     rclpy.init()
