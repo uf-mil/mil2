@@ -26,7 +26,7 @@
       <!-- 0) Torpedo model first: TargetBigEnough below needs torpedoTarget
            detections while we are still following the pinger. -->
       <Action ID="CheckYoloModel"
-              model_filename="yolov26_torpedo_nano_June17.pt"
+              model_filename="torp_model.pt"
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>

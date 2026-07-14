@@ -37,7 +37,7 @@
 <root BTCPP_format="4" main_tree_to_execute="CoinGateNavMission">
   <BehaviorTree ID="CoinGateNavMission">
     <Sequence>
-      <Delay delay_msec="1000"><AlwaysSuccess/></Delay>
+      <Delay delay_msec="10000"><AlwaysSuccess/></Delay>
 
       <!-- ================= CONFIG =================
            Which gate image to hone onto. This single choice also decides the
