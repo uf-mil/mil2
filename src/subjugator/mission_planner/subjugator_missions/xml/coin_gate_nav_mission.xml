@@ -91,8 +91,32 @@
       <!-- 4) Nav channel, side driven by the gate image. pcNavChannelV2
            loads its own YOLO model and dives to its operating depth with
            AbsDepth. -->
-      <SubTree ID="pcNavChannelV2" _autoremap="true"
-               channel_side="{channel_side}" ctx="{ctx}"/>
+      <!-- <SubTree ID="pcNavChannelV2" _autoremap="true"
+               channel_side="{channel_side}" ctx="{ctx}"/> -->
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="2.0" y="0.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="0.8" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="2.0" y="0.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="1.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
 
       <!-- 5) Head home: back to the post-coin-flip position, keeping
            whatever heading we finished the nav channel with. -->
