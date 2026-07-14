@@ -30,7 +30,7 @@ from sensor_msgs.msg import Image
 from ultralytics.engine.results import Boxes
 from ultralytics.trackers import BOTSORT, BYTETracker
 from ultralytics.trackers.basetrack import BaseTrack
-from ultralytics.utils import IterableSimpleNamespace, yaml_load
+from ultralytics.utils import IterableSimpleNamespace, YAML
 from ultralytics.utils.checks import check_requirements, check_yaml
 from yolo_msgs.msg import Detection, DetectionArray
 
@@ -135,13 +135,22 @@ class TrackingNode(LifecycleNode):
         check_requirements("lap")  # for linear_assignment
 
         tracker = check_yaml(tracker_yaml)
-        cfg = IterableSimpleNamespace(**yaml_load(tracker))
+        cfg = IterableSimpleNamespace(**YAML.load(tracker))
 
         assert cfg.tracker_type in [
             "bytetrack",
             "botsort",
         ], f"Only support 'bytetrack' and 'botsort' for now, but got '{cfg.tracker_type}'"
-        tracker = TRACKER_MAP[cfg.tracker_type](args=cfg, frame_rate=1)
+
+        try:
+            # Newer Ultralytics releases accept only `args`.
+            tracker = tracker_class(args=cfg)
+        except TypeError as error:
+            # Backward compatibility with releases that still expect `frame_rate`.
+            if "frame_rate" not in str(error):
+                raise
+            tracker = tracker_class(args=cfg, frame_rate=1)
+
         return tracker
 
     def detections_cb(self, img_msg: Image, detections_msg: DetectionArray) -> None:
