@@ -49,12 +49,9 @@ def main():
                 ping_msg.frequency = int(json_data["frequency_Hz"])
                 ping_msg.origin_distance_m = float(json_data["origin_distance_m"])
 
-                if ping_msg.frequency <= 28_000 or ping_msg.frequency >= 32_000:
-                    continue
-
                 pub.publish(ping_msg)
 
-                if True:
+                if False:  # 25_000 <= ping_msg.frequency <= 35_000:
                     pose_msg = PoseStamped()
                     pose_msg.header.frame_id = "base_link"
                     # calculate quaternion
