@@ -32,7 +32,7 @@ class XFeat(Node):
         super().__init__("xfeat")
 
         # calculate reference
-        img = np.array(PILImage.open("reference.png").resize((360, 360)))
+        img = np.array(PILImage.open("reference2.png").resize((360, 360)))
         reference = xfeat.detectAndCompute(img, top_k = 4096)[0]
         kpts1, self.descs1 = reference['keypoints'], reference['descriptors']
         self.kpts1 = kpts1.cpu().numpy() + [(640 - 360) / 2, 0]
@@ -81,6 +81,9 @@ class XFeat(Node):
             y1 = math.floor(bb.center.position.y - bb.size.y / 2)
             x2 = math.ceil(bb.center.position.x + bb.size.x / 2)
             y2 = math.ceil(bb.center.position.y + bb.size.y / 2)
+
+            if y2 - y1 <= 10 or x2 - x1 <= 10:
+                return
 
             x1 = max(0, x1 - 20)
             y1 = max(0, y1 - 20)
