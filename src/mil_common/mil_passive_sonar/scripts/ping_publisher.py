@@ -9,6 +9,11 @@ import transforms3d
 from geometry_msgs.msg import PoseStamped
 from mil_msgs.msg import ProcessedPing
 
+freq = 30_000
+
+freq_min = freq - 2_000
+freq_max = freq + 2_000
+
 
 def main():
     HOST = "127.0.0.1"
@@ -49,9 +54,13 @@ def main():
                 ping_msg.frequency = int(json_data["frequency_Hz"])
                 ping_msg.origin_distance_m = float(json_data["origin_distance_m"])
 
+                if not freq_min <= ping_msg.frequency <= freq_max:
+                    continue
+
+
                 pub.publish(ping_msg)
 
-                if False:  # 25_000 <= ping_msg.frequency <= 35_000:
+                if True: # debug
                     pose_msg = PoseStamped()
                     pose_msg.header.frame_id = "base_link"
                     # calculate quaternion
