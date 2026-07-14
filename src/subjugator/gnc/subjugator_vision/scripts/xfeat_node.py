@@ -51,18 +51,16 @@ class XFeat(Node):
             return
 
         if use_yolo:
-            detections = min(
-                [
-                    det
-                    for det in yolo.detections
-                    if det.class_id == 4 # torpedo
-                ],
-                key=lambda d: d.bbox.center.position.y
-            )
-
             try:
-                torpedo = detections[0]
-            except IndexError:
+                torpedo = min(
+                    [
+                        det
+                        for det in yolo.detections
+                        if det.class_id == 4 # torpedo
+                    ],
+                    key=lambda d: d.bbox.center.position.y
+                )
+            except ValueError:
                 return
 
         im = np.ndarray(
