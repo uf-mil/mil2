@@ -1,9 +1,11 @@
 import math
+
 import numpy as np
 import transforms3d
 from geometry_msgs.msg import Pose, Quaternion, Wrench
 
 from admission import adm
+
 
 def quat(q):
     quat = Quaternion()
@@ -12,6 +14,7 @@ def quat(q):
     quat.y = q[2]
     quat.z = q[3]
     return quat
+
 
 async def roll_closed():
     goal = Pose()
@@ -38,7 +41,7 @@ async def roll_closed():
         q = odom.pose.pose.orientation
         mat = transforms3d.quaternions.quat2mat([q.w, q.x, q.y, q.z])
 
-        mat[:, 0] = [1, 0, 0] # x
+        mat[:, 0] = [1, 0, 0]  # x
 
         y = mat[:, 1]
         y[0] = 0
@@ -47,7 +50,7 @@ async def roll_closed():
         roll = math.atan2(y[2], y[1]) + 1
         y[1], y[2] = math.cos(roll), math.sin(roll)
 
-        mat[:, 2] = np.cross(mat[:, 0], y) # z
+        mat[:, 2] = np.cross(mat[:, 0], y)  # z
 
         goal.orientation = quat(transforms3d.quaternions.mat2quat(mat))
         adm.goal_pub.publish(goal)
@@ -69,6 +72,7 @@ async def main():
         goal.position.z = -1.0
         adm.goal_pub.publish(Pose())
         adm.add_wrench_pub.publish(Wrench())
+
 
 if __name__ == "__main__":
     adm.run(main())

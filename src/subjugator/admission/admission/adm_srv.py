@@ -1,11 +1,12 @@
 import importlib
 
 import rclpy
-from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.node import Node
+from subjugator_msgs.srv import Admission
 
 from admission import adm
-from subjugator_msgs.srv import Admission
+
 
 class AdmissionSrvNode(Node):
     def __init__(self):
@@ -14,7 +15,7 @@ class AdmissionSrvNode(Node):
             Admission,
             "/admission",
             self.srv_cb,
-            callback_group=MutuallyExclusiveCallbackGroup()
+            callback_group=MutuallyExclusiveCallbackGroup(),
         )
 
     def srv_cb(self, msg, response):
@@ -28,10 +29,12 @@ class AdmissionSrvNode(Node):
         self.get_logger().info(f"ran {msg} {response.success}")
         return response
 
+
 def main():
     adm.should_shutdown = False
     rclpy.spin(AdmissionSrvNode())
     rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()

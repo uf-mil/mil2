@@ -84,8 +84,8 @@ struct Context
 extern BT::BehaviorTreeFactory factory;
 extern std::shared_ptr<rclcpp::Node> node;
 
-#define REGISTER(name)                                                  \
-    extern "C" __attribute__((constructor)) void register##name()       \
-    {                                                                   \
-        factory.registerNodeType<name>(#name);                          \
+#define REGISTER(name)                                                                                                 \
+    extern "C" __attribute__((constructor)) void register##name()                                                      \
+    {                                                                                                                  \
+        factory.registerNodeType<name>(#name);                                                                         \
     }

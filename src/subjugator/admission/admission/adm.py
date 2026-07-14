@@ -1,27 +1,26 @@
 import asyncio
-import importlib
 from collections import deque
-from dataclasses import dataclass
 
 import rclpy
-from rclpy.node import Node
-
 from geometry_msgs.msg import Pose, PoseStamped, Wrench
 from nav_msgs.msg import Odometry
+from rclpy.node import Node
 from sensor_msgs.msg import Image
+from subjugator_msgs.srv import Servo
 from visualization_msgs.msg import Marker
 from yolo_msgs.msg import DetectionArray
-from subjugator_msgs.srv import Servo
 
 rclpy.init()
 node = Node("admission")
 executor = rclpy.executors.MultiThreadedExecutor()
 executor.add_node(node)
 
+
 class ROSSelector:
     def select(self, timeout):
         if rclpy.ok():
             executor.spin_once(timeout)
+
 
 class ROSLoop(asyncio.BaseEventLoop):
     def __init__(self):
@@ -31,7 +30,9 @@ class ROSLoop(asyncio.BaseEventLoop):
     def _process_events(self, events_list):
         pass
 
+
 loop = ROSLoop()
+
 
 class Sub:
     def __init__(self, typ, topic):
@@ -48,6 +49,7 @@ class Sub:
         self.futs.append(fut)
         return fut
 
+
 odom_sub = Sub(Odometry, "/odometry/filtered")
 yolo_sub = Sub(DetectionArray, "/yolo/tracking")
 yolo_down_sub = Sub(DetectionArray, "/yolo_down/tracking")
@@ -62,6 +64,8 @@ dropper_srv = node.create_client(Servo, "/dropper")
 # republish for rviz
 goal_pub_publish = goal_pub.publish
 goal_stamped_pub = node.create_publisher(PoseStamped, "/goal_pose_stamped", 10)
+
+
 def publish_stamped(pose):
     goal_pub_publish(pose)
 
@@ -69,9 +73,12 @@ def publish_stamped(pose):
     stamped.pose = pose
     stamped.header.frame_id = "odom"
     goal_stamped_pub.publish(stamped)
+
+
 goal_pub.publish = publish_stamped
 
 marker_pub = node.create_publisher(Marker, "/markers", 10)
+
 
 class Join:
     def __init__(self, *subs):
@@ -88,7 +95,7 @@ class Join:
 
         done, _ = await asyncio.wait(
             self.futs.keys(),
-            return_when=asyncio.FIRST_COMPLETED
+            return_when=asyncio.FIRST_COMPLETED,
         )
 
         for fut in done:
@@ -100,14 +107,19 @@ class Join:
 
         return self.done.popleft()
 
+
 def fut(ros_fut):
     f = loop.create_future()
+
     def cb(msg):
         f.set_result(msg)
+
     ros_fut.add_done_callback(cb)
     return f
 
+
 should_shutdown = True
+
 
 def run(co):
     task = loop.create_task(co)
@@ -120,6 +132,7 @@ def run(co):
             if rclpy.ok():
                 rclpy.shutdown()
             asyncio_shutdown()
+
 
 def asyncio_shutdown():
     try:
@@ -137,15 +150,16 @@ def asyncio_shutdown():
             if task.cancelled():
                 continue
             if task.exception() is not None:
-                loop.call_exception_handler({
-                    'message': 'unhandled exception during asyncio.run() shutdown',
-                    'exception': task.exception(),
-                    'task': task,
-                })
+                loop.call_exception_handler(
+                    {
+                        "message": "unhandled exception during asyncio.run() shutdown",
+                        "exception": task.exception(),
+                        "task": task,
+                    },
+                )
 
         # Runner.close
         loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.run_until_complete(
-            loop.shutdown_default_executor())
+        loop.run_until_complete(loop.shutdown_default_executor())
     finally:
         loop.close()

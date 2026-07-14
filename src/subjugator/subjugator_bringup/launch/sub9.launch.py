@@ -84,8 +84,8 @@ def generate_launch_description():
         launch_arguments={
             "input_image_topic": "/front_cam/image_raw",
             "namespace": "yolo_down",
-            "model": "/home/sub9/mil2/src/subjugator/gnc/subjugator_vision/models/bins.pt"
-        }
+            "model": "/home/sub9/mil2/src/subjugator/gnc/subjugator_vision/models/bins.pt",
+        },
     )
 
     # Launch subjugator_setup.launch.py
