@@ -37,6 +37,14 @@
   <BehaviorTree ID="TorpedoMission">
     <Sequence>
 
+
+      <Action ID="CheckYoloModel"
+              model_filename="torpedo_robosub.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+
       <!-- 1) Get to board depth, center on the board, close in and arch
               until we face it head-on -->
       <SubTree ID="TorpedoApproach" ctx="{ctx}"/>
