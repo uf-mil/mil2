@@ -44,27 +44,26 @@ class XFeat(Node):
 
     def img_cb(self, img):
         self.img = img
-        self.yolo_cb(None)
+        # self.yolo_cb(None, use_yolo=False)
 
-    def yolo_cb(self, yolo):
+    def yolo_cb(self, yolo, *, use_yolo=True):
         if not self.img:
             return
 
-        """
-        detections = min(
-            [
-                det
-                for det in yolo.detections
-                if det.class_id == 4 # torpedo
-            ],
-            key=lambda d: d.bbox.center.position.y
-        )
+        if use_yolo:
+            detections = min(
+                [
+                    det
+                    for det in yolo.detections
+                    if det.class_id == 4 # torpedo
+                ],
+                key=lambda d: d.bbox.center.position.y
+            )
 
-        try:
-            torpedo = detections[0]
-        except IndexError:
-            return
-        """
+            try:
+                torpedo = detections[0]
+            except IndexError:
+                return
 
         im = np.ndarray(
             shape=(
@@ -76,19 +75,20 @@ class XFeat(Node):
             buffer=self.img.data
         )
 
-        """
-        bb = torpedo.bbox
-        x1 = math.floor(bb.center.position.x - bb.size.x / 2)
-        y1 = math.floor(bb.center.position.y - bb.size.y / 2)
-        x2 = math.ceil(bb.center.position.x + bb.size.x / 2)
-        y2 = math.ceil(bb.center.position.y + bb.size.y / 2)
+        if use_yolo:
+            bb = torpedo.bbox
+            x1 = math.floor(bb.center.position.x - bb.size.x / 2)
+            y1 = math.floor(bb.center.position.y - bb.size.y / 2)
+            x2 = math.ceil(bb.center.position.x + bb.size.x / 2)
+            y2 = math.ceil(bb.center.position.y + bb.size.y / 2)
 
-        segment = np.flip(
-            im[y1:y2, x1:x2],
-            axis=-1
-        ).copy()
-        """
-        segment = np.flip(im, axis=-1).copy()
+            segment = np.flip(
+                im[y1:y2, x1:x2],
+                axis=-1
+            ).copy()
+        else:
+            segment = np.flip(im, axis=-1).copy()
+            x1 = y1 = 0
 
         # run xfeat
         current = xfeat.detectAndCompute(segment, top_k = 4096)[0]
@@ -102,7 +102,7 @@ class XFeat(Node):
             return
 
         H, inliers = cv2.findHomography(
-            points1, points2, # + [x1, y1],
+            points1, points2 + [x1, y1],
             cv2.USAC_MAGSAC
         )
 
