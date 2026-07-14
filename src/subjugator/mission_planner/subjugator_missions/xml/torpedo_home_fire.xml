@@ -101,14 +101,14 @@
             <Fallback>
               <Condition ID="TargetBigEnough"
                          label="{hole_label}"
-                         min_height_px="95.0"
-                         min_width_px="95.0"
+                         min_height_px="60.0"
+                         min_width_px="60.0"
                          min_conf="0.30"
                          consecutive_frames="2"
                          ctx="{ctx}"/>
               <Sequence>
                 <SubTree ID="RelativeMove" _autoremap="true"
-                         x="0.25" y="0.0" z="0.0"
+                         x="0.20" y="0.0" z="0.0"
                          roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                          pos_tol="0.15" ori_tol_deg="15.0" msec="8000" ctx="{ctx}"/>
                 <AlwaysFailure/>

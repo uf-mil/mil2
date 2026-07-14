@@ -77,8 +77,8 @@
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>
-      <SubTree ID="StartGateApproach" _autoremap="true"
-               gate_label="{gate_label}" ctx="{ctx}"/>
+      <!--<SubTree ID="StartGateApproach" _autoremap="true"
+      gate_label="{gate_label}" ctx="{ctx}"/> -->
 
       <!-- 2b) Turn back to the post-coin-flip heading. Orientation only:
            we stay where the gate spat us out. -->
@@ -102,25 +102,31 @@
                channel_side="{channel_side}" ctx="{ctx}"/> -->
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="2.0" y="0.0" z="0.0"
+               x="3.0" y="0.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="0.0" y="0.8" z="0.0"
+               x="0.0" y="1.5" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="2.0" y="0.0" z="0.0"
+               x="3.0" y="0.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="0.0" y="1.0" z="0.0"
+               x="0.0" y="-1.5" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+     ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="3.0" y="0.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
