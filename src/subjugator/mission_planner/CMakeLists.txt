@@ -130,6 +130,11 @@ if(BUILD_TESTING)
     test_detection_gate
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
 
+  ament_add_gtest(test_target_projection test/test_target_projection.cpp)
+  target_include_directories(
+    test_target_projection
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
   ament_add_gtest(test_ros_time_budget test/test_ros_time_budget.cpp)
   target_include_directories(
     test_ros_time_budget
