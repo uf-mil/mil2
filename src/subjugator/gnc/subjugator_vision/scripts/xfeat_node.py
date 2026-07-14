@@ -1,3 +1,5 @@
+import math
+
 import cv2
 import torch
 import numpy as np
@@ -79,6 +81,11 @@ class XFeat(Node):
             y1 = math.floor(bb.center.position.y - bb.size.y / 2)
             x2 = math.ceil(bb.center.position.x + bb.size.x / 2)
             y2 = math.ceil(bb.center.position.y + bb.size.y / 2)
+
+            x1 = max(0, x1 - 20)
+            y1 = max(0, y1 - 20)
+            x2 = min(640, x2 + 20)
+            y2 = min(360, y2 + 20)
 
             segment = np.flip(
                 im[y1:y2, x1:x2],
