@@ -23,6 +23,7 @@
 #include "has_found_pair.hpp"
 #include "hone_bearing.hpp"
 #include "hone_midpoint.hpp"
+#include "lock_target_xy.hpp"
 #include "log_to_file.hpp"
 #include "nav_channel_control.hpp"
 #include "poles_big_enough.hpp"
@@ -161,6 +162,7 @@ int main(int argc, char** argv)
     factory.registerNodeType<DetectTarget>("DetectTarget");
     factory.registerNodeType<HoneBearing>("HoneBearing");
     factory.registerNodeType<CenterCamera>("CenterCamera");
+    factory.registerNodeType<LockTargetXY>("LockTargetXY");
     factory.registerNodeType<SelectTarget>("SelectTarget");
     factory.registerNodeType<SelectBasket>("SelectBasket");
     factory.registerNodeType<SelectFaceSymbol>("SelectFaceSymbol");

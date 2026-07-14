@@ -34,6 +34,7 @@ add_library(
   subjugator_operations/src/detect_target.cpp
   subjugator_operations/src/hone_bearing.cpp
   subjugator_operations/src/center_camera.cpp
+  subjugator_operations/src/lock_target_xy.cpp
   subjugator_operations/src/check_yolo_model.cpp
   subjugator_operations/src/track_largest_poles.cpp
   subjugator_operations/src/poles_big_enough.cpp
