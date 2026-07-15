@@ -57,4 +57,41 @@
             </RosTimeout>
         </Sequence>
     </BehaviorTree>
+
+    <!--
+        Static geometry READ (no controller). Runs the leaf alone with max_step=0
+        so nothing is commanded; the sub stays wherever it is teleported and the
+        node just logs `err=.. world(x,y)` each fresh frame. This is the basis /
+        projection validation: teleport the sub to a known off-centre pose over
+        the table with the controller OFF, and confirm world(x,y) recovers the
+        target's true world XY within ~5 cm.
+
+        Target is a PROP (bandaid_box), not the table: a small object's bbox
+        centre coincides with its true world XY, whereas the large table is
+        usually only partly in frame so its bbox centre sits off the model origin
+        by ~10 cm -- fine for S2 hovering, but useless as a geometry ruler.
+        bandaid_box sits at world (-7.37, 14.09, ~-0.83). With the sub teleported
+        to base (-8.05, 13.97, -0.13) the measured basis
+        (cam_right=0,-1,0 cam_down=-1,0,0) lands world(x,y) within a few cm.
+            ros2 run mission_planner mission_planner_node --ros-args \
+                -p mission:=LockTargetXYStatic -p use_sim_time:=true \
+                -r /down_camera/rgb/image_raw:=/down_cam/image_raw
+    -->
+    <BehaviorTree ID="LockTargetXYStatic">
+        <RosTimeout msec="20000" ctx="{ctx}">
+            <Action ID="LockTargetXY"
+                    camera="down"
+                    label="bandaid_box"
+                    table_z="-0.80"
+                    tol_world="0.05"
+                    est_stable_tol="0.02"
+                    settle_ticks="3"
+                    miss_frames="5"
+                    gripper_x="0.354"
+                    gripper_y="0.0"
+                    ema_alpha="0.3"
+                    max_step="0.0"
+                    ctx="{ctx}"/>
+        </RosTimeout>
+    </BehaviorTree>
 </root>
