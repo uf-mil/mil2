@@ -135,6 +135,7 @@
                                     settle_ticks="3" miss_frames="5"
                                     gripper_x="0.354" gripper_y="0.0"
                                     ema_alpha="0.3" max_step="0.25"
+                                    ki_world="0.1" i_max="0.5"
                                     ctx="{ctx}"/>
                         </RosTimeout>
                         <AlwaysSuccess/>

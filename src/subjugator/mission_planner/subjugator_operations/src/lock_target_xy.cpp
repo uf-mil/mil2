@@ -71,6 +71,10 @@ BT::PortsList LockTargetXY::providedPorts()
              BT::InputPort<double>("gripper_y", 0.0, "Gripper y offset in base_link (m)"),
              BT::InputPort<double>("ema_alpha", 0.3, "World-XY smoothing (0-1, higher = faster)"),
              BT::InputPort<double>("max_step", 0.25, "Per-cycle goal slew clamp (m)"),
+             BT::InputPort<double>("hold_z", std::numeric_limits<double>::quiet_NaN(),
+                                   "Fixed hover depth to command (m, world z). NaN = capture at start"),
+             BT::InputPort<double>("ki_world", 0.0, "World-error integral gain (0 = off); nulls controller droop"),
+             BT::InputPort<double>("i_max", 0.5, "Integrator clamp magnitude (m)"),
              BT::InputPort<std::shared_ptr<Context>>("ctx") };
 }
 
@@ -82,6 +86,9 @@ BT::NodeStatus LockTargetXY::onStart()
     }
     in_tol_count_ = 0;
     have_estimate_ = false;
+    have_hold_z_ = false;
+    i_x_ = 0.0;
+    i_y_ = 0.0;
     std::string camera = "down";
     (void)getInput("camera", camera);
     gate_.seed_from(ctx_->detections_for(camera));
@@ -93,6 +100,8 @@ BT::NodeStatus LockTargetXY::onRunning()
     std::string label = "table", camera = "down";
     double min_conf = 0.30, tol_world = 0.05, est_stable_tol = 0.02, table_z = 0.0, hfov = 1.919862177;
     double gripper_x = 0.0, gripper_y = 0.0, ema_alpha = 0.3, max_step = 0.25;
+    double hold_z = std::numeric_limits<double>::quiet_NaN();
+    double ki_world = 0.0, i_max = 0.5;
     int settle_ticks = 3, miss_frames = 5;
     std::string cam_offset = "0.45222,0.027913,-0.22", cam_right = "0,-1,0", cam_down = "-1,0,0",
                 cam_forward = "0,0,-1";
@@ -114,6 +123,9 @@ BT::NodeStatus LockTargetXY::onRunning()
     (void)getInput("gripper_y", gripper_y);
     (void)getInput("ema_alpha", ema_alpha);
     (void)getInput("max_step", max_step);
+    (void)getInput("hold_z", hold_z);
+    (void)getInput("ki_world", ki_world);
+    (void)getInput("i_max", i_max);
 
     std::optional<geometry_msgs::msg::Pose> current;
     {
@@ -227,6 +239,19 @@ BT::NodeStatus LockTargetXY::onRunning()
 
     target_projection::Vec2 base = target_projection::goal_base_xy(est_, yaw, gripper_x, gripper_y);
 
+    // Integrate the world-frame residual (est - gripper_world) against the FIXED
+    // world target and bias the base goal by it, so the position controller's
+    // steady-state droop is nulled instead of leaving the gripper parked ~0.15 m
+    // short. Clamped to +/-i_max. Only runs on a fresh kHit, so it freezes while
+    // the target is lost/stale. Off (ki_world=0) reproduces Stage-1 behavior.
+    if (ki_world > 0.0)
+    {
+        i_x_ = std::clamp(i_x_ + ki_world * (est_.x - gwx), -i_max, i_max);
+        i_y_ = std::clamp(i_y_ + ki_world * (est_.y - gwy), -i_max, i_max);
+        base.x += i_x_;
+        base.y += i_y_;
+    }
+
     // Slew clamp per cycle so a bad estimate can't command a large jump.
     double dx = base.x - current->position.x;
     double dy = base.y - current->position.y;
@@ -237,16 +262,35 @@ BT::NodeStatus LockTargetXY::onRunning()
         dy *= max_step / dist;
     }
 
-    geometry_msgs::msg::Pose goal = *current;  // holds z and orientation
+    // Capture the hover depth once so the goal commands a CONSTANT z rather than
+    // chasing a floating odom z. NaN port => use the depth we started centering at.
+    if (!have_hold_z_)
+    {
+        hold_z_ = std::isnan(hold_z) ? current->position.z : hold_z;
+        have_hold_z_ = true;
+    }
+
+    // Command a LEVEL, yaw-preserving orientation and the fixed hover depth. Do NOT
+    // copy current orientation/z: that abandons attitude/depth regulation and lets
+    // a pitch disturbance latch and run away, tilting the down_cam until the
+    // ray-cast estimate collapses onto the camera nadir (goal -> base + cam-gripper
+    // offset, a moving setpoint that floors the residual and walks the target out
+    // of frame). Holding level keeps the camera nadir-down so est_ stays world-fixed.
+    geometry_msgs::msg::Pose goal;
     goal.position.x = current->position.x + dx;
     goal.position.y = current->position.y + dy;
+    goal.position.z = hold_z_;
+    goal.orientation.x = 0.0;
+    goal.orientation.y = 0.0;
+    goal.orientation.z = std::sin(yaw / 2.0);
+    goal.orientation.w = std::cos(yaw / 2.0);
     ctx_->command_goal(goal);
 
     RCLCPP_INFO(ctx_->logger(),
                 "LockTargetXY: err=%.3f ex=%.2f ey=%.2f base(%.2f,%.2f) grip(%.2f,%.2f) world(%.2f,%.2f) "
-                "goal(%.2f,%.2f)",
+                "goal(%.2f,%.2f) i(%.3f,%.3f)",
                 world_err, ex, ey, current->position.x, current->position.y, gwx, gwy, est_.x, est_.y, goal.position.x,
-                goal.position.y);
+                goal.position.y, i_x_, i_y_);
     return BT::NodeStatus::RUNNING;
 }
 

@@ -47,4 +47,20 @@ class LockTargetXY : public BT::StatefulActionNode
     int in_tol_count_{ 0 };          // consecutive fresh centered frames
     bool have_estimate_{ false };    // EMA seeded yet?
     target_projection::Vec2 est_{};  // EMA of target world XY
+    // Fixed hover depth captured on the first fresh tick. The goal commands this
+    // constant z (and a level, yaw-preserving orientation) rather than copying
+    // the current odom z/orientation -- copying them abandons depth/attitude
+    // regulation, so on the buoyant sub a pitch disturbance latches and runs away,
+    // tilting the down_cam until the ray-cast estimate collapses onto the camera
+    // nadir. Holding level keeps the camera looking straight down so the estimate
+    // stays world-fixed.
+    double hold_z_{ 0.0 };
+    bool have_hold_z_{ false };
+    // World-frame error integral (inactive unless ki_world > 0). Nulls the
+    // position-controller surge/sway droop that leaves a static ~0.15 m residual
+    // between base and the commanded goal. Safe here because the target is a FIXED
+    // world point (the level-hold keeps the estimate world-stable), unlike the
+    // position-layer ki that wound up against a moving current+step setpoint.
+    double i_x_{ 0.0 };
+    double i_y_{ 0.0 };
 };
