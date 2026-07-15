@@ -1,0 +1,58 @@
+<!--
+    OctTorp
+    =======
+    Second half of the run (standalone counterpart to Semi (semi.xml),
+    which still runs the whole chain in one go). Start it from wherever
+    CoinStartNav (coin_start_nav_mission.xml) left us, i.e. the end of the
+    nav channel leg.
+
+      1) RememberWaypoint "post_nav" - record the start pose. Waypoints do
+         NOT survive between mission runs (each run is a fresh
+         mission_planner process), so we capture it here instead of relying
+         on CoinStartNav.
+      2) OctagonPingerMission - ride the pinger to the octagon
+         (dives itself with AbsDepth, so any start depth is fine)
+      3) GoToWaypoint "post_nav": return to the post-nav-channel pose
+      4) SonarToTorpedoMission - sonar-follow until the torpedo board is
+         >=100x100 px on screen, then fire both torpedoes
+         (sonar_torpedo_mission.xml)
+      5) GoToWaypointPosition "post_nav": drive back to the start pose
+         (position only, heading stays). Semi returns to the post-coin-flip
+         "home", but that waypoint is gone across runs.
+      6) StylePointsSubmission
+-->
+<root BTCPP_format="4" main_tree_to_execute="OctTorp">
+  <BehaviorTree ID="OctTorp">
+    <Sequence>
+      <Delay delay_msec="10000"><AlwaysSuccess/></Delay>
+
+      <!-- 1) Mark where we start (= where the nav channel leg left us); we
+           come back here between the octagon and torpedo runs. -->
+      <Action ID="RememberWaypoint" waypoint="post_nav" ctx="{ctx}"/>
+
+      <!-- 2) Octagon: ride the pinger to the octagon. -->
+      <SubTree ID="OctagonPingerMission" _autoremap="true" ctx="{ctx}"/>
+
+      <!-- 3) Back to the post-nav-channel pose (position + orientation). -->
+      <SubTree ID="GoToWaypoint" _autoremap="true"
+               waypoint="post_nav"
+               pos_tol="0.25" ori_tol_deg="10.0" msec="90000"
+               ctx="{ctx}"/>
+
+      <!-- 4) Sonar-follow toward the torpedo board until it is >=100x100 px
+           on screen (or the follower passes the ping), then fire both
+           torpedoes. Loads the torpedo YOLO model itself, up front. -->
+      <!-- <SubTree ID="SonarToTorpedoMission" _autoremap="true" ctx="{ctx}"/>-->
+
+      <!-- 5) Head back to the start pose, keeping whatever heading we
+           finished the torpedo run with. -->
+      <SubTree ID="GoToWaypointPosition" _autoremap="true"
+               waypoint="post_nav"
+               pos_tol="0.25" ori_tol_deg="12.0" msec="90000"
+               ctx="{ctx}"/>
+
+      <SubTree ID="StylePointsSubmission" _autoremap="true" />
+
+    </Sequence>
+  </BehaviorTree>
+</root>
