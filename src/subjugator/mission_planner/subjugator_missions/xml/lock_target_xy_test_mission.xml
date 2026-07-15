@@ -1,0 +1,60 @@
+<root BTCPP_format="4" main_tree_to_execute="LockTargetXYTest">
+    <!--
+        Geometry-check + tuning harness for LockTargetXY. Calls the leaf DIRECTLY
+        (not via a subtree) so every knob is settable here and the mission
+        SUCCESS/FAILURE reflects whether the world-frame lock actually converged
+        (no AlwaysSuccess mask), mirroring center_camera_test_mission.xml.
+
+        Primary use is the Task 2 acceptance check: the sub starts off-centre
+        over the table (see RelativeMove below), so the node logs
+            LockTargetXY: err=.. m world(x,y) goal(x,y)
+        The estimated world(x,y) must land on the table's ground-truth XY and,
+        crucially, stay INVARIANT as the sub moves — a drifting estimate means a
+        wrong cam_right/cam_down/cam_forward basis. A mirrored estimate means a
+        sign flip on the offending axis. err is the metres between the gripper and
+        the estimated target — the world-frame success residual — and should fall
+        toward tol_world as the sub closes in.
+
+        table_z is the table-top world z the pixel ray is cast onto (NOT the
+        table model origin). Budget is ROS time (RosTimeout), so a slow-RTF sim
+        run gets the intended sim-seconds. Run:
+            ros2 launch subjugator_bringup task5_sim.launch.py stage:=LockTargetXYTest
+
+        The RelativeMove first is REQUIRED, not incidental: robosub_2025.world
+        spawns sub9 at (-7.702, 13.972) and the table sits at (-7.25, 14.0) — a
+        delta of exactly the down_cam mount offset, i.e. the camera starts dead
+        centre over the table. Backing off -0.35 m in body x puts the table
+        off-centre at a known lateral offset with the whole table still in frame,
+        so the projection actually runs and logs a world estimate to check.
+
+        gripper_x/gripper_y are the REAL sub9.urdf.xacro gripper mount
+        (xyz="0.354 0 -0.225"), not the node's 0,0 default, so this exercises the
+        intended grasp configuration.
+    -->
+    <BehaviorTree ID="LockTargetXYTest">
+        <Sequence>
+            <!-- Introduce the known lateral offset the check needs. -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="-0.35" y="0.0" z="0.0"
+                     roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                     pos_tol="0.10" ori_tol_deg="12.0" msec="20000"
+                     ctx="{ctx}"/>
+
+            <RosTimeout msec="10000" ctx="{ctx}">
+                <Action ID="LockTargetXY"
+                        camera="down"
+                        label="table"
+                        table_z="-0.85"
+                        tol_world="0.05"
+                        est_stable_tol="0.02"
+                        settle_ticks="3"
+                        miss_frames="5"
+                        gripper_x="0.354"
+                        gripper_y="0.0"
+                        ema_alpha="0.3"
+                        max_step="0.25"
+                        ctx="{ctx}"/>
+            </RosTimeout>
+        </Sequence>
+    </BehaviorTree>
+</root>

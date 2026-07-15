@@ -17,8 +17,20 @@
 // world point rather than a running current+step, which removes the
 // moving-setpoint windup that defeated a position-layer integrator, and folds
 // the fixed camera mount offset into the geometry exactly. Depth and yaw held.
-// SUCCESS when |ex|,|ey| < tol_norm for settle_ticks fresh frames; FAILURE after
-// miss_frames consecutive fresh misses. Wrap in <Timeout>.
+//
+// SUCCESS is measured in METRES between the estimated target and where the
+// gripper actually is (odom + body offset, rotated to world) -- the real
+// objective, in the same frame/units as the commanded goal. A pixel-centering
+// gate would contradict the goal: the node drives the GRIPPER over the target,
+// but the down_cam sits ~10 cm ahead of the gripper, so a camera-centered image
+// never coincides with a gripper-centered grasp. The absolute-position term
+// cancels between target and gripper, leaving orientation, depth-to-plane and
+// perception -- and the ray-cast stays exact when the sub is off-level, unlike a
+// straight-down pixel-offset approximation. SUCCESS requires world error <
+// tol_world AND the estimate settled (est_step < est_stable_tol) for
+// settle_ticks consecutive fresh frames; the settle guard stops a half-converged
+// EMA from passing. FAILURE after miss_frames consecutive fresh misses. Wrap in
+// <Timeout>.
 class LockTargetXY : public BT::StatefulActionNode
 {
   public:

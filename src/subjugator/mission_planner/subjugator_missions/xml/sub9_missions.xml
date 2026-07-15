@@ -21,6 +21,7 @@
     <include path="orient_to_octagon_image.xml"/>
     <include path="octagon_face_mission.xml"/>
     <include path="center_camera_test_mission.xml"/>
+    <include path="lock_target_xy_test_mission.xml"/>
     <include path="octagon_table_mission.xml"/>
     <include path="select_target.xml"/>
     <include path="hone_over_table_only_mission.xml"/>

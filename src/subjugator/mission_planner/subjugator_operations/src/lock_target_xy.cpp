@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <optional>
 
 #include <rclcpp/rclcpp.hpp>
@@ -48,8 +49,10 @@ BT::PortsList LockTargetXY::providedPorts()
     return { BT::InputPort<std::string>("label", "table", "Target class to center on"),
              BT::InputPort<std::string>("camera", "down", "Detection stream: 'front' or 'down'"),
              BT::InputPort<double>("min_conf", 0.30, "Minimum detection confidence"),
-             BT::InputPort<double>("tol_norm", 0.05, "Centered when |ex|,|ey| < tol"),
-             BT::InputPort<int>("settle_ticks", 3, "Consecutive fresh centered frames for SUCCESS"),
+             BT::InputPort<double>("tol_world", 0.05, "Locked when gripper is within this many m of the target"),
+             BT::InputPort<double>("est_stable_tol", 0.02,
+                                   "Estimate has settled when its per-frame EMA step is below this (m)"),
+             BT::InputPort<int>("settle_ticks", 3, "Consecutive fresh locked+settled frames for SUCCESS"),
              BT::InputPort<int>("miss_frames", 5, "Consecutive fresh misses before FAILURE"),
              BT::InputPort<double>("table_z", 0.0, "Table-top world z (m) the ray is cast onto"),
              BT::InputPort<double>("hfov", 1.919862177, "Camera horizontal FOV (rad); URDF default"),
@@ -87,7 +90,7 @@ BT::NodeStatus LockTargetXY::onStart()
 BT::NodeStatus LockTargetXY::onRunning()
 {
     std::string label = "table", camera = "down";
-    double min_conf = 0.30, tol_norm = 0.05, table_z = 0.0, hfov = 1.919862177;
+    double min_conf = 0.30, tol_world = 0.05, est_stable_tol = 0.02, table_z = 0.0, hfov = 1.919862177;
     double gripper_x = 0.0, gripper_y = 0.0, ema_alpha = 0.3, max_step = 0.25;
     int settle_ticks = 3, miss_frames = 5;
     std::string cam_offset = "0.45222,0.027913,-0.22", cam_right = "1,0,0", cam_down = "0,1,0", cam_forward = "0,0,-1";
@@ -95,7 +98,8 @@ BT::NodeStatus LockTargetXY::onRunning()
     (void)getInput("label", label);
     (void)getInput("camera", camera);
     (void)getInput("min_conf", min_conf);
-    (void)getInput("tol_norm", tol_norm);
+    (void)getInput("tol_world", tol_world);
+    (void)getInput("est_stable_tol", est_stable_tol);
     (void)getInput("settle_ticks", settle_ticks);
     (void)getInput("miss_frames", miss_frames);
     (void)getInput("table_z", table_z);
@@ -150,21 +154,13 @@ BT::NodeStatus LockTargetXY::onRunning()
             break;
     }
 
+    // Normalized image error only feeds the ray direction now; success is judged
+    // in the world frame below, not on these pixels.
     double const ex = (best->bbox.center.position.x - static_cast<double>(W) / 2.0) / (static_cast<double>(W) / 2.0);
     double const ey = (best->bbox.center.position.y - static_cast<double>(H) / 2.0) / (static_cast<double>(H) / 2.0);
 
-    if (std::abs(ex) < tol_norm && std::abs(ey) < tol_norm)
-    {
-        if (++in_tol_count_ >= settle_ticks)
-        {
-            RCLCPP_INFO(ctx_->logger(), "LockTargetXY: centered (ex=%.3f ey=%.3f)", ex, ey);
-            return BT::NodeStatus::SUCCESS;
-        }
-        return BT::NodeStatus::RUNNING;
-    }
-    in_tol_count_ = 0;
-
-    // Build the camera frame in world from odom + the static basis.
+    // Build the camera frame in world from odom + the static basis, then cast the
+    // detection ray onto the table plane to estimate the target's world XY.
     auto const& q = current->orientation;
     target_projection::Vec3 const off_w = rotate_by_quat(q, parse_vec3(cam_offset, { 0.45222, 0.027913, -0.22 }));
     target_projection::CameraFrame cam;
@@ -182,6 +178,11 @@ BT::NodeStatus LockTargetXY::onRunning()
         return BT::NodeStatus::RUNNING;
     }
 
+    // EMA-smooth the world-XY estimate. est_step (how far this fresh frame moved
+    // the estimate) is the "settled yet?" signal for the gate: on the seed frame
+    // it is infinite so a lock can never be declared before a second frame
+    // confirms the estimate has stopped moving.
+    double est_step = std::numeric_limits<double>::infinity();
     if (!have_estimate_)
     {
         est_ = *hit;
@@ -189,11 +190,39 @@ BT::NodeStatus LockTargetXY::onRunning()
     }
     else
     {
+        target_projection::Vec2 const prev = est_;
         est_.x += ema_alpha * (hit->x - est_.x);
         est_.y += ema_alpha * (hit->y - est_.y);
+        est_step = std::hypot(est_.x - prev.x, est_.y - prev.y);
     }
 
     double const yaw = std::atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+    double const c = std::cos(yaw), s = std::sin(yaw);
+
+    // Gate A: measure the residual in METRES between where the gripper actually is
+    // (odom base + body offset, rotated to world) and the estimated target. This
+    // is the real grasp objective and matches the frame/units of the goal we
+    // command; the base position cancels between the two, so absolute odom drift
+    // does not enter. The settle guard (est_step) blocks a half-converged EMA from
+    // passing on a single lucky frame.
+    double const gwx = current->position.x + (c * gripper_x - s * gripper_y);
+    double const gwy = current->position.y + (s * gripper_x + c * gripper_y);
+    double const world_err = std::hypot(est_.x - gwx, est_.y - gwy);
+
+    if (world_err < tol_world && est_step < est_stable_tol)
+    {
+        if (++in_tol_count_ >= settle_ticks)
+        {
+            RCLCPP_INFO(ctx_->logger(), "LockTargetXY: locked (err=%.3f m, world(%.2f,%.2f))", world_err, est_.x,
+                        est_.y);
+            return BT::NodeStatus::SUCCESS;
+        }
+    }
+    else
+    {
+        in_tol_count_ = 0;
+    }
+
     target_projection::Vec2 base = target_projection::goal_base_xy(est_, yaw, gripper_x, gripper_y);
 
     // Slew clamp per cycle so a bad estimate can't command a large jump.
@@ -211,8 +240,8 @@ BT::NodeStatus LockTargetXY::onRunning()
     goal.position.y = current->position.y + dy;
     ctx_->command_goal(goal);
 
-    RCLCPP_INFO(ctx_->logger(), "LockTargetXY: ex=%.3f ey=%.3f -> world(%.2f,%.2f) goal(%.2f,%.2f)", ex, ey, est_.x,
-                est_.y, goal.position.x, goal.position.y);
+    RCLCPP_INFO(ctx_->logger(), "LockTargetXY: err=%.3f m world(%.2f,%.2f) goal(%.2f,%.2f)", world_err, est_.x, est_.y,
+                goal.position.x, goal.position.y);
     return BT::NodeStatus::RUNNING;
 }
 
