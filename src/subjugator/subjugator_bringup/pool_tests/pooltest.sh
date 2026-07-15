@@ -214,9 +214,28 @@ start_bag() { # $1 = run dir; sets BAG_PID (empty if recording failed to start).
 
 stop_bag() { # uses global BAG_PID set by start_bag
 	[ -n "${BAG_PID:-}" ] || return 0
-	kill -INT "$BAG_PID" 2>/dev/null || true
-	wait "$BAG_PID" 2>/dev/null || true
-	BAG_PID=""
+	local pid="$BAG_PID"
+	BAG_PID="" # clear early: the EXIT trap re-enters after _on_signal, must no-op
+	# The old `kill -INT "$pid"; wait "$pid"` blocked FOREVER — orphaning the
+	# recorder and never writing the stage result, so a finished run looked like an
+	# infinite loop. SIGINT was never viable: a process backgrounded (&) from a
+	# non-interactive script inherits SIGINT=SIG_IGN, and `ros2 bag record` under
+	# rmw_zenoh ignores SIGINT anyway. SIGTERM is the reliable graceful stop
+	# (rclcpp's default handler still flushes bag_0.mcap + metadata.yaml). The
+	# recorder is setsid'd, so TERM the whole group; a KILL watchdog bounds cleanup.
+	kill -TERM -- -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+	# Watchdog in its OWN session (setsid) so cancelling it with `kill -- -$wd`
+	# also kills its `sleep` — a plain `kill $wd` can't interrupt a running sleep,
+	# which would make even a clean TERM-honoring stop block the full grace period.
+	setsid bash -c '
+		pid="$1"
+		sleep 5; kill -0 "$pid" 2>/dev/null || exit 0
+		kill -KILL -- -"$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+	' _ "$pid" &
+	local wd=$!
+	wait "$pid" 2>/dev/null || true                              # reaps the child once TERM (or KILL) lands
+	kill -- -"$wd" 2>/dev/null || kill "$wd" 2>/dev/null || true # cancel watchdog + its sleep
+	wait "$wd" 2>/dev/null || true
 }
 
 run_mission() { # $1 = run dir, $2 = mission name. Launches + waits. Always returns 0 (a normal mission FAILURE must not abort the stage); a startup/fatal crash is detected and surfaced. Detail is in console.log.
