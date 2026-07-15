@@ -20,6 +20,7 @@ setup(
     entry_points={
         "console_scripts": [
             "new_depth_driver = new_depth_driver.new_depth_driver:main",
+            "dvl_depth_driver = new_depth_driver.dvl_depth_driver:main",
         ],
     },
 )
