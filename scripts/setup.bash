@@ -332,7 +332,7 @@ torpedo() {
 mp() {
 	if [[ $# -ne 1 ]]; then
 		echo "Usage: mp <mission_name>   (any tree in sub9_missions.xml)"
-		echo "Known missions: SquareTestMission StartGateMission BUSTMission NavChannelMission ETHAN"
+		echo "Known missions: Semi CoinStartNav OctTorp SquareTestMission StartGateMission BUSTMission NavChannelMission ETHAN"
 		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
 		return 2
 	fi
@@ -346,7 +346,7 @@ _mp_complete() {
 	local cur
 	cur=${COMP_WORDS[COMP_CWORD]}
 
-	local opts="SquareTestMission StartGateMission BUSTMission NavChannelMission ETHAN"
+	local opts="Semi CoinStartNav OctTorp SquareTestMission StartGateMission BUSTMission NavChannelMission ETHAN"
 	COMPREPLY=()
 	while IFS='' read -r line; do
 		COMPREPLY+=("$line")

@@ -94,6 +94,21 @@
                pos_tol="0.25" ori_tol_deg="12.0" msec="45000"
                ctx="{ctx}"/>
 
+
+      <Switch2 variable="{gate_label}"
+               case_1="survey&amp;repair" case_2="search&amp;rescue">
+
+        <SubTree ID="RelativeMove" _autoremap="true"
+                   y="-0.7625"
+                   pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
+                   ctx="{ctx}"/>
+
+        <SubTree ID="RelativeMove" _autoremap="true"
+                   y="0.7625"
+                   pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
+                   ctx="{ctx}"/>
+
+      </Switch2>
     </Sequence>
   </BehaviorTree>
 </root>
