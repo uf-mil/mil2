@@ -16,10 +16,10 @@ class CompensatedDepthDriver(Node):
     def __init__(self):
         super().__init__("dvl_depth_driver")
 
-        self.dvl_sub_ = self.create_subscriber(Odometry, "/dvl/odom", 10, self.depth_cb)
+        self.dvl_sub_ = self.create_subscription(Odometry, "/dvl/odom", self.dvl_cb, 10)
         self.compensation = 0
 
-        self.imu_sub_ = self.create_subscriber(Imu, "/imu/data", 10, self.imu_cb)
+        self.imu_sub_ = self.create_subscription(Imu, "/imu/data", self.imu_cb, 10)
         self.orientation = None
 
         self.publisher_ = self.create_publisher(
@@ -40,10 +40,20 @@ class CompensatedDepthDriver(Node):
 
         self.sensor.setFluidDensity(997)  # kg/m^3
 
+        self.timer_ = self.create_timer(1 / 20, self.timer_cb)
+
+    def pub(self, depth):
+        msg = PoseWithCovarianceStamped()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = "odom"
+        msg.pose.pose.position.z = depth
+        msg.pose.covariance[14] = 0.1
+        self.publisher_.publish(msg)
+
     def imu_cb(self, msg):
         self.orientation = msg.orientation
 
-    def odom_cb(self, msg):
+    def dvl_cb(self, msg):
         if not self.sensor.read():
             self.get_logger().info("Sensor read failed!")
             return
@@ -53,7 +63,7 @@ class CompensatedDepthDriver(Node):
         depth = -raw_depth + self.compensation
 
         if self.orientation:
-            _, angle = transforms3d.quat2axangle(
+            yaw, pitch, roll = transforms3d.taitbryan.quat2euler(
                 [
                     self.orientation.w,
                     self.orientation.x,
@@ -61,11 +71,12 @@ class CompensatedDepthDriver(Node):
                     self.orientation.z,
                 ],
             )
+            _, angle = transforms3d.taitbryan.euler2axangle(0, pitch, roll)
 
-            if self.angle <= math.pi / 6:
+            if angle <= math.pi / 6:
                 dvl_depth = dvl_depth_hyp / math.cos(angle)
 
-                if math.abs(dvl_depth - depth) <= COMPENSATE_DIST:
+                if math.fabs(dvl_depth - depth) <= COMPENSATE_DIST:
                     old_depth = depth
 
                     depth = dvl_depth * 0.2 + depth * 0.8
@@ -74,17 +85,21 @@ class CompensatedDepthDriver(Node):
                         f"compensation {self.compensation:.2f} "
                         f"depth {old_depth:.2f} -> {depth:.2f}",
                     )
+                else:
+                    self.get_logger().info("Difference too large")
             else:
                 self.get_logger().info("Angle too steep")
         else:
             self.get_logger().info("No imu orientation")
 
-        msg = PoseWithCovarianceStamped()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = "odom"
-        msg.pose.pose.position.z = depth
-        msg.pose.covariance[14] = 0.1
-        self.publisher_.publish(msg)
+        self.pub(depth)
+
+    def timer_cb(self, msg):
+        if not self.sensor.read():
+            self.get_logger().info("Sensor read failed!")
+            return
+
+        self.pub(-self.sensor.depth() + self.compensation)
 
 
 rclpy.init()
