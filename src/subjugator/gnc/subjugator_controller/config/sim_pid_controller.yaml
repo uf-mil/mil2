@@ -3,9 +3,17 @@
   ros__parameters:
     # vector indices correspond to x,y,z position,
     # then roll,pitch,yaw orientation gains
+    # Pitch (index 4) was undamped with no integral (kd=ki=imax=0) -- the
+    # same class of bug as the sway kd=0 runaway. On surge the sub develops
+    # a pitching moment; undamped it wandered to 15-45 deg, tilting the
+    # down_cam and corrupting the LockTargetXY ray-cast, which uses
+    # orientation as its lever arm. Mirror the working roll axis (index 3):
+    # kd=10 to damp, ki=2.5 + imax/imin=+-10 to null the steady
+    # surge-induced pitch, so the camera stays nadir-down while the sub
+    # repositions.
     kp: [80.0, 30.0, 45.0, 65.0, 35.0, 30.0]
-    ki: [0.0, 0.0, 1.6, 2.5, 0.0, 1.0]
-    kd: [135.0, 0.0, 2.0, 10.0, 0.0, 5.0]
-    imax: [0.0, 0.0, 5.0, 10.0, 0.0, 6.0]
-    imin: [0.0, 0.0, -5.0, -10.0, 0.0, -6.0]
+    ki: [0.0, 0.0, 1.6, 2.5, 2.5, 1.0]
+    kd: [135.0, 50.0, 2.0, 10.0, 10.0, 5.0]
+    imax: [0.0, 0.0, 5.0, 10.0, 10.0, 6.0]
+    imin: [0.0, 0.0, -5.0, -10.0, -10.0, -6.0]
     antiwindup: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
