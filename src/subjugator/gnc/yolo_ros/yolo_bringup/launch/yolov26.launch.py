@@ -32,7 +32,7 @@ def generate_launch_description():
     model_path = os.path.join(
         get_package_share_directory("subjugator_vision"),
         "models",
-        "yolov26_torpedo_nano_June17.pt",
+        "torp_model.pt",
     )
 
     return LaunchDescription(

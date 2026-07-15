@@ -141,6 +141,7 @@ class TrackingNode(LifecycleNode):
             "bytetrack",
             "botsort",
         ], f"Only support 'bytetrack' and 'botsort' for now, but got '{cfg.tracker_type}'"
+        tracker_class = TRACKER_MAP[cfg.tracker_type]
 
         try:
             # Newer Ultralytics releases accept only `args`.

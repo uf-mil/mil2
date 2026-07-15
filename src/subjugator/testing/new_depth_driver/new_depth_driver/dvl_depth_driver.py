@@ -8,23 +8,31 @@ from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 
-POOL_DEPTH = 1.65
-COMPENSATE_DIST = 0.2
+POOL_DEPTH = 1.68
+COMPENSATE_DIST = 0.3
+ZERO_DEPTH = 0.4
 
 
 class CompensatedDepthDriver(Node):
     def __init__(self):
         super().__init__("dvl_depth_driver")
 
-        self.dvl_sub_ = self.create_subscriber(Odometry, "/dvl/odom", 10, self.depth_cb)
+        self.dvl_sub_ = self.create_subscription(Odometry, "/dvl/odom", self.dvl_cb, 10)
         self.compensation = 0
+        self.zero = 0
 
-        self.imu_sub_ = self.create_subscriber(Imu, "/imu/data", 10, self.imu_cb)
+        self.imu_sub_ = self.create_subscription(Imu, "/imu/data", self.imu_cb, 10)
         self.orientation = None
 
         self.publisher_ = self.create_publisher(
             PoseWithCovarianceStamped,
             "/depth/dvl",
+            10,
+        )
+
+        self.raw_pub_ = self.create_publisher(
+            PoseWithCovarianceStamped,
+            "/depth/pose",
             10,
         )
 
@@ -40,20 +48,30 @@ class CompensatedDepthDriver(Node):
 
         self.sensor.setFluidDensity(997)  # kg/m^3
 
+        self.timer_ = self.create_timer(1 / 20, self.timer_cb)
+
+    def pose(self, depth):
+        msg = PoseWithCovarianceStamped()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = "odom"
+        msg.pose.pose.position.z = depth
+        msg.pose.covariance[14] = 0.1
+        return msg
+
     def imu_cb(self, msg):
         self.orientation = msg.orientation
 
-    def odom_cb(self, msg):
+    def dvl_cb(self, msg):
         if not self.sensor.read():
             self.get_logger().info("Sensor read failed!")
             return
 
-        raw_depth = self.sensor.depth()
+        zero_depth = -self.sensor.depth() - ZERO_DEPTH
         dvl_depth_hyp = msg.pose.pose.position.z - POOL_DEPTH
-        depth = -raw_depth + self.compensation
+        depth = zero_depth + self.compensation
 
         if self.orientation:
-            _, angle = transforms3d.quat2axangle(
+            yaw, pitch, roll = transforms3d.taitbryan.quat2euler(
                 [
                     self.orientation.w,
                     self.orientation.x,
@@ -61,30 +79,39 @@ class CompensatedDepthDriver(Node):
                     self.orientation.z,
                 ],
             )
+            _, angle = transforms3d.taitbryan.euler2axangle(0, pitch, roll)
 
-            if self.angle <= math.pi / 6:
+            if angle <= math.pi / 6:
                 dvl_depth = dvl_depth_hyp / math.cos(angle)
 
-                if math.abs(dvl_depth - depth) <= COMPENSATE_DIST:
-                    old_depth = depth
+                if math.fabs(dvl_depth - depth) <= COMPENSATE_DIST:
+                    new_depth = dvl_depth * 0.2 + depth * 0.8
 
-                    depth = dvl_depth * 0.2 + depth * 0.8
-                    self.compensation = depth + raw_depth
-                    self.get_logger().info(
-                        f"compensation {self.compensation:.2f} "
-                        f"depth {old_depth:.2f} -> {depth:.2f}",
-                    )
+                    if math.fabs(new_depth) <= 0.5:
+                        self.compensation = depth - zero_depth
+                        self.get_logger().info(
+                            f"compensation {self.compensation:.2f} "
+                            f"depth {depth:.2f} -> {new_depth:.2f}",
+                        )
+                    else:
+                        self.get_logger().info("Compensation capped")
+                else:
+                    self.get_logger().info("Difference too large")
             else:
                 self.get_logger().info("Angle too steep")
         else:
             self.get_logger().info("No imu orientation")
 
-        msg = PoseWithCovarianceStamped()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = "odom"
-        msg.pose.pose.position.z = depth
-        msg.pose.covariance[14] = 0.1
-        self.publisher_.publish(msg)
+        self.publisher_.publish(self.pose(depth))
+
+    def timer_cb(self):
+        if not self.sensor.read():
+            self.get_logger().info("Sensor read failed!")
+            return
+
+        depth = -self.sensor.depth()
+        self.publisher_.publish(self.pose(depth - ZERO_DEPTH + self.compensation))
+        self.raw_pub_.publish(self.pose(depth))
 
 
 rclpy.init()

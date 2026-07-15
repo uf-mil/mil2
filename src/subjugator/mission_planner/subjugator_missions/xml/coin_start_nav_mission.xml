@@ -35,7 +35,7 @@
 <root BTCPP_format="4" main_tree_to_execute="CoinStartNav">
   <BehaviorTree ID="CoinStartNav">
     <Sequence>
-      <Delay delay_msec="10000"><AlwaysSuccess/></Delay>
+      <Delay delay_msec="8000"><AlwaysSuccess/></Delay>
 
       <!-- ================= CONFIG =================
            Which gate image to hone onto. This single choice also decides the
@@ -55,7 +55,7 @@
 
       <!-- 0) Dive to coin-flip depth (absolute). TUNE z. -->
       <SubTree ID="AbsDepth"
-               z="-1" pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
+               z="-0.75" pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
                ctx="{ctx}"/>
 
       <!-- 1) Coin flip: single maneuver away from the wall. Launches and
@@ -70,13 +70,51 @@
 
       <!-- 2) Start gate: load the gate model, then survey + hone onto the
            chosen image and push through. TUNE model_filename for the pool. -->
-      <Action ID="CheckYoloModel"
+      <!-- <Action ID="CheckYoloModel"
               model_filename="startgate_robosub26.pt"
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
               ctx="{ctx}"/>
       <SubTree ID="StartGateApproach" _autoremap="true"
-      gate_label="{gate_label}" ctx="{ctx}"/>
+      gate_label="{gate_label}" ctx="{ctx}"/>-->
+
+
+
+      <Switch2 variable="{gate_label}"
+               case_1="survey&amp;repair" case_2="search&amp;rescue">
+
+
+        <Sequence>
+          <SubTree ID="RelativeMove" _autoremap="true"
+                 x="2.0" y="0.0" z="0.0"
+                 roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                 pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+                 ctx="{ctx}"/>
+
+          <SubTree ID="RelativeMove" _autoremap="true"
+                     y="0.7625"
+                     pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
+                     ctx="{ctx}"/>
+        </Sequence>
+
+        <Sequence>
+
+          <SubTree ID="RelativeMove" _autoremap="true"
+                 x="2.0" y="0.0" z="0.0"
+                 roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                 pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+                 ctx="{ctx}"/>
+
+
+          <SubTree ID="RelativeMove" _autoremap="true"
+                     y="-0.7625"
+                     pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
+                     ctx="{ctx}"/>
+
+          </Sequence>
+
+          <AlwaysSuccess/>
+      </Switch2>
 
       <!-- 2b) Turn back to the post-coin-flip heading. Orientation only:
            we stay where the gate spat us out. -->
@@ -92,7 +130,7 @@
            <!-- <SubTree ID="pcNavChannelV2" _autoremap="true"
                channel_side="{channel_side}" ctx="{ctx}"/> -->
       <SubTree ID="RelativeMove" _autoremap="true"
-               x="0.0" y="0.5" z="0.0"
+               x="0.0" y="-1.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
@@ -120,6 +158,14 @@
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
+
+
+      <SubTree ID="GoToWaypoint" _autoremap="true"
+               waypoint="home"
+               pos_tol="0.20" ori_tol_deg="8.0" msec="15000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="StylePointsSubmission" _autoremap="true" />
 
     </Sequence>
   </BehaviorTree>

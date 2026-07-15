@@ -25,11 +25,11 @@
 
       <!-- 0) Torpedo model first: TargetBigEnough below needs torpedoTarget
            detections while we are still following the pinger. -->
-      <Action ID="CheckYoloModel"
+      <!-- <Action ID="CheckYoloModel"
               model_filename="torp_model.pt"
               yolo_node="/yolo/yolo_node"
               models_rel_dir="models"
-              ctx="{ctx}"/>
+              ctx="{ctx}"/> -->
 
       <!-- 1) Follow the pinger until the board is big enough on screen. -->
       <Parallel success_count="1" failure_count="2">
@@ -41,7 +41,7 @@
                        label="torpedoTarget"
                        min_width_px="100.0"
                        min_height_px="100.0"
-                       min_conf="0.30"
+                       min_conf="0.25"
                        consecutive_frames="2"
                        ctx="{ctx}"/>
           </Sequence>
@@ -62,7 +62,8 @@
       </Parallel>
 
       <!-- 2) Close enough: run the torpedo task. -->
-      <SubTree ID="TorpedoMission" _autoremap="true" ctx="{ctx}"/>
+      <SubTree ID="TorpedoLite" _autoremap="true" ctx="{ctx}"/>
+      <!-- <SubTree ID="TorpedoMission" _autoremap="true" ctx="{ctx}"/> -->
 
     </Sequence>
   </BehaviorTree>

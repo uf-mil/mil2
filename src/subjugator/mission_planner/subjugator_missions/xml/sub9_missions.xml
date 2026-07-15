@@ -35,6 +35,7 @@
     <include path="servo_test_mission.xml"/>
     <include path="torpedo_home_fire.xml"/>
     <include path="torpedo_mission.xml"/>
+    <include path="torpedo_lite.xml"/>
     <include path="sonar_torpedo_mission.xml"/>
     <include path="find_torpedo_target.xml"/>
     <include path="torpedo_approach.xml"/>

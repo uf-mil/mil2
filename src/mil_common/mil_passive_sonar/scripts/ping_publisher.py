@@ -49,7 +49,7 @@ def main():
                 ping_msg.frequency = int(json_data["frequency_Hz"])
                 ping_msg.origin_distance_m = float(json_data["origin_distance_m"])
 
-                if not 33_000 <= ping_msg.frequency <= 37_000:
+                if not 27_500 <= ping_msg.frequency <= 32_500:
                     continue
 
                 pub.publish(ping_msg)

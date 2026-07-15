@@ -39,10 +39,25 @@
                pos_tol="0.25" ori_tol_deg="10.0" msec="90000"
                ctx="{ctx}"/>
 
+      <!-- ========  TUNE ME!!  ======= -->
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+                 x="3.0" y=".0" z="0.0"
+                 roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+                 pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+                 ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+                 x="0.0" y="0.0" z="0.0"
+                 roll_deg="0.0" pitch_deg="0.0" yaw_deg="20.0"
+                 pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+                 ctx="{ctx}"/>
+
       <!-- 4) Sonar-follow toward the torpedo board until it is >=100x100 px
            on screen (or the follower passes the ping), then fire both
            torpedoes. Loads the torpedo YOLO model itself, up front. -->
-      <!-- <SubTree ID="SonarToTorpedoMission" _autoremap="true" ctx="{ctx}"/>-->
+
+      <SubTree ID="SonarToTorpedoMission" _autoremap="true" ctx="{ctx}"/>
 
       <!-- 5) Head back to the start pose, keeping whatever heading we
            finished the torpedo run with. -->

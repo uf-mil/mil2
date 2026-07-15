@@ -7,6 +7,15 @@
       - deadband_frac : how square is "square enough" before we stop
       - max_steps     : hard cap on how far we ever arch
 
+    Port:
+      - min_size_px   : the board must be at least this many pixels tall AND
+                        wide before the creep stops (used for both
+                        min_height_px and min_width_px). Bigger value = we end
+                        up closer to the board. Defaults to 150 (declared in
+                        the TreeNodesModel below), so TorpedoMission and
+                        standalone runs need not pass it; TorpedoLite creeps
+                        closer with a larger value.
+
     The arch direction comes straight from the left-vs-right edge imbalance
     (keypoint-based, no manual dir_sign).
 -->
@@ -44,8 +53,8 @@
             <Fallback>
               <Condition ID="TargetBigEnough"
                          label="torpedoTarget"
-                         min_height_px="150.0"
-                         min_width_px="150.0"
+                         min_height_px="{min_size_px}"
+                         min_width_px="{min_size_px}"
                          min_conf="0.20"
                          consecutive_frames="2"
                          ctx="{ctx}"/>
@@ -53,7 +62,7 @@
                 <SubTree ID="RelativeMove" _autoremap="true"
                          x="0.25" y="0.0" z="0.0"
                          roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
-                         pos_tol="0.25" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
+                         pos_tol="0.15" ori_tol_deg="30.0" msec="6000" ctx="{ctx}"/>
                 <AlwaysFailure/>
               </Sequence>
             </Fallback>
