@@ -94,4 +94,66 @@
                     ctx="{ctx}"/>
         </RosTimeout>
     </BehaviorTree>
+
+    <!--
+        MOTION grasp test using LockTargetXY for centering (competition Task 5).
+        Mirrors ApproachAndGrasp but swaps step 1's HoneOverTarget (CenterCamera,
+        camera-centering) for LockTargetXY (world-frame, GRIPPER-centering), which
+        is the whole point: it drives the base so the gripper -- not the camera --
+        ends over the target, folding in the 10 cm cam->gripper offset. Kept as a
+        separate tree so the shared ApproachAndGrasp (used by the full mission +4
+        others) is untouched while we evaluate.
+
+        Target: bandaid_box (reliably detected from the hover pose; electric_box,
+        the default grasp_target, is often out of frame). Centering degrades to
+        dead-reckon on timeout via the Fallback, like HoneOverTarget.
+
+        REQUIRES the controller. Safe bring-up order to avoid the stale-setpoint
+        fling: start THIS mission with the controller OFF (LockTargetXY then
+        streams a sane /goal_pose near current), and only then enable the
+        controller so it follows that goal instead of a zero default.
+            ros2 run mission_planner mission_planner_node --ros-args \
+                -p mission:=LockGraspTest -p use_sim_time:=true \
+                -r /down_camera/rgb/image_raw:=/down_cam/image_raw
+            # then: ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: true}"
+    -->
+    <BehaviorTree ID="LockGraspTest">
+        <Sequence>
+            <SetBlackboard output_key="target_label" value="bandaid_box"/>
+            <RetryUntilSuccessful num_attempts="2">
+                <Sequence name="grasp_cycle">
+                    <!-- 1. Center the GRIPPER over the target (world-frame lock).
+                         table_z is the object's detected-centre world z: bandaid_box
+                         actually sits at gz z=-0.91 (the world-file -0.80 is the visual
+                         pose, not the settled model origin). A too-shallow plane biases
+                         the estimate toward the camera so it drifts under motion. -->
+                    <Fallback>
+                        <RosTimeout msec="40000" ctx="{ctx}">
+                            <Action ID="LockTargetXY"
+                                    label="{target_label}" camera="down"
+                                    table_z="-0.83" tol_world="0.05" est_stable_tol="0.02"
+                                    settle_ticks="3" miss_frames="5"
+                                    gripper_x="0.354" gripper_y="0.0"
+                                    ema_alpha="0.3" max_step="0.25"
+                                    ctx="{ctx}"/>
+                        </RosTimeout>
+                        <AlwaysSuccess/>
+                    </Fallback>
+                    <!-- 2. Open gripper before descending -->
+                    <Action ID="ActuateServo" target="gripper" angle="85" ctx="{ctx}"/>
+                    <!-- 3. Dead-reckon descent to grasp depth -->
+                    <SubTree ID="RelativeMove" _autoremap="true"
+                             z="-0.45" pos_tol="0.2" ori_tol_deg="180.0"
+                             msec="30000" ctx="{ctx}"/>
+                    <!-- 4. Close to grasp, let the attach settle -->
+                    <Action ID="ActuateServo" target="gripper" angle="0" ctx="{ctx}"/>
+                    <RosDelay delay_msec="1500" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
+                    <!-- 5. Lift clear of the table -->
+                    <SubTree ID="RelativeMove" _autoremap="true"
+                             z="0.45" pos_tol="0.2" ori_tol_deg="180.0"
+                             msec="30000" ctx="{ctx}"/>
+                </Sequence>
+            </RetryUntilSuccessful>
+        </Sequence>
+    </BehaviorTree>
 </root>

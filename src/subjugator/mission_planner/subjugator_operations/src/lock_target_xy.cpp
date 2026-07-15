@@ -242,8 +242,11 @@ BT::NodeStatus LockTargetXY::onRunning()
     goal.position.y = current->position.y + dy;
     ctx_->command_goal(goal);
 
-    RCLCPP_INFO(ctx_->logger(), "LockTargetXY: err=%.3f m world(%.2f,%.2f) goal(%.2f,%.2f)", world_err, est_.x, est_.y,
-                goal.position.x, goal.position.y);
+    RCLCPP_INFO(ctx_->logger(),
+                "LockTargetXY: err=%.3f ex=%.2f ey=%.2f base(%.2f,%.2f) grip(%.2f,%.2f) world(%.2f,%.2f) "
+                "goal(%.2f,%.2f)",
+                world_err, ex, ey, current->position.x, current->position.y, gwx, gwy, est_.x, est_.y, goal.position.x,
+                goal.position.y);
     return BT::NodeStatus::RUNNING;
 }
 
