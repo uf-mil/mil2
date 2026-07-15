@@ -80,7 +80,7 @@
     <!-- Sub -->
     <include>
       <uri>package:://subjugator_description/urdf/sub9.urdf</uri>
-      <pose>0 9 -0.3 0 0 1</pose>
+      <pose>-7.702 13.972 -0.13 0 0 0</pose>
     </include>
 
     <!-- NED frame -->
@@ -819,11 +819,11 @@
     <model name='electric_box'>
       <static>false</static>
       <link name='link'>
-        <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
+        <!-- Box collision + mass = 1250 * box_volume makes the prop slightly NEGATIVELY buoyant, so it
              holds its authored pose (graded buoyancy only supports box/sphere collision,
              not the mesh). Box size/mass are sim placeholders; tune against the mesh. -->
         <inertial>
-          <mass>6.0</mass>
+          <mass>7.5</mass>
           <inertia>
             <ixx>0.0272</ixx>
             <ixy>0</ixy>
@@ -851,16 +851,16 @@
           </geometry>
         </collision>
       </link>
-      <pose>-7.1 13.89 -.91 1.58 0 -0.50</pose>
+      <pose>-7.1 13.89 -0.80 1.58 0 -0.50</pose>
     </model>
 
     <model name='nut_cylinder'>
       <static>false</static>
       <link name='link'>
-        <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
+        <!-- Box collision + mass = 1250 * box_volume makes the prop slightly NEGATIVELY buoyant, so it
              holds its authored pose. Box size/mass are sim placeholders; tune against the mesh. -->
         <inertial>
-          <mass>6.0</mass>
+          <mass>7.5</mass>
           <inertia>
             <ixx>0.0272</ixx>
             <ixy>0</ixy>
@@ -888,16 +888,16 @@
           </geometry>
         </collision>
       </link>
-      <pose>-7.17 14.13 -0.92 1.66 0 0</pose>
+      <pose>-7.17 14.13 -0.80 1.66 0 0</pose>
     </model>
 
     <model name='pill_cylinder'>
       <static>false</static>
       <link name='link'>
-        <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
+        <!-- Box collision + mass = 1250 * box_volume makes the prop slightly NEGATIVELY buoyant, so it
              holds its authored pose. Box size/mass are sim placeholders; tune against the mesh. -->
         <inertial>
-          <mass>1.28</mass>
+          <mass>1.60</mass>
           <inertia>
             <ixx>0.005</ixx>
             <ixy>0</ixy>
@@ -925,16 +925,16 @@
           </geometry>
         </collision>
       </link>
-      <pose>-7.34 13.86 -0.92 1.55 0 0</pose>
+      <pose>-7.34 13.86 -0.80 1.55 0 0</pose>
     </model>
 
     <model name='bandaid_box'>
       <static>false</static>
       <link name='link'>
-        <!-- Box collision + mass = 1000 * box_volume gives ~neutral buoyancy, so the prop
+        <!-- Box collision + mass = 1250 * box_volume makes the prop slightly NEGATIVELY buoyant, so it
              holds its authored pose. Box size/mass are sim placeholders; tune against the mesh. -->
         <inertial>
-          <mass>0.24</mass>
+          <mass>0.30</mass>
           <inertia>
             <ixx>0.00005</ixx>
             <ixy>0</ixy>
@@ -962,7 +962,7 @@
           </geometry>
         </collision>
       </link>
-      <pose>-7.37 14.09 -0.91 1.56 0 0.40</pose>
+      <pose>-7.37 14.09 -0.80 1.56 0 0.40</pose>
     </model>
 
     <model name='Pinger_A1_25000'>
