@@ -64,8 +64,8 @@ def generate_launch_description():
 
     new_depth = Node(
         package="new_depth_driver",
-        executable="dvl_depth_driver",
-        name="dvl_depth_driver",
+        executable="new_depth_driver",
+        name="new_depth_driver",
         output="both",
     )
 
