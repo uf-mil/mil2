@@ -77,7 +77,7 @@
       <SubTree ID="StartGateApproach" _autoremap="true"
       gate_label="{gate_label}" ctx="{ctx}"/> -->
 
-      <Switch2 variable="{gate_label}"
+     <Switch2 variable="{gate_label}"
                case_1="survey&amp;repair" case_2="search&amp;rescue">
 
 
@@ -111,14 +111,17 @@
           </Sequence>
 
           <AlwaysSuccess/>
-      </Switch2>
+     </Switch2>
 
-      <!-- 2b) Turn back to the post-coin-flip heading. Orientation only:
-           we stay where the gate spat us out. -->
-      <SubTree ID="GoToWaypointOrientation" _autoremap="true"
-               waypoint="home"
-               pos_tol="0.20" ori_tol_deg="10.0" msec="15000"
-               ctx="{ctx}"/>
+     <Sequence>
+          <Repeat num_cycles="4">
+               <Fallback>
+               <SubTree ID="RelativeMove" _autoremap="true"
+                         yaw_deg="90.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+               <AlwaysSuccess/>
+               </Fallback>
+          </Repeat>
+     </Sequence>
 
 
      <!-- =================   NAVCHANNEL!!!!!! ================= -->
