@@ -182,7 +182,12 @@
      ctx="{ctx}"/>-->
 
       <!-- 6) Octagon: ride the pinger to the octagon. -->
-      <SubTree ID="OctagonPingerMission" _autoremap="true" ctx="{ctx}"/>
+      <Fallback>
+          <Timeout msec="90000">
+              <SubTree ID="OctagonPingerMission" _autoremap="true" ctx="{ctx}"/>
+          </Timeout>
+          <AlwaysSuccess/>
+      </Fallback>
 
       <!-- 7) Back to the post-nav-channel pose (position + orientation). -->
       <SubTree ID="GoToWaypoint" _autoremap="true"
