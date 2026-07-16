@@ -84,7 +84,7 @@
 
         <Sequence>
           <SubTree ID="RelativeMove" _autoremap="true"
-                 x="4.0" y="0.0" z="0.0"
+                 x="4.6" y="0.0" z="0.0"
                  roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                  pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                  ctx="{ctx}"/>
@@ -98,7 +98,7 @@
         <Sequence>
 
           <SubTree ID="RelativeMove" _autoremap="true"
-                 x="4.0" y="0.0" z="0.0"
+                 x="4.6" y="0.0" z="0.0"
                  roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                  pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                  ctx="{ctx}"/>
@@ -152,32 +152,32 @@
 
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="3.5" y="0.0" z="0.0"
+               x="3.0" y="0.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="2.2" y="1.0" z="0.0"
+               x="2.1" y="1.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="2.2" y="-1.0" z="0.0"
+               x="2.1" y="-1.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="2.2" y="0.0" z="0.0"
+               x="1.4" y="0.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
       <!-- 5) Mark where the nav channel leg left us; we come back here
            between the octagon and torpedo runs. -->
-      <Action ID="RememberWaypoint" waypoint="post_nav" ctx="{ctx}"/>
+     <!-- <Action ID="RememberWaypoint" waypoint="post_nav" ctx="{ctx}"/> -->
 
 
       <!-- ========  TUNE ME!!  ======= -->
@@ -204,10 +204,10 @@
       </Fallback>
 
       <!-- 7) Back to the post-nav-channel pose (position + orientation). -->
-      <SubTree ID="GoToWaypoint" _autoremap="true"
+      <!-- <SubTree ID="GoToWaypoint" _autoremap="true"
                waypoint="post_nav"
                pos_tol="0.25" ori_tol_deg="10.0" msec="90000"
-               ctx="{ctx}"/>
+      ctx="{ctx}"/> -->
 
       <!-- 8) Sonar-follow toward the torpedo board until it is >=100x100 px
            on screen (or the follower passes the ping), then fire both
@@ -216,6 +216,13 @@
 
       <!-- 9) Head home: back to the post-coin-flip position, keeping
       whatever heading we finished the torpedo run with. -->
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+                yaw_deg="90.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+                yaw_deg="90.0" pos_tol="0.25" ori_tol_deg="6.0" msec="3500" ctx="{ctx}"/>
+
 
       <SubTree ID="GoToWaypointPosition" _autoremap="true"
                waypoint="home"

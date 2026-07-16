@@ -20,7 +20,6 @@
     <Sequence>
 
       <!-- Launch the classifier node and wait until it is actually publishing. -->
-      <Action ID="StartCoinFlip" timeout_s="30.0" ctx="{ctx}"/>
 
       <!-- Block (RUNNING) until a side is seen for several frames. -->
       <!-- <Action ID="DetectWallDirection"
