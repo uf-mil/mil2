@@ -42,6 +42,7 @@
       <!-- ================= CONFIG =================
            Which gate image to hone onto. This single choice also decides the
            nav-channel side (see Switch2 below). -->
+      <Script code="gate_label := 'survey&amp;repair'"/>
       <Script code="gate_label := 'search&amp;rescue'"/>
       <Script code="wall_side := 'right'"/>
 
@@ -78,7 +79,7 @@
       gate_label="{gate_label}" ctx="{ctx}"/> -->
 
      <Switch2 variable="{gate_label}"
-               case_1="survey&amp;repair" case_2="search&amp;rescue">
+               case_1="search&amp;rescue" case_2="survey&amp;repair">
 
 
         <Sequence>
@@ -130,12 +131,25 @@
            <!-- <SubTree ID="pcNavChannelV2" _autoremap="true"
                channel_side="{channel_side}" ctx="{ctx}"/> -->
 
-     <!-- TUNE ME: re-orient from the gate exit toward the nav channel. -->
-     <SubTree ID="RelativeMove" _autoremap="true"
-               x="0.0" y="0.5" z="0.0"
-               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
-               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
-               ctx="{ctx}"/>
+     <!-- TUNE ME: re-orient from the gate exit toward the nav channel.
+          Side depends on the role: survey&repair -> -0.5, search&rescue -> +0.5
+          (channel_side comes from the Switch2 in the CONFIG block). -->
+     <Switch2 variable="{gate_label}"
+               case_1="search&amp;rescue" case_2="survey&amp;repair">
+
+          <SubTree ID="RelativeMove" _autoremap="true"
+                     y="-0.6"
+                     pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
+                     ctx="{ctx}"/>
+
+          <SubTree ID="RelativeMove" _autoremap="true"
+                     y="0.8"
+                     pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
+                     ctx="{ctx}"/>
+
+          <AlwaysSuccess/>
+     </Switch2>
+
 
      <SubTree ID="RelativeMove" _autoremap="true"
                x="3.5" y="0.0" z="0.0"
@@ -144,19 +158,19 @@
                ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="2.5" y="1.0" z="0.0"
+               x="2.2" y="1.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="2.5" y="-1.0" z="0.0"
+               x="2.2" y="-1.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
 
      <SubTree ID="RelativeMove" _autoremap="true"
-               x="2.5" y="0.0" z="0.0"
+               x="2.2" y="0.0" z="0.0"
                roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
                pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
                ctx="{ctx}"/>
