@@ -120,6 +120,44 @@
                pos_tol="0.20" ori_tol_deg="10.0" msec="15000"
                ctx="{ctx}"/>
 
+
+     <!-- =================   NAVCHANNEL!!!!!! ================= -->
+      <!-- 3)
+           Adjust once we see where the gate spits us out. -->
+           <!-- <SubTree ID="pcNavChannelV2" _autoremap="true"
+               channel_side="{channel_side}" ctx="{ctx}"/> -->
+
+     <!-- TUNE ME: re-orient from the gate exit toward the nav channel. -->
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="0.5" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="3.5" y="0.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="2.5" y="1.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="2.5" y="-1.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="2.5" y="0.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
       <!-- 5) Mark where the nav channel leg left us; we come back here
            between the octagon and torpedo runs. -->
       <Action ID="RememberWaypoint" waypoint="post_nav" ctx="{ctx}"/>
@@ -141,6 +179,7 @@
      ctx="{ctx}"/>-->
 
       <!-- 6) Octagon: ride the pinger to the octagon. -->
+      <SubTree ID="OctagonPingerMission" _autoremap="true" ctx="{ctx}"/>
 
       <!-- 7) Back to the post-nav-channel pose (position + orientation). -->
       <SubTree ID="GoToWaypoint" _autoremap="true"
