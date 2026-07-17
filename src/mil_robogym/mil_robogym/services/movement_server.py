@@ -12,7 +12,7 @@ from subjugator_msgs.action import Move
 from tf2_ros import Buffer, TransformListener
 
 TIMEOUT_LENGTH = 0.5
-VELOCITY_TOLERANCE = 1e-2
+VELOCITY_TOLERANCE = 1e-3
 
 
 class MovementServer(Node):
@@ -78,6 +78,9 @@ class MovementServer(Node):
         k_dist = currentPose.orientation.z - goalPose.orientation.z
         w_dist = currentPose.orientation.w - goalPose.orientation.w
 
+        distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
+        orientation_to_goal = math.sqrt(i_dist**2 + j_dist**2 + k_dist**2 + w_dist**2)
+
         if self.last_recorded_pose:
 
             x_step_dist = currentPose.position.x - self.last_recorded_pose.position.x
@@ -109,7 +112,7 @@ class MovementServer(Node):
 
             if self.start_timeout and has_not_moved:
                 self.get_logger().info(
-                    f"Terminating because {self.velocity:.8f} and {self.angular_velocity:.8f} are less than {VELOCITY_TOLERANCE}",
+                    f"Terminating at {distance_to_goal} distance and {orientation_to_goal} orientation because {self.velocity:.8f} and {self.angular_velocity:.8f} are less than {VELOCITY_TOLERANCE}",
                 )
                 self.terminate = True
 
@@ -117,8 +120,6 @@ class MovementServer(Node):
 
         self.last_recorded_pose = copy.deepcopy(currentPose)
 
-        distance_to_goal = math.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
-        orientation_to_goal = math.sqrt(i_dist**2 + j_dist**2 + k_dist**2 + w_dist**2)
         return distance_to_goal < acceptableDist and orientation_to_goal < 0.05
 
     def execute_callback(self, goal_handle):
@@ -128,7 +129,7 @@ class MovementServer(Node):
             f"Executing move to {self.movementGoal}, {self.movementType}",
         )
 
-        # Generate goal poses for orbit
+        # Generate goal poses
         if self.movementType == "Reset":
             self.get_logger().info("Resetting goal pose reference")
 
@@ -148,9 +149,16 @@ class MovementServer(Node):
             result.message = "Reset reference"
             return result
         else:
-            goal_pose = self.movementGoal
+            goal_pose = copy.deepcopy(self.current_pose)
+            goal_pose.position.x += self.movementGoal.position.x
+            goal_pose.position.y += self.movementGoal.position.y
+            goal_pose.position.z += self.movementGoal.position.z
+            goal_pose.orientation.x += self.movementGoal.orientation.x
+            goal_pose.orientation.y += self.movementGoal.orientation.y
+            goal_pose.orientation.z += self.movementGoal.orientation.z
+            goal_pose.orientation.w += self.movementGoal.orientation.w
 
-        self.goal_pub.publish(goal_pose)
+        self.goal_pub.publish(self.movementGoal)
 
         result = Move.Result()
 
@@ -185,6 +193,11 @@ class MovementServer(Node):
         self.last_pose = goal_pose
         result.success = True
         result.message = "Successfully moved to goal pose"
+
+        # Reset flags
+        self.terminate = False
+        self.start_timeout = False
+
         return result
 
 

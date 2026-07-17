@@ -36,6 +36,13 @@ class DummyRewardNet:
         pass
 
 
+class DummyPreprocessor:
+    """Minimal saveable preprocessor artifact for trainer persistence tests."""
+
+    def save(self, path: str) -> None:
+        Path(path).write_bytes(b"preprocessor-artifact")
+
+
 class DummyVAIRL:
     """Minimal VAIRL stub that returns deterministic discriminator metrics."""
 
@@ -229,9 +236,11 @@ def _build_trainer(
     trainer.flattened_demo_trajectories = []
     trainer.demos_batch_size = 1
     trainer.eval_environment = object()
+    trainer.observation_preprocessor = None
+    trainer.does_contain_abstract_data = False
     trainer._ready_simulation = lambda: None
     trainer._stop_simulation = lambda: None
-    trainer.generate_generator_trajectories = lambda generator, reward_net: (
+    trainer.generate_generator_trajectories = lambda generator, reward_net, n_trajs=1: (
         [["traj"]],
         1.25,
         0.5,
@@ -357,6 +366,43 @@ def test_train_saves_final_checkpoint_when_periodic_saving_disabled(
     assert (source_agents[0] / "generator_model.zip").is_file()
 
 
+def test_train_saves_preprocessor_artifact_when_present(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """Persists the raw-observation preprocessor alongside the generator."""
+    module = _load_trainer_module(monkeypatch)
+    trainer, source_project_dir, _share_project_dir = _build_trainer(
+        module,
+        monkeypatch,
+        tmp_path,
+        num_episodes=1,
+        save_every=0,
+    )
+    trainer.observation_preprocessor = DummyPreprocessor()
+    metrics_session = module.TrainingMetricsSession()
+    generator = DummyTRPO()
+
+    try:
+        saved_agent_dirs = trainer._save_generator_model(
+            generator,
+            metrics_session,
+            is_final=True,
+        ).result()
+    finally:
+        metrics_session.close()
+
+    source_agents = _list_agent_dirs(source_project_dir)
+    assert len(source_agents) == 1
+    assert saved_agent_dirs[0] == source_agents[0]
+
+    config = yaml.safe_load(
+        (source_agents[0] / "config.yaml").read_text(encoding="utf-8"),
+    )
+    assert config["robogym_agent"]["preprocessor_file"] == "observation_preprocessor.pt"
+    assert (source_agents[0] / "observation_preprocessor.pt").is_file()
+
+
 def test_train_abort_skips_final_save_and_keeps_latest_checkpoint(
     tmp_path: Path,
     monkeypatch,
@@ -373,7 +419,7 @@ def test_train_abort_skips_final_save_and_keeps_latest_checkpoint(
 
     trajectory_calls = 0
 
-    def _generate(generator, reward_net):
+    def _generate(generator, reward_net, n_trajs=1):
         nonlocal trajectory_calls
         trajectory_calls += 1
         if trajectory_calls == 2:

@@ -15,7 +15,30 @@ from mil_robogym.vairl.training_settings import (
 )
 
 
+def _tensor_spec(
+    *,
+    input_topics: dict[str, list[str]],
+    output_topics: dict[str, list[str]],
+) -> dict[str, object]:
+    input_features = [
+        f"{topic}:{field}" for topic, fields in input_topics.items() for field in fields
+    ]
+    output_features = [
+        f"{topic}:{field}"
+        for topic, fields in output_topics.items()
+        for field in fields
+    ]
+    return {
+        "input_features": input_features,
+        "output_features": output_features,
+        "input_dim": len(input_features),
+        "output_dim": len(output_features),
+    }
+
+
 def _project_payload(name: str) -> dict:
+    input_topics = {"imu/processed": ["orientation.x"]}
+    output_topics = {"trajectory/4_deg": ["yaw"]}
     return {
         "name": name,
         "world_file": "src/default/world/file",
@@ -25,8 +48,12 @@ def _project_payload(name: str) -> dict:
             "coord1_4d": [0.0, 0.0, 0.0, 0.0],
             "coord2_4d": [1.0, 2.0, 3.0, 4.0],
         },
-        "input_topics": {"imu/processed": ["orientation.x"]},
-        "output_topics": {"trajectory/4_deg": ["yaw"]},
+        "input_topics": input_topics,
+        "output_topics": output_topics,
+        "tensor_spec": _tensor_spec(
+            input_topics=input_topics,
+            output_topics=output_topics,
+        ),
     }
 
 
