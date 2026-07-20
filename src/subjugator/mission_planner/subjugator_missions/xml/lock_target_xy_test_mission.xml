@@ -157,4 +157,96 @@
             </RetryUntilSuccessful>
         </Sequence>
     </BehaviorTree>
+
+    <!--
+        END-TO-END MECHANICS demo against a RELIABLY DETECTED object (table).
+        octagon_sim.pt has poor RECALL on the grasp props (they appear in ~10% of
+        frames even up close) AND even the basket markers (red_cross) are
+        view-dependent -- only `table` detects in ~every frame regardless of pose.
+        So `table` is the one target robust enough to validate the full chain --
+        world-frame centering of the GRIPPER over a detected target, then
+        descend/close/lift -- while the prop model is retrained separately. The
+        table is a fixed surface, not a graspable physics model, so nothing
+        attaches; this proves the MOTION and the world-frame lock, not the pickup.
+
+        Unlike LockGraspTest this does NOT mask the centering step with
+        AlwaysSuccess: LockTargetXY must genuinely converge (SUCCESS) before the
+        descent runs, so a mission SUCCESS means the world-frame lock really
+        centered the gripper. Requires the correct bring-up order first:
+            python3 pool_tests/sim_bringup.py --x -7.702 --y 13.972 --z -0.35
+            ros2 run mission_planner mission_planner_node --ros-args \
+                -p mission:=LockGraspReliableTest -p use_sim_time:=true \
+                -r /down_camera/rgb/image_raw:=/down_cam/image_raw
+    -->
+    <BehaviorTree ID="LockGraspReliableTest">
+        <Sequence>
+            <SetBlackboard output_key="target_label" value="red_cross"/>
+            <!-- 1. Center the GRIPPER over the marker (world-frame lock). red_cross
+                 is a small, spatially-stable centroid (unlike `table`, whose bbox
+                 centroid moves as framing changes and cannot be centered on). No
+                 AlwaysSuccess mask: centering must actually converge. table_z is
+                 the table-top plane the marker sits on (~-0.83). -->
+            <RosTimeout msec="60000" ctx="{ctx}">
+                <Action ID="LockTargetXY"
+                        label="{target_label}" camera="down"
+                        table_z="-0.83" tol_world="0.06" est_stable_tol="0.02"
+                        settle_ticks="3" miss_frames="8"
+                        gripper_x="0.354" gripper_y="0.0"
+                        ema_alpha="0.3" max_step="0.25"
+                        ki_world="0.1" i_max="0.5"
+                        ctx="{ctx}"/>
+            </RosTimeout>
+            <!-- 2. Open gripper before descending -->
+            <Action ID="ActuateServo" target="gripper" angle="85" ctx="{ctx}"/>
+            <!-- 3. Dead-reckon descent toward the table (relative to current pose,
+                 which the last_goal fix now guarantees instead of world origin) -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     z="-0.35" pos_tol="0.2" ori_tol_deg="180.0"
+                     msec="30000" ctx="{ctx}"/>
+            <!-- 4. Close, let it settle -->
+            <Action ID="ActuateServo" target="gripper" angle="0" ctx="{ctx}"/>
+            <RosDelay delay_msec="1500" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
+            <!-- 5. Lift clear -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     z="0.35" pos_tol="0.2" ori_tol_deg="180.0"
+                     msec="30000" ctx="{ctx}"/>
+        </Sequence>
+    </BehaviorTree>
+
+    <!--
+        MECHANICAL grasp chain (no perception): open -> descend -> close -> lift,
+        against a graspable prop pre-placed under the gripper. octagon_sim.pt has
+        too little prop recall to CENTER autonomously (see LockGraspReliableTest),
+        so this decouples the MOTION + attach from perception to prove the rest of
+        the chain works end to end with a real pickup.
+
+        The FIRST action is a relative descend with no prior commanded goal -- the
+        exact case the publish_goal last_goal fix protects. Before the fix that
+        descend chained off a null last_goal and fell back to the world origin,
+        flinging the sub; now it chains off current odom and goes straight down.
+
+        Run after placing a graspable prop under the gripper (see the demo script):
+            python3 pool_tests/sim_bringup.py --x -7.702 --y 13.972 --z -0.35
+            # teleport electric_box under the gripper, then:
+            ros2 run mission_planner mission_planner_node --ros-args \
+                -p mission:=MechGraspTest -p use_sim_time:=true
+    -->
+    <BehaviorTree ID="MechGraspTest">
+        <Sequence>
+            <!-- 1. Open gripper -->
+            <Action ID="ActuateServo" target="gripper" angle="85" ctx="{ctx}"/>
+            <!-- 2. Descend to the prop (FIRST relative move: exercises the
+                 last_goal->odom fallback fix) -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     z="-0.28" pos_tol="0.15" ori_tol_deg="180.0"
+                     msec="30000" ctx="{ctx}"/>
+            <!-- 3. Close to grasp, let the attach settle -->
+            <Action ID="ActuateServo" target="gripper" angle="0" ctx="{ctx}"/>
+            <RosDelay delay_msec="2000" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
+            <!-- 4. Lift the prop clear of the table -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     z="0.4" pos_tol="0.15" ori_tol_deg="180.0"
+                     msec="30000" ctx="{ctx}"/>
+        </Sequence>
+    </BehaviorTree>
 </root>

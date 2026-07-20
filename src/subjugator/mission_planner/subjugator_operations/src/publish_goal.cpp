@@ -166,18 +166,35 @@ BT::NodeStatus PublishGoalPose::tick()
     }
 
     // Choose base pose: relative chains off last_goal (avoids odom drift accumulation);
-    // absolute uses current odom for keep_current_pos_abs. Both fall back to world origin.
+    // absolute uses current odom for keep_current_pos_abs.
     geometry_msgs::msg::Pose base{};
     base.orientation.w = 1.0;
     bool have_base = false;
 
     if (relative)
     {
-        std::scoped_lock lk(ctx_->last_goal_mx);
-        if (ctx_->last_goal)
         {
-            base = *ctx_->last_goal;
-            have_base = true;
+            std::scoped_lock lk(ctx_->last_goal_mx);
+            if (ctx_->last_goal)
+            {
+                base = *ctx_->last_goal;
+                have_base = true;
+            }
+        }
+        // No prior goal to chain from -- this is the first move of the mission, or
+        // the preceding step failed before it commanded a goal. Fall back to the
+        // sub's current odom pose so the move stays relative to where the sub
+        // ACTUALLY is. The old code left base at the world origin here, so a
+        // relative descend after a failed center drove the sub across the pool
+        // toward (0,0) instead of straight down.
+        if (!have_base)
+        {
+            std::scoped_lock lk(ctx_->odom_mx);
+            if (ctx_->latest_odom)
+            {
+                base = ctx_->latest_odom->pose.pose;
+                have_base = true;
+            }
         }
     }
     else
@@ -194,13 +211,19 @@ BT::NodeStatus PublishGoalPose::tick()
         }
     }
 
-    if (!have_base)
+    bool keep_cur_abs_probe = true;
+    (void)getInput("keep_current_pos_abs", keep_cur_abs_probe);
+    // A relative move, or an absolute move that keeps the current position, is
+    // meaningless without a real base pose. Refuse rather than silently command
+    // the world origin (which would fling the sub, not hold station).
+    if (!have_base && (relative || keep_cur_abs_probe))
     {
-        RCLCPP_WARN(ctx_->logger(), "PublishGoalPose: no base pose available; assuming world origin.");
+        RCLCPP_ERROR(ctx_->logger(), "PublishGoalPose: no base pose (no last_goal and no odom); refusing to command "
+                                     "the world origin. Failing this step.");
+        return BT::NodeStatus::FAILURE;
     }
 
-    bool keep_cur_abs = true;
-    (void)getInput("keep_current_pos_abs", keep_cur_abs);
+    bool const keep_cur_abs = keep_cur_abs_probe;
     if (!relative && keep_cur_abs)
     {
         x = base.position.x;
