@@ -40,9 +40,14 @@
            base_link buoyancy collisions: sphere+shells), not the old 0.352:
            with GM introduced, a 2 mm x-gap between CoB and CoG hangs the pendulum
            at atan(0.002/0.03) ~= 3.8 deg of steady pitch. Aligning x zeroes it.
-           z (-0.03) is the metacentric height; larger = stronger leveling and
-           less sensitive to residual x error. Tune against measured pitch. -->
-      <origin rpy="0 0 0" xyz="0.354 0 -0.03"/>
+           z (-0.08) is the metacentric height GM; larger = stronger leveling and
+           less sensitive to residual x error. 3 cm self-levels at REST but under
+           a sustained surge the sub still pitches ~13 deg (righting couple too
+           weak vs the sim's surge disturbance torque); 8 cm holds the approach
+           closer to level. SIM PLACEHOLDER: the real GM is a measured ballast
+           property of the physical sub, not this tuned value; set it to the real
+           inclining-test figure when available. -->
+      <origin rpy="0 0 0" xyz="0.354 0 -0.08"/>
       <!-- Need to be properly calculated at some point -->
       <mass value="20.5"/>
       <inertia ixx="2.4" ixy="0" ixz="0" iyy="2.4" iyz="0.0" izz="3.0"/>
