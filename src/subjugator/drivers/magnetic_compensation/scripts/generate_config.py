@@ -6,70 +6,18 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import rclpy
-import scipy.linalg
 import yaml
 from geometry_msgs.msg import Vector3
+from magnetic_compensation.ellipsoid import (
+    calculate_error,
+    fit_ellipsoid,
+    normalized_matrix,
+)
 from mpl_toolkits.mplot3d import Axes3D
 from rclpy.serialization import deserialize_message
 from rosbag2_py import ConverterOptions, SequentialReader, StorageOptions
 from rosidl_runtime_py.utilities import get_message
 from tf_transformations import random_rotation_matrix, unit_vector
-
-
-def normalized_matrix(m):
-    assert np.linalg.det(m) > 0
-    return m / np.linalg.det(m) ** (1 / m.shape[0])
-
-
-def calculate_error(points):
-    radii = list(map(np.linalg.norm, points))
-    error = np.std(radii) / np.mean(radii)
-    return error
-
-
-def fit_ellipsoid(points):
-    points = np.array(points)
-
-    A = np.zeros((points.shape[0], 9))
-    A[:, 0] = points[:, 0] ** 2
-    A[:, 1] = points[:, 1] ** 2
-    A[:, 2] = points[:, 2] ** 2
-    A[:, 3] = 2 * points[:, 0] * points[:, 1]
-    A[:, 4] = 2 * points[:, 0] * points[:, 2]
-    A[:, 5] = 2 * points[:, 1] * points[:, 2]
-    A[:, 6] = -2 * points[:, 0]
-    A[:, 7] = -2 * points[:, 1]
-    A[:, 8] = -2 * points[:, 2]
-
-    B = np.ones((points.shape[0], 1))
-
-    X = np.linalg.lstsq(A, B, rcond=None)[0].flatten()
-    if X[0] < 0:
-        X = -X
-
-    ka = np.linalg.inv(
-        np.array(
-            [
-                [X[0], X[3], X[4]],
-                [X[3], X[1], X[5]],
-                [X[4], X[5], X[2]],
-            ],
-        ),
-    )
-    shift = ka.dot(X[6:9])
-
-    scale = scipy.linalg.sqrtm(ka)
-    assert np.isreal(scale).all(), scale
-    scale = np.real(scale)
-    scale = normalized_matrix(scale)
-
-    scale_inv = np.linalg.inv(scale)
-    compensated = [scale_inv.dot(p - shift) for p in points]
-
-    for axis in range(3):
-        assert min(p[axis] for p in compensated) < 0 < max(p[axis] for p in compensated)
-
-    return scale, shift, compensated
 
 
 def axisEqual3D(ax):

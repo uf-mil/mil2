@@ -1,3 +1,14 @@
+"""End-to-end launch test for the HardsoftCompensator node.
+
+Brings up the real component with an identity calibration (zero shift, identity
+scale) and checks the live correction path: a matching-frame message passes
+through unchanged, and a wrong-frame message is dropped.
+
+NOTE: requires a built+sourced ROS 2 workspace (run via ``colcon test``); it is
+not exercised by the pure-Python ``test_ellipsoid.py`` suite.
+"""
+
+import time
 import unittest
 
 import launch
@@ -6,8 +17,9 @@ import pytest
 import rclpy
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
-from rclpy.duration import Duration
 from sensor_msgs.msg import MagneticField
+
+FRAME_ID = "imu_link"
 
 
 @pytest.mark.launch_test
@@ -23,20 +35,9 @@ def generate_test_description():
                 plugin="mil::magnetic_compensation::HardsoftCompensator",
                 name="hardsoft_compensator",
                 parameters=[
+                    {"frame_id": FRAME_ID},
                     {"shift": [0.0, 0.0, 0.0]},
-                    {
-                        "scale": [
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0,
-                        ],
-                    },
+                    {"scale": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]},
                 ],
             ),
         ],
@@ -50,7 +51,7 @@ def generate_test_description():
     )
 
 
-class TestBasicShift(unittest.TestCase):
+class TestCompensatorNode(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         rclpy.init()
@@ -60,32 +61,50 @@ class TestBasicShift(unittest.TestCase):
         rclpy.shutdown()
 
     def setUp(self):
-        self.node = rclpy.create_node("test_basic_shift")
-        self.mag_raw_pub = self.node.create_publisher(MagneticField, "imu/mag_raw", 10)
-        self.mag_sub = self.node.create_subscription(
+        self.node = rclpy.create_node("test_compensator")
+        self.received = None
+        self.pub = self.node.create_publisher(MagneticField, "/imu/mag_raw", 10)
+        self.sub = self.node.create_subscription(
             MagneticField,
             "imu/mag",
-            self.imu_callback,
+            self._on_msg,
             10,
         )
 
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.most_recent_imu_msg = None
+    def tearDown(self):
+        self.node.destroy_node()
 
-    def imu_callback(self, msg):
-        self.most_recent_imu_msg = msg
+    def _on_msg(self, msg):
+        self.received = msg
 
-    def test_shifted(self):
-        # send an arbitrary measurement and ensure that it has not shifted
-        mf_message = MagneticField()
-        mf_message.magnetic_field.x = 1.0
-        mf_message.magnetic_field.y = 1.0
-        mf_message.magnetic_field.z = 1.0
-        mf_message.header.frame_id = "imu_link"
-        self.mag_raw_pub.publish(mf_message)
-        self.node.get_clock().sleep_for(Duration(seconds=20.0))
-        self.assertIsNot(self.most_recent_imu_msg, None)
-        self.assertEqual(self.most_recent_imu_msg.magnetic_field.x, 1.0)
-        self.assertEqual(self.most_recent_imu_msg.magnetic_field.y, 1.0)
-        self.assertEqual(self.most_recent_imu_msg.magnetic_field.z, 1.0)
+    def _publish_and_wait(self, frame_id, xyz, timeout_sec=5.0):
+        """Publish a raw reading repeatedly while spinning until a reply or timeout.
+
+        Republishing covers pub/sub discovery latency; spinning the node is what
+        the original test was missing (it slept without ever spinning, so the
+        callback never fired and the test always failed -> it was disabled).
+        """
+        msg = MagneticField()
+        msg.header.frame_id = frame_id
+        msg.magnetic_field.x, msg.magnetic_field.y, msg.magnetic_field.z = xyz
+
+        deadline = time.monotonic() + timeout_sec
+        while self.received is None and time.monotonic() < deadline:
+            self.pub.publish(msg)
+            rclpy.spin_once(self.node, timeout_sec=0.1)
+        return self.received
+
+    def test_identity_passes_through_unchanged(self):
+        result = self._publish_and_wait(FRAME_ID, (1.0, 2.0, 3.0))
+        self.assertIsNotNone(result, "no message received from compensator")
+        self.assertAlmostEqual(result.magnetic_field.x, 1.0)
+        self.assertAlmostEqual(result.magnetic_field.y, 2.0)
+        self.assertAlmostEqual(result.magnetic_field.z, 3.0)
+
+    def test_wrong_frame_id_is_dropped(self):
+        result = self._publish_and_wait(
+            "not_imu_link",
+            (1.0, 2.0, 3.0),
+            timeout_sec=2.0,
+        )
+        self.assertIsNone(result, "message with mismatched frame_id should be dropped")
