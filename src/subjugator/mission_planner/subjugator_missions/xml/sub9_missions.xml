@@ -7,6 +7,7 @@
     <include path="absolute_move.xml"/>
     <include path="relative_move.xml"/>
     <include path="hone_over_target.xml"/>
+    <include path="lock_over_target.xml"/>
     <include path="approach_and_grasp.xml"/>
     <include path="transport_and_place.xml"/>
     <include path="octagon_place_mission.xml"/>

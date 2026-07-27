@@ -25,10 +25,15 @@
                                  step_m="0.30" max_radius_m="2.0"
                                  timeout_msec="60000" ctx="{ctx}"/>
             </Fallback>
-            <!-- Center over the table (degrades gracefully if unseen). -->
-            <SubTree ID="HoneOverTarget" _autoremap="true"
+            <!-- Center over the table with the world-frame lock (LockOverTarget)
+                 rather than the incremental pixel hone: the table lies exactly on
+                 the cast plane (table_z), so the absolute-goal, level-holding lock
+                 removes the pitch-latch/moving-setpoint divergence that made the
+                 old CenterCamera hone drift off and starve SelectTarget. Degrades
+                 gracefully if unseen. table_z is the tabletop world z. -->
+            <SubTree ID="LockOverTarget" _autoremap="true"
                      label="table" camera="down"
-                     tol_norm="0.05" timeout_msec="20000" miss_frames="5" ctx="{ctx}"/>
+                     table_z="-0.85" tol_world="0.05" timeout_msec="20000" miss_frames="5" ctx="{ctx}"/>
         </Sequence>
     </BehaviorTree>
 </root>
