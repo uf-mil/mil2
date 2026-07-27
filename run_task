@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Thin wrapper so teammates can run `./run_task 5` from the repo root without
+# remembering the ros2 run incantation. Identical behaviour either way.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -f "$here/install/setup.bash" ]; then
+	set +u
+	# shellcheck disable=SC1091
+	source "$here/install/setup.bash"
+	set -u
+fi
+
+if ! command -v ros2 >/dev/null 2>&1; then
+	echo "run_task: ROS 2 is not on PATH and $here/install/setup.bash is missing." >&2
+	echo "  Build the workspace first (cb), then re-run." >&2
+	exit 2
+fi
+
+exec ros2 run subjugator_bringup run_task "$@"
