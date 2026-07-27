@@ -39,7 +39,8 @@ if(BUILD_TESTING)
       test/test_task5_scorer.py
       test/test_basket_constants.py
       test/test_report.py
-      test/test_lifecycle.py)
+      test/test_lifecycle.py
+      test/test_settle_gate.py)
   # The list above names every test file the run_task harness will own. Files
   # that a later task has not created yet are skipped rather than breaking the
   # configure step; each one starts running the moment it lands on disk.

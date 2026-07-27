@@ -42,6 +42,10 @@ Usage
   python3 sim_bringup.py
   # teleport to the over-table hover first, then settle + anchor:
   python3 sim_bringup.py --x -7.702 --y 13.972 --z -0.35 --settle 25
+  # end the settle when the sub is measurably still instead of after N wall
+  # seconds (--settle is WALL time, and RTF on this box varies ~20x run to run,
+  # so it buys wildly different amounts of real settling):
+  python3 sim_bringup.py --x -7.702 --y 13.972 --settle-until-still
 """
 
 import argparse
@@ -58,6 +62,25 @@ from robot_localization.srv import SetPose
 from std_srvs.srv import Empty, SetBool
 
 WORLD = "robosub_2025"
+
+# Wall-clock deadlock guard for the convergence gate. The gate is capped in SIM
+# seconds, but a sim whose /clock is not ticking at all (gz dead, or paused
+# again behind our back) can never reach that cap, so the loop would spin
+# forever. This is NOT a wall cap on the gate: it only fires after the sim clock
+# has made no progress whatsoever for this long.
+SETTLE_STALL_WALL_S = 60.0
+
+
+def settled(twist_mags, tol, need):
+    """True once the last `need` twist magnitudes are all below `tol`.
+
+    Wall-clock settling does not survive this box: RTF varies ~20x run to run, so
+    a fixed --settle buys wildly different amounts of actual settling. Waiting on
+    the vehicle actually being still is RTF-independent.
+    """
+    if len(twist_mags) < need:
+        return False
+    return all(m < tol for m in twist_mags[-need:])
 
 
 def gz_unpause():
@@ -131,6 +154,24 @@ class Bringup(Node):
         )
         self.goal_pub = self.create_publisher(Pose, "/goal_pose", 10)
 
+    def twist_magnitude(self):
+        """Largest linear/angular velocity component in the latest odometry."""
+        if self.odom is None:
+            return None
+        t = self.odom.twist.twist
+        return max(
+            abs(t.linear.x),
+            abs(t.linear.y),
+            abs(t.linear.z),
+            abs(t.angular.x),
+            abs(t.angular.y),
+            abs(t.angular.z),
+        )
+
+    def sim_now(self):
+        """Seconds on the /clock (the node runs with use_sim_time)."""
+        return self.get_clock().now().nanoseconds / 1e9
+
     def spin_for(self, s):
         end = time.time() + s
         while time.time() < end:
@@ -170,7 +211,30 @@ def main():
         "--settle",
         type=float,
         default=25.0,
-        help="settle seconds under control",
+        help="fixed WALL seconds to settle under control (default: 25)",
+    )
+    ap.add_argument(
+        "--settle-until-still",
+        action="store_true",
+        help="hold until the sub is measurably still instead of a fixed wall wait",
+    )
+    ap.add_argument(
+        "--twist-tol",
+        type=float,
+        default=0.02,
+        help="max velocity component counted as still (m/s, rad/s)",
+    )
+    ap.add_argument(
+        "--stable-samples",
+        type=int,
+        default=10,
+        help="consecutive still samples required",
+    )
+    ap.add_argument(
+        "--settle-cap-sim",
+        type=float,
+        default=40.0,
+        help="sim-second cap on the convergence gate",
     )
     args = ap.parse_args()
 
@@ -209,11 +273,48 @@ def main():
     n.spin_for(1)
     n.call(SetBool, "/pid_controller/enable", SetBool.Request(data=True))
 
-    print(f"[5] hold {args.settle:.0f}s so the sub goes dead still ...")
-    steps = int(args.settle)
-    for _ in range(steps):
-        n.goal(hx, hy, hz)
-        n.spin_for(1.0)
+    if args.settle_until_still:
+        print(
+            f"[5] hold until still (tol {args.twist_tol}, "
+            f"{args.stable_samples} samples, cap {args.settle_cap_sim:.0f} sim-s) ...",
+        )
+        mags = []
+        start_sim = n.sim_now()
+        last_sim = start_sim
+        last_progress_wall = time.time()
+        converged = False
+        stalled = False
+        while True:
+            n.goal(hx, hy, hz)
+            n.spin_for(0.5)
+            mag = n.twist_magnitude()
+            if mag is not None:
+                mags.append(mag)
+            now_sim = n.sim_now()
+            elapsed = now_sim - start_sim
+            if settled(mags, args.twist_tol, args.stable_samples):
+                converged = True
+                break
+            if elapsed >= args.settle_cap_sim:
+                break
+            if now_sim != last_sim:
+                last_sim = now_sim
+                last_progress_wall = time.time()
+            elif time.time() - last_progress_wall >= SETTLE_STALL_WALL_S:
+                stalled = True
+                break
+        elapsed = max(0.0, n.sim_now() - start_sim)
+        if stalled:
+            print("!! sim clock is not advancing; settle gate gave up (is gz alive?)")
+        # Machine-readable: run_task parses this line into the run report.
+        state = "converged" if converged else "capped"
+        print(f"settle: {state} after {elapsed:.1f} sim-s")
+    else:
+        print(f"[5] hold {args.settle:.0f}s so the sub goes dead still ...")
+        steps = int(args.settle)
+        for _ in range(steps):
+            n.goal(hx, hy, hz)
+            n.spin_for(1.0)
 
     print("[6] re-anchor EKF onto the SETTLED truth pose (the whole point)")
     t = gz_truth_xyz()
@@ -230,7 +331,7 @@ def main():
                 (
                     "    OK: offset < 0.02 m means the anchor is clean."
                     if off < 0.02
-                    else "    WARN: offset still large; sub may not have settled -- raise --settle."
+                    else "    WARN: offset still large; sub may not have settled -- raise --settle / --settle-cap-sim."
                 ),
             )
 
