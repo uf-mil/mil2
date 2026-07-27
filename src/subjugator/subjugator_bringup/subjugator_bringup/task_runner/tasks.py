@@ -1,7 +1,9 @@
 """Declarative task configuration for run_task.
 
-No logic lives here. Every value the harness needs to bring up, run, and score a
-task is data, so adding a task is adding a dict entry rather than writing code.
+No orchestration logic lives here -- only data plus the trivial resolver that
+turns a start preset into world coordinates. Every value the harness needs to
+bring up, run, and score a task is data, so adding a task is adding a dict entry
+rather than writing code.
 Budgets are derived from each mission tree's own declared timeouts -- see
 docs/superpowers/specs/2026-07-26-run-task-harness-design.md and the guard test
 in test/test_btbudget.py, which fails if a tree outgrows its budget.
@@ -37,10 +39,17 @@ class Settle:
 
 @dataclass(frozen=True)
 class Stage:
+    """One runnable mission tree plus the sim time it is allowed to take.
+
+    `budget_note` documents a budget that was set by hand rather than derived
+    from the tree's own timeouts; --list prints it so an unverified number is
+    never mistaken for a measured one.
+    """
+
     mission: str
     sim_budget: float
     start: str
-    params: dict = field(default_factory=dict)
+    params: dict[str, object] = field(default_factory=dict)
     budget_note: str = ""
 
 
@@ -52,8 +61,11 @@ class Detections:
 
 @dataclass(frozen=True)
 class ModelPose:
-    models: tuple
+    models: tuple[str, ...]
     kind: str = "model_pose"
+
+
+Probe = Detections | ModelPose
 
 
 @dataclass(frozen=True)
@@ -61,25 +73,30 @@ class TaskSpec:
     name: str
     launch_pkg: str
     launch_file: str
-    launch_args: dict
-    anchor: tuple
-    starts: dict
+    launch_args: dict[str, str]
+    anchor: tuple[float, float]
+    starts: dict[str, Start]
     settle: Settle
-    ready_topics: tuple
-    stages: dict
+    ready_topics: tuple[str, ...]
+    stages: dict[str, Stage]
     default_stage: str
-    probes: tuple
+    probes: tuple[Probe, ...]
     scorer: str = ""
+    # Mission role parameter (`-p role:=`). Task-specific vocabulary, so it lives
+    # here and not as a CLI default; empty means the task takes no role.
+    role: str = ""
 
-    def world_start(self, name: str) -> tuple:
+    def world_start(self, name: str) -> tuple[float, float, float]:
         """Resolve a start preset to absolute world (x, y, z)."""
         s = self.starts[name]
         return (self.anchor[0] + s.dx, self.anchor[1] + s.dy, s.z)
 
 
-# Task 5 anchor = the table's world pose in robosub_2025.world (-7.25, 14, -1.7).
-# Starts are stored relative to it so they survive the table being moved.
-TASKS = {
+# Task 5 anchor = the table's world x,y in robosub_2025.world. Depth is not part
+# of the anchor: every start names its own absolute z, because the useful start
+# depth is set by the down cam's view of the table, not by the table's own pose.
+# Starts are stored relative to the anchor so they survive the table being moved.
+TASKS: dict[int, TaskSpec] = {
     5: TaskSpec(
         name="Octagon: table, grasp, place",
         launch_pkg="subjugator_bringup",
@@ -119,5 +136,6 @@ TASKS = {
             ),
         ),
         scorer="subjugator_bringup.task_runner.scorers.task5",
+        role="survey_repair",
     ),
 }

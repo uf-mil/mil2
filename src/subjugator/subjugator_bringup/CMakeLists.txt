@@ -31,6 +31,7 @@ if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   set(_pytest_tests
       test/test_tasks_table.py
+      test/test_cli.py
       test/test_btbudget.py
       test/test_btlog.py
       test/test_collectors.py
@@ -43,19 +44,20 @@ if(BUILD_TESTING)
   # that a later task has not created yet are skipped rather than breaking the
   # configure step; each one starts running the moment it lands on disk.
   foreach(_test_path ${_pytest_tests})
-    if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${_test_path})
-      continue()
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${_test_path})
+      get_filename_component(_test_name ${_test_path} NAME_WE)
+      ament_add_pytest_test(
+        ${_test_name}
+        ${_test_path}
+        APPEND_ENV
+        PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}
+        TIMEOUT
+        120
+        WORKING_DIRECTORY
+        ${CMAKE_CURRENT_SOURCE_DIR})
+    else()
+      message(STATUS "run_task: skipping ${_test_path} (not yet created)")
     endif()
-    get_filename_component(_test_name ${_test_path} NAME_WE)
-    ament_add_pytest_test(
-      ${_test_name}
-      ${_test_path}
-      APPEND_ENV
-      PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}
-      TIMEOUT
-      120
-      WORKING_DIRECTORY
-      ${CMAKE_CURRENT_SOURCE_DIR})
   endforeach()
 endif()
 

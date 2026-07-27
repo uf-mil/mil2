@@ -1,20 +1,34 @@
 #!/usr/bin/env bash
 # Thin wrapper so teammates can run `./run_task 5` from the repo root without
 # remembering the ros2 run incantation. Identical behaviour either way.
+#
+# Every failure this script detects is a rig failure, so it exits 2. Exit 1 is
+# reserved for "the mission ran and failed" and must only ever come from
+# run_task itself -- hence the checks below, which would otherwise surface as a
+# bare exit 1 out of ros2 run.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ -f "$here/install/setup.bash" ]; then
-	set +u
-	# shellcheck disable=SC1091
-	source "$here/install/setup.bash"
-	set -u
+if [ ! -f "$here/install/setup.bash" ]; then
+	echo "run_task: $here/install/setup.bash is missing -- build the workspace first (cb)." >&2
+	exit 2
 fi
 
+# colcon's prefix chain is not written for `set -eu`: an unset variable or a
+# non-zero return inside it would otherwise kill this script with no message.
+set +eu
+# shellcheck disable=SC1091
+source "$here/install/setup.bash"
+set -eu
+
 if ! command -v ros2 >/dev/null 2>&1; then
-	echo "run_task: ROS 2 is not on PATH and $here/install/setup.bash is missing." >&2
-	echo "  Build the workspace first (cb), then re-run." >&2
+	echo "run_task: ros2 is not on PATH after sourcing the workspace." >&2
+	exit 2
+fi
+
+if ! ros2 pkg prefix subjugator_bringup >/dev/null 2>&1; then
+	echo "run_task: subjugator_bringup is not built -- run cb." >&2
 	exit 2
 fi
 
