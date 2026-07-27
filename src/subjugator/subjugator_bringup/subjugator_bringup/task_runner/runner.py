@@ -127,6 +127,34 @@ class Collector(Node):
         return len(matched)
 
 
+def gz_control_services(world: str) -> int:
+    """How many of the world's control services gz is advertising.
+
+    This is the one thing observable before the settle. The sim launches
+    PAUSED, so /clock does not advance, the cameras do not render, and
+    robot_localization's ekf_node sits in "Waiting for clock to start..."
+    without advertising /odometry/filtered at all. sim_bringup.py is what
+    unpauses it, so any topic-level gate has to come after that.
+    """
+    out = subprocess.run(
+        ["gz", "service", "-l"],
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    ).stdout
+    return sum(1 for line in out.splitlines() if f"/world/{world}/control" in line)
+
+
+def clock_advancing(clock: list) -> bool:
+    """True once /clock has reported two different sim times.
+
+    Message count is not enough: a paused gz republishes the same stamp, so a
+    naive "have we seen two messages" gate passes against a frozen sim.
+    """
+    return len({sim for _wall, sim in clock}) > 1
+
+
 def gz_pose_snapshot(world: str) -> str:
     """One message off the world's pose topic, as gz's text format."""
     return subprocess.run(
@@ -361,22 +389,20 @@ def execute(spec, stage_name, stage, start_name, args, run_dir: str) -> dict:
     try:
         launch_proc = _spawn(launch_cmd, os.path.join(run_dir, "bringup.log"))
 
-        if not wait_for(lambda: len(node.clock) > 1, 120.0, spin):
-            run["harness_error"] = "no /clock: the sim never started"
-            return run
-        for topic in spec.ready_topics:
-            ok = wait_for(
-                lambda t=topic: node.count_publishers(t) > 0
-                and (t != "/odometry/filtered" or node.odom)
-                and (t != detection_topic or node.detections),
-                180.0,
-                spin,
+        # Pre-settle gate: the gz world exists. Nothing topic-level can be
+        # gated here -- see gz_control_services on why a paused sim is silent.
+        world = gz_world_name(spec.launch_args)
+        if not wait_for(
+            lambda: gz_control_services(world) > 0,
+            180.0,
+            spin,
+            period=3.0,
+        ):
+            run["harness_error"] = (
+                f"the gz world never came up: no /world/{world}/control service.\n"
+                "  Check bringup.log -- gz sim failed to load the world."
             )
-            if not ok:
-                run["harness_error"] = (
-                    f"readiness gate failed: {topic}\n{gate_hint(topic)}"
-                )
-                return run
+            return run
 
         settle_log = os.path.join(run_dir, "sim_bringup.log")
         settle_proc = _spawn(settle_cmd, settle_log)
@@ -384,6 +410,29 @@ def execute(spec, stage_name, stage, start_name, args, run_dir: str) -> dict:
             spin()
             time.sleep(0.1)
         settle = parse_settle_log(settle_log)
+
+        # Data gates: messages actually arriving. Deliberately AFTER the settle,
+        # because sim_bringup.py is what unpauses gz and enables the EKF --
+        # before it runs there is no sim time, no rendered camera frame and no
+        # /odometry/filtered publisher, so gating on any of them can never pass.
+        if not wait_for(lambda: clock_advancing(node.clock), 120.0, spin):
+            run["harness_error"] = (
+                "/clock never advanced: gz is still paused or wedged.\n"
+                "  sim_bringup.log should show step [1] unpausing it."
+            )
+            return run
+
+        collected = {"/odometry/filtered": node.odom, detection_topic: node.detections}
+        for topic in spec.ready_topics:
+            samples = collected.get(topic)
+            if samples is None:
+                continue
+            if not wait_for(lambda s=samples: bool(s), 120.0, spin):
+                run["harness_error"] = (
+                    f"readiness gate failed: {topic} is advertised but sent no data\n"
+                    f"{gate_hint(topic)}"
+                )
+                return run
 
         threading.Thread(target=truth_loop, daemon=True).start()
 
@@ -442,15 +491,21 @@ def execute(spec, stage_name, stage, start_name, args, run_dir: str) -> dict:
             for s in parsed.stages
         ]
 
-        truth = node.models.get(SUB_MODEL, [])
+        # Vehicle stats cover the MISSION window only. Collection starts before
+        # the settle, and robot_localization's estimate diverges to ~1e24 m
+        # until sim_bringup re-anchors it -- one such sample makes path length
+        # and drift meaningless. The full stream still goes to trace.csv.
+        mission_odom = [s for s in node.odom if s[0] >= start_sim]
+        truth = [s for s in node.models.get(SUB_MODEL, []) if s[0] >= start_sim]
         run["vehicle"] = {
-            "path_length": collectors.path_length(node.odom),
-            "depth_range": collectors.depth_range(node.odom),
-            "goal_error": collectors.goal_error(node.last_goal, node.odom),
+            "path_length": collectors.path_length(mission_odom),
+            "depth_range": collectors.depth_range(mission_odom),
+            "goal_error": collectors.goal_error(node.last_goal, mission_odom),
             "anchor_offset": settle.get("offset"),
             "settle": settle,
-            "drift": collectors.drift(node.odom, truth),
-            "odom_samples": len(node.odom),
+            "drift": collectors.drift(mission_odom, truth),
+            "odom_samples": len(mission_odom),
+            "odom_samples_all": len(node.odom),
             "truth_samples": len(truth),
         }
 
@@ -464,7 +519,18 @@ def execute(spec, stage_name, stage, start_name, args, run_dir: str) -> dict:
         run["models"] = model_summary
         if spec.scorer:
             scorer = importlib.import_module(spec.scorer)
-            run["ground_truth"] = scorer.score(args.role, model_summary, run["outcome"])
+            verdict = scorer.score(args.role, model_summary, run["outcome"])
+            if not stage.places:
+                # A stage that never attempts a place cannot contradict the tree
+                # by not placing anything. Keeping the flag on would fire the
+                # report's loudest warning on every calib run and train people
+                # to ignore it -- which is the one thing it must never become.
+                verdict["disagrees_with_bt"] = False
+                verdict["note"] = (
+                    f"stage '{stage_name}' attempts no place; "
+                    "object rows are informational"
+                )
+            run["ground_truth"] = verdict
 
         run["health"] = scan_health(console)
         write_trace(os.path.join(run_dir, "trace.csv"), node)
@@ -484,8 +550,15 @@ def execute(spec, stage_name, stage, start_name, args, run_dir: str) -> dict:
             survivors = lifecycle.find_stale()
             if survivors:
                 lifecycle.kill_stale(survivors)
-                time.sleep(1.0)
+                time.sleep(2.0)
                 still = lifecycle.find_stale()
+                if still:
+                    # A wedged gz server ignores SIGTERM, and an observed
+                    # teardown left four of them behind. Escalate rather than
+                    # leave a stack running to poison the next run's numbers.
+                    lifecycle.kill_stale(still, signal.SIGKILL)
+                    time.sleep(2.0)
+                    still = lifecycle.find_stale()
                 if still:
                     print("WARNING: sim processes survived teardown:")
                     for stray in still:

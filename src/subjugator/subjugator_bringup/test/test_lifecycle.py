@@ -412,6 +412,42 @@ def test_mission_carries_every_stage_param():
     assert "grasp_targets_file:=/tmp/t.yaml" in cmd
 
 
+def test_mission_gets_the_sim_down_camera_topic():
+    """Observed live: without this the tree ticks blind until it times out.
+
+    The mission node defaults its down-cam subscriber to the real robot's
+    /down_camera/rgb/image_raw, which nothing publishes in sim, and CenterCamera
+    just logs "waiting for down image size" for the whole run.
+    """
+    assert "down_image_topic:=/down_cam/image_raw" in " ".join(plan(stage="calib")[2])
+
+
+def test_task_mission_params_reach_every_stage():
+    for stage_name in tasks.TASKS[5].stages:
+        cmd = " ".join(plan(stage=stage_name)[2])
+        for key, value in tasks.TASKS[5].mission_params.items():
+            assert f"{key}:={value}" in cmd, (stage_name, key)
+
+
+def test_a_stage_param_can_override_a_task_mission_param():
+    spec = tasks.TASKS[5]
+    overridden = dataclasses.replace(
+        spec,
+        stages={
+            **spec.stages,
+            "calib": dataclasses.replace(
+                spec.stages["calib"],
+                params={"down_image_topic": "/other/image"},
+            ),
+        },
+    )
+    cmd = plan(spec=overridden, stage="calib")[2]
+    # Both appear; ROS takes the last -p for a repeated name, so the stage wins.
+    positions = [i for i, token in enumerate(cmd) if "down_image_topic:=" in token]
+    assert len(positions) == 2
+    assert cmd[positions[-1]] == "down_image_topic:=/other/image"
+
+
 def test_role_flag_overrides_the_task_default():
     assert "role:=search_rescue" in " ".join(plan(role="search_rescue")[2])
 
@@ -490,6 +526,17 @@ def test_the_whole_stack_is_covered():
         "yolo_node",
     ):
         assert member in lifecycle.STACK_PATTERNS, member
+
+
+def test_the_yolo_stack_is_covered_beyond_yolo_node():
+    """A real teardown left this behind: yolo_ros launches more than yolo_node."""
+    listing = [
+        f"9{i} /home/x/mil2/install/yolo_ros/lib/yolo_ros/{exe} --ros-args"
+        for i, exe in enumerate(
+            ("yolo_node", "debug_node", "tracking_node", "detect_3d_node"),
+        )
+    ]
+    assert len(lifecycle.find_stale(lambda: listing)) == len(listing)
 
 
 def test_a_line_is_reported_once_even_when_it_matches_twice():

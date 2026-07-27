@@ -141,6 +141,46 @@ def test_budget_is_floored_above_zero():
 
 
 # --------------------------------------------------------------------------
+# mission windowing
+# --------------------------------------------------------------------------
+# Real shape from a calib run: robot_localization's estimate diverges to ~1e24 m
+# before sim_bringup re-anchors it, then settles onto the true pose.
+PRE_ANCHOR = [
+    (0.129, -7.19e22, -7.97e24, -3.50e19),
+    (0.234, 2.40e23, 2.66e25, 1.89e21),
+]
+POST_ANCHOR = [(7.917, -7.7011, 13.9671, -0.3226), (8.004, -7.7012, 13.9676, -0.3212)]
+
+
+def test_a_pre_anchor_sample_would_destroy_path_length():
+    """Why the window exists, stated as a test rather than a comment."""
+    from subjugator_bringup.task_runner import collectors
+
+    assert collectors.path_length(PRE_ANCHOR + POST_ANCHOR) > 1e24
+    assert collectors.path_length(POST_ANCHOR) < 0.01
+
+
+def test_windowing_drops_everything_before_the_mission_start():
+    start_sim = 7.0
+    windowed = [s for s in PRE_ANCHOR + POST_ANCHOR if s[0] >= start_sim]
+    assert windowed == POST_ANCHOR
+
+
+# --------------------------------------------------------------------------
+# clock
+# --------------------------------------------------------------------------
+def test_clock_advancing_needs_two_distinct_sim_times():
+    # A paused gz republishes the same stamp forever, so counting messages
+    # would declare a frozen sim ready. This is the gate that caught it.
+    assert runner.clock_advancing([(1000.0, 50.0), (1000.5, 50.0)]) is False
+    assert runner.clock_advancing([(1000.0, 50.0), (1000.5, 50.1)]) is True
+
+
+def test_clock_advancing_on_no_samples():
+    assert runner.clock_advancing([]) is False
+
+
+# --------------------------------------------------------------------------
 # log scraping
 # --------------------------------------------------------------------------
 def test_parse_settle_log_reads_a_converged_run(tmp_path):

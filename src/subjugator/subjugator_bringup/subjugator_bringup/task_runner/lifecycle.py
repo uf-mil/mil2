@@ -39,6 +39,10 @@ STACK_PATTERNS = (
     "pid_controller",
     "subjugator_localization",
     "mission_planner_node",
+    # The whole yolo_ros stack by install path, not just yolo_node: a launch
+    # brings up debug_node/tracking_node alongside it, and naming only the one
+    # left a stale debug_node holding the down-cam topics after teardown.
+    "lib/yolo_ros/",
     "yolo_node",
     "pinger_heading_node",
 )
@@ -193,6 +197,9 @@ def plan_commands(spec, stage_name: str, stage, start_name: str, args) -> list:
     role = effective_role(spec, args)
     if role:
         mission += ["-p", f"role:={role}"]
+    # Task-wide first, then the stage's own, so a stage can override one.
+    for key, value in spec.mission_params.items():
+        mission += ["-p", f"{key}:={value}"]
     for key, value in stage.params.items():
         mission += ["-p", f"{key}:={value}"]
     # Only when asked for: the mission tree carries its own default, and passing
