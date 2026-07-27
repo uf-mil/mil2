@@ -202,7 +202,14 @@ def test_sim_now_converts_nanoseconds_to_seconds(m):
 # --------------------------------------------------------------------------
 
 
-def fake_bringup(made, mags, sim_step=0.5, odom=None, odom_period=0.01):
+def fake_bringup(
+    made,
+    mags,
+    sim_step=0.5,
+    odom=None,
+    odom_period=0.01,
+    stamp_always=False,
+):
     """A stand-in for `Bringup` whose sim clock only moves when spun.
 
     `mags` is a list of twist magnitudes handed out one per loop iteration; the
@@ -213,6 +220,10 @@ def fake_bringup(made, mags, sim_step=0.5, odom=None, odom_period=0.01):
     NEW odometry message exists, so a low `sim_step` reproduces the real failure
     mode -- polling faster than odometry is published and reading one message
     many times over.
+
+    `stamp_always` decouples the stamp from the magnitude, so a test can hand
+    back a fresh stamp with no usable twist -- the case the loop's
+    `mag is not None` guard exists for.
     """
 
     class FakeBringup:
@@ -230,7 +241,7 @@ def fake_bringup(made, mags, sim_step=0.5, odom=None, odom_period=0.01):
             made.append(self)
 
         def odom_stamp(self):
-            if not self.pending or self.pending[0] is None:
+            if not stamp_always and (not self.pending or self.pending[0] is None):
                 self.stamps.append(None)
                 return None
             stamp = (int(self.sim_t / odom_period), 0)
@@ -264,13 +275,22 @@ def fake_bringup(made, mags, sim_step=0.5, odom=None, odom_period=0.01):
     return FakeBringup
 
 
-def run_main(m, monkeypatch, argv, mags, sim_step=0.5, odom=None, odom_period=0.01):
+def run_main(
+    m,
+    monkeypatch,
+    argv,
+    mags,
+    sim_step=0.5,
+    odom=None,
+    odom_period=0.01,
+    stamp_always=False,
+):
     """Run `main()` against a fake node and return (rc, node, stdout)."""
     made = []
     monkeypatch.setattr(
         m,
         "Bringup",
-        fake_bringup(made, mags, sim_step, odom, odom_period),
+        fake_bringup(made, mags, sim_step, odom, odom_period, stamp_always),
     )
     monkeypatch.setattr(
         m,
@@ -410,6 +430,32 @@ def test_settle_gate_survives_missing_odometry(m, monkeypatch, capsys):
     # The sim itself is healthy -- only odometry stopped -- so this is a cap,
     # not a stall.
     assert "not advancing" not in out
+
+
+def test_a_missing_twist_is_never_recorded_as_a_still_sample(m, monkeypatch, capsys):
+    """A fresh stamp with no usable twist must not count as "still".
+
+    Treating an absent measurement as zero velocity would converge the gate on
+    a sub nobody has measured -- the same failure the whole ordering guards
+    against, arrived at from the other side.
+    """
+    _rc, node, _ = run_main(
+        m,
+        monkeypatch,
+        [
+            *BASE_ARGS,
+            "--settle-until-still",
+            "--stable-samples",
+            "2",
+            "--settle-cap-sim",
+            "2.0",
+        ],
+        mags=[None],
+        stamp_always=True,  # stamps keep advancing; the twist never arrives
+    )
+    state, _secs = parse_settle(capsys.readouterr().out)
+    assert state == "capped"
+    assert len(consecutive_distinct(node.stamps)) > 2, "stamps were not advancing"
 
 
 def test_stall_guard_fires_when_odometry_and_the_clock_both_stop(
