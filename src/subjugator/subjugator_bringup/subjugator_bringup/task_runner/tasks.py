@@ -52,6 +52,10 @@ class Stage:
     start: str
     params: dict[str, object] = field(default_factory=dict)
     budget_note: str = ""
+    # Does a successful run of this tree end with an object in a basket? Only
+    # then can the ground-truth scorer contradict the tree by finding nothing
+    # placed. A centering or grasp tree placing nothing is correct behaviour.
+    places: bool = False
 
 
 @dataclass(frozen=True)
@@ -88,6 +92,13 @@ class TaskSpec:
     # Mission role parameter (`-p role:=`). Task-specific vocabulary, so it lives
     # here and not as a CLI default; empty means the task takes no role.
     role: str = ""
+    # Mission-node parameters every stage of this task needs. The mission node's
+    # own defaults are the REAL robot's topics, so a sim run that omits these
+    # brings the tree up against topics nothing publishes: observed as
+    # `CenterCamera: waiting for down image size` ticking until the timeout.
+    # task5_sim.launch.py passes the same value when it starts the mission
+    # itself; the harness owns mission start, so it has to pass them too.
+    mission_params: dict[str, str] = field(default_factory=dict)
 
     def world_start(self, name: str) -> tuple[float, float, float]:
         """Resolve a start preset to absolute world (x, y, z)."""
@@ -123,7 +134,15 @@ TASKS: dict[int, TaskSpec] = {
             # do_pinger=0: S1 sweeps forever when it hears no ping, which would
             # make the tree unbounded. The far/pinger start is a documented
             # follow-up, not v1.
-            "full": Stage("OctagonMission", 1300, "near", params={"do_pinger": 0}),
+            # The only stage whose success means an object ended up in a basket,
+            # so the only one the ground-truth scorer can contradict.
+            "full": Stage(
+                "OctagonMission",
+                1300,
+                "near",
+                params={"do_pinger": 0},
+                places=True,
+            ),
         },
         default_stage="full",
         probes=(
@@ -140,5 +159,8 @@ TASKS: dict[int, TaskSpec] = {
         ),
         scorer="subjugator_bringup.task_runner.scorers.task5",
         role="survey_repair",
+        # The gz->ROS bridge topic. The node's default is the real driver's
+        # /down_camera/rgb/image_raw, which has no publisher in sim.
+        mission_params={"down_image_topic": "/down_cam/image_raw"},
     ),
 }

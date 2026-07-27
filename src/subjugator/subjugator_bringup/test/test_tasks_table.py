@@ -38,3 +38,16 @@ def test_start_resolves_to_world_coordinates():
 def test_probes_cover_detections_and_model_poses():
     kinds = {p.kind for p in tasks.TASKS[5].probes}
     assert kinds == {"detections", "model_pose"}
+
+
+def test_only_the_placing_stage_is_marked_as_placing():
+    """The ground-truth scorer's loudest warning must not fire on every run.
+
+    "SUCCESS but nothing placed" is a contradiction only for a tree that was
+    supposed to place something; for calib/combined/grasp it is correct
+    behaviour, and a warning that always fires teaches people to ignore it.
+    """
+    stages = tasks.TASKS[5].stages
+    assert stages["full"].places is True
+    for name in ("calib", "combined", "grasp"):
+        assert stages[name].places is False, name
