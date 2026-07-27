@@ -195,5 +195,7 @@ src/mil_common/perception/vision_stack/
 
 # Poolside test run artifacts (bags, logs, forms)
 pooltest_runs/
+# run_task sim run artifacts (stats.json, logs, traces)
+task_runs/
 src/subjugator/mission_planner/logs/mission_debug.txt
 .vscode/
