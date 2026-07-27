@@ -1,6 +1,24 @@
 # subjugator_bringup
 This folder holds launch files and high level utilities.
 
+## Running a task in sim: `run_task`
+
+    ./run_task 5                  # full Task 5 mission, with a report
+    ./run_task 5 --stage calib    # shortest stage; good first run
+    ./run_task --list             # what is wired, with each stage's budget
+    ./run_task 5 --dry-run        # print the plan without launching anything
+
+One deterministic command for a whole sim run: bring-up, readiness gates,
+settle-and-anchor, mission, teardown, then a report covering outcome, per-stage
+timing, vehicle motion, perception health, and an independent ground-truth
+verdict. Artifacts land in `pool_tests/task_runs/`. Exit codes are 0 mission
+SUCCESS, 1 mission failed, 2 the harness itself broke.
+
+`ros2 run subjugator_bringup run_task 5` is the same program; the repo-root
+`./run_task` wrapper just sources the workspace first. See
+[`pool_tests/SIM_TESTING.md`](pool_tests/SIM_TESTING.md) for the manual sequence
+it automates.
+
 ## Down-cam centering (CenterCamera / HoneOverTarget) in sim
 
 The `mission_planner` down-cam subscribers default to the **real-robot** topics,

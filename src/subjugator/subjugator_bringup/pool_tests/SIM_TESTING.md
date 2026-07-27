@@ -10,6 +10,35 @@ to **Troubleshooting** at the bottom before continuing.
 
 ---
 
+## One command: `run_task`
+
+    ./run_task 5                  # full Task 5 mission, with a report
+    ./run_task 5 --stage calib    # shortest stage; good first run
+    ./run_task --list             # what is wired, with each stage's budget
+    ./run_task 5 --dry-run        # print the plan without launching anything
+
+It owns the whole lifecycle — bring-up, readiness gates, settle-and-anchor,
+mission, teardown — and prints outcome, per-stage timing, vehicle motion,
+perception health, and an independent ground-truth verdict. Artifacts land in
+`pool_tests/task_runs/task<N>_<stage>_<timestamp>Z/`.
+
+Exit codes: 0 mission SUCCESS, 1 mission ran and failed, 2 the harness broke.
+The split matters: exit 2 means the test rig failed and the numbers mean
+nothing, exit 1 means the numbers are real and the robot lost.
+
+It refuses to start when another sim stack is already running, because a
+measurement taken against a polluted ROS graph is worse than no measurement.
+`--force-clean` kills what it finds first.
+
+On this box the down-cam YOLO node still needs the numpy-1 shadow, so export it
+before the run:
+
+    export PYTHONPATH=$HOME/.np1shadow:/usr/lib/python3/dist-packages
+
+The manual sequence below still works and is what `run_task` automates.
+
+---
+
 ## READ THIS FIRST — everything runs on `gripper-task-5`
 
 The whole vision + grasp test runs from a **single branch: `gripper-task-5`.** It
