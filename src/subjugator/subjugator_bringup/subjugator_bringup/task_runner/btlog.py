@@ -13,6 +13,22 @@ whether the mission succeeded or failed, so the exit code cannot be used.
 
 Timestamps are absolute Unix seconds on both line shapes, which is what lets the
 runner map them onto sim time using its own /clock samples.
+
+Three deliberate choices worth not "fixing":
+
+* `stages` is scoped to `tree_ids`, `last_node` is not. They answer different
+  questions -- the stage table says which phases ran, `last_node` says what was
+  ticking when the run stopped. A short diagnostic mission may contain no
+  subtrees at all (a Timeout wrapping a single leaf), and scoping `last_node`
+  the same way would blank out the one field that explains the failure.
+* `SKIPPED` clears a node's open start but emits no stage record: a subtree
+  short-circuited by a `<Precondition>` never ran, so it has no duration. It
+  must still be cleared, or its abandoned start time gets charged to the next
+  occurrence of the same name.
+* `open_stages` is keyed by node name, so two instances of one subtree running
+  *concurrently* under a `<Parallel>` would share a slot and mis-time each
+  other. Sequential re-entry, the only pattern the mission XMLs produce today,
+  is handled correctly. This is a known bound, not an oversight.
 """
 
 from __future__ import annotations
@@ -24,6 +40,7 @@ ANSI = re.compile(r"\x1b\[[0-9;]*m")
 TRANSITION = re.compile(r"^\[(\d+\.\d+)\]:\s+(\S+)\s+(\w+)\s*->\s*(\w+)\s*$")
 VERDICT = re.compile(r"Mission finished with status:\s*(SUCCESS|FAILURE)")
 TERMINAL = ("SUCCESS", "FAILURE")
+SKIPPED = "SKIPPED"
 
 
 @dataclass
@@ -51,7 +68,8 @@ class ParsedLog:
 def parse(text: str, tree_ids: set) -> ParsedLog:
     """Extract outcome and per-stage records. `tree_ids` selects which node
     names count as stages -- pass the mission XML's BehaviorTree IDs so the
-    parser stays task-agnostic."""
+    parser stays task-agnostic. `last_node` deliberately ignores `tree_ids`;
+    see the module docstring."""
     result = ParsedLog()
     open_stages: dict = {}
     counts: dict = {}
@@ -76,11 +94,20 @@ def parse(text: str, tree_ids: set) -> ParsedLog:
             result.start_wall = ts
         result.end_wall = ts
 
+        # Any node of any kind, subtree or leaf -- this is the "what was
+        # ticking when it stopped" field, not a stage lookup.
+        if new in TERMINAL:
+            result.last_node = name
+
         if name not in tree_ids:
             continue
 
         if new == "RUNNING":
             open_stages[name] = ts
+        elif new == SKIPPED:
+            # Never ran, so no record -- but its start must not linger and get
+            # charged to the next occurrence of the same name.
+            open_stages.pop(name, None)
         elif new in TERMINAL:
             started = open_stages.pop(name, ts)
             counts[name] = counts.get(name, 0) + 1
@@ -93,11 +120,10 @@ def parse(text: str, tree_ids: set) -> ParsedLog:
                     end_wall=ts,
                 ),
             )
-            result.last_node = name
 
     return result
 
 
 def parse_file(path: str, tree_ids: set) -> ParsedLog:
-    with open(path, errors="replace") as handle:
+    with open(path, encoding="utf-8", errors="replace") as handle:
         return parse(handle.read(), tree_ids)
