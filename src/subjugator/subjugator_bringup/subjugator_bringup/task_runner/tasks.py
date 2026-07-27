@@ -12,6 +12,7 @@ in test/test_btbudget.py, which fails if a tree outgrows its budget.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Union
 
 
 @dataclass(frozen=True)
@@ -65,7 +66,9 @@ class ModelPose:
     kind: str = "model_pose"
 
 
-Probe = Detections | ModelPose
+# typing.Union, not `A | B`: this is a runtime expression, evaluated at import
+# even under `from __future__ import annotations`, and ruff.toml targets py38.
+Probe = Union[Detections, ModelPose]
 
 
 @dataclass(frozen=True)

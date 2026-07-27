@@ -27,8 +27,12 @@ if ! command -v ros2 >/dev/null 2>&1; then
 	exit 2
 fi
 
-if ! ros2 pkg prefix subjugator_bringup >/dev/null 2>&1; then
-	echo "run_task: subjugator_bringup is not built -- run cb." >&2
+# Not `ros2 pkg prefix`: that passes for any installed package, and a workspace
+# built before this feature existed has the package but not the executable --
+# where `ros2 run` would exit 1 and masquerade as a failed mission.
+if ! ros2 pkg executables subjugator_bringup 2>/dev/null |
+	grep -qx "subjugator_bringup run_task"; then
+	echo "run_task: subjugator_bringup has no run_task executable -- run cb." >&2
 	exit 2
 fi
 

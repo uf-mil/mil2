@@ -91,3 +91,13 @@ def test_role_flag_wins_over_the_task_role():
     args = parse("5", "--role", "mapping")
     cli.resolve(args)
     assert args.role == "mapping"
+
+
+def test_roleless_task_resolves_to_no_role(monkeypatch):
+    """A task with no role must stay empty so the run omits `-p role:=` entirely."""
+    roleless = dataclasses.replace(tasks.TASKS[5], role="")
+    monkeypatch.setattr(tasks, "TASKS", {5: roleless})
+
+    args = parse("5")
+    cli.resolve(args)
+    assert not args.role
