@@ -16,11 +16,25 @@ runner map them onto sim time using its own /clock samples.
 
 Three deliberate choices worth not "fixing":
 
-* `stages` is scoped to `tree_ids`, `last_node` is not. They answer different
-  questions -- the stage table says which phases ran, `last_node` says what was
-  ticking when the run stopped. A short diagnostic mission may contain no
-  subtrees at all (a Timeout wrapping a single leaf), and scoping `last_node`
-  the same way would blank out the one field that explains the failure.
+* `stages` is scoped to `tree_ids`, `last_node` and `innermost_node` are not.
+  They answer different questions -- the stage table says which phases ran, the
+  node fields say what was ticking when the run stopped. A short diagnostic
+  mission may contain no subtrees at all (a Timeout wrapping a single leaf),
+  and scoping the node fields the same way would blank out the one field that
+  explains the failure.
+* `last_node` and `innermost_node` are the two ends of the *same* cascade, and
+  both exist because neither alone answers "what failed". A result unwinds
+  outward: the node on the failing path terminates first, then each parent
+  relays the result up. So the final terminal transition in the log is the
+  outermost node (`last_node`, often just `Sequence` or `Root`), while the
+  first terminal transition after the last `RUNNING` is the near end
+  (`innermost_node`) and is usually the informative one -- `CenterCamera`
+  rather than the `Timeout` decorator wrapping it.
+
+  `innermost_node` is *not* "the deepest node in the tree". It is the first
+  node to terminate in the final cascade, which is the deepest node reached
+  *on the failing path*. If the real cause sits below a node that swallows the
+  result without logging its own transition, that node is what you get.
 * `SKIPPED` clears a node's open start but emits no stage record: a subtree
   short-circuited by a `<Precondition>` never ran, so it has no duration. It
   must still be cleared, or its abandoned start time gets charged to the next
@@ -60,6 +74,7 @@ class Stage:
 class ParsedLog:
     outcome: str | None = None
     last_node: str | None = None
+    innermost_node: str | None = None
     start_wall: float | None = None
     end_wall: float | None = None
     stages: list = field(default_factory=list)
@@ -73,6 +88,9 @@ def parse(text: str, tree_ids: set) -> ParsedLog:
     result = ParsedLog()
     open_stages: dict = {}
     counts: dict = {}
+    # Armed by any node going RUNNING, spent by the next terminal transition:
+    # that pairing is what isolates the near end of the final cascade.
+    cascade_armed = False
 
     for raw in text.splitlines():
         line = ANSI.sub("", raw).rstrip()
@@ -94,10 +112,18 @@ def parse(text: str, tree_ids: set) -> ParsedLog:
             result.start_wall = ts
         result.end_wall = ts
 
-        # Any node of any kind, subtree or leaf -- this is the "what was
-        # ticking when it stopped" field, not a stage lookup.
-        if new in TERMINAL:
+        # Any node of any kind, subtree or leaf -- these are the "what was
+        # ticking when it stopped" fields, not stage lookups. The last terminal
+        # wins for `last_node`; the first terminal of the cascade wins for
+        # `innermost_node`, so later parents relaying the same result upward do
+        # not overwrite it.
+        if new == "RUNNING":
+            cascade_armed = True
+        elif new in TERMINAL:
             result.last_node = name
+            if cascade_armed:
+                result.innermost_node = name
+                cascade_armed = False
 
         if name not in tree_ids:
             continue

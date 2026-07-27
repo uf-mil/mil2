@@ -81,6 +81,35 @@ def test_last_node_is_not_scoped_to_tree_ids():
     assert result.outcome == "FAILURE"
 
 
+def test_innermost_node_is_the_cause_not_the_decorator():
+    # CenterCamera is what actually failed; Timeout only relayed it upward.
+    assert btlog.parse(LEAF_ONLY_LOG, TREE_IDS).innermost_node == "CenterCamera"
+
+
+# A failure unwinds outward: the deepest node on the failing path terminates
+# first, then each parent in turn. `innermost_node` takes the near end of that
+# cascade and `last_node` the far end.
+CASCADE_LOG = f"""[1783913880.000]: Root      {IDLE} -> {R}
+[1783913880.000]: Fallback  {IDLE} -> {R}
+[1783913880.000]: GraspLeaf {IDLE} -> {R}
+[1783913910.000]: GraspLeaf {R} -> {F}
+[1783913910.000]: GraspLeaf {F} -> {IDLE}
+[1783913910.000]: Fallback  {R} -> {F}
+[1783913910.000]: Root      {R} -> {F}
+"""
+
+
+def test_cascade_reports_both_ends():
+    result = btlog.parse(CASCADE_LOG, TREE_IDS)
+    assert result.innermost_node == "GraspLeaf"
+    assert result.last_node == "Root"
+
+
+def test_innermost_node_tracks_only_the_final_cascade():
+    # An earlier, resolved cascade must not win over the one that ended the run.
+    assert btlog.parse(LOG, TREE_IDS).innermost_node == "CollectOneObject"
+
+
 # BT.CPP 4 emits SKIPPED, and OctagonMission produces it whenever a
 # <Precondition> guard short-circuits a subtree (e.g. do_pinger == 0 skips S1).
 SKIPPED_LOG = f"""[1783913880.000]: AcquireTable {IDLE} -> {R}
