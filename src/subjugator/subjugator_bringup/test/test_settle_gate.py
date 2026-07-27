@@ -6,6 +6,7 @@ constants; `main()` guarded by `__name__ == "__main__"`) or these tests would
 run a real bring-up.
 """
 
+import argparse
 import importlib.util
 import re
 import sys
@@ -168,6 +169,28 @@ def test_twist_magnitude_takes_the_largest_component(m):
     assert m.Bringup.twist_magnitude(node) == pytest.approx(0.4)
 
 
+def test_odom_stamp_none_without_odometry(m):
+    assert m.Bringup.odom_stamp(SimpleNamespace(odom=None)) is None
+
+
+def test_odom_stamp_reads_the_message_header(m):
+    o = Odometry()
+    o.header.stamp.sec = 12
+    o.header.stamp.nanosec = 340_000_000
+    assert m.Bringup.odom_stamp(SimpleNamespace(odom=o)) == (12, 340_000_000)
+
+
+def test_odom_stamp_distinguishes_sub_second_messages(m):
+    """Odometry runs well above 1 Hz, so nanosec must be part of the identity."""
+    first, second = Odometry(), Odometry()
+    first.header.stamp.sec = second.header.stamp.sec = 3
+    first.header.stamp.nanosec = 100_000_000
+    second.header.stamp.nanosec = 133_000_000
+    assert m.Bringup.odom_stamp(SimpleNamespace(odom=first)) != m.Bringup.odom_stamp(
+        SimpleNamespace(odom=second),
+    )
+
+
 def test_sim_now_converts_nanoseconds_to_seconds(m):
     clock = SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=1_500_000_000))
     node = SimpleNamespace(get_clock=lambda: clock)
@@ -179,11 +202,17 @@ def test_sim_now_converts_nanoseconds_to_seconds(m):
 # --------------------------------------------------------------------------
 
 
-def fake_bringup(made, mags, sim_step=0.5, odom=None):
+def fake_bringup(made, mags, sim_step=0.5, odom=None, odom_period=0.01):
     """A stand-in for `Bringup` whose sim clock only moves when spun.
 
     `mags` is a list of twist magnitudes handed out one per loop iteration; the
     last entry repeats once exhausted. A `None` entry means "no odometry yet".
+
+    `sim_step` is the real-time factor: `spin_for(s)` advances the sim clock by
+    `sim_step * s`. `odom_period` is how far the sim clock must advance before a
+    NEW odometry message exists, so a low `sim_step` reproduces the real failure
+    mode -- polling faster than odometry is published and reading one message
+    many times over.
     """
 
     class FakeBringup:
@@ -196,8 +225,17 @@ def fake_bringup(made, mags, sim_step=0.5, odom=None):
             self.set_poses = []
             self.calls = []
             self.spins = []
+            self.stamps = []
             self.destroyed = False
             made.append(self)
+
+        def odom_stamp(self):
+            if not self.pending or self.pending[0] is None:
+                self.stamps.append(None)
+                return None
+            stamp = (int(self.sim_t / odom_period), 0)
+            self.stamps.append(stamp)
+            return stamp
 
         def spin_for(self, s):
             self.spins.append(s)
@@ -226,10 +264,14 @@ def fake_bringup(made, mags, sim_step=0.5, odom=None):
     return FakeBringup
 
 
-def run_main(m, monkeypatch, argv, mags, sim_step=0.5, odom=None):
+def run_main(m, monkeypatch, argv, mags, sim_step=0.5, odom=None, odom_period=0.01):
     """Run `main()` against a fake node and return (rc, node, stdout)."""
     made = []
-    monkeypatch.setattr(m, "Bringup", fake_bringup(made, mags, sim_step, odom))
+    monkeypatch.setattr(
+        m,
+        "Bringup",
+        fake_bringup(made, mags, sim_step, odom, odom_period),
+    )
     monkeypatch.setattr(
         m,
         "rclpy",
@@ -361,9 +403,113 @@ def test_settle_gate_survives_missing_odometry(m, monkeypatch, capsys):
         ],
         mags=[None],
     )
-    state, _secs = parse_settle(capsys.readouterr().out)
+    out = capsys.readouterr().out
+    state, _secs = parse_settle(out)
     assert rc == 0
     assert state == "capped"
+    # The sim itself is healthy -- only odometry stopped -- so this is a cap,
+    # not a stall.
+    assert "not advancing" not in out
+
+
+def test_stall_guard_fires_when_odometry_and_the_clock_both_stop(
+    m,
+    monkeypatch,
+    capsys,
+):
+    """A dead sim is caught by the wall guard, not by riding out the sim cap.
+
+    With no odometry the sample list never grows, and with a frozen clock the
+    sim-second cap is unreachable, so without the guard this loop never ends.
+    """
+    monkeypatch.setattr(m, "SETTLE_STALL_WALL_S", 0.0)
+    rc, node, _ = run_main(
+        m,
+        monkeypatch,
+        [*BASE_ARGS, "--settle-until-still", "--settle-cap-sim", "40.0"],
+        mags=[None],
+        sim_step=0.0,
+    )
+    out = capsys.readouterr().out
+    state, secs = parse_settle(out)
+    assert rc == 0
+    assert state == "capped"
+    assert secs == pytest.approx(0.0)
+    assert "not advancing" in out
+    # It gave up promptly rather than polling out a 40 sim-second cap.
+    assert len(node.stamps) == 1
+
+
+def consecutive_distinct(seq):
+    """Collapse runs of equal values -- how many distinct messages were seen."""
+    out = []
+    for s in seq:
+        if not out or s != out[-1]:
+            out.append(s)
+    return out
+
+
+def test_repeated_odometry_stamps_do_not_count_toward_convergence(
+    m,
+    monkeypatch,
+    capsys,
+):
+    """Ten reads of one message are one sample, not ten.
+
+    `spin_for` waits in WALL time while odometry is stamped in SIM time, so a
+    slow sim hands the same message back on every poll. Counting those would let
+    the gate converge on a single instant -- the exact RTF-dependence this
+    feature removes.
+    """
+    _rc, node, _ = run_main(
+        m,
+        monkeypatch,
+        [
+            *BASE_ARGS,
+            "--settle-until-still",
+            "--stable-samples",
+            "3",
+            "--settle-cap-sim",
+            "5.0",
+        ],
+        mags=[0.001],  # dead still, but only ever one message
+        sim_step=0.5,
+        odom_period=10.0,  # one message per 10 sim-s: none of them are new
+    )
+    state, _secs = parse_settle(capsys.readouterr().out)
+    assert state == "capped"
+    assert len(node.stamps) > 3, "the gate polled fewer times than it sampled"
+    assert len(consecutive_distinct(node.stamps)) == 1
+
+
+def test_convergence_needs_the_same_messages_at_any_rtf(m, monkeypatch, capsys):
+    """The gate is RTF-independent: 4 distinct messages at 0.05x and at 1.0x."""
+    distinct = {}
+    polls = {}
+    for rtf in (0.05, 1.0):
+        _rc, node, _ = run_main(
+            m,
+            monkeypatch,
+            [
+                *BASE_ARGS,
+                "--settle-until-still",
+                "--stable-samples",
+                "4",
+                "--settle-cap-sim",
+                "100.0",
+            ],
+            mags=[0.001],
+            sim_step=rtf,
+            odom_period=0.1,
+        )
+        state, _secs = parse_settle(capsys.readouterr().out)
+        assert state == "converged", f"rtf={rtf}"
+        distinct[rtf] = len(consecutive_distinct(node.stamps))
+        polls[rtf] = len(node.stamps)
+    assert distinct[0.05] == distinct[1.0] == 4
+    # The slow run needed many more polls to see those same 4 messages -- which
+    # is precisely what a poll-counting gate would have got wrong.
+    assert polls[0.05] > polls[1.0]
 
 
 def test_convergence_wins_a_tie_with_the_cap(m, monkeypatch, capsys):
@@ -552,6 +698,49 @@ def test_help_lists_the_new_flags_and_keeps_the_settle_default(m, monkeypatch, c
         assert flag in out, f"{flag} missing from --help"
     assert "--settle SETTLE" in out, "--settle disappeared from --help"
     assert "default: 25" in out, "--settle default of 25 not shown in --help"
+    # --stable-samples counts odometry messages, not polls; say so, or a reader
+    # will size it as a wall-cadence poll count.
+    assert "MESSAGES" in out, "--stable-samples help does not say messages"
+
+
+@pytest.mark.parametrize("bad", ["0", "-1", "-10"])
+def test_stable_samples_below_one_is_rejected(m, monkeypatch, capsys, bad):
+    """0 would make `settled()` ask if all of an empty window is small: True."""
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["sim_bringup.py", *BASE_ARGS, "--settle-until-still", "--stable-samples", bad],
+    )
+    with pytest.raises(SystemExit) as exc:
+        m.main()
+    assert exc.value.code == 2
+    assert "at least 1" in capsys.readouterr().err
+
+
+def test_stable_samples_of_one_is_still_allowed(m, monkeypatch, capsys):
+    run_main(
+        m,
+        monkeypatch,
+        [*BASE_ARGS, "--settle-until-still", "--stable-samples", "1"],
+        mags=[0.001],
+    )
+    assert parse_settle(capsys.readouterr().out)[0] == "converged"
+
+
+@pytest.mark.parametrize("value", ["1", "10", "999"])
+def test_positive_int_accepts_counts_of_one_or_more(m, value):
+    assert m.positive_int(value) == int(value)
+
+
+@pytest.mark.parametrize("value", ["0", "-1"])
+def test_positive_int_rejects_zero_and_negatives(m, value):
+    with pytest.raises(argparse.ArgumentTypeError, match="at least 1"):
+        m.positive_int(value)
+
+
+def test_positive_int_rejects_non_integers(m):
+    with pytest.raises(ValueError, match="invalid literal"):
+        m.positive_int("banana")
 
 
 def test_module_body_has_no_side_effects(m):

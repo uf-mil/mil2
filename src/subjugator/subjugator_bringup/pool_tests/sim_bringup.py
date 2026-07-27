@@ -83,6 +83,22 @@ def settled(twist_mags, tol, need):
     return all(m < tol for m in twist_mags[-need:])
 
 
+def positive_int(v):
+    """argparse type for a count that must be at least 1.
+
+    `--stable-samples 0` would make `settled()` ask whether all of an empty
+    window is small, which is vacuously true -- a run with no odometry at all
+    would report `converged` immediately. Reject it instead of clamping, so the
+    mistake is visible.
+    """
+    i = int(v)
+    if i < 1:
+        raise argparse.ArgumentTypeError(
+            f"must be at least 1 (got {i}; 0 would report convergence with no data)",
+        )
+    return i
+
+
 def gz_unpause():
     subprocess.run(
         [
@@ -168,6 +184,22 @@ class Bringup(Node):
             abs(t.angular.z),
         )
 
+    def odom_stamp(self):
+        """Stamp of the latest odometry message, or None if none has arrived.
+
+        The settle gate counts DISTINCT messages, not polls: `spin_for` waits in
+        wall time while odometry is published on sim time, so at RTF 0.05 a
+        0.5 s poll advances the sim by less than one odometry period and the
+        same message is read over and over. Counting those as separate samples
+        would let the gate "converge" on ten copies of a single instant -- e.g.
+        the moment a damped oscillation crosses zero velocity -- which is the
+        RTF-dependence this whole gate exists to remove.
+        """
+        if self.odom is None:
+            return None
+        s = self.odom.header.stamp
+        return (s.sec, s.nanosec)
+
     def sim_now(self):
         """Seconds on the /clock (the node runs with use_sim_time)."""
         return self.get_clock().now().nanoseconds / 1e9
@@ -226,9 +258,9 @@ def main():
     )
     ap.add_argument(
         "--stable-samples",
-        type=int,
+        type=positive_int,
         default=10,
-        help="consecutive still samples required",
+        help="consecutive still odometry MESSAGES required (not poll count)",
     )
     ap.add_argument(
         "--settle-cap-sim",
@@ -276,9 +308,10 @@ def main():
     if args.settle_until_still:
         print(
             f"[5] hold until still (tol {args.twist_tol}, "
-            f"{args.stable_samples} samples, cap {args.settle_cap_sim:.0f} sim-s) ...",
+            f"{args.stable_samples} messages, cap {args.settle_cap_sim:.0f} sim-s) ...",
         )
         mags = []
+        last_stamp = None
         start_sim = n.sim_now()
         last_sim = start_sim
         last_progress_wall = time.time()
@@ -287,8 +320,13 @@ def main():
         while True:
             n.goal(hx, hy, hz)
             n.spin_for(0.5)
+            stamp = n.odom_stamp()
             mag = n.twist_magnitude()
-            if mag is not None:
+            # One sample per DISTINCT odometry message (see Bringup.odom_stamp).
+            # If odometry stops arriving the list stops growing and the gate
+            # rides to the sim-second cap, which is the honest answer.
+            if mag is not None and stamp != last_stamp:
+                last_stamp = stamp
                 mags.append(mag)
             now_sim = n.sim_now()
             elapsed = now_sim - start_sim
