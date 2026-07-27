@@ -7,10 +7,25 @@ wrapper cannot drift apart.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+import time
 
 from . import tasks
 from .exitcodes import EXIT_HARNESS, EXIT_OK
+
+# Run artifacts live beside the package's other pool-test material, but in their
+# own folder: pooltest_runs/ is pooltest.sh's and holds a different schema.
+# Resolved from this file so a run works from any working directory.
+RUNS_ROOT = os.path.normpath(
+    os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        "..",
+        "..",
+        "pool_tests",
+        "task_runs",
+    ),
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -134,6 +149,48 @@ def main(argv=None) -> int:
         parser.print_usage(sys.stderr)
         return EXIT_HARNESS
 
-    resolve(args)
-    print("run_task: orchestration lands in Task 10 of the plan.", file=sys.stderr)
-    return EXIT_HARNESS
+    spec, stage_name, stage, start_name = resolve(args)
+
+    # Imported here, not at module scope: --list and --dry-run must work without
+    # rclpy or a sourced workspace, and runner.py drags in the whole ROS stack.
+    from . import lifecycle, report, runner
+
+    budget = runner.resolve_budget(args, stage)
+
+    if args.dry_run:
+        print(
+            lifecycle.describe_plan(spec, stage_name, stage, start_name, args, budget),
+        )
+        return EXIT_OK
+
+    stale = lifecycle.find_stale()
+    if stale:
+        print("run_task: a sim stack is already running:", file=sys.stderr)
+        for stray in stale:
+            print(f"  {stray.pid} {stray.name}", file=sys.stderr)
+        if not args.force_clean:
+            print(
+                "\n  Measurements taken against a polluted ROS graph are worse than "
+                "none.\n  Re-run with --force-clean to kill these first.",
+                file=sys.stderr,
+            )
+            return EXIT_HARNESS
+        lifecycle.kill_stale(stale)
+        time.sleep(2.0)
+
+    run_dir = os.path.join(
+        RUNS_ROOT,
+        lifecycle.run_dir_name(args.task, stage_name),
+    )
+
+    run = runner.execute(spec, stage_name, stage, start_name, args, run_dir)
+
+    if run.get("harness_error"):
+        print(f"run_task: {run['harness_error']}", file=sys.stderr)
+    else:
+        print(report.render(run))
+    # Always written, even for a harness error: whatever was collected before the
+    # stop is the only evidence of why it stopped.
+    report.write_json(run, os.path.join(run_dir, "stats.json"))
+    print(f"artifacts: {run_dir}", file=sys.stderr)
+    return report.exit_code(run)

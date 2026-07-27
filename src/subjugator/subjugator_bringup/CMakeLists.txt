@@ -40,6 +40,7 @@ if(BUILD_TESTING)
       test/test_basket_constants.py
       test/test_report.py
       test/test_lifecycle.py
+      test/test_runner.py
       test/test_settle_gate.py)
   # The list above names every test file the run_task harness will own. Files
   # that a later task has not created yet are skipped rather than breaking the
