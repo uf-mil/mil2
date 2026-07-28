@@ -7,6 +7,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "context.hpp"
+#include "mission_summary_logger.hpp"
 #include "start_coin_flip.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
@@ -124,9 +125,11 @@ int main(int argc, char** argv)
     // For live feed of tree
     BT::Groot2Publisher publisher(*tree_ptr);
 
-    // Log BT transitions to console
-    BT::StdCoutLogger logger_cout(*tree_ptr);
+    MissionSummaryLogger summary_logger(*tree_ptr);
 
+    // Log BT transitions to console
+    // BT::StdCoutLogger logger_cout(*tree_ptr);
+    // I will comment this out after I test my class and ensure that everything works.
     RCLCPP_INFO(node->get_logger(), "Mission Planner started. Ticking tree…");
     rclcpp::WallRate rate(30.0);
 
