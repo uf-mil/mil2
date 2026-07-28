@@ -10,6 +10,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+REGISTER(TrackLargestPoles)
+
 static inline void normalize_quat(geometry_msgs::msg::Quaternion& q)
 {
     double const n = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);

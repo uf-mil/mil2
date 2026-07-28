@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+REGISTER(AtGoalPose)
+
 BT::PortsList AtGoalPose::providedPorts()
 {
     BT::PortsList ports;

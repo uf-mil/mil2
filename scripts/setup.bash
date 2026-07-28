@@ -7,9 +7,8 @@ else
 	source /opt/ros/jazzy/setup.bash
 fi
 
-# Use Cyclone DDS by default (it's super fast and amazing!)
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI=${MIL_REPO}/cyclone.xml
+# Use Zenoh by default
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
 # Setup colcon_cd
 source "/usr/share/colcon_cd/function/colcon_cd.sh"
@@ -284,10 +283,6 @@ function move_rel() {
 	python3 "$MIL_REPO/scripts/move_rel.py" "$@"
 }
 
-function largest_area_sum() {
-	python3 "$MIL_REPO/scripts/largest_area_sum.py" "$@"
-}
-
 alias list_mil_devices="list_lan_devices 192.168.37.1/24"
 
 # aliases for localization and controller service calls
@@ -296,6 +291,16 @@ alias reset-localization="ros2 service call /subjugator_localization/reset std_s
 alias start-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: true}"'
 alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: false}"'
 alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"
+
+# Launch the start-wand node, optionally choosing which mission it runs.
+# Usage: start-wand [mission_name]   (defaults to the node's built-in mission)
+start-wand() {
+	if [ $# -lt 1 ]; then
+		ros2 run auto start_wand
+	else
+		ros2 run auto start_wand --ros-args -p mission:="$1"
+	fi
+}
 
 #explain
 dropper() {
@@ -326,30 +331,22 @@ torpedo() {
 # Mission Planner launcher
 mp() {
 	if [[ $# -ne 1 ]]; then
-		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission|BUSTMission|NavChannelMission|ETHAN|pcNavChannel>"
+		echo "Usage: mp <mission_name>   (any tree in sub9_missions.xml)"
+		echo "Known missions: Semi CoinStartNav OctTorp SquareTestMission StartGateMission BUSTMission NavChannelMission ETHAN"
+		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
 		return 2
 	fi
 
 	local mission="$1"
-	case "$mission" in
-	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission | ETHAN | pcNavChannel)
-		echo "Launching mission_planner with mission: ${mission}"
-		ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
-		;;
-	*)
-		echo "Invalid mission: ${mission}"
-		echo "Valid missions: SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
-		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
-		return 2
-		;;
-	esac
+	echo "Launching mission_planner with mission: ${mission}"
+	ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
 }
 
 _mp_complete() {
 	local cur
 	cur=${COMP_WORDS[COMP_CWORD]}
 
-	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
+	local opts="Semi CoinStartNav OctTorp SquareTestMission StartGateMission BUSTMission NavChannelMission ETHAN"
 	COMPREPLY=()
 	while IFS='' read -r line; do
 		COMPREPLY+=("$line")

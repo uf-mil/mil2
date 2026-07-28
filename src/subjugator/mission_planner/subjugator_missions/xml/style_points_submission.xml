@@ -1,0 +1,14 @@
+
+<root BTCPP_format="4" main_tree_to_execute="StylePointsSubmission">
+    <BehaviorTree ID="StylePointsSubmission">
+        <Sequence>
+            <Delay delay_msec="5000"><AlwaysSuccess/></Delay>
+
+            <!-- Only Rolls once, saw that in the test we had it rolling twice -->
+            <SubTree ID="RollStylePoints" _autoremap="true" milliseconds="7750" momentum_ms="1500" ctx="{ctx}"/>
+            <!--<SubTree ID="RollStylePoints" _autoremap="true" milliseconds="5250" momentum_ms="1500" ctx="{ctx}"/>-->
+
+            <Delay delay_msec="7500"><AlwaysSuccess/></Delay>
+        </Sequence>
+    </BehaviorTree>
+</root>

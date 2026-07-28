@@ -28,21 +28,35 @@ def generate_launch_description():
         output="screen",
     )
 
+    down_cam_launch = Node(
+        package="front_cam",
+        executable="front_cam",
+        name="down_cam",
+        exec_name="down_cam",
+        parameters=[
+            {
+                "camera-id": "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.1:1.0-video-index0",
+                "camera-topic": "down_camera/image_raw",
+            },
+        ],
+        output="screen",
+    )
+
     # IMU
-    vectornav_launch = IncludeLaunchDescription(
-        pkg_share("vectornav", "launch", "vectornav.launch.py"),
-    )
-    mag_comp_launch = IncludeLaunchDescription(
-        pkg_share("magnetic_compensation", "launch", "mag_comp.launch.py"),
-        launch_arguments={
-            "config_file": pkg_share(
-                "subjugator_bringup",
-                "config",
-                "sensors",
-                "hardsoft.yaml",
-            ),
-        }.items(),
-    )
+    # vectornav_launch = IncludeLaunchDescription(
+    #     pkg_share("vectornav", "launch", "vectornav.launch.py"),
+    # )
+    # mag_comp_launch = IncludeLaunchDescription(
+    #     pkg_share("magnetic_compensation", "launch", "mag_comp.launch.py"),
+    #     launch_arguments={
+    #         "config_file": pkg_share(
+    #             "subjugator_bringup",
+    #             "config",
+    #             "sensors",
+    #             "hardsoft.yaml",
+    #         ),
+    #     }.items(),
+    # )
 
     thrust_launch = IncludeLaunchDescription(
         pkg_share("thrust_and_kill_board", "launch", "thrust_and_kill_board.launch.py"),
@@ -52,6 +66,12 @@ def generate_launch_description():
         package="new_depth_driver",
         executable="new_depth_driver",
         name="new_depth_driver",
+        output="both",
+    )
+
+    servo_driver = Node(
+        package="servo_controller",
+        executable="servo_driver",
         output="both",
     )
 
@@ -73,8 +93,10 @@ def generate_launch_description():
             new_depth,
             dvl_launch,
             front_cam_launch,
-            vectornav_launch,
-            mag_comp_launch,
+            down_cam_launch,
+            servo_driver,
+            # vectornav_launch,
+            # mag_comp_launch,
             thrust_launch,
             subjugator_setup,
         ],

@@ -2,6 +2,8 @@
 
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(AnyPolesDetected)
+
 BT::PortsList AnyPolesDetected::providedPorts()
 {
     BT::PortsList ports;

@@ -7,6 +7,8 @@
 
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(HoneMidpoint)
+
 HoneMidpoint::HoneMidpoint(std::string const& name, BT::NodeConfiguration const& cfg)
   : BT::StatefulActionNode(name, cfg)
 {

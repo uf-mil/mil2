@@ -13,6 +13,8 @@
 #include <rcl_interfaces/msg/parameter.hpp>
 #include <rcl_interfaces/msg/set_parameters_result.hpp>
 
+REGISTER(CheckYoloModel)
+
 using namespace std::chrono_literals;
 
 static bool call_transition(rclcpp::Node::SharedPtr const& node, std::string const& yolo_node, uint8_t id)

@@ -175,9 +175,9 @@ class RollStyle : public BT::ActionNodeBase
 
             // start controller (this will take a while so you should have a delay after this mission for the controller
             // to start back up :)
-            auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
+            /*auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
             request->data = true;  // true to enable the controller
-            controller_request_result = ctx_->controller_enable_client->async_send_request(request).future.share();
+            controller_request_result = ctx_->controller_enable_client->async_send_request(request).future.share();*/
 
             // reset state and return success
             state_rn = BT::NodeStatus::IDLE;

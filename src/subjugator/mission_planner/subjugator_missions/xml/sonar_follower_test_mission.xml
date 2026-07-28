@@ -1,8 +1,9 @@
 <root main_tree_to_execute="SonarFollowerTest">
     <BehaviorTree ID="SonarFollowerTest">
-        <SonarFollower name="sonar_follower" ctx="{ctx}" sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
+        <SonarFollower name="sonar_follower" ctx="{ctx}" required_passing_pings="3" sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_yaw_deg="{sonar_yaw_deg}">
                 <SubTree ID="RelativeMove" _autoremap="true"
                     x="{sonar_x}" y="{sonar_y}" z="0.0"
+                    yaw_deg="{sonar_yaw_deg}"
                     pos_tol="0.20" ori_tol_deg="12.0" msec="25000"
                     ctx="{ctx}"/>
         </SonarFollower>

@@ -5,6 +5,8 @@
 
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(NavChannelControl)
+
 NavChannelControl::NavChannelControl(std::string const& name, BT::NodeConfiguration const& cfg)
   : BT::StatefulActionNode(name, cfg)
 {
