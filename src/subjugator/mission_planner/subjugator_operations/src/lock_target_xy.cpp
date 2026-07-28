@@ -53,6 +53,12 @@ BT::PortsList LockTargetXY::providedPorts()
                                         "Which same-label candidate wins: 'confidence' (default) or 'largest' "
                                         "(biggest box). Use 'largest' for the table, whose real detection the "
                                         "model scores below its tiny corner phantom"),
+             BT::InputPort<double>("min_area_frac", 0.0,
+                                   "Minimum bbox area as a fraction of the image before a detection counts. "
+                                   "0 = disabled. Use ~0.15 for the down-cam TABLE only, to reject the "
+                                   "model's tiny corner phantom. Do NOT set it for the grasp props or "
+                                   "basket markers -- they are the same apparent size as the phantoms "
+                                   "(0.04-0.11 of frame) and would be rejected outright"),
              BT::InputPort<double>("tol_world", 0.05, "Locked when gripper is within this many m of the target"),
              BT::InputPort<double>("est_stable_tol", 0.02,
                                    "Estimate has settled when its per-frame EMA step is below this (m)"),
@@ -102,7 +108,8 @@ BT::NodeStatus LockTargetXY::onStart()
 BT::NodeStatus LockTargetXY::onRunning()
 {
     std::string label = "table", camera = "down", select = "confidence";
-    double min_conf = 0.30, tol_world = 0.05, est_stable_tol = 0.02, table_z = 0.0, hfov = 1.919862177;
+    double min_conf = 0.30, min_area_frac = 0.0, tol_world = 0.05, est_stable_tol = 0.02, table_z = 0.0,
+           hfov = 1.919862177;
     double gripper_x = 0.0, gripper_y = 0.0, ema_alpha = 0.3, max_step = 0.25;
     double hold_z = std::numeric_limits<double>::quiet_NaN();
     double ki_world = 0.0, i_max = 0.5;
@@ -114,6 +121,7 @@ BT::NodeStatus LockTargetXY::onRunning()
     (void)getInput("camera", camera);
     (void)getInput("min_conf", min_conf);
     (void)getInput("select", select);
+    (void)getInput("min_area_frac", min_area_frac);
     (void)getInput("tol_world", tol_world);
     (void)getInput("est_stable_tol", est_stable_tol);
     (void)getInput("settle_ticks", settle_ticks);
@@ -156,7 +164,8 @@ BT::NodeStatus LockTargetXY::onRunning()
     {
         return BT::NodeStatus::RUNNING;
     }
-    auto const* best = detection_gate::best_detection(*arr, label, min_conf, detection_gate::select_from(select));
+    auto const* best = detection_gate::best_detection(*arr, label, min_conf, detection_gate::select_from(select),
+                                                      detection_gate::SizeGate{ min_area_frac, W, H });
     std::int64_t stamp_ns = rclcpp::Time(arr->header.stamp).nanoseconds();
     switch (gate_.update(best != nullptr, stamp_ns, miss_frames))
     {

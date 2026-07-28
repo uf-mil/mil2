@@ -23,6 +23,12 @@ BT::PortsList CenterCamera::providedPorts()
                                         "Which same-label candidate wins: 'confidence' (default) or 'largest' "
                                         "(biggest box). Use 'largest' for the table, whose real detection the "
                                         "model scores below its tiny corner phantom"),
+             BT::InputPort<double>("min_area_frac", 0.0,
+                                   "Minimum bbox area as a fraction of the image before a detection counts. "
+                                   "0 = disabled. Use ~0.15 for the down-cam TABLE only, to reject the "
+                                   "model's tiny corner phantom. Do NOT set it for the grasp props or "
+                                   "basket markers -- they are the same apparent size as the phantoms "
+                                   "(0.04-0.11 of frame) and would be rejected outright"),
              BT::InputPort<double>("tol_norm", 0.05, "Centered when |ex|,|ey| < tol (fraction of half-image)"),
              BT::InputPort<double>("kp", 0.5, "Proportional gain: normalized error -> meters/step"),
              BT::InputPort<double>("max_step", 0.25, "Max XY correction per step (m)"),
@@ -75,6 +81,7 @@ BT::NodeStatus CenterCamera::onRunning()
     std::string camera = "down";
     std::string select = "confidence";
     double min_conf = 0.30;
+    double min_area_frac = 0.0;
     double tol_norm = 0.05;
     double kp = 0.5;
     double max_step = 0.25;
@@ -89,6 +96,7 @@ BT::NodeStatus CenterCamera::onRunning()
     (void)getInput("camera", camera);
     (void)getInput("min_conf", min_conf);
     (void)getInput("select", select);
+    (void)getInput("min_area_frac", min_area_frac);
     (void)getInput("tol_norm", tol_norm);
     (void)getInput("kp", kp);
     (void)getInput("max_step", max_step);
@@ -146,7 +154,8 @@ BT::NodeStatus CenterCamera::onRunning()
                              camera.c_str());
         return BT::NodeStatus::RUNNING;
     }
-    auto const* best = detection_gate::best_detection(*arr, label, min_conf, detection_gate::select_from(select));
+    auto const* best = detection_gate::best_detection(*arr, label, min_conf, detection_gate::select_from(select),
+                                                      detection_gate::SizeGate{ min_area_frac, W, H });
 
     // Frame gate (see detection_gate.hpp): only ever act on a detection
     // frame newer than the one we last considered — never re-correct from a
