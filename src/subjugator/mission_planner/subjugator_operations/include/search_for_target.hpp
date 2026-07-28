@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "context.hpp"
+#include "detection_gate.hpp"
 
 #include <geometry_msgs/msg/pose.hpp>
 
@@ -28,5 +29,6 @@ class SearchForTarget : public BT::StatefulActionNode
     bool waiting_for_goal_{ false };
     geometry_msgs::msg::Pose pending_goal_;
     rclcpp::Time start_time_;
-    bool label_seen(std::string const& label, std::string const& camera, double min_conf);
+    bool label_seen(std::string const& label, std::string const& camera, double min_conf,
+                    detection_gate::SizeGate const& size);
 };

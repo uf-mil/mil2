@@ -16,6 +16,12 @@ BT::PortsList DescendUntilDetected::providedPorts()
         BT::InputPort<std::string>("label", "table", "YOLO class label to wait for"),
         BT::InputPort<std::string>("camera", "down", "Detection stream: 'front' or 'down'"),
         BT::InputPort<double>("min_conf", 0.40, "Minimum detection confidence"),
+        BT::InputPort<double>("min_area_frac", 0.0,
+                              "Minimum bbox area as a fraction of the image before a detection counts. "
+                              "0 = disabled. Use ~0.15 for the down-cam TABLE only, to reject the "
+                              "model's tiny corner phantom. Do NOT set it for the grasp props or "
+                              "basket markers -- they are the same apparent size as the phantoms "
+                              "(0.04-0.11 of frame) and would be rejected outright"),
         // "3 to win", mirroring SelectTarget's lock: a single misclassified
         // frame (pool-floor glare scored as 'table') must not stop the descent
         // ~2 m high. Frames are counted by stamp (fresh frames only), so at
@@ -55,7 +61,7 @@ BT::NodeStatus DescendUntilDetected::onStart()
 BT::NodeStatus DescendUntilDetected::onRunning()
 {
     std::string label = "table", camera = "down";
-    double min_conf = 0.40, step_m = 0.20, pos_tol = 0.10;
+    double min_conf = 0.40, step_m = 0.20, pos_tol = 0.10, min_area_frac = 0.0;
     int max_steps = 12, timeout_msec = 45000, confirm_frames = 3;
     getInput("label", label);
     getInput("camera", camera);
@@ -65,6 +71,7 @@ BT::NodeStatus DescendUntilDetected::onRunning()
     getInput("max_steps", max_steps);
     getInput("timeout_msec", timeout_msec);
     getInput("confirm_frames", confirm_frames);
+    getInput("min_area_frac", min_area_frac);
 
     // Success once the target is seen on confirm_frames consecutive fresh
     // frames (see detection_gate.hpp). Presence and stamp are judged from the
@@ -72,19 +79,28 @@ BT::NodeStatus DescendUntilDetected::onRunning()
     // frame B's stamp. The miss side of the gate is unused: absence never
     // fails this node — the descent is bounded by max_steps/timeout instead —
     // a fresh miss just resets the hit streak.
-    if (auto arr = ctx_->detections_for(camera))
+    // The area rule needs the frame size. On cold start we must not judge the
+    // frame (SizeGate fails closed, which would look like a genuine miss and
+    // advance the descent), so skip the gate and hold below instead.
+    detection_gate::SizeGate size{ min_area_frac, 0, 0 };
+    bool const size_ready = !size.enabled() || ctx_->image_size_for(camera, size.image_w, size.image_h);
+
+    if (size_ready)
     {
-        auto verdict = gate_.update(detection_gate::contains_label(*arr, label, min_conf),
-                                    detection_gate::MissGate::stamp_ns_of(*arr), std::numeric_limits<int>::max());
-        if (verdict != detection_gate::MissGate::Verdict::kStale)
+        if (auto arr = ctx_->detections_for(camera))
         {
-            seen_fresh_ = true;
-        }
-        if (verdict == detection_gate::MissGate::Verdict::kHit && gate_.hits >= confirm_frames)
-        {
-            RCLCPP_INFO(ctx_->logger(), "DescendUntilDetected: '%s' confirmed (%d frames) after %d step(s)",
-                        label.c_str(), gate_.hits, steps_taken_);
-            return BT::NodeStatus::SUCCESS;
+            auto verdict = gate_.update(detection_gate::contains_label(*arr, label, min_conf, size),
+                                        detection_gate::MissGate::stamp_ns_of(*arr), std::numeric_limits<int>::max());
+            if (verdict != detection_gate::MissGate::Verdict::kStale)
+            {
+                seen_fresh_ = true;
+            }
+            if (verdict == detection_gate::MissGate::Verdict::kHit && gate_.hits >= confirm_frames)
+            {
+                RCLCPP_INFO(ctx_->logger(), "DescendUntilDetected: '%s' confirmed (%d frames) after %d step(s)",
+                            label.c_str(), gate_.hits, steps_taken_);
+                return BT::NodeStatus::SUCCESS;
+            }
         }
     }
 
@@ -94,6 +110,15 @@ BT::NodeStatus DescendUntilDetected::onRunning()
     {
         RCLCPP_WARN(ctx_->logger(), "DescendUntilDetected: timed out without seeing '%s'", label.c_str());
         return BT::NodeStatus::FAILURE;
+    }
+
+    // Rule on but no frame yet: hold. Stepping 0.20 m downward with no vision
+    // is the one thing this node must never do. Bounded by the timeout above.
+    if (!size_ready)
+    {
+        RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000,
+                             "DescendUntilDetected: waiting for %s image size", camera.c_str());
+        return BT::NodeStatus::RUNNING;
     }
 
     // Wait until the previous step's goal is reached before issuing the next.

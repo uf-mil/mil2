@@ -30,6 +30,7 @@ BT::NodeStatus DetectTarget::onRunning()
 {
     std::string label;
     double min_conf = 0.40;
+    double min_area_frac = 0.0;
     std::string camera = "front";
     int confirm_frames = 1;
     int miss_frames = 5;
@@ -40,26 +41,37 @@ BT::NodeStatus DetectTarget::onRunning()
     (void)getInput("confirm_frames", confirm_frames);
     (void)getInput("miss_frames", miss_frames);
     (void)getInput("timeout_msec", timeout_msec);
+    (void)getInput("min_area_frac", min_area_frac);
 
     // Judge the current frame FIRST, timeout second: a decisive frame that
     // arrived just before expiry must not be discarded because the tick that
     // processes it lands past the deadline.
-    if (std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for(camera))
+    //
+    // Cold start with the rule on: skip the gate entirely rather than judge a
+    // frame we cannot verify. The timeout below is the bound -- FAILURE there
+    // is the correct answer for this node, since a Fallback can then spiral.
+    detection_gate::SizeGate size{ min_area_frac, 0, 0 };
+    bool const size_ready = !size.enabled() || ctx_->image_size_for(camera, size.image_w, size.image_h);
+
+    if (size_ready)
     {
-        switch (gate_.update(detection_gate::contains_label(*arr, label, min_conf),
-                             detection_gate::MissGate::stamp_ns_of(*arr), miss_frames))
+        if (std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for(camera))
         {
-            case detection_gate::MissGate::Verdict::kStale:
-            case detection_gate::MissGate::Verdict::kMiss:
-                break;  // no verdict yet; fall through to the timeout bound
-            case detection_gate::MissGate::Verdict::kLost:
-                return BT::NodeStatus::FAILURE;
-            case detection_gate::MissGate::Verdict::kHit:
-                if (gate_.hits >= confirm_frames)
-                {
-                    return BT::NodeStatus::SUCCESS;
-                }
-                break;
+            switch (gate_.update(detection_gate::contains_label(*arr, label, min_conf, size),
+                                 detection_gate::MissGate::stamp_ns_of(*arr), miss_frames))
+            {
+                case detection_gate::MissGate::Verdict::kStale:
+                case detection_gate::MissGate::Verdict::kMiss:
+                    break;  // no verdict yet; fall through to the timeout bound
+                case detection_gate::MissGate::Verdict::kLost:
+                    return BT::NodeStatus::FAILURE;
+                case detection_gate::MissGate::Verdict::kHit:
+                    if (gate_.hits >= confirm_frames)
+                    {
+                        return BT::NodeStatus::SUCCESS;
+                    }
+                    break;
+            }
         }
     }
 

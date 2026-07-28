@@ -18,6 +18,12 @@ BT::PortsList SearchForTarget::providedPorts()
         BT::InputPort<std::string>("label", "table", "YOLO class label to find"),
         BT::InputPort<std::string>("camera", "down", "Detection stream: 'front' or 'down'"),
         BT::InputPort<double>("min_conf", 0.40, "Minimum detection confidence"),
+        BT::InputPort<double>("min_area_frac", 0.0,
+                              "Minimum bbox area as a fraction of the image before a detection counts. "
+                              "0 = disabled. Use ~0.15 for the down-cam TABLE only, to reject the "
+                              "model's tiny corner phantom. Do NOT set it for the grasp props or "
+                              "basket markers -- they are the same apparent size as the phantoms "
+                              "(0.04-0.11 of frame) and would be rejected outright"),
         BT::InputPort<double>("step_m", 0.30, "Spiral spacing (m)"),
         BT::InputPort<double>("max_radius_m", 2.0, "Search radius cap (m)"),
         BT::InputPort<double>("pos_tol", 0.15, "Goal-reached tolerance (m)"),
@@ -26,10 +32,11 @@ BT::PortsList SearchForTarget::providedPorts()
     };
 }
 
-bool SearchForTarget::label_seen(std::string const& label, std::string const& camera, double min_conf)
+bool SearchForTarget::label_seen(std::string const& label, std::string const& camera, double min_conf,
+                                 detection_gate::SizeGate const& size)
 {
     auto arr = ctx_->detections_for(camera);
-    return arr && detection_gate::contains_label(*arr, label, min_conf);
+    return arr && detection_gate::contains_label(*arr, label, min_conf, size);
 }
 
 BT::NodeStatus SearchForTarget::onStart()
@@ -62,15 +69,23 @@ BT::NodeStatus SearchForTarget::onStart()
 BT::NodeStatus SearchForTarget::onRunning()
 {
     std::string label = "table", camera = "down";
-    double min_conf = 0.40, pos_tol = 0.15;
+    double min_conf = 0.40, pos_tol = 0.15, min_area_frac = 0.0;
     int timeout_msec = 60000;
     getInput("label", label);
     getInput("camera", camera);
     getInput("min_conf", min_conf);
     getInput("pos_tol", pos_tol);
     getInput("timeout_msec", timeout_msec);
+    getInput("min_area_frac", min_area_frac);
 
-    if (label_seen(label, camera, min_conf))
+    // 0/0 on cold start -> SizeGate fails closed -> not seen -> keep spiralling.
+    detection_gate::SizeGate size{ min_area_frac, 0, 0 };
+    if (size.enabled())
+    {
+        (void)ctx_->image_size_for(camera, size.image_w, size.image_h);
+    }
+
+    if (label_seen(label, camera, min_conf, size))
     {
         RCLCPP_INFO(ctx_->logger(), "SearchForTarget: '%s' found at waypoint %zu", label.c_str(), wp_index_);
         return BT::NodeStatus::SUCCESS;

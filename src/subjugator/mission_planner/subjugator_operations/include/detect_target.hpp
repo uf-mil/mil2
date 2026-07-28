@@ -29,6 +29,12 @@ class DetectTarget : public BT::StatefulActionNode
     {
         return { BT::InputPort<std::string>("label", "shark", "Target label (single)"),
                  BT::InputPort<double>("min_conf", 0.40, "Minimum confidence"),
+                 BT::InputPort<double>("min_area_frac", 0.0,
+                                       "Minimum bbox area as a fraction of the image before a detection counts. "
+                                       "0 = disabled. Use ~0.15 for the down-cam TABLE only, to reject the "
+                                       "model's tiny corner phantom. Do NOT set it for the grasp props or "
+                                       "basket markers -- they are the same apparent size as the phantoms "
+                                       "(0.04-0.11 of frame) and would be rejected outright"),
                  BT::InputPort<std::string>("camera", "front", "Detection stream: 'front' or 'down'"),
                  // confirm=1: the freshness requirement alone already kills the
                  // stale-cached-frame false positive; both call sites tolerate
