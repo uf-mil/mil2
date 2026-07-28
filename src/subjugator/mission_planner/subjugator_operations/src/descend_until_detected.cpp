@@ -113,7 +113,10 @@ BT::NodeStatus DescendUntilDetected::onRunning()
     }
 
     // Rule on but no frame yet: hold. Stepping 0.20 m downward with no vision
-    // is the one thing this node must never do. Bounded by the timeout above.
+    // is the one thing this node must never do.
+    // THIS BLOCK MUST STAY BELOW THE TIMEOUT GUARD. Moving it up next to the
+    // SizeGate construction (tempting, for locality) removes the only bound on
+    // this hold: a dead image topic would then pin the node RUNNING forever.
     if (!size_ready)
     {
         RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000,

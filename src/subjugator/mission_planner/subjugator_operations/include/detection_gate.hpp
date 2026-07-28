@@ -145,8 +145,12 @@ struct SizeGate
     }
 
     // Fails CLOSED when the rule is on but the image size is unknown: a frame
-    // we cannot verify must never be reported as a confirmed sighting. Callers
-    // hold RUNNING before reaching this (see the nodes), so it is a backstop.
+    // we cannot verify must never be reported as a confirmed sighting. This is
+    // NOT merely a backstop -- the callers deliberately differ. CenterCamera,
+    // LockTargetXY and DescendUntilDetected hold RUNNING before reaching it;
+    // DetectTarget lets its timeout convert it to FAILURE; SearchForTarget
+    // relies on it DIRECTLY (unverifiable == "not seen" == keep spiralling).
+    // Do not relax it to fail-open.
     template <class Det>
     bool passes(Det const& d) const
     {

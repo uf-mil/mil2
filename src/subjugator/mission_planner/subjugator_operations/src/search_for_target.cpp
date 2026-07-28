@@ -78,11 +78,15 @@ BT::NodeStatus SearchForTarget::onRunning()
     getInput("timeout_msec", timeout_msec);
     getInput("min_area_frac", min_area_frac);
 
-    // 0/0 on cold start -> SizeGate fails closed -> not seen -> keep spiralling.
+    // Unknown size on cold start -> SizeGate fails closed -> not seen -> keep
+    // spiralling. Deliberate: no hold here, unlike the other presence nodes.
+    // Warn anyway, or a silent image topic is indistinguishable from a genuine
+    // miss after burning the full timeout on a pattern that could never match.
     detection_gate::SizeGate size{ min_area_frac, 0, 0 };
-    if (size.enabled())
+    if (size.enabled() && !ctx_->image_size_for(camera, size.image_w, size.image_h))
     {
-        (void)ctx_->image_size_for(camera, size.image_w, size.image_h);
+        RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000,
+                             "SearchForTarget: no %s image size yet; the area gate rejects every box", camera.c_str());
     }
 
     if (label_seen(label, camera, min_conf, size))
