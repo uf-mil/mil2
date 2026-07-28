@@ -11,6 +11,7 @@
             <Action ID="CenterCamera"
                     camera="down"
                     label="table"
+                    select="largest"
                     tol_norm="0.05"
                     kp="0.5"
                     max_step="0.25"
