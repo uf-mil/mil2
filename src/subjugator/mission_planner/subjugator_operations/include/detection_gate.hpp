@@ -110,24 +110,25 @@ struct MissGate
 // Optional plausibility filter layered on top of label + confidence: reject
 // candidates whose box is too small to plausibly BE the target.
 //
-// See Select below for the phantom measurements; what area adds HERE is a
-// floor, not a ranking: the 960x600 / 110-deg-hfov down cam covers 5.098*h^2
-// m^2 of ground at camera height h, so the 0.662x1.183 m table fills 0.154/h^2
-// of the frame; and the camera cannot get further than h=0.63 m above the
-// tabletop without leaving the water, so the real table is never below ~0.39
-// of frame -- ~5x the largest measured artifact.
+// See Select below for the phantom story; what area adds HERE is a floor, not
+// a ranking. Sized against the LATER 3-pose sample (artifacts 0.018-0.081 of
+// frame at conf 0.21-0.79), not the two-box sample Select quotes: the 960x600 /
+// 110-deg-hfov down cam covers 5.098*h^2 m^2 of ground at camera height h, so
+// the 0.662x1.183 m table fills 0.154/h^2 of the frame; and the camera cannot
+// get further than h=0.63 m above the tabletop without leaving the water, so
+// the real table is never below ~0.39 of frame -- ~5x that 0.081 worst case.
 //
 // DELIBERATELY OPT-IN (0 = disabled), for the same reason as Select: the grasp
-// props subtend only 0.04-0.11 of frame at hone altitude, INSIDE the artifact
-// band, so a table's floor applied to a prop would reject it in nearly every
-// frame. There is no equivalent of select_from()'s typo guard here (any double
+// props subtend only 0.04-0.11 of frame at hone altitude, INSIDE that same
+// 0.018-0.081 artifact band, so a table's floor applied to a prop would reject
+// it in nearly every frame. There is no equivalent of select_from()'s typo guard here (any double
 // parses). Call sites rendering a TABLE verdict must pass this explicitly; the
 // prop sites pass 0.0 rather than omitting it, to document the intent at the
 // point where someone would otherwise copy the table's value.
 struct SizeGate
 {
     // 0 = disabled. Deliberately unvalidated, both directions pinned by test:
-    //   <= 0 (and non-finite, e.g. NaN) disables the filter -- everything
+    //   <= 0 (and NaN, and -inf) disables the filter -- everything
     //        passes. A typo that lands negative silently restores the phantom
     //        bug this filter exists to fix, so treat "the gate has no effect"
     //        as a first thing to check when a table read looks unfiltered.
