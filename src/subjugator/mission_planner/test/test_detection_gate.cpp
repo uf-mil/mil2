@@ -280,3 +280,87 @@ TEST(DetectionGateHelpers, StampNsOfAndSeedFrom)
     g2.seed_from(std::optional<MockArray>{});
     EXPECT_EQ(g2.update(true, 100, 5), Verdict::kHit);
 }
+
+// --- SizeGate: reject boxes too small to plausibly be the target -------------
+//
+// Frame-fraction reference for a 960x600 down cam (W*H = 576000 px):
+//   30 x  36 =   1080 px = 0.0019 of frame  -- phantom, smallest measured
+//  220 x 212 =  46640 px = 0.081  of frame  -- LARGEST measured artifact
+//  190 x 182 =  34580 px = 0.060  of frame  -- grasp prop at hone altitude
+//  360 x 240 =  86400 px = 0.150  of frame  -- exactly the table floor
+//  576 x 240 = 138240 px = 0.240  of frame  -- real table, measured
+constexpr std::uint32_t kW = 960;
+constexpr std::uint32_t kH = 600;
+
+// THE BUG: with the real table out of frame the model still emits an artifact
+// above the 0.40 confidence floor, so DescendUntilDetected / DetectTarget /
+// SearchForTarget all read "table present" and S2 never spiral-searches.
+TEST(SizeGateTest, AreaFloorRejectsArtifactOnlyPresence)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.79, { { 220.0, 212.0 } } } } };
+    detection_gate::SizeGate const floor{ 0.15, kW, kH };
+    EXPECT_FALSE(detection_gate::contains_label(arr, "table", 0.40, floor));
+}
+
+// The filter is opt-in: an absent SizeGate must preserve today's behaviour
+// exactly, including for start_gate_mission.xml's shark.
+TEST(SizeGateTest, DefaultGateAcceptsEverything)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.79, { { 220.0, 212.0 } } } } };
+    EXPECT_TRUE(detection_gate::contains_label(arr, "table", 0.40));
+}
+
+// REGRESSION GUARD. The grasp props subtend 0.04-0.11 of frame at hone
+// altitude -- the same size as the artifacts. The table's floor applied to a
+// prop would reject it in nearly every frame and make S4 dead-reckon every
+// grasp, so the props must keep the default gate.
+TEST(SizeGateTest, DefaultGateStillSeesPropSizedBoxes)
+{
+    MockArray arr{ { { 3, 500 } }, { { "nut_cylinder", 0.62, { { 190.0, 182.0 } } } } };
+    EXPECT_TRUE(detection_gate::contains_label(arr, "nut_cylinder", 0.40));
+}
+
+TEST(SizeGateTest, AreaFloorAcceptsRealTable)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.31, { { 576.0, 240.0 } } } } };
+    detection_gate::SizeGate const floor{ 0.15, kW, kH };
+    EXPECT_TRUE(detection_gate::contains_label(arr, "table", 0.20, floor));
+}
+
+TEST(SizeGateTest, AreaFloorIsInclusive)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.50, { { 360.0, 240.0 } } } } };  // exactly 0.15
+    detection_gate::SizeGate const floor{ 0.15, kW, kH };
+    EXPECT_TRUE(detection_gate::contains_label(arr, "table", 0.20, floor));
+}
+
+// An unverifiable frame must never be reported as a confirmed sighting. The
+// nodes hold RUNNING before reaching this, but the helper must not guess.
+TEST(SizeGateTest, FailsClosedWithoutImageSize)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.31, { { 576.0, 240.0 } } } } };
+    detection_gate::SizeGate const no_size{ 0.15, 0, 0 };
+    EXPECT_FALSE(detection_gate::contains_label(arr, "table", 0.20, no_size));
+    EXPECT_EQ(detection_gate::best_detection(arr, "table", 0.20, detection_gate::Select::kLargestArea, no_size),
+              nullptr);
+}
+
+// Presence and selection must qualify candidates through the SAME predicate:
+// largest-area alone still returns the phantom when the phantom is all there is.
+TEST(SizeGateTest, BestDetectionRejectsArtifactOnlyFrame)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.79, { { 220.0, 212.0 } } } } };
+    detection_gate::SizeGate const floor{ 0.15, kW, kH };
+    EXPECT_EQ(detection_gate::best_detection(arr, "table", 0.40, detection_gate::Select::kLargestArea, floor), nullptr);
+}
+
+TEST(SizeGateTest, BestDetectionKeepsRealTableWhenBothPresent)
+{
+    MockArray arr{ { { 3, 500 } },
+                   { { "table", 0.85, { { 30.0, 36.0 } } },        // phantom
+                     { "table", 0.31, { { 576.0, 240.0 } } } } };  // real table
+    detection_gate::SizeGate const floor{ 0.15, kW, kH };
+    auto const* best = detection_gate::best_detection(arr, "table", 0.20, detection_gate::Select::kLargestArea, floor);
+    ASSERT_NE(best, nullptr);
+    EXPECT_DOUBLE_EQ(best->bbox.size.x, 576.0);
+}

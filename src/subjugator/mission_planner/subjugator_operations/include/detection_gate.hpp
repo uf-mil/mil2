@@ -106,17 +106,69 @@ struct MissGate
     }
 };
 
+// Optional plausibility filter layered on top of label + confidence: reject
+// candidates whose box is too small to plausibly BE the target.
+//
+// Exists because the octagon down-cam model emits a tiny, confident phantom
+// 'table' box in a frame corner in essentially every frame, whether or not a
+// real table is in view (measured: artifacts 0.018-0.081 of frame at conf
+// 0.21-0.79). Confidence cannot separate them -- the ranges overlap and INVERT
+// (an artifact scored 0.79 while the real table has scored 0.24), so raising
+// min_conf drops real tables first. Area separates them cleanly FOR THE TABLE:
+// the 960x600 / 110-deg-hfov down cam covers 5.098*h^2 m^2 of ground at camera
+// height h, so the 0.662x1.183 m table fills 0.154/h^2 of the frame; and the
+// camera cannot get further than h=0.63 m above the tabletop without leaving
+// the water, so the real table is never below ~0.39 of frame -- ~5x the largest
+// artifact.
+//
+// DELIBERATELY OPT-IN (0 = disabled), for the same reason as Select: the grasp
+// props subtend only 0.04-0.11 of frame at hone altitude, INSIDE the artifact
+// band, so a table's floor applied to a prop would reject it in nearly every
+// frame. There is no equivalent of select_from()'s typo guard here (any double
+// parses), so every call site passes this explicitly -- including the 0.0 at
+// the prop sites, which documents the intent at the point someone would
+// otherwise copy the table's value.
+struct SizeGate
+{
+    double min_area_frac{ 0.0 };  // 0 = disabled
+    std::uint32_t image_w{ 0 };
+    std::uint32_t image_h{ 0 };
+
+    bool enabled() const
+    {
+        return min_area_frac > 0.0;
+    }
+
+    // Fails CLOSED when the rule is on but the image size is unknown: a frame
+    // we cannot verify must never be reported as a confirmed sighting. Callers
+    // hold RUNNING before reaching this (see the nodes), so it is a backstop.
+    template <class Det>
+    bool passes(Det const& d) const
+    {
+        if (!enabled())
+        {
+            return true;
+        }
+        if (image_w == 0 || image_h == 0)
+        {
+            return false;
+        }
+        double const area = static_cast<double>(d.bbox.size.x) * static_cast<double>(d.bbox.size.y);
+        return area / (static_cast<double>(image_w) * static_cast<double>(image_h)) >= min_area_frac;
+    }
+};
+
 // Shared presence predicate: any detection in the array with the requested
 // class at or above the confidence floor. Every gate consumer must judge
 // presence and stamp from the SAME array snapshot — fetch once, then call
 // this and MissGate::stamp_ns_of on that one object (fetching twice can pair
 // frame A's presence with frame B's stamp).
 template <class Arr>
-bool contains_label(Arr const& arr, std::string const& label, double min_conf)
+bool contains_label(Arr const& arr, std::string const& label, double min_conf, SizeGate const& size = {})
 {
     for (auto const& d : arr.detections)
     {
-        if (d.class_name == label && d.score >= min_conf)
+        if (d.class_name == label && d.score >= min_conf && size.passes(d))
         {
             return true;
         }
@@ -162,14 +214,14 @@ inline Select select_from(std::string const& mode)
 // snapshot (see contains_label's note on pairing presence with the stamp).
 template <class Arr>
 auto const* best_detection(Arr const& arr, std::string const& label, double min_conf,
-                           Select select = Select::kConfidence)
+                           Select select = Select::kConfidence, SizeGate const& size = {})
 {
     using Det = typename std::decay_t<decltype(arr.detections)>::value_type;
     Det const* best = nullptr;
     double best_rank = -1.0;
     for (auto const& d : arr.detections)
     {
-        if (d.class_name != label || d.score < min_conf)
+        if (d.class_name != label || d.score < min_conf || !size.passes(d))
         {
             continue;
         }
