@@ -164,6 +164,13 @@ BT::NodeStatus LockTargetXY::onRunning()
     {
         return BT::NodeStatus::RUNNING;
     }
+    // The area floor is what makes `best != nullptr` below an honest presence
+    // test. This node's presence check IS the selection result, so on a frame
+    // where the real table has drifted out of view the phantom was returned,
+    // read as a hit, ray-cast, and chased for the full timeout (observed: the
+    // estimate frozen 0.44 m off while the gripper sat over the real table).
+    // Filtered, that frame is a miss -> kLost -> FAILURE, which the call site's
+    // AlwaysSuccess degrades to dead-reckon. See detection_gate.hpp.
     auto const* best = detection_gate::best_detection(*arr, label, min_conf, detection_gate::select_from(select),
                                                       detection_gate::SizeGate{ min_area_frac, W, H });
     std::int64_t stamp_ns = rclcpp::Time(arr->header.stamp).nanoseconds();
