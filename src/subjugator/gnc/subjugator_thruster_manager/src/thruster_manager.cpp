@@ -15,8 +15,17 @@
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
 
 // ============================================================================
-// PHYSICAL PARAMETERS — MEASURE THESE FROM YOUR ACTUAL AUV
+// PHYSICAL PARAMETERS - MEASURE THESE FROM YOUR ACTUAL AUV
 // ============================================================================
+//
+// HOW IT WORKS:
+//
+//   Each physical parameter has guess_<parameter> (a rough/measured
+//   estimate) and slack_<parameter> (a learned correction). Value used
+//   = guess_<parameter> + slack_<parameter>, computed once at startup.
+//
+//   All zero -> vehicle_mass_kg_ is 0.0, compensation is skipped, and
+//   this node falls back to plain pseudoinverse thrust allocation.
 //
 // HOW TO MEASURE:
 //
@@ -44,7 +53,7 @@
 //     until roll/pitch is stable. Typical values for a small AUV: 0.02 to 0.10 m.
 //
 //   M_DIAG (mass/inertia matrix diagonal):
-//     6 values: [m, m, m, Ixx, Iyy, Izz] — translational mass (same value
+//     6 values: [m, m, m, Ixx, Iyy, Izz] - translational mass (same value
 //     repeated 3x, in kg) followed by moments of inertia about each body
 //     axis (kg*m^2). For a rigid body this is measurable via CAD (preferred)
 //     or a bifilar/trifilar pendulum test for the rotational components.
@@ -52,7 +61,7 @@
 //     mass (the apparent extra mass from accelerating fluid around the hull).
 //     Added mass can be 10-100% of rigid body mass for some AUV hull shapes
 //     and is normally folded into this same matrix in a full Fossen model.
-//     Left out here for simplicity — ask your team if this matters for your
+//     Left out here for simplicity - ask your team if this matters for your
 //     hull shape before relying heavily on this term.
 //
 //   DAMPING_LINEAR / DAMPING_QUADRATIC:
@@ -60,7 +69,7 @@
 //     fitted from real test data (e.g. command a constant velocity in each
 //     DOF and measure thrust needed to sustain it, or do a deceleration
 //     coast-down test and fit the drag curve). No default exists that will
-//     be physically meaningful — leave at 0 until fitted.
+//     be physically meaningful - leave at 0 until fitted.
 //
 // ============================================================================
 
@@ -126,75 +135,101 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
     // -----------------------------------------------------------------------
 
     // MEASURE: Total mass of the sub in kilograms (weigh it fully assembled)
-    this->declare_parameter("vehicle_mass_kg", 0.0);
-    // ^^^ DEFAULT 0.0 — replace with your measured mass, e.g. 13.5
+    this->declare_parameter("guess_vehicle_mass_kg", 0.0);
+    this->declare_parameter("slack_vehicle_mass_kg", 0.0);
+    // ^^^ DEFAULTS 0.0 - set guess_ to your measured mass, e.g. 13.5
 
     // MEASURE: Total displaced water volume in cubic meters
-    this->declare_parameter("vehicle_volume_m3", 0.0);
-    // ^^^ DEFAULT 0.0 — replace with your calculated/measured hull volume, e.g. 0.0138
+    this->declare_parameter("guess_vehicle_volume_m3", 0.0);
+    this->declare_parameter("slack_vehicle_volume_m3", 0.0);
+    // ^^^ DEFAULTS 0.0 - set guess_ to your calculated/measured hull volume, e.g. 0.0138
 
     // MEASURE/TUNE: Distance from CoG to CoB in meters along each body axis.
-    // Positive z = CoB is above CoG (stable). Start at 0.0, tune upward.
-    this->declare_parameter("x_cog_to_cob_m", 0.0);
-    this->declare_parameter("y_cog_to_cob_m", 0.0);
-    this->declare_parameter("z_cog_to_cob_m", 0.0);
-    // ^^^ DEFAULT 0.0 — start here and tune empirically (see notes above)
+    // Positive z = CoB is above CoG (stable). Start guess_ at 0.0, tune upward.
+    this->declare_parameter("guess_x_cog_to_cob_m", 0.0);
+    this->declare_parameter("slack_x_cog_to_cob_m", 0.0);
+    this->declare_parameter("guess_y_cog_to_cob_m", 0.0);
+    this->declare_parameter("slack_y_cog_to_cob_m", 0.0);
+    this->declare_parameter("guess_z_cog_to_cob_m", 0.0);
+    this->declare_parameter("slack_z_cog_to_cob_m", 0.0);
+    // ^^^ DEFAULTS 0.0 - start here and tune empirically (see notes above)
 
-    // Water density — 1000.0 for fresh water, 1025.0 for salt water
+    // Water density - 1000.0 for fresh water, 1025.0 for salt water
     // ADJUST: Change to 1025.0 if competing/testing in salt water
     this->declare_parameter("water_density_kg_m3", 1000.0);
 
     // Mass/Inertia matrix diagonal (6x6): [m, m, m, Ixx, Iyy, Izz]
     // MEASURE: From CAD (preferred) or pendulum test. See notes above.
-    // This is rigid-body only — does NOT include added mass (see notes above).
-    this->declare_parameter("m_diag", std::vector<double>(6, 0.0));
+    // This is rigid-body only - does NOT include added mass (see notes above).
+    this->declare_parameter("guess_m_diag", std::vector<double>(6, 0.0));
+    this->declare_parameter("slack_m_diag", std::vector<double>(6, 0.0));
 
-    // Damping coefficients. Declared once here in the constructor — declaring
+    // Damping coefficients. Declared once here in the constructor - declaring
     // them inside the timer callback would throw ParameterAlreadyDeclared on
     // the second tick.
     // MEASURE/FIT: from constant-velocity or coast-down test data. See notes above.
-    this->declare_parameter("damping_linear", std::vector<double>(6, 0.0));
-    this->declare_parameter("damping_quadratic", std::vector<double>(6, 0.0));
+    this->declare_parameter("guess_damping_linear", std::vector<double>(6, 0.0));
+    this->declare_parameter("slack_damping_linear", std::vector<double>(6, 0.0));
+    this->declare_parameter("guess_damping_quadratic", std::vector<double>(6, 0.0));
+    this->declare_parameter("slack_damping_quadratic", std::vector<double>(6, 0.0));
 
-    vehicle_mass_kg_ = this->get_parameter("vehicle_mass_kg").as_double();
-    vehicle_volume_m3_ = this->get_parameter("vehicle_volume_m3").as_double();
+    vehicle_mass_kg_ = this->get_parameter("guess_vehicle_mass_kg").as_double() +
+                       this->get_parameter("slack_vehicle_mass_kg").as_double();
+    vehicle_volume_m3_ = this->get_parameter("guess_vehicle_volume_m3").as_double() +
+                         this->get_parameter("slack_vehicle_volume_m3").as_double();
 
-    // Inertia matrix: populate the diagonal from m_diag so the Coriolis term
-    // C(nu) and the new M*v_dot term are both non-zero. Without this, both
-    // contribute nothing.
+    // Inertia matrix: populate the diagonal from guess_m_diag + slack_m_diag
+    // so the Coriolis term C(nu) and the M*v_dot term are both non-zero.
+    // Without this, both contribute nothing.
     M_ = Eigen::MatrixXd::Zero(6, 6);
-    std::vector<double> m_diag = this->get_parameter("m_diag").as_double_array();
-    if (m_diag.size() == 6)
+    std::vector<double> guess_m_diag = this->get_parameter("guess_m_diag").as_double_array();
+    std::vector<double> slack_m_diag = this->get_parameter("slack_m_diag").as_double_array();
+    if (guess_m_diag.size() == 6 && slack_m_diag.size() == 6)
     {
-        M_.diagonal() = Eigen::VectorXd::Map(m_diag.data(), 6);
+        Eigen::VectorXd m_diag_final(6);
+        for (int i = 0; i < 6; i++)
+        {
+            m_diag_final[i] = guess_m_diag[i] + slack_m_diag[i];
+        }
+        M_.diagonal() = m_diag_final;
     }
     else
     {
-        RCLCPP_ERROR(this->get_logger(), "m_diag must have 6 elements. Leaving mass matrix at zero.");
+        RCLCPP_ERROR(this->get_logger(),
+                     "guess_m_diag/slack_m_diag must each have 6 elements. Leaving mass matrix at zero.");
     }
 
     // Cache damping parameters once at startup rather than re-reading them
     // every timer tick (they were previously re-parsed every 250ms in
     // timer_callback, which is unnecessary parameter-server traffic).
-    std::vector<double> dl = this->get_parameter("damping_linear").as_double_array();
-    std::vector<double> dq = this->get_parameter("damping_quadratic").as_double_array();
+    std::vector<double> guess_dl = this->get_parameter("guess_damping_linear").as_double_array();
+    std::vector<double> slack_dl = this->get_parameter("slack_damping_linear").as_double_array();
+    std::vector<double> guess_dq = this->get_parameter("guess_damping_quadratic").as_double_array();
+    std::vector<double> slack_dq = this->get_parameter("slack_damping_quadratic").as_double_array();
     D_lin_ = Eigen::VectorXd::Zero(6);
     D_quad_ = Eigen::VectorXd::Zero(6);
-    if (dl.size() == 6 && dq.size() == 6)
+    if (guess_dl.size() == 6 && slack_dl.size() == 6 && guess_dq.size() == 6 && slack_dq.size() == 6)
     {
-        D_lin_ = Eigen::VectorXd::Map(dl.data(), 6);
-        D_quad_ = Eigen::VectorXd::Map(dq.data(), 6);
+        for (int i = 0; i < 6; i++)
+        {
+            D_lin_[i] = guess_dl[i] + slack_dl[i];
+            D_quad_[i] = guess_dq[i] + slack_dq[i];
+        }
     }
     else
     {
-        RCLCPP_ERROR(this->get_logger(), "damping_linear/damping_quadratic must each have 6 elements. Defaulting "
-                                         "to zero.");
+        RCLCPP_ERROR(this->get_logger(),
+                     "guess_damping_linear/slack_damping_linear/guess_damping_quadratic/slack_damping_quadratic "
+                     "must each have 6 elements. Defaulting to zero.");
     }
 
     // NOTE: <axis>_cog_to_cob_m_ collapses as single value ONLY if the sub is near buoyancy-neutral
-    z_cog_to_cob_m_ = this->get_parameter("z_cog_to_cob_m").as_double();
-    x_cog_to_cob_m_ = this->get_parameter("x_cog_to_cob_m").as_double();
-    y_cog_to_cob_m_ = this->get_parameter("y_cog_to_cob_m").as_double();
+    z_cog_to_cob_m_ = this->get_parameter("guess_z_cog_to_cob_m").as_double() +
+                      this->get_parameter("slack_z_cog_to_cob_m").as_double();
+    x_cog_to_cob_m_ = this->get_parameter("guess_x_cog_to_cob_m").as_double() +
+                      this->get_parameter("slack_x_cog_to_cob_m").as_double();
+    y_cog_to_cob_m_ = this->get_parameter("guess_y_cog_to_cob_m").as_double() +
+                      this->get_parameter("slack_y_cog_to_cob_m").as_double();
 
     water_density_ = this->get_parameter("water_density_kg_m3").as_double();
 
@@ -209,14 +244,14 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
 
     if (std::abs(vehicle_mass_kg_) < 1e-6)
     {
-        RCLCPP_WARN(this->get_logger(), "vehicle_mass_kg is 0.0 — gravity compensation is disabled. "
-                                        "Set this parameter in your launch/config file.");
+        RCLCPP_WARN(this->get_logger(), "guess_vehicle_mass_kg + slack_vehicle_mass_kg is 0.0 - gravity "
+                                        "compensation is disabled. Set these parameters in your launch/config file.");
     }
 
     if (M_.isZero())
     {
-        RCLCPP_WARN(this->get_logger(), "m_diag is all zero — M*v_dot inertia term and Coriolis term will "
-                                        "contribute nothing until m_diag is set.");
+        RCLCPP_WARN(this->get_logger(), "guess_m_diag + slack_m_diag is all zero - M*v_dot inertia term and "
+                                        "Coriolis term will contribute nothing until these are set.");
     }
 
     // -----------------------------------------------------------------------
@@ -242,7 +277,7 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
 // Store the latest odometry orientation, velocity, and finite-differenced,
 // EMA-filtered acceleration (v_dot) for use in the M*v_dot inertia term.
 //
-// IMPORTANT: nav_msgs/Odometry does NOT carry an acceleration field — only
+// IMPORTANT: nav_msgs/Odometry does NOT carry an acceleration field - only
 // pose and twist (velocity). Acceleration is not published anywhere upstream
 // as far as we've confirmed, so it is computed here via finite difference of
 // consecutive velocity samples, then smoothed with an EMA filter to reduce
@@ -277,7 +312,7 @@ void ThrusterManager::odom_callback(nav_msgs::msg::Odometry::SharedPtr msg)
     }
     else
     {
-        // First odom message — no previous sample to difference against.
+        // First odom message - no previous sample to difference against.
         // filtered_accel_ stays at its zero-initialized value this tick.
         has_previous_odom_ = true;
     }
@@ -370,14 +405,14 @@ void ThrusterManager::timer_callback()
         // --- Restoring FORCES (Fossen g(eta), rows 0-2) ---
         // These are the net gravity-buoyancy force components in the body frame.
         // Near-neutrally-buoyant subs have W ≈ B so these are small, but included
-        // for correctness — especially if your sub is slightly heavy or light.
+        // for correctness - especially if your sub is slightly heavy or light.
         double fx = (W_ - B_) * std::sin(theta);
         double fy = -(W_ - B_) * std::cos(theta) * std::sin(phi);
         double fz = -(W_ - B_) * std::cos(theta) * std::cos(phi);
 
         // --- Restoring TORQUES (Fossen g(eta), rows 3-5) ---
         // These are the dominant terms for pitch/roll stability.
-        // They are proportional to x/y/z_cog_to_cob_m_ — if CoG and CoB are
+        // They are proportional to x/y/z_cog_to_cob_m_ - if CoG and CoB are
         // perfectly aligned (all zero), these vanish entirely and no torque
         // compensation is needed.
         double xW = x_cog_to_cob_m_ * W_;
@@ -411,7 +446,7 @@ void ThrusterManager::timer_callback()
     else if (!heard_odom_)
     {
         RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
-                             "No odometry received yet — gravity compensation inactive.");
+                             "No odometry received yet - gravity compensation inactive.");
     }
 
     // Compute thruster efforts via pseudoinverse of TAM
