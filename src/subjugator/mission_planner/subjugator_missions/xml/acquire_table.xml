@@ -10,18 +10,21 @@
         DetectTarget can FAIL (table drifted off-frame after descent), so the
         SearchForTarget spiral fallback is actually reachable; HoneOverTarget then
         degrades gracefully (always succeeds) and downstream stages re-center
-        themselves before acting.
+        themselves before acting. min_area_frac="0.15" is what makes that true:
+        the model emits a confident corner phantom 'table' in ~every frame, so
+        without an area floor all three presence checks read "table in frame"
+        forever and the spiral is dead code. See detection_gate.hpp.
     -->
     <BehaviorTree ID="AcquireTable">
         <Sequence>
             <!-- Descend step-by-step until the table appears on the down cam. -->
-            <DescendUntilDetected label="table" camera="down"
+            <DescendUntilDetected label="table" camera="down" min_area_frac="0.15"
                                   step_m="0.20" max_steps="12"
                                   timeout_msec="45000" ctx="{ctx}"/>
             <!-- Make sure the table is in frame; spiral-search if it drifted off. -->
             <Fallback>
-                <DetectTarget label="table" camera="down" min_conf="0.40" ctx="{ctx}"/>
-                <SearchForTarget label="table" camera="down"
+                <DetectTarget label="table" camera="down" min_conf="0.40" min_area_frac="0.15" ctx="{ctx}"/>
+                <SearchForTarget label="table" camera="down" min_area_frac="0.15"
                                  step_m="0.30" max_radius_m="2.0"
                                  timeout_msec="60000" ctx="{ctx}"/>
             </Fallback>
@@ -32,7 +35,7 @@
                  old CenterCamera hone drift off and starve SelectTarget. Degrades
                  gracefully if unseen. table_z is the tabletop world z. -->
             <SubTree ID="LockOverTarget" _autoremap="true"
-                     label="table" camera="down" select="largest"
+                     label="table" camera="down" select="largest" min_area_frac="0.15"
                      table_z="-0.85" tol_world="0.05" timeout_msec="20000" miss_frames="5" ctx="{ctx}"/>
         </Sequence>
     </BehaviorTree>

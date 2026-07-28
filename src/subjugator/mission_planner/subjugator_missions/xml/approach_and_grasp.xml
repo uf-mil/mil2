@@ -7,8 +7,13 @@
                     <Sequence name="grasp_cycle">
                         <!-- 1. Center over the selected object (HoneOverTarget degrades to
                              dead-reckoning internally on timeout; see hone_over_target.xml) -->
+                        <!-- min_area_frac="0.0" is deliberate, not an oversight: the
+                             props subtend only 0.04-0.11 of the frame, the same size as
+                             the model's corner phantoms, so the table's 0.15 floor would
+                             reject the real prop in nearly every frame. -->
                         <SubTree ID="HoneOverTarget" _autoremap="true"
                                  label="{target_label}" camera="down" select="confidence"
+                                 min_area_frac="0.0"
                                  tol_norm="{center_tol_norm}" timeout_msec="{center_timeout_msec}"
                                  miss_frames="5"
                                  ctx="{ctx}"/>

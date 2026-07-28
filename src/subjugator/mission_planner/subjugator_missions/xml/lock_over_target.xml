@@ -23,6 +23,11 @@
         A caller locking onto a small prop must NOT — for props the biggest box
         is not the right target. See detection_gate.hpp.
 
+        min_area_frac is a PORT for the same per-target reason: 0.15 rejects the
+        model's corner phantom for the TABLE, but the grasp props are themselves
+        only 0.04-0.11 of frame, so a prop caller must pass 0.0. See
+        detection_gate.hpp.
+
         table_z is a PORT (not hardcoded) because it is the plane the pixel ray is
         cast onto and it differs per target: the table lies ON the plane (exact),
         an object sits ABOVE it, a basket marker BELOW it. Only wired into S2
@@ -39,6 +44,7 @@
                         camera="{camera}"
                         label="{label}"
                         select="{select}"
+                        min_area_frac="{min_area_frac}"
                         table_z="{table_z}"
                         tol_world="{tol_world}"
                         miss_frames="{miss_frames}"

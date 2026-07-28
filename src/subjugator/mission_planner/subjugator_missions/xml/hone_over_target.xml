@@ -23,6 +23,11 @@
         Every call site passes it explicitly (CenterCamera's default is
         "confidence").
 
+        min_area_frac is a PORT for the same per-target reason: 0.15 rejects the
+        model's corner phantom for the TABLE, but the grasp props are themselves
+        only 0.04-0.11 of frame, so a prop caller must pass 0.0. See
+        detection_gate.hpp.
+
         Centering only: the caller positions the sub at hover depth first.
         Pixel->body sign/axis mapping and gains are CenterCamera defaults
         (mounting-specific, identical for every consumer), not ports here.
@@ -34,6 +39,7 @@
                         camera="{camera}"
                         label="{label}"
                         select="{select}"
+                        min_area_frac="{min_area_frac}"
                         tol_norm="{tol_norm}"
                         miss_frames="{miss_frames}"
                         ctx="{ctx}"/>

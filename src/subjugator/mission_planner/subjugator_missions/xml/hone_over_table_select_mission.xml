@@ -15,7 +15,7 @@
                      phantom 'table' above the real one, so ranking by confidence
                      centers on the phantom. See detection_gate.hpp. -->
                 <Action ID="CenterCamera"
-                        camera="down" label="table" select="largest"
+                        camera="down" label="table" select="largest" min_area_frac="0.15"
                         tol_norm="0.05" ctx="{ctx}"/>
             </RosTimeout>
             <SubTree ID="SelectTargetS3" ctx="{ctx}" target_label="{target_label}"/>

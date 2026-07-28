@@ -45,6 +45,7 @@
                         camera="down"
                         label="table"
                         select="largest"
+                        min_area_frac="0.15"
                         table_z="-0.85"
                         tol_world="0.05"
                         est_stable_tol="0.02"

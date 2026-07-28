@@ -40,8 +40,13 @@
                         <!-- 2. Center over the basket marker (degrades to dead-reckon internally on timeout).
                              miss_frames raised above the default 5: the held object hangs under the
                              sub and can occlude the marker for longer flicker runs. Tune poolside. -->
+                        <!-- min_area_frac="0.0" is deliberate, not an oversight: the
+                             props subtend only 0.04-0.11 of the frame, the same size as
+                             the model's corner phantoms, so the table's 0.15 floor would
+                             reject the real prop in nearly every frame. -->
                         <SubTree ID="HoneOverTarget" _autoremap="true"
                                  label="{basket_label}" camera="down" select="confidence"
+                                 min_area_frac="0.0"
                                  tol_norm="{center_tol_norm}" timeout_msec="{center_timeout_msec}"
                                  miss_frames="8"
                                  ctx="{ctx}"/>
