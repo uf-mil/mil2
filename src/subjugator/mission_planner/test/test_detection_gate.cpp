@@ -284,7 +284,7 @@ TEST(DetectionGateHelpers, StampNsOfAndSeedFrom)
 // --- SizeGate: reject boxes too small to plausibly be the target -------------
 //
 // Frame-fraction reference for a 960x600 down cam (W*H = 576000 px):
-//   30 x  36 =   1080 px = 0.0019 of frame  -- phantom, smallest measured
+//   30 x  36 =   1080 px = 0.0019 of frame  -- phantom, from the 621e0955 sample
 //  220 x 212 =  46640 px = 0.081  of frame  -- LARGEST measured artifact
 //  190 x 182 =  34580 px = 0.060  of frame  -- grasp prop at hone altitude
 //  360 x 240 =  86400 px = 0.150  of frame  -- exactly the table floor
@@ -363,4 +363,31 @@ TEST(SizeGateTest, BestDetectionKeepsRealTableWhenBothPresent)
     auto const* best = detection_gate::best_detection(arr, "table", 0.20, detection_gate::Select::kLargestArea, floor);
     ASSERT_NE(best, nullptr);
     EXPECT_DOUBLE_EQ(best->bbox.size.x, 576.0);
+
+    // The floor alone is enough to fix the RANKING: with the phantom filtered
+    // out, even confidence-mode selection returns the real table.
+    auto const* by_conf =
+        detection_gate::best_detection(arr, "table", 0.20, detection_gate::Select::kConfidence, floor);
+    ASSERT_NE(by_conf, nullptr);
+    EXPECT_DOUBLE_EQ(by_conf->bbox.size.x, 576.0);
+}
+
+// A negative floor must DISABLE the filter, not invert it. Pinned because the
+// value arrives from an XML port where any double parses: a typo that lands
+// negative silently restores the phantom bug this filter exists to fix.
+TEST(SizeGateTest, NegativeFloorDisablesTheFilter)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.79, { { 220.0, 212.0 } } } } };
+    detection_gate::SizeGate const negative{ -1.0, kW, kH };
+    EXPECT_TRUE(detection_gate::contains_label(arr, "table", 0.40, negative));
+}
+
+// A floor above 1.0 is unsatisfiable and rejects everything -- the likely typo
+// being "15" for 15% or "1.5" for 0.15. Pinned so the symptom is a documented
+// contract rather than a mystery perception failure.
+TEST(SizeGateTest, FloorAboveOneRejectsEverything)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.97, { { 900.0, 560.0 } } } } };  // 0.875 of frame
+    detection_gate::SizeGate const impossible{ 15.0, kW, kH };
+    EXPECT_FALSE(detection_gate::contains_label(arr, "table", 0.40, impossible));
 }

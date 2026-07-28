@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -109,28 +110,31 @@ struct MissGate
 // Optional plausibility filter layered on top of label + confidence: reject
 // candidates whose box is too small to plausibly BE the target.
 //
-// Exists because the octagon down-cam model emits a tiny, confident phantom
-// 'table' box in a frame corner in essentially every frame, whether or not a
-// real table is in view (measured: artifacts 0.018-0.081 of frame at conf
-// 0.21-0.79). Confidence cannot separate them -- the ranges overlap and INVERT
-// (an artifact scored 0.79 while the real table has scored 0.24), so raising
-// min_conf drops real tables first. Area separates them cleanly FOR THE TABLE:
-// the 960x600 / 110-deg-hfov down cam covers 5.098*h^2 m^2 of ground at camera
-// height h, so the 0.662x1.183 m table fills 0.154/h^2 of the frame; and the
-// camera cannot get further than h=0.63 m above the tabletop without leaving
-// the water, so the real table is never below ~0.39 of frame -- ~5x the largest
-// artifact.
+// See Select below for the phantom measurements; what area adds HERE is a
+// floor, not a ranking: the 960x600 / 110-deg-hfov down cam covers 5.098*h^2
+// m^2 of ground at camera height h, so the 0.662x1.183 m table fills 0.154/h^2
+// of the frame; and the camera cannot get further than h=0.63 m above the
+// tabletop without leaving the water, so the real table is never below ~0.39
+// of frame -- ~5x the largest measured artifact.
 //
 // DELIBERATELY OPT-IN (0 = disabled), for the same reason as Select: the grasp
 // props subtend only 0.04-0.11 of frame at hone altitude, INSIDE the artifact
 // band, so a table's floor applied to a prop would reject it in nearly every
 // frame. There is no equivalent of select_from()'s typo guard here (any double
-// parses), so every call site passes this explicitly -- including the 0.0 at
-// the prop sites, which documents the intent at the point someone would
-// otherwise copy the table's value.
+// parses). Call sites rendering a TABLE verdict must pass this explicitly; the
+// prop sites pass 0.0 rather than omitting it, to document the intent at the
+// point where someone would otherwise copy the table's value.
 struct SizeGate
 {
-    double min_area_frac{ 0.0 };  // 0 = disabled
+    // 0 = disabled. Deliberately unvalidated, both directions pinned by test:
+    //   <= 0 (and non-finite, e.g. NaN) disables the filter -- everything
+    //        passes. A typo that lands negative silently restores the phantom
+    //        bug this filter exists to fix, so treat "the gate has no effect"
+    //        as a first thing to check when a table read looks unfiltered.
+    //   > 1.0 is unsatisfiable -- no box can ever pass, so the table becomes
+    //        permanently invisible with a symptom indistinguishable from a
+    //        perception failure. Likely typo: "15" for 15%, or "1.5" for 0.15.
+    double min_area_frac{ 0.0 };
     std::uint32_t image_w{ 0 };
     std::uint32_t image_h{ 0 };
 
@@ -153,7 +157,15 @@ struct SizeGate
         {
             return false;
         }
-        double const area = static_cast<double>(d.bbox.size.x) * static_cast<double>(d.bbox.size.y);
+        // Clamp before multiplying so a both-negative box (signs cancelling
+        // into a spuriously positive area) can't pass; consistent with the
+        // other detection consumers in this package (poles_big_enough.cpp,
+        // hone_midpoint.cpp, determine_channel_side.cpp,
+        // nav_channel_control.cpp, track_best_pair.cpp) which all clamp before
+        // computing area.
+        double const w = std::max(0.0, static_cast<double>(d.bbox.size.x));
+        double const h = std::max(0.0, static_cast<double>(d.bbox.size.y));
+        double const area = w * h;
         return area / (static_cast<double>(image_w) * static_cast<double>(image_h)) >= min_area_frac;
     }
 };
