@@ -29,7 +29,7 @@
         pass 0.0. Every call site passes it explicitly, and here that matters
         MORE than it does for select: the leaf reads it into a pre-initialized
         0.0 local, so a call site that simply forgets the attribute gets the
-        gate SILENTLY DISABLED -- the phantom bug back, with nothing in the log.
+        gate SILENTLY DISABLED: the phantom bug back, with nothing in the log.
         A wrong select is noisy; a missing min_area_frac is not. See
         detection_gate.hpp.
 
