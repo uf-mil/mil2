@@ -24,8 +24,13 @@
         is not the right target. See detection_gate.hpp.
 
         min_area_frac is a PORT for the same per-target reason: 0.15 rejects the
-        model's corner phantom for the TABLE, but the grasp props are themselves
-        only 0.04-0.11 of frame, so a prop caller must pass 0.0. See
+        model's corner phantom for the TABLE, but the grasp props and basket
+        markers are themselves only 0.04-0.11 of frame, so those callers must
+        pass 0.0. Every call site passes it explicitly, and here that matters
+        MORE than it does for select: the leaf reads it into a pre-initialized
+        0.0 local, so a call site that simply forgets the attribute gets the
+        gate SILENTLY DISABLED -- the phantom bug back, with nothing in the log.
+        A wrong select is noisy; a missing min_area_frac is not. See
         detection_gate.hpp.
 
         table_z is a PORT (not hardcoded) because it is the plane the pixel ray is
