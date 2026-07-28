@@ -124,23 +124,62 @@ bool contains_label(Arr const& arr, std::string const& label, double min_conf)
     return false;
 }
 
-// Argmax sibling of contains_label: pointer to the highest-`score` detection
-// whose class_name == label and score >= min_conf, or nullptr if none match.
+// Which of several same-label candidates best_detection should return.
+//
+// kConfidence is the right default: for the grasp props, a bigger box usually
+// just means "closer", and the most confident match is the one to trust.
+//
+// kLargestArea exists because the octagon down-cam model emits a tiny, highly
+// confident phantom 'table' box in a frame corner in essentially every frame,
+// while scoring the real table far lower (measured: phantom ~0.03x0.06 of frame
+// at conf 0.85, real table ~0.60x0.40 at conf 0.24-0.42). Score alone therefore
+// picks the phantom, and the consumer then steers toward a point ~0.44 m from
+// the real table even when it is already over it. Area separates the two by an
+// order of magnitude, and the table is by far the largest thing in a down-cam
+// frame, so "biggest box wins" is a safe rule FOR THE TABLE. It is deliberately
+// opt-in per call rather than global, because applying it to the small props
+// would be actively wrong. The confidence floor still applies in both modes, so
+// this widens nothing: it only re-ranks candidates that already qualified.
+enum class Select
+{
+    kConfidence,
+    kLargestArea,
+};
+
+// Parse the BT port spelling of Select. Anything unrecognised (including an
+// empty port) falls back to kConfidence, so a typo at a call site can never
+// silently turn the table rule on for the small props.
+inline Select select_from(std::string const& mode)
+{
+    return mode == "largest" ? Select::kLargestArea : Select::kConfidence;
+}
+
+// Argmax sibling of contains_label: pointer to the best detection whose
+// class_name == label and score >= min_conf, or nullptr if none match. "Best"
+// means highest `score`, or largest bbox area under Select::kLargestArea.
 // The nodes that need the actual detection (its bbox, center, size) all
 // hand-rolled this same loop; fetch the array once and call this on that one
 // snapshot (see contains_label's note on pairing presence with the stamp).
 template <class Arr>
-auto const* best_detection(Arr const& arr, std::string const& label, double min_conf)
+auto const* best_detection(Arr const& arr, std::string const& label, double min_conf,
+                           Select select = Select::kConfidence)
 {
     using Det = typename std::decay_t<decltype(arr.detections)>::value_type;
     Det const* best = nullptr;
-    double best_conf = -1.0;
+    double best_rank = -1.0;
     for (auto const& d : arr.detections)
     {
-        if (d.class_name == label && d.score >= min_conf && d.score > best_conf)
+        if (d.class_name != label || d.score < min_conf)
+        {
+            continue;
+        }
+        double const rank = select == Select::kLargestArea ?
+                                static_cast<double>(d.bbox.size.x) * static_cast<double>(d.bbox.size.y) :
+                                static_cast<double>(d.score);
+        if (rank > best_rank)
         {
             best = &d;
-            best_conf = d.score;
+            best_rank = rank;
         }
     }
     return best;

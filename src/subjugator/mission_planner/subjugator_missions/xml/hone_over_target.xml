@@ -15,6 +15,14 @@
         (S5: the held object partially occludes the basket marker); every
         call site passes it explicitly (CenterCamera's own default is 5).
 
+        select is a port for the same reason: the down-cam model emits a tiny,
+        highly confident phantom 'table' box in a frame corner and scores the
+        real table below it, so table callers must pass select="largest" to be
+        ranked by box area instead. Prop and marker callers pass
+        select="confidence" — for them the biggest box is NOT the right target.
+        Every call site passes it explicitly (CenterCamera's default is
+        "confidence").
+
         Centering only: the caller positions the sub at hover depth first.
         Pixel->body sign/axis mapping and gains are CenterCamera defaults
         (mounting-specific, identical for every consumer), not ports here.
@@ -25,6 +33,7 @@
                 <Action ID="CenterCamera"
                         camera="{camera}"
                         label="{label}"
+                        select="{select}"
                         tol_norm="{tol_norm}"
                         miss_frames="{miss_frames}"
                         ctx="{ctx}"/>

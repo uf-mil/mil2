@@ -19,6 +19,10 @@ BT::PortsList CenterCamera::providedPorts()
     return { BT::InputPort<std::string>("label", "table", "Target class to center on"),
              BT::InputPort<std::string>("camera", "down", "Detection stream: 'front' or 'down'"),
              BT::InputPort<double>("min_conf", 0.30, "Minimum detection confidence"),
+             BT::InputPort<std::string>("select", "confidence",
+                                        "Which same-label candidate wins: 'confidence' (default) or 'largest' "
+                                        "(biggest box). Use 'largest' for the table, whose real detection the "
+                                        "model scores below its tiny corner phantom"),
              BT::InputPort<double>("tol_norm", 0.05, "Centered when |ex|,|ey| < tol (fraction of half-image)"),
              BT::InputPort<double>("kp", 0.5, "Proportional gain: normalized error -> meters/step"),
              BT::InputPort<double>("max_step", 0.25, "Max XY correction per step (m)"),
@@ -69,6 +73,7 @@ BT::NodeStatus CenterCamera::onRunning()
     // Inputs
     std::string label = "table";
     std::string camera = "down";
+    std::string select = "confidence";
     double min_conf = 0.30;
     double tol_norm = 0.05;
     double kp = 0.5;
@@ -83,6 +88,7 @@ BT::NodeStatus CenterCamera::onRunning()
     (void)getInput("label", label);
     (void)getInput("camera", camera);
     (void)getInput("min_conf", min_conf);
+    (void)getInput("select", select);
     (void)getInput("tol_norm", tol_norm);
     (void)getInput("kp", kp);
     (void)getInput("max_step", max_step);
@@ -140,7 +146,7 @@ BT::NodeStatus CenterCamera::onRunning()
                              camera.c_str());
         return BT::NodeStatus::RUNNING;
     }
-    auto const* best = detection_gate::best_detection(*arr, label, min_conf);
+    auto const* best = detection_gate::best_detection(*arr, label, min_conf, detection_gate::select_from(select));
 
     // Frame gate (see detection_gate.hpp): only ever act on a detection
     // frame newer than the one we last considered — never re-correct from a

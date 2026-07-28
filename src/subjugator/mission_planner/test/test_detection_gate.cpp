@@ -147,10 +147,22 @@ TEST(MissGate, SeedCannotProtectUnstampedFrames)
 // Minimal mock of yolo_msgs::msg::DetectionArray for the pure-header helpers.
 namespace
 {
+struct MockVec2
+{
+    double x;
+    double y;
+};
+struct MockBBox
+{
+    MockVec2 size;
+};
 struct MockDetection
 {
     std::string class_name;
     double score;
+    // Defaulted so the score-only cases below stay readable; only the
+    // area-selection tests care about the box.
+    MockBBox bbox{};
 };
 struct MockStamp
 {
@@ -197,6 +209,59 @@ TEST(DetectionGateHelpers, BestDetectionRespectsConfFloorAndMissing)
     // empty array
     MockArray empty{ { { 0, 0 } }, {} };
     EXPECT_EQ(detection_gate::best_detection(empty, "table", 0.10), nullptr);
+}
+
+// The octagon down-cam model emits a tiny, VERY confident phantom 'table' box in
+// a frame corner alongside the real table, which it scores far lower. Picking by
+// score alone therefore locks onto the phantom, so the sub chases a point ~0.44 m
+// from the real table even when it is already sitting over it. Measured on this
+// model: real table ~0.60x0.40 of frame at conf 0.24-0.42, phantom ~0.03x0.06 at
+// conf 0.85. Area separates them by an order of magnitude; confidence inverts.
+TEST(DetectionGateHelpers, LargestAreaSelectsRealTableOverMoreConfidentPhantom)
+{
+    MockArray arr{ { { 3, 500 } },
+                   { { "table", 0.85, { { 30.0, 36.0 } } },        // phantom: high score, tiny box
+                     { "table", 0.31, { { 576.0, 240.0 } } } } };  // real table: low score, big box
+
+    auto const* best = detection_gate::best_detection(arr, "table", 0.20, detection_gate::Select::kLargestArea);
+    ASSERT_NE(best, nullptr);
+    EXPECT_DOUBLE_EQ(best->score, 0.31);
+    EXPECT_DOUBLE_EQ(best->bbox.size.x, 576.0);
+}
+
+// The area rule must stay opt-in: the small grasp props are selected with the
+// same helper, and there "biggest box wins" would be actively wrong.
+TEST(DetectionGateHelpers, DefaultSelectionStillPicksHighestConfidence)
+{
+    MockArray arr{ { { 3, 500 } }, { { "table", 0.85, { { 30.0, 36.0 } } }, { "table", 0.31, { { 576.0, 240.0 } } } } };
+
+    auto const* best = detection_gate::best_detection(arr, "table", 0.20);
+    ASSERT_NE(best, nullptr);
+    EXPECT_DOUBLE_EQ(best->score, 0.85);
+}
+
+// The confidence floor and "no match" contract must not change with the mode.
+TEST(DetectionGateHelpers, LargestAreaStillRespectsConfFloorAndMissing)
+{
+    MockArray arr{ { { 3, 500 } },
+                   { { "table", 0.15, { { 576.0, 240.0 } } },  // biggest, but under the floor
+                     { "table", 0.55, { { 30.0, 36.0 } } } } };
+
+    auto const* best = detection_gate::best_detection(arr, "table", 0.20, detection_gate::Select::kLargestArea);
+    ASSERT_NE(best, nullptr);
+    EXPECT_DOUBLE_EQ(best->score, 0.55);
+
+    EXPECT_EQ(detection_gate::best_detection(arr, "bandaid_box", 0.10, detection_gate::Select::kLargestArea), nullptr);
+}
+
+// The mode arrives as a BT port string. An unknown or empty value must fall back
+// to the confidence default rather than silently enabling the area rule on props.
+TEST(DetectionGateHelpers, SelectFromParsesKnownModesAndDefaultsSafely)
+{
+    EXPECT_EQ(detection_gate::select_from("largest"), detection_gate::Select::kLargestArea);
+    EXPECT_EQ(detection_gate::select_from("confidence"), detection_gate::Select::kConfidence);
+    EXPECT_EQ(detection_gate::select_from(""), detection_gate::Select::kConfidence);
+    EXPECT_EQ(detection_gate::select_from("biggest"), detection_gate::Select::kConfidence);
 }
 
 TEST(DetectionGateHelpers, StampNsOfAndSeedFrom)

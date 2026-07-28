@@ -49,6 +49,10 @@ BT::PortsList LockTargetXY::providedPorts()
     return { BT::InputPort<std::string>("label", "table", "Target class to center on"),
              BT::InputPort<std::string>("camera", "down", "Detection stream: 'front' or 'down'"),
              BT::InputPort<double>("min_conf", 0.30, "Minimum detection confidence"),
+             BT::InputPort<std::string>("select", "confidence",
+                                        "Which same-label candidate wins: 'confidence' (default) or 'largest' "
+                                        "(biggest box). Use 'largest' for the table, whose real detection the "
+                                        "model scores below its tiny corner phantom"),
              BT::InputPort<double>("tol_world", 0.05, "Locked when gripper is within this many m of the target"),
              BT::InputPort<double>("est_stable_tol", 0.02,
                                    "Estimate has settled when its per-frame EMA step is below this (m)"),
@@ -97,7 +101,7 @@ BT::NodeStatus LockTargetXY::onStart()
 
 BT::NodeStatus LockTargetXY::onRunning()
 {
-    std::string label = "table", camera = "down";
+    std::string label = "table", camera = "down", select = "confidence";
     double min_conf = 0.30, tol_world = 0.05, est_stable_tol = 0.02, table_z = 0.0, hfov = 1.919862177;
     double gripper_x = 0.0, gripper_y = 0.0, ema_alpha = 0.3, max_step = 0.25;
     double hold_z = std::numeric_limits<double>::quiet_NaN();
@@ -109,6 +113,7 @@ BT::NodeStatus LockTargetXY::onRunning()
     (void)getInput("label", label);
     (void)getInput("camera", camera);
     (void)getInput("min_conf", min_conf);
+    (void)getInput("select", select);
     (void)getInput("tol_world", tol_world);
     (void)getInput("est_stable_tol", est_stable_tol);
     (void)getInput("settle_ticks", settle_ticks);
@@ -151,7 +156,7 @@ BT::NodeStatus LockTargetXY::onRunning()
     {
         return BT::NodeStatus::RUNNING;
     }
-    auto const* best = detection_gate::best_detection(*arr, label, min_conf);
+    auto const* best = detection_gate::best_detection(*arr, label, min_conf, detection_gate::select_from(select));
     std::int64_t stamp_ns = rclcpp::Time(arr->header.stamp).nanoseconds();
     switch (gate_.update(best != nullptr, stamp_ns, miss_frames))
     {

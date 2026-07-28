@@ -41,7 +41,7 @@
                              miss_frames raised above the default 5: the held object hangs under the
                              sub and can occlude the marker for longer flicker runs. Tune poolside. -->
                         <SubTree ID="HoneOverTarget" _autoremap="true"
-                                 label="{basket_label}" camera="down"
+                                 label="{basket_label}" camera="down" select="confidence"
                                  tol_norm="{center_tol_norm}" timeout_msec="{center_timeout_msec}"
                                  miss_frames="8"
                                  ctx="{ctx}"/>
