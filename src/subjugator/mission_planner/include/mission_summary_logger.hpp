@@ -24,7 +24,6 @@ class MissionSummaryLogger : public BT::StatusChangeLogger
 
     ~MissionSummaryLogger() override
     {
-        unsubscribeFromTreeChanges();
         std::vector<std::pair<uint16_t, NodeRecord>> rows(records_.begin(), records_.end());
         std::sort(rows.begin(), rows.end(),
                   [](auto const& a, auto const& b) { return a.second.start < b.second.start; });
@@ -63,7 +62,7 @@ class MissionSummaryLogger : public BT::StatusChangeLogger
     void callback(BT::Duration timestamp, const BT::TreeNode& node, BT::NodeStatus prev_status,
                   BT::NodeStatus status) override
     {
-        if (status == BT::NodeStatus::RUNNING)
+        if (prev_status == BT::NodeStatus::IDLE && status == BT::NodeStatus::RUNNING)
         {
             records_[node.UID()].name = node.name();
             records_[node.UID()].start = timestamp;
