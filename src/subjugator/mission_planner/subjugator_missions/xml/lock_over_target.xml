@@ -49,6 +49,7 @@
                         camera="{camera}"
                         label="{label}"
                         select="{select}"
+                        min_conf="{min_conf}"
                         min_area_frac="{min_area_frac}"
                         table_z="{table_z}"
                         tol_world="{tol_world}"
