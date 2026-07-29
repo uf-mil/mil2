@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -40,8 +41,10 @@ class MissionSummaryLogger : public BT::StatusChangeLogger
         }
         std::cout << table.str();
         std::time_t now = std::time(nullptr);
-        char fname[64];
-        std::strftime(fname, sizeof(fname), "mission_summary_%Y%m%d_%H%M%S.txt", std::localtime(&now));
+        char fname[128];
+        std::filesystem::create_directories("src/subjugator/mission_planner/logs");
+        std::strftime(fname, sizeof(fname), "src/subjugator/mission_planner/logs/mission_summary_%Y%m%d_%H%M%S.txt",
+                      std::localtime(&now));
         std::ofstream file(fname);
         if (file)
         {

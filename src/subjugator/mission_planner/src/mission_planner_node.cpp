@@ -125,11 +125,12 @@ int main(int argc, char** argv)
     // For live feed of tree
     BT::Groot2Publisher publisher(*tree_ptr);
 
+    // Summary logger for mission results
     MissionSummaryLogger summary_logger(*tree_ptr);
 
     // Log BT transitions to console
-    // BT::StdCoutLogger logger_cout(*tree_ptr);
-    // I will comment this out after I test my class and ensure that everything works.
+    BT::StdCoutLogger logger_cout(*tree_ptr);
+
     RCLCPP_INFO(node->get_logger(), "Mission Planner started. Ticking tree…");
     rclcpp::WallRate rate(30.0);
 
