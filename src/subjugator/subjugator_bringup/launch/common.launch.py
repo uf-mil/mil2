@@ -108,6 +108,24 @@ def generate_launch_description():
         pkg_share("subjugator_controller", "launch", "pid_controller.launch.py"),
     )
 
+    # Resolves relative/absolute move commands into goal_pose for the path planner.
+    # Pass its own param_file explicitly so it does not inherit the controller's,
+    # which leaks in via the shared "param_file" launch config (see gazebo.launch.py).
+    movement_manager = IncludeLaunchDescription(
+        pkg_share(
+            "subjugator_movement_manager",
+            "launch",
+            "movement_manager.launch.py",
+        ),
+        launch_arguments={
+            "param_file": pkg_share(
+                "subjugator_movement_manager",
+                "config",
+                "movement_manager.yaml",
+            ),
+        }.items(),
+    )
+
     path_planner = Node(
         package="subjugator_path_planner",
         executable="subjugator_path_planner",
@@ -135,6 +153,7 @@ def generate_launch_description():
             thruster_manager,
             localization,
             controller,
+            movement_manager,
             path_planner,
             trajectory_planner,
         ],

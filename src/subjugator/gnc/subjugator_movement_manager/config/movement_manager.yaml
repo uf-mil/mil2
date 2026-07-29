@@ -1,0 +1,14 @@
+---
+/movement_manager:
+  ros__parameters:
+    # Regular-move tolerances: loose is the grace-window fallback
+    pos_tol: 0.2
+    ori_tol_deg: 12.0
+    loose_pos_tol: 0.85
+    loose_ori_tol_deg: 40.0
+
+    # Precise-move tolerances: loose becomes the regular-move tolerances
+    precise_pos_tol: 0.08
+    precise_ori_tol_deg: 4.0
+
+    grace_secs: 5.0
