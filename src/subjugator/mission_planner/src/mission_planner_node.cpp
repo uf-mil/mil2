@@ -7,6 +7,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "context.hpp"
+#include "mission_summary_logger.hpp"
 #include "start_coin_flip.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
@@ -123,6 +124,9 @@ int main(int argc, char** argv)
 
     // For live feed of tree
     BT::Groot2Publisher publisher(*tree_ptr);
+
+    // Summary logger for mission results
+    MissionSummaryLogger summary_logger(*tree_ptr);
 
     // Log BT transitions to console
     BT::StdCoutLogger logger_cout(*tree_ptr);
