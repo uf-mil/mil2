@@ -71,17 +71,17 @@ class MovementManager : public rclcpp::Node
     bool active_precise_{ false };
     rclcpp::Time active_start_;
 
-    double pos_tol{ 0.2 };
-    double ori_tol{ 12.0 };
-    double loose_pos_tol{ 0.85 };
-    double loose_ori_tol{ 40.0 };
-    double precise_pos_tol{ 0.08 };
-    double precise_ori_tol{ 4.0 };
-    double grace_secs{ 5.0 };
+    double pos_tol;
+    double ori_tol;
+    double loose_pos_tol;
+    double loose_ori_tol;
+    double precise_pos_tol;
+    double precise_ori_tol;
+    double grace_secs;
 
-    double active_tight_pos_{ 0.2 };
-    double active_tight_ori_{ 12.0 };
-    double active_loose_pos_{ 0.85 };
-    double active_loose_ori_{ 40.0 };
-    double active_timeout_s_{ 0.0 };
+    double active_tight_pos_;
+    double active_tight_ori_;
+    double active_loose_pos_;
+    double active_loose_ori_;
+    double active_timeout_s_;
 };

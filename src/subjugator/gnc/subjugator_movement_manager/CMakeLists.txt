@@ -33,6 +33,7 @@ target_include_directories(subjugator_movement_manager
                            PUBLIC ${mil_tools_INCLUDE_DIRS} include)
 
 install(TARGETS subjugator_movement_manager DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
 
 if(BUILD_TESTING)
