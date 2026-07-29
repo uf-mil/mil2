@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
@@ -23,6 +24,7 @@ class MissionSummaryLogger : public BT::StatusChangeLogger
 
     ~MissionSummaryLogger() override
     {
+        unsubscribeFromTreeChanges();
         std::vector<std::pair<uint16_t, NodeRecord>> rows(records_.begin(), records_.end());
         std::sort(rows.begin(), rows.end(),
                   [](auto const& a, auto const& b) { return a.second.start < b.second.start; });
@@ -41,15 +43,20 @@ class MissionSummaryLogger : public BT::StatusChangeLogger
         }
         std::cout << table.str();
         std::time_t now = std::time(nullptr);
-        char fname[128];
-        std::filesystem::create_directories("src/subjugator/mission_planner/logs");
-        std::strftime(fname, sizeof(fname), "src/subjugator/mission_planner/logs/mission_summary_%Y%m%d_%H%M%S.txt",
-                      std::localtime(&now));
-        std::ofstream file(fname);
+        char timestamp[64];
+        std::strftime(timestamp, sizeof(timestamp), "mission_summary_%Y%m%d_%H%M%S.txt", std::localtime(&now));
+
+        std::string home = std::getenv("HOME");
+        std::string log_dir = home + "/mil2/src/subjugator/mission_planner/logs";
+        std::filesystem::create_directories(log_dir);
+
+        std::string full_path = log_dir + "/" + timestamp;
+        std::ofstream file(full_path);
+
         if (file)
         {
             file << table.str();
-            std::cout << "Summary written to " << fname << "\n";
+            std::cout << "Summary written to " << full_path << "\n";
         }
     }
 
