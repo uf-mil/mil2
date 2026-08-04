@@ -1,17 +1,19 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>mil_preflight</name>
-  <version>1.0.0</version>
-  <description>Preflight is an automated testing tool that should be run after turning on and connecting to the robot to run a prelaunch hardware checklist and automated software checklist.</description>
+  <name>mil_preflight_plugins</name>
+  <version>0.0.0</version>
+  <description>Plugins to run tests for mil_preflight</description>
   <maintainer email="zhangrenzhongzheng@outlook.com">zhongzheng</maintainer>
   <license>MIL</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>ftxui</depend>
+  <depend>mil_preflight</depend>
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>subjugator_msgs</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
