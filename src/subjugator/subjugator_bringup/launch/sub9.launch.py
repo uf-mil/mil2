@@ -42,22 +42,6 @@ def generate_launch_description():
         output="screen",
     )
 
-    # IMU
-    # vectornav_launch = IncludeLaunchDescription(
-    #     pkg_share("vectornav", "launch", "vectornav.launch.py"),
-    # )
-    # mag_comp_launch = IncludeLaunchDescription(
-    #     pkg_share("magnetic_compensation", "launch", "mag_comp.launch.py"),
-    #     launch_arguments={
-    #         "config_file": pkg_share(
-    #             "subjugator_bringup",
-    #             "config",
-    #             "sensors",
-    #             "hardsoft.yaml",
-    #         ),
-    #     }.items(),
-    # )
-
     thrust_launch = IncludeLaunchDescription(
         pkg_share("thrust_and_kill_board", "launch", "thrust_and_kill_board.launch.py"),
     )
@@ -95,8 +79,6 @@ def generate_launch_description():
             front_cam_launch,
             down_cam_launch,
             servo_driver,
-            # vectornav_launch,
-            # mag_comp_launch,
             thrust_launch,
             subjugator_setup,
         ],
