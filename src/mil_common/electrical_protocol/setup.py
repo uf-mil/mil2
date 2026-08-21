@@ -16,7 +16,7 @@ setup(
     maintainer_email="me@cbrxyz.com",
     description="TODO: Package description",
     license="TODO: License declaration",
-    tests_require=["pytest"],
+    extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
             "calculator = electrical_protocol.examples.calculator_device:main",

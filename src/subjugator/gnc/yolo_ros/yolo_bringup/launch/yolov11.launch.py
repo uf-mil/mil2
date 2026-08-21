@@ -38,7 +38,7 @@ def generate_launch_description():
                 launch_arguments={
                     "model": LaunchConfiguration(
                         "model",
-                        default="/home/sub9/mil2/models/joe_nav.pt",
+                        default="/home/sub9/mil2/src/subjugator/gnc/subjugator_vision/models/small-May16-NavChan.pt",
                     ),
                     "tracker": LaunchConfiguration("tracker", default="bytetrack.yaml"),
                     "device": LaunchConfiguration("device", default="cuda:0"),

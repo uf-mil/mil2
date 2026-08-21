@@ -29,7 +29,7 @@ setup(
     maintainer_email="amcaleer1127@gmail.com",
     description="Mission planner package with ROS2 action servers",
     license="",
-    tests_require=["pytest"],
+    extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
             "mission_planner = subjugator_mission_planner.mission_planner:main",

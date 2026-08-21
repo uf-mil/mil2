@@ -16,7 +16,7 @@ setup(
     maintainer_email="jgoodman1@ufl.edu",
     description="TODO: Package description",
     license="TODO: License declaration",
-    tests_require=["pytest"],
+    extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
             "centroid_yaw_tracker = centroid_yaw_tracker.centroid_yaw_tracker_node:main",

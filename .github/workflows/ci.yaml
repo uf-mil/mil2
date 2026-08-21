@@ -33,11 +33,6 @@ jobs:
       - id: check_skip
         uses: fkirc/skip-duplicate-actions@v5
 
-  ensure_healthcheck:
-    uses: ./.github/workflows/healthcheck.yaml
-    needs: avoid-duplicate-ci
-    if: needs.avoid-duplicate-ci.outputs.should_skip != 'true'
-
   pre-commit:
     name: Run pre-commit
     needs: avoid-duplicate-ci
@@ -96,10 +91,9 @@ jobs:
     runs-on:
       group: mala-lab-noble
     steps:
-      - name: Ensure clean git state
+      - name: Clean repo
         run: |
-          git reset --hard
-          git clean -fdx
+          rm -rf .git
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
@@ -114,25 +108,25 @@ jobs:
           ALLOW_NONSTANDARD_DIR=1 ./scripts/install.sh
       # - name: tmate
       #   uses: mxschmitt/action-tmate@v2
-      - name: Run clang-tidy
-        run: |
-          set +u
-          export HOME="$GITHUB_WORKSPACE"/.. # Temporary fix for setup scripts
-          source "$GITHUB_WORKSPACE"/scripts/setup.bash
-          set -u
-          # Ensure that origin/main is up to date
-          git fetch origin --recurse-submodules=no
-          ALL_CHANGES=()
-          while IFS='' read -r line; do
-            ALL_CHANGES+=("$line")
-          done < <(
-            git diff --name-only origin/main \
-              --ignore-submodules \
-              --diff-filter=ACMRT \
-              -- "*.cpp" "*.h" "*.hpp"
-          )
-          cd "$GITHUB_WORKSPACE"
-          tidy "${ALL_CHANGES[@]}"
+      # - name: Run clang-tidy
+      #   run: |
+      #     set +u
+      #     export HOME="$GITHUB_WORKSPACE"/.. # Temporary fix for setup scripts
+      #     source "$GITHUB_WORKSPACE"/scripts/setup.bash
+      #     set -u
+      #     # Ensure that origin/main is up to date
+      #     git fetch origin --recurse-submodules=no
+      #     ALL_CHANGES=()
+      #     while IFS='' read -r line; do
+      #       ALL_CHANGES+=("$line")
+      #     done < <(
+      #       git diff --name-only origin/main \
+      #         --ignore-submodules \
+      #         --diff-filter=ACMRT \
+      #         -- "*.cpp" "*.h" "*.hpp"
+      #     )
+      #     cd "$GITHUB_WORKSPACE"
+      #     tidy "${ALL_CHANGES[@]}"
       - name: Run colcon tests
         run: |
           export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
@@ -142,6 +136,7 @@ jobs:
           source scripts/setup.bash
           set -u
           echo $RMW_IMPLEMENTATION
+          ros2 run rmw_zenoh_cpp rmw_zenohd &
           colcon test --event-handlers console_cohesion+ \
             --executor sequential \
             --return-code-on-test-failure

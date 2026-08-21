@@ -1,4 +1,3 @@
-#include <behaviortree_cpp/bt_factory.h>
 #include <behaviortree_cpp/loggers/bt_cout_logger.h>
 #include <behaviortree_cpp/loggers/groot2_publisher.h>
 #include <behaviortree_cpp/xml_parsing.h>
@@ -7,24 +6,15 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "any_poles_detected.hpp"
-#include "at_goal_pose.hpp"
-#include "check_yolo_model.hpp"
 #include "context.hpp"
-#include "detect_target.hpp"
-#include "determine_channel_side.hpp"
-#include "has_found_pair.hpp"
-#include "hone_bearing.hpp"
-#include "poles_big_enough.hpp"
-#include "publish_goal.hpp"
-#include "track_largest_poles.hpp"
+#include "start_coin_flip.hpp"
+#include "std_srvs/srv/set_bool.hpp"
+#include "subjugator_msgs/msg/thruster_efforts.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <count_when_ticked.hpp>
-#include <go_to_pinger.hpp>
-#include <topic_ticker.hpp>
-#include <yaw_style.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
+
+BT::BehaviorTreeFactory factory;
 
 int main(int argc, char** argv)
 {
@@ -36,6 +26,11 @@ int main(int argc, char** argv)
     node->declare_parameter<std::string>("mission", "SonarFollowerTest");
     std::string mission_to_run = node->get_parameter("mission").as_string();
 
+    node->declare_parameter<std::string>("detections_topic", "/yolo/detections");
+    node->declare_parameter<std::string>("tracking_topic", "/yolo/tracking");
+    std::string detections_topic = node->get_parameter("detections_topic").as_string();
+    std::string tracking_topic = node->get_parameter("tracking_topic").as_string();
+
     // Topics to subscribe/publish to
     ctx->goal_pub = node->create_publisher<geometry_msgs::msg::Pose>("/goal_pose", 10);
     ctx->odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("/odometry/filtered", 10,
@@ -45,14 +40,31 @@ int main(int argc, char** argv)
                                                                            ctx->latest_odom = *msg;
                                                                        });
 
-    // Perception targets: from your YOLO node
-    ctx->targets_sub =
-        node->create_subscription<yolo_msgs::msg::DetectionArray>("/yolo/detections", 10,
+    RCLCPP_INFO(node->get_logger(), "Subscribing to YOLO detections on '%s' and tracking on '%s'",
+                detections_topic.c_str(), tracking_topic.c_str());
+    ctx->detections_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(detections_topic, 10,
                                                                   [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
                                                                   {
                                                                       std::scoped_lock lk(ctx->detections_mx);
                                                                       ctx->latest_detections = *msg;
                                                                   });
+    ctx->tracking_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(tracking_topic, 10,
+                                                                  [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
+                                                                  {
+                                                                      std::scoped_lock lk(ctx->tracking_mx);
+                                                                      ctx->latest_tracking = *msg;
+                                                                  });
+
+    // Wall orientation from the coin_flip classifier node (subjugator_vision)
+    ctx->wall_direction_sub =
+        node->create_subscription<std_msgs::msg::String>("/coin_flip/direction", 10,
+                                                         [ctx](std_msgs::msg::String::SharedPtr msg)
+                                                         {
+                                                             std::scoped_lock lk(ctx->wall_direction_mx);
+                                                             ctx->latest_wall_direction = msg->data;
+                                                         });
 
     // Image size (for pixel->angle mapping). Probably do not need
     ctx->image_sub = node->create_subscription<sensor_msgs::msg::Image>("/front_cam/image_raw", 10,
@@ -62,6 +74,13 @@ int main(int argc, char** argv)
                                                                             ctx->img_width = msg->width;
                                                                             ctx->img_height = msg->height;
                                                                         });
+
+    // Servo service clients (matched to services exposed by servo_controller/driver.py)
+    ctx->dropper_client = node->create_client<subjugator_msgs::srv::Servo>("dropper");
+    ctx->gripper_client = node->create_client<subjugator_msgs::srv::Servo>("gripper");
+    ctx->torpedo_client = node->create_client<subjugator_msgs::srv::Servo>("torpedo");
+    ctx->controller_enable_client = node->create_client<std_srvs::srv::SetBool>("/pid_controller/enable", 10);
+    ctx->raw_effort_pub = node->create_publisher<subjugator_msgs::msg::ThrusterEfforts>("/thruster_efforts", 10);
 
     // Wait for odometry before starting mission
     RCLCPP_INFO(node->get_logger(), "Waiting for odometry...");
@@ -79,23 +98,6 @@ int main(int argc, char** argv)
         }
         wait_rate.sleep();
     }
-
-    BT::BehaviorTreeFactory factory;
-    factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
-    factory.registerNodeType<AtGoalPose>("AtGoalPose");
-    factory.registerNodeType<DetectTarget>("DetectTarget");
-    factory.registerNodeType<HoneBearing>("HoneBearing");
-    factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
-    factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
-    factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
-    factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
-    factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
-    factory.registerNodeType<HasFoundPair>("HasFoundPair");
-
-    factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
-    factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
-    factory.registerNodeType<SonarFollower>("SonarFollower");
-    factory.registerNodeType<YawStyle>("YawStyle");
 
     // Load all tree models from installed xml
     std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");
@@ -126,7 +128,7 @@ int main(int argc, char** argv)
     BT::StdCoutLogger logger_cout(*tree_ptr);
 
     RCLCPP_INFO(node->get_logger(), "Mission Planner started. Ticking tree…");
-    rclcpp::WallRate rate(20.0);
+    rclcpp::WallRate rate(30.0);
 
     std::string xml_models = BT::writeTreeNodesModelXML(factory);
     std::ofstream("/home/carlos/models.xml") << xml_models;
@@ -145,6 +147,10 @@ int main(int argc, char** argv)
         }
         rate.sleep();
     }
+
+    // Kill the coin_flip_node if the mission launched it. Runs on every exit
+    // path, including Ctrl-C, since the loop ends when ok() is false.
+    stopCoinFlip(*ctx);
 
     rclcpp::shutdown();
     return 0;

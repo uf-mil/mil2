@@ -1,12 +1,23 @@
 #pragma once
+#include <behaviortree_cpp/bt_factory.h>
+#include <sys/types.h>
+
 #include <mutex>
 #include <optional>
+#include <string>
+#include <unordered_map>
 
+#include <rclcpp/client.hpp>
 #include <rclcpp/rclcpp.hpp>
+
+#include "std_msgs/msg/string.hpp"
+#include "std_srvs/srv/set_bool.hpp"
+#include "subjugator_msgs/msg/thruster_efforts.hpp"
 
 #include <geometry_msgs/msg/pose.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <subjugator_msgs/srv/servo.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
 struct Context
@@ -15,9 +26,20 @@ struct Context
 
     // Publishers and Subscribers
     rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr goal_pub;
+    rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr raw_effort_pub;  // no mutex since im lazy and
+                                                                                         // no-one else using this rn :P
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
-    rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr targets_sub;
+    rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr detections_sub;
+    rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr tracking_sub;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr wall_direction_sub;
+
+    // Service clients to actuate servos (driver.py services)
+    rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr dropper_client;
+    rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr gripper_client;
+    rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr torpedo_client;
+    // services and clients
+    rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr controller_enable_client;
 
     // Latest state
     std::mutex odom_mx;
@@ -26,15 +48,42 @@ struct Context
     std::mutex last_goal_mx;
     std::optional<geometry_msgs::msg::Pose> last_goal;
 
+    // Raw per-frame YOLO detections (/yolo/detections).
     std::mutex detections_mx;
     std::optional<yolo_msgs::msg::DetectionArray> latest_detections;
+
+    // Tracker output (/yolo/tracking): smoothed boxes with track ids. The tracker
+    // copies the full detection through, so this is the stream that carries the
+    // board's corner keypoints needed for arching (see tracking_node.py).
+    std::mutex tracking_mx;
+    std::optional<yolo_msgs::msg::DetectionArray> latest_tracking;
+    // Latest class from the coin_flip classifier node (/coin_flip/direction).
+    std::mutex wall_direction_mx;
+    std::optional<std::string> latest_wall_direction;
+
+    // PID of the coin_flip_node the mission launched (-1 = none), so it can be
+    // killed on shutdown.
+    std::mutex child_mx;
+    pid_t coin_flip_pid{ -1 };
 
     std::mutex img_mx;
     uint32_t img_width{ 0 };
     uint32_t img_height{ 0 };
+
+    // Named absolute waypoints captured during a mission (or preloaded).
+    // Mission BT nodes (RememberWaypoint / LookupWaypoint) read and write this.
+    std::mutex waypoints_mx;
+    std::unordered_map<std::string, geometry_msgs::msg::Pose> waypoints;
 
     inline rclcpp::Logger logger() const
     {
         return node->get_logger();
     }
 };
+
+#define REGISTER(name)                                                                                                 \
+    extern BT::BehaviorTreeFactory factory;                                                                            \
+    extern "C" __attribute__((constructor)) void register##name()                                                      \
+    {                                                                                                                  \
+        factory.registerNodeType<name>(#name);                                                                         \
+    }

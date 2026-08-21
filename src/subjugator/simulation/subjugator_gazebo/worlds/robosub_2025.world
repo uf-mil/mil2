@@ -80,7 +80,7 @@
     <!-- Sub -->
     <include>
       <uri>package:://subjugator_description/urdf/sub9.urdf</uri>
-      <pose>2 6 -0.3 0 0 1</pose>
+      <pose>0 9 -0.3 0 0 1</pose>
     </include>
 
     <!-- NED frame -->
@@ -914,6 +914,21 @@
         </collision>
       </link>
       <pose>-6.945 14.0762 -0.98 0.785 1.748 0</pose>
+    </model>
+
+    <model name='Pinger_A1_25000'>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <cylinder>
+              <radius>0.025</radius>
+              <length>0.185</length>
+            </cylinder>
+          </geometry>
+        </visual>
+      </link>
+      <pose>-6.25 14 -1.4 0 0 0</pose>
+      <static>true</static>
     </model>
   </world>
 </sdf>

@@ -1,0 +1,39 @@
+<root BTCPP_format="4" main_tree_to_execute="WaypointDemoMission">
+    <BehaviorTree ID="WaypointDemoMission">
+        <Sequence>
+            <!-- 1. Dive -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="0.0" y="0.0" z="-0.3"
+                     pos_tol="0.15" ori_tol_deg="12.0" msec="25000"
+                     ctx="{ctx}"/>
+
+            <!-- 2. Remember this point as "home" (snapshots the last published goal) -->
+            <Action ID="RememberWaypoint" waypoint="home" ctx="{ctx}"/>
+
+            <!-- 3. Wander out -->
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="1.5" y="0.0" z="0.0"
+                     pos_tol="0.15" ori_tol_deg="12.0" msec="25000"
+                     ctx="{ctx}"/>
+
+            <Action ID="RememberWaypoint" waypoint="far_point" ctx="{ctx}"/>
+
+            <SubTree ID="RelativeMove" _autoremap="true"
+                     x="0.0" y="1.0" z="0.0"
+                     pos_tol="0.15" ori_tol_deg="12.0" msec="25000"
+                     ctx="{ctx}"/>
+
+            <!-- 4. Go back home by name -->
+            <SubTree ID="GoToWaypoint" _autoremap="true"
+                     waypoint="home"
+                     pos_tol="0.2" ori_tol_deg="12.0" msec="25000"
+                     ctx="{ctx}"/>
+
+            <!-- 5. Revisit the far point -->
+            <SubTree ID="GoToWaypoint" _autoremap="true"
+                     waypoint="far_point"
+                     pos_tol="0.2" ori_tol_deg="12.0" msec="25000"
+                     ctx="{ctx}"/>
+        </Sequence>
+    </BehaviorTree>
+</root>

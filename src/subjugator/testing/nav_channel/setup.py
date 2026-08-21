@@ -16,7 +16,7 @@ setup(
     maintainer_email="nottellingu@gmail.com",
     description="TODO: Package description",
     license="TODO: License declaration",
-    tests_require=["pytest"],
+    extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": ["nav_channel = nav_channel.nav_channel:main"],
     },

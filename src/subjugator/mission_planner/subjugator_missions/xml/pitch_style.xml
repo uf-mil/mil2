@@ -1,0 +1,8 @@
+<root BTCPP_format="4" main_tree_to_execute="PitchStyleTest">
+    <BehaviorTree ID="PitchStylePoints">
+        <Sequence>
+            <PitchStyle name="pitch_style" milliseconds="{milliseconds}" momentum_ms="{momentum_ms}" ctx="{ctx}" />
+            <Delay delay_msec="4000"><AlwaysSuccess/></Delay>
+        </Sequence>
+    </BehaviorTree>
+</root>

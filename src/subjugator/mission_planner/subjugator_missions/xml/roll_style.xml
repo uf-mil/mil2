@@ -1,0 +1,9 @@
+<root BTCPP_format="4" main_tree_to_execute="RollStyleTest">
+    <BehaviorTree ID="RollStylePoints">
+        <Sequence>
+                <!--normal battery milliseconds = 4750-->
+                <RollStyle name="roll_style" milliseconds="{milliseconds}" momentum_ms="{momentum_ms}" ctx="{ctx}" />
+                <Delay delay_msec="4000"><AlwaysSuccess/></Delay>
+        </Sequence>
+    </BehaviorTree>
+</root>

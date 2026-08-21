@@ -87,7 +87,7 @@
 
                     <Sequence>
                         <SubTree ID="RelativeMove" _autoremap="true" x="0.5"
-                            pos_tol="0.25" ori_tol_deg="30.0" msec="6000"
+                            pos_tol="0.25" ori_tol_deg="10.0" msec="6000"
                             ctx="{ctx}"/>
                         <AlwaysFailure/>
                     </Sequence>
@@ -102,9 +102,7 @@
                                 min_conf="0.30"
                                 consecutive_frames="3"
                                 ctx="{ctx}"
-                                channel_side="{channel_side}"
-                                require_red_left="{require_red_left}"
-                                is_right="{is_right}"/>
+                                right_channel="{true}"/>
                     </Timeout>
                     <AlwaysSuccess/>
                 </Sequence>

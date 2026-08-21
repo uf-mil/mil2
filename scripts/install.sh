@@ -104,6 +104,7 @@ sudo apt install -y --no-install-recommends \
 	doxygen-doc \
 	doxygen-gui \
 	expect \
+	git \
 	gnupg \
 	gnupg2 \
 	graphviz \
@@ -136,15 +137,20 @@ export LANG=en_US.UTF-8
 # Add universe
 sudo add-apt-repository universe -y
 
-# ROS2 GPG key
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
-
-# ROS2 apt source
 ARCH=$(dpkg --print-architecture)
 CODENAME=$(awk -F= '/^UBUNTU_CODENAME=/{print $2}' /etc/os-release)
-sudo tee /etc/apt/sources.list.d/ros2.list <<EOF >/dev/null
+
+if [ ! -f /etc/apt/sources.list.d/ros2.sources ] && [ ! -f /etc/apt/sources.list.d/ros2.list ]; then
+	# ROS2 GPG key
+	sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+	# ROS2 apt source
+	sudo tee /etc/apt/sources.list.d/ros2.list <<EOF >/dev/null
 deb [arch=$ARCH signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $CODENAME main
 EOF
+else
+	echo "ROS2 sources already configured, skipping to avoid conflicts..."
+fi
 
 # Gazebo GPG key
 sudo curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
@@ -172,6 +178,7 @@ EOF
 # Install additional dependencies not bundled by default with ros
 # Please put each on a new line for readability
 sudo apt install -y \
+	ccache \
 	libboost-all-dev \
 	nlohmann-json3-dev \
 	python3-colcon-common-extensions \
@@ -191,7 +198,8 @@ sudo apt install -y \
 	ros-jazzy-tf-transformations \
 	ros-jazzy-velodyne \
 	ros-jazzy-vision-msgs \
-	ros-jazzy-nav2-util
+	ros-jazzy-nav2-util \
+	ros-jazzy-rmw-zenoh-cpp
 
 cat <<EOF
 $(color "$Pur")
@@ -202,6 +210,15 @@ $(hash_header)$(color "$Res")
 EOF
 
 # Install Python 3 dependencies
+if command -v nvidia-smi; then
+	echo "NVIDIA GPU detected; torch will be installed with CUDA support."
+else
+	echo "No NVIDIA GPU detected; pre-installing CPU-only torch (saves ~4 GB)."
+	sudo pip3 install --index-url https://download.pytorch.org/whl/cpu \
+		torch torchvision
+fi
+
+sudo pip3 install --ignore-installed typing_extensions # preinstalled
 sudo pip3 install -r requirements.txt
 
 cat <<EOF
@@ -225,6 +242,13 @@ if [[ $SCRIPT_DIR != "$HOME/mil2/scripts" && -z ${ALLOW_NONSTANDARD_DIR:-} ]]; t
 	echo "${Red}Error: This script must be located in ~/mil2/scripts/install.sh. Please review the installation guide and try again.${Res}"
 	exit 1
 fi
+
+install_zenoh() {
+	sed "s|MIL_HOME|$HOME|" "$SCRIPT_DIR/../hw/zenoh.service" |
+		sudo tee /etc/systemd/system/zenoh.service
+	sudo systemctl enable zenoh --now || true
+}
+install_zenoh
 
 # Add line to user's bashrc which source the repo's setup files
 # This allows us to update aliases, environment variables, etc
@@ -263,9 +287,9 @@ mil_user_setup_rc() {
 		# Copies bashrc to interactive login shells (like tmux)
 		cat <<-EOF >>~/.profile
 			# include .bashrc if it exists
-			if [ -n "$BASH_VERSION" ] && [ -n "$PS1" ]; then
-			  if [ -f "$HOME/.bashrc" ]; then
-			    . "$HOME/.bashrc"
+			if [ -n "\$BASH_VERSION" ] && [ -n "\$PS1" ]; then
+			  if [ -f "\$HOME/.bashrc" ]; then
+			    . "\$HOME/.bashrc"
 			  fi
 			fi
 		EOF
@@ -273,7 +297,7 @@ mil_user_setup_rc() {
 }
 
 add_hosts_entry() {
-	sudo grep -qxF "$1" /etc/hosts || echo "$1" | sudo tee -a /etc/hosts >/dev/null
+	sudo grep -qxF "$1" /etc/hosts || echo "$1" | sudo tee -a /etc/hosts >/dev/null || true
 }
 
 # Add /etc/hosts entry for vehicles

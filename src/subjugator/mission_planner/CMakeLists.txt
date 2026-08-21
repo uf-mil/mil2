@@ -8,14 +8,19 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(mil_msgs REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(subjugator_msgs REQUIRED)
 find_package(yolo_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
+find_package(subjugator_msgs REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
@@ -23,6 +28,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
 # ---- Operations library (leaf nodes)
 add_library(
   operations
+  subjugator_operations/src/header_only.cpp
   subjugator_operations/src/publish_goal.cpp
   subjugator_operations/src/at_goal_pose.cpp
   subjugator_operations/src/detect_target.cpp
@@ -30,18 +36,38 @@ add_library(
   subjugator_operations/src/check_yolo_model.cpp
   subjugator_operations/src/track_largest_poles.cpp
   subjugator_operations/src/poles_big_enough.cpp
+  subjugator_operations/src/target_big_enough.cpp
   subjugator_operations/src/determine_channel_side.cpp
+  subjugator_operations/src/detect_wall_direction.cpp
+  subjugator_operations/src/start_coin_flip.cpp
+  subjugator_operations/src/stop_coin_flip.cpp
   subjugator_operations/src/any_poles_detected.cpp
-  subjugator_operations/src/has_found_pair.cpp)
+  subjugator_operations/src/has_found_pair.cpp
+  subjugator_operations/src/select_hole_depth.cpp
+  subjugator_operations/src/track_best_pair.cpp
+  subjugator_operations/src/track_best_target.cpp
+  subjugator_operations/src/hone_midpoint.cpp
+  subjugator_operations/src/log_to_file.cpp
+  subjugator_operations/src/nav_channel_control.cpp
+  subjugator_operations/src/align_depth.cpp
+  subjugator_operations/src/align_yaw.cpp
+  subjugator_operations/src/actuate_servo.cpp
+  subjugator_operations/src/target_centered.cpp
+  subjugator_operations/src/board_arch_step.cpp)
 
 ament_target_dependencies(
   operations
   rclcpp
   geometry_msgs
+  std_srvs
+  std_msgs
   nav_msgs
   mil_msgs
+  tf2
+  subjugator_msgs
   sensor_msgs
   yolo_msgs
+  subjugator_msgs
   behaviortree_cpp
   lifecycle_msgs
   rcl_interfaces
@@ -49,15 +75,18 @@ ament_target_dependencies(
 
 # Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
-target_link_libraries(mission_planner_node operations)
+target_link_libraries(mission_planner_node
+                      "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
 ament_target_dependencies(
   mission_planner_node
   rclcpp
   geometry_msgs
+  std_msgs
   nav_msgs
   mil_msgs
   sensor_msgs
   yolo_msgs
+  subjugator_msgs
   behaviortree_cpp
   ament_index_cpp)
 

@@ -4,6 +4,8 @@
 
 #include <geometry_msgs/msg/pose.hpp>
 
+REGISTER(PublishGoalPose)
+
 BT::PortsList PublishGoalPose::providedPorts()
 {
     BT::PortsList ports;
@@ -23,6 +25,10 @@ BT::PortsList PublishGoalPose::providedPorts()
     ports.insert(BT::InputPort<bool>("use_euler_deg", true, "Use roll/pitch/yaw degrees"));
     ports.insert(BT::InputPort<bool>("keep_current_pos_abs", true,
                                      "If absolute orientation, keep current position instead of 0,0,0"));
+    ports.insert(BT::InputPort<bool>("keep_current_xy_abs", false,
+                                     "If absolute, keep current x/y but take z from the z port (depth-only move)"));
+    ports.insert(BT::InputPort<bool>("keep_current_ori_abs", false,
+                                     "If absolute, keep current orientation instead of the qx..qw/euler ports"));
 
     ports.insert(BT::InputPort<double>("roll_deg", 0.0, "Roll (deg)"));
     ports.insert(BT::InputPort<double>("pitch_deg", 0.0, "Pitch (deg)"));
@@ -166,8 +172,10 @@ BT::NodeStatus PublishGoalPose::tick()
         RCLCPP_DEBUG(ctx_->logger(), "PublishGoalPose: yaw-only -> adding %.3fm forward nudge", eps_move);
     }
 
-    // Choose base pose (last goal if available when relative, else odom, else identity)
+    // Choose base pose: relative chains off last_goal (avoids odom drift accumulation);
+    // absolute uses current odom for keep_current_pos_abs. Both fall back to world origin.
     geometry_msgs::msg::Pose base{};
+    base.orientation.w = 1.0;
     bool have_base = false;
 
     if (relative)
@@ -179,7 +187,7 @@ BT::NodeStatus PublishGoalPose::tick()
             have_base = true;
         }
     }
-    if (!have_base)
+    else
     {
         std::optional<nav_msgs::msg::Odometry> odom;
         {
@@ -192,12 +200,10 @@ BT::NodeStatus PublishGoalPose::tick()
             have_base = true;
         }
     }
+
     if (!have_base)
     {
-        base.position.x = base.position.y = base.position.z = 0.0;
-        base.orientation.x = base.orientation.y = base.orientation.z = 0.0;
-        base.orientation.w = 1.0;
-        RCLCPP_WARN(ctx_->logger(), "PublishGoalPose: composing without odom; assuming world origin.");
+        RCLCPP_WARN(ctx_->logger(), "PublishGoalPose: no base pose available; assuming world origin.");
     }
 
     bool keep_cur_abs = true;
@@ -207,6 +213,24 @@ BT::NodeStatus PublishGoalPose::tick()
         x = base.position.x;
         y = base.position.y;
         z = base.position.z;
+    }
+
+    bool keep_xy_abs = false;
+    (void)getInput("keep_current_xy_abs", keep_xy_abs);
+    if (!relative && keep_xy_abs)
+    {
+        x = base.position.x;
+        y = base.position.y;
+    }
+
+    bool keep_ori_abs = false;
+    (void)getInput("keep_current_ori_abs", keep_ori_abs);
+    if (!relative && keep_ori_abs)
+    {
+        qx = base.orientation.x;
+        qy = base.orientation.y;
+        qz = base.orientation.z;
+        qw = base.orientation.w;
     }
 
     // Compose absolute goal and publish

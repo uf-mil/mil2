@@ -9,7 +9,7 @@ from sensor_msgs.msg import Image
 def rotate_front_cam(frame: MatLike) -> MatLike:
     # magic numbers:
     PADDING = 100
-    rotation_angle = 242
+    rotation_angle = 0  # 242
 
     # Add black padding around the image
     padded = cv2.copyMakeBorder(
@@ -38,7 +38,9 @@ class DownCamDriver(Node):
     def __init__(self):
         super().__init__("front_cam_driver")
 
-        cam_path = "/dev/v4l/by-id/usb-Chicony_Tech._Inc._Dell_Webcam_WB7022_77A8ADD45565-video-index0"
+        # cam_path = "/dev/v4l/by-id/usb-Chicony_Tech._Inc._Dell_Webcam_WB7022_77A8ADD45565-video-index0"
+        # cam_path = "/dev/v4l/by-id/usb-H264_USB_Camera_H264_USB_Camera_2020032801-video-index0"
+        cam_path = "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.1:1.0-video-index0"
 
         self.cv_bridge = CvBridge()
         self.cap = cv2.VideoCapture(cam_path)
