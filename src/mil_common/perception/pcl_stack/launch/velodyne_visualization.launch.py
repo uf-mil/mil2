@@ -1,6 +1,6 @@
-"""Velodyne driver + pcl_stack node for visualization and optional perception filters.
+"""Velodyne driver + pcl_stack node for visualization for actual lidar
 
-Usage::
+run by::
 
     ros2 launch pcl_stack velodyne_visualization.launch.py
 
