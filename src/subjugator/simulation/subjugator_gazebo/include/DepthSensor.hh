@@ -51,7 +51,12 @@ class DepthSensor : public gz::sim::System, public gz::sim::ISystemConfigure, pu
     double noiseMean_ = 0.0;
     double noiseStdDev_ = 0.0;  // default to 0 => no noise if not specified
     std::mt19937 randomEngine_;
-    std::normal_distribution<double> noiseDist_{ 0.0, 0.0 };
+    // NOTE: stddev must be > 0 -- std::normal_distribution's ctor asserts on
+    // stddev <= 0 with modern libstdc++. A zero-noise sensor is expressed by
+    // noiseStdDev_ == 0.0 and guarded at the sampling site, not by a zero-stddev
+    // distribution. The 1.0 here is just a valid placeholder; it is only ever
+    // sampled when noiseStdDev_ > 0 (in which case it is reassigned below).
+    std::normal_distribution<double> noiseDist_{ 0.0, 1.0 };
 };
 }  // namespace depth_sensor
 

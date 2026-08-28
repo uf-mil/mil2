@@ -30,7 +30,11 @@ def generate_launch_description():
                     ],
                 ),
                 " --render-engine",
-                " ogre",
+                # ogre2 (not ogre1): ogre1's depth/RGBD-camera path double-registers
+                # the point-cloud vertex shader in this gz-rendering build and aborts
+                # (Ogre::ItemIdentityException on depth_points_vs.glsl). ogre2 renders
+                # the sub's cameras cleanly, on this laptop's GPU and headless (EGL).
+                " ogre2",
             ],
         }.items(),
     )

@@ -48,7 +48,12 @@ void DepthSensor::Configure(gz::sim::Entity const &_entity, std::shared_ptr<sdf:
 
     // Initialize random engine and distribution
     this->randomEngine_.seed(std::random_device{}());
-    this->noiseDist_ = std::normal_distribution<double>(this->noiseMean_, this->noiseStdDev_);
+    // stddev must be strictly positive for std::normal_distribution's ctor
+    // (modern libstdc++ asserts otherwise). When no noise is configured
+    // (noiseStdDev_ == 0) use a harmless placeholder; the sampling site skips
+    // it via `if (noiseStdDev_ > 0.0)`.
+    this->noiseDist_ =
+        std::normal_distribution<double>(this->noiseMean_, this->noiseStdDev_ > 0.0 ? this->noiseStdDev_ : 1.0);
 
     if (!rclcpp::ok())
     {
