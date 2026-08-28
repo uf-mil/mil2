@@ -2,55 +2,14 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (
-    DeclareLaunchArgument,
-    IncludeLaunchDescription,
-    OpaqueFunction,
-)
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node, SetParameter
-from xacro import process_file
 
 
 def pkg_share(pkg, *path):
     return os.path.join(get_package_share_directory(pkg), *path)
-
-
-def spawn_robot(context, *args, **kwargs):
-    model_name = LaunchConfiguration('model_name').perform(context)
-    xacro_file = pkg_share('prop_gazebo', 'urdf', 'lidar_platform.urdf.xacro')
-    robot_desc = process_file(xacro_file).toxml()
-
-    return [
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            output='screen',
-            parameters=[
-                {'use_sim_time': True},
-                {'robot_description': robot_desc},
-            ],
-        ),
-        Node(
-            package='ros_gz_sim',
-            executable='create',
-            arguments=[
-                '-name',
-                model_name,
-                '-string',
-                robot_desc,
-                '-x',
-                '0.0',
-                '-y',
-                '0.0',
-                '-z',
-                '2.0',
-            ],
-            output='screen',
-        ),
-    ]
 
 
 def generate_launch_description():
@@ -85,6 +44,24 @@ def generate_launch_description():
         }.items(),
     )
 
+    spawn_platform = Node(
+        package='ros_gz_sim',
+        executable='create',
+        arguments=[
+            '-name',
+            LaunchConfiguration('model_name'),
+            '-file',
+            pkg_share('prop_gazebo', 'models', 'lidar_platform', 'lidar_platform.sdf'),
+            '-x',
+            '0.0',
+            '-y',
+            '0.0',
+            '-z',
+            '2.0',
+        ],
+        output='screen',
+    )
+
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -96,13 +73,29 @@ def generate_launch_description():
         output='screen',
     )
 
+    # The model is rigid and pinned, so the sensor frame never moves relative to
+    # the hull: a static broadcaster covers what robot_state_publisher used to.
+    laser_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='laser_frame_tf',
+        arguments=[
+            '--frame-id',
+            'base_link',
+            '--child-frame-id',
+            'laser_frame',
+        ],
+        output='screen',
+    )
+
     return LaunchDescription(
         [
             world_arg,
             model_name_arg,
             SetParameter('use_sim_time', True),
             gz_sim,
-            OpaqueFunction(function=spawn_robot),
+            spawn_platform,
             bridge,
+            laser_tf,
         ],
     )

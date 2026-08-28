@@ -1,57 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<robot xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:include filename="$(find prop_gazebo)/urdf/macros/inertial.xacro"/>
+<sdf version="1.9" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="../macros/inertial.xacro"/>
 
   <!--
-    Velodyne VLP-16 lidar mounted on a parent link.
+    Velodyne VLP-16 lidar, mounted on a parent link of any SDF model.
 
     VLP-16 specs:
       - 16 vertical beams
       - +/-15 deg vertical FOV
       - 360 deg horizontal FOV
       - 10 Hz update rate
+
+    gz-sensors publishes the LaserScan on <topic> and the point cloud on
+    <topic>/points, so topic:=lidar yields /lidar and /lidar/points.
+    Give each instance its own name/frame/topic when a model carries more
+    than one, since <topic> is absolute rather than model-scoped.
   -->
   <xacro:macro
     name="vlp16_lidar"
-    params="parent:=chassis
+    params="parent
+            name:=vlp16
+            frame:=laser_frame
             xyz:='0.1 0 0.175'
             rpy:='0 0 0'
+            topic:=lidar
             update_rate:=10
             horizontal_samples:=1875
             max_range:=100.0
             noise_stddev:=0.01"
   >
-    <joint name="laser_joint" type="fixed">
-      <parent link="${parent}"/>
-      <child link="laser_frame"/>
-      <origin xyz="${xyz}" rpy="${rpy}"/>
+    <joint name="${name}_joint" type="fixed">
+      <parent>${parent}</parent>
+      <child>${frame}</child>
     </joint>
 
-    <link name="laser_frame">
-      <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+    <link name="${frame}">
+      <pose relative_to="${parent}">${xyz} ${rpy}</pose>
+
+      <xacro:inertial_cylinder mass="0.1" length="0.04" radius="0.05"/>
+
+      <visual name="${name}_visual">
         <geometry>
-          <cylinder length="0.04" radius="0.05"/>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>0.04</length>
+          </cylinder>
         </geometry>
-        <material name="laser_material">
-          <color rgba="0.13 0.13 0.13 1.0"/>
+        <material>
+          <ambient>0.13 0.13 0.13 1.0</ambient>
+          <diffuse>0.13 0.13 0.13 1.0</diffuse>
         </material>
       </visual>
-      <collision>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+
+      <collision name="${name}_collision">
         <geometry>
-          <cylinder length="0.04" radius="0.05"/>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>0.04</length>
+          </cylinder>
         </geometry>
       </collision>
-      <xacro:inertial_cylinder mass="0.1" length="0.04" radius="0.05">
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-      </xacro:inertial_cylinder>
-    </link>
 
-    <gazebo reference="laser_frame">
-      <sensor type="gpu_lidar" name="vlp16_sensor">
-        <topic>lidar</topic>
-        <gz_frame_id>laser_frame</gz_frame_id>
+      <sensor name="${name}_sensor" type="gpu_lidar">
+        <topic>${topic}</topic>
+        <gz_frame_id>${frame}</gz_frame_id>
         <update_rate>${update_rate}</update_rate>
         <lidar>
           <scan>
@@ -82,6 +94,6 @@
         <always_on>1</always_on>
         <visualize>true</visualize>
       </sensor>
-    </gazebo>
+    </link>
   </xacro:macro>
-</robot>
+</sdf>
