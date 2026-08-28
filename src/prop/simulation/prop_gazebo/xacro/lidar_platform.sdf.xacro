@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf version="1.9" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="components/vlp16_lidar.xacro"/>
+
+  <!-- Bare lidar rig: a sensor anchor and a few buoys to cluster on. -->
+  <model name="lidar_platform">
+    <!-- Pin the whole model in place: no gravity fall, no buoyancy/water interaction -->
+    <static>true</static>
+
+    <!-- Bare root link, no chassis geometry/mass: just an anchor for the sensor -->
+    <link name="base_link"/>
+
+    <xacro:vlp16_lidar parent="base_link" xyz="0 0 0" rpy="0 0 0"/>
+
+    <xacro:macro
+      name="buoy"
+      params="name xyz radius:=0.2 length:=2.0 rgba:='0.9 0.15 0.15 1.0'"
+    >
+      <joint name="${name}_joint" type="fixed">
+        <parent>base_link</parent>
+        <child>${name}</child>
+      </joint>
+
+      <link name="${name}">
+        <pose relative_to="base_link">${xyz} 0 0 0</pose>
+
+        <xacro:inertial_cylinder mass="1.0" length="${length}" radius="${radius}"/>
+
+        <visual name="${name}_visual">
+          <geometry>
+            <cylinder>
+              <radius>${radius}</radius>
+              <length>${length}</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>${rgba}</ambient>
+            <diffuse>${rgba}</diffuse>
+          </material>
+        </visual>
+
+        <collision name="${name}_collision">
+          <geometry>
+            <cylinder>
+              <radius>${radius}</radius>
+              <length>${length}</length>
+            </cylinder>
+          </geometry>
+        </collision>
+      </link>
+    </xacro:macro>
+
+    <!-- Tall buoys placed in front of the lidar sensor in the water -->
+    <!-- Red buoy (port marker) -->
+    <xacro:buoy name="red_buoy" xyz="3.5 -1.2 0.0" radius="0.2" length="2.0" rgba="0.9 0.15 0.15 1.0"/>
+    <!-- Green buoy (starboard marker) -->
+    <xacro:buoy name="green_buoy" xyz="5.5 1.5 0.0" radius="0.2" length="2.2" rgba="0.15 0.85 0.2 1.0"/>
+    <!-- Yellow marker buoy -->
+    <xacro:buoy name="yellow_buoy" xyz="7.0 -0.3 0.0" radius="0.22" length="2.0" rgba="0.95 0.85 0.1 1.0"/>
+  </model>
+</sdf>
