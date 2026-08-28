@@ -1,8 +1,13 @@
 import os
 
+import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node, SetParameter
@@ -10,6 +15,42 @@ from launch_ros.actions import Node, SetParameter
 
 def pkg_share(pkg, *path):
     return os.path.join(get_package_share_directory(pkg), *path)
+
+
+def spawn_robot(context, *args, **kwargs):
+    model_name = LaunchConfiguration("model_name").perform(context)
+    xacro_file = pkg_share("prop_gazebo", "urdf", "lidar_platform.urdf.xacro")
+    robot_desc = xacro.process_file(xacro_file).toxml()
+
+    return [
+        Node(
+            package="robot_state_publisher",
+            executable="robot_state_publisher",
+            name="robot_state_publisher",
+            output="screen",
+            parameters=[
+                {"use_sim_time": True},
+                {"robot_description": robot_desc},
+            ],
+        ),
+        Node(
+            package="ros_gz_sim",
+            executable="create",
+            arguments=[
+                "-name",
+                model_name,
+                "-string",
+                robot_desc,
+                "-x",
+                "0.0",
+                "-y",
+                "0.0",
+                "-z",
+                "2.0",
+            ],
+            output="screen",
+        ),
+    ]
 
 
 def generate_launch_description():
@@ -44,24 +85,6 @@ def generate_launch_description():
         }.items(),
     )
 
-    spawn_lidar_platform = Node(
-        package="ros_gz_sim",
-        executable="create",
-        arguments=[
-            "-name",
-            LaunchConfiguration("model_name"),
-            "-file",
-            pkg_share("prop_gazebo", "models", "lidar_platform", "model.sdf"),
-            "-x",
-            "0.0",
-            "-y",
-            "0.0",
-            "-z",
-            "0.1",
-        ],
-        output="screen",
-    )
-
     bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
@@ -73,39 +96,13 @@ def generate_launch_description():
         output="screen",
     )
 
-    base_tf = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        arguments=[
-            "--x",
-            "0",
-            "--y",
-            "0",
-            "--z",
-            "0.15",
-            "--roll",
-            "0",
-            "--pitch",
-            "0",
-            "--yaw",
-            "0",
-            "--frame-id",
-            "base_link",
-            "--child-frame-id",
-            "lidar_link",
-        ],
-        parameters=[{"use_sim_time": True}],
-        output="screen",
-    )
-
     return LaunchDescription(
         [
             world_arg,
             model_name_arg,
             SetParameter("use_sim_time", True),
             gz_sim,
-            spawn_lidar_platform,
+            OpaqueFunction(function=spawn_robot),
             bridge,
-            base_tf,
         ],
     )

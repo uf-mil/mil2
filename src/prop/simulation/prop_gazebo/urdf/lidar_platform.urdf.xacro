@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<robot name="lidar_platform" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:include filename="$(find prop_gazebo)/urdf/components/vlp16_lidar.xacro"/>
+
+  <!-- Pin the whole model in place: no gravity fall, no buoyancy/water interaction -->
+  <gazebo>
+    <static>true</static>
+  </gazebo>
+
+  <link name="chassis">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.6 0.4 0.15"/>
+      </geometry>
+      <material name="chassis_material">
+        <color rgba="0.2 0.2 0.8 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.6 0.4 0.15"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="5.0"/>
+      <inertia ixx="0.1" iyy="0.1" izz="0.1" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <xacro:vlp16_lidar parent="chassis"/>
+</robot>

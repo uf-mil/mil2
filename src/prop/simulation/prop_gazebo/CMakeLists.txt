@@ -7,12 +7,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY config launch models DESTINATION share/${PROJECT_NAME})
-
-ament_environment_hooks(
-  "${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.dsv.in")
-ament_environment_hooks(
-  "${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.sh.in")
+install(DIRECTORY config launch urdf DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
