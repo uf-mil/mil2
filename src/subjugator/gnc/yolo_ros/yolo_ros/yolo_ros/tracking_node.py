@@ -192,7 +192,9 @@ class TrackingNode(LifecycleNode):
                     # get track id
                     track_id = ""
                     if tracked_box.is_track:
-                        track_id = str(int(tracked_box.id))
+                        # .id is a 1-element array/tensor; numpy 2.x refuses
+                        # int() on a non-0-d array, so reduce to a scalar first.
+                        track_id = str(int(tracked_box.id.flatten()[0]))
                     tracked_detection.id = track_id
 
                     # append msg

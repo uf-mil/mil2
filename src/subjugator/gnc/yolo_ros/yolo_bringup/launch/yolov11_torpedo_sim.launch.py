@@ -1,0 +1,53 @@
+import os
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+
+
+def generate_launch_description():
+
+    # Torpedo-board detector (issue #521). Publishes the board as class_id 4 on
+    # /yolo/tracking, which admission/torpedo.py consumes to recover the board's
+    # 3D pose. Mirrors yolov11_sim.launch.py but defaults to the torpedo model and
+    # enables tracking so detections carry stable ids.
+    model_path = os.path.join(
+        get_package_share_directory("subjugator_vision"),
+        "models",
+        "torpedo_sim.pt",
+    )
+
+    return LaunchDescription(
+        [
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(
+                        get_package_share_directory("yolo_bringup"),
+                        "launch",
+                        "yolo.launch.py",
+                    )
+                ),
+                launch_arguments={
+                    "model": LaunchConfiguration(
+                        "model",
+                        default=model_path,
+                    ),
+                    "input_image_topic": LaunchConfiguration(
+                        "input_image_topic", default="/front_cam/image_raw"
+                    ),
+                    "image_reliability": LaunchConfiguration(
+                        "image_reliability", default="1"
+                    ),
+                    "namespace": LaunchConfiguration("namespace", default="yolo"),
+                    "device": LaunchConfiguration("device", default="cpu"),
+                    "half": LaunchConfiguration("half", default="False"),
+                    "threshold": LaunchConfiguration("threshold", default="0.2"),
+                    "tracker": LaunchConfiguration("tracker", default="bytetrack.yaml"),
+                    "enable": LaunchConfiguration("enable", default="True"),
+                    "use_tracking": LaunchConfiguration("use_tracking", default="True"),
+                    "use_debug": LaunchConfiguration("use_debug", default="True"),
+                }.items(),
+            ),
+        ]
+    )
