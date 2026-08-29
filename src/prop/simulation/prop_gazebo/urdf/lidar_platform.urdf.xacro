@@ -7,8 +7,36 @@
     <static>true</static>
   </gazebo>
 
-  <!-- Bare root link, no chassis geometry/mass, just an anchor for the sensor -->
+  <!-- Bare root link, no chassis geometry/mass: just an anchor for the sensor -->
   <link name="base_link"/>
 
   <xacro:vlp16_lidar parent="base_link" xyz="0 0 0" rpy="0 0 0"/>
+
+  <!-- Static test targets for algorithm validation -->
+  <xacro:macro name="test_box" params="name xyz size:='0.5 0.5 0.5' rgba:='0.8 0.2 0.2 1.0'">
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="${name}"/>
+      <origin xyz="${xyz}" rpy="0 0 0"/>
+    </joint>
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${size}"/>
+        </geometry>
+        <material name="${name}_material">
+          <color rgba="${rgba}"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="${size}"/>
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+
+  <!-- Positioned in front of the sensor (+x), within FOV/range. Adjust as needed. -->
+  <xacro:test_box name="target_box_1" xyz="3.0 -0.75 0" size="0.6 0.6 0.6"/>
+  <xacro:test_box name="target_box_2" xyz="5.0 0.75 0" size="0.6 1.2 0.6" rgba="0.2 0.8 0.2 1.0"/>
 </robot>
