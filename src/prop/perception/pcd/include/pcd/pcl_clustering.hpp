@@ -225,6 +225,9 @@ class PclClustering : public rclcpp::Node, public PcdConstants
 
         pub_cloud_->publish(cloud_msg);
         pub_markers_->publish(markers);
+
+        RCLCPP_INFO(get_logger(), "Published %zu cluster(s) with %zu colored point(s) and %zu marker(s)",
+                    cluster_indices.size(), colored.size(), markers.markers.size());
     }
 
     // ── Members ───────────────────────────────────────────────────────────────
