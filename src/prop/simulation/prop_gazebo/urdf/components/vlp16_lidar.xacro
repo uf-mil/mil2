@@ -51,6 +51,7 @@
     <gazebo reference="laser_frame">
       <sensor type="gpu_lidar" name="vlp16_sensor">
         <topic>lidar</topic>
+        <frame_id>laser_frame</frame_id>
         <update_rate>${update_rate}</update_rate>
         <lidar>
           <scan>

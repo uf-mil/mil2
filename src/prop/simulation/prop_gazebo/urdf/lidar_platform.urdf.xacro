@@ -7,28 +7,8 @@
     <static>true</static>
   </gazebo>
 
-  <link name="chassis">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.6 0.4 0.15"/>
-      </geometry>
-      <material name="chassis_material">
-        <color rgba="0.2 0.2 0.8 1.0"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.6 0.4 0.15"/>
-      </geometry>
-    </collision>
-    <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="5.0"/>
-      <inertia ixx="0.1" iyy="0.1" izz="0.1" ixy="0" ixz="0" iyz="0"/>
-    </inertial>
-  </link>
+  <!-- Bare root link, no chassis geometry/mass, just an anchor for the sensor -->
+  <link name="base_link"/>
 
-  <xacro:vlp16_lidar parent="chassis"/>
+  <xacro:vlp16_lidar parent="base_link" xyz="0 0 0" rpy="0 0 0"/>
 </robot>

@@ -14,7 +14,7 @@
   direction: GZ_TO_ROS
 
 - ros_topic_name: "/lidar/points"
-  gz_topic_name: "/lidar/scan/points"
+  gz_topic_name: "/lidar/points"
   ros_type_name: "sensor_msgs/msg/PointCloud2"
   gz_type_name: "gz.msgs.PointCloudPacked"
   direction: GZ_TO_ROS
