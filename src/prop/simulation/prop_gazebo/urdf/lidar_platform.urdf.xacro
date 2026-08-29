@@ -12,8 +12,8 @@
 
   <xacro:vlp16_lidar parent="base_link" xyz="0 0 0" rpy="0 0 0"/>
 
-  <!-- Static test targets for algorithm validation -->
-  <xacro:macro name="test_box" params="name xyz size:='0.5 0.5 0.5' rgba:='0.8 0.2 0.2 1.0'">
+  <!-- Static buoy targets for perception/clustering validation -->
+  <xacro:macro name="buoy" params="name xyz radius:='0.2' length:='2.0' rgba:='0.9 0.15 0.15 1.0'">
     <joint name="${name}_joint" type="fixed">
       <parent link="base_link"/>
       <child link="${name}"/>
@@ -22,7 +22,7 @@
     <link name="${name}">
       <visual>
         <geometry>
-          <box size="${size}"/>
+          <cylinder radius="${radius}" length="${length}"/>
         </geometry>
         <material name="${name}_material">
           <color rgba="${rgba}"/>
@@ -30,13 +30,17 @@
       </visual>
       <collision>
         <geometry>
-          <box size="${size}"/>
+          <cylinder radius="${radius}" length="${length}"/>
         </geometry>
       </collision>
     </link>
   </xacro:macro>
 
-  <!-- Positioned in front of the sensor (+x), within FOV/range. Adjust as needed. -->
-  <xacro:test_box name="target_box_1" xyz="3.0 -0.75 0" size="0.6 0.6 0.6"/>
-  <xacro:test_box name="target_box_2" xyz="5.0 0.75 0" size="0.6 1.2 0.6" rgba="0.2 0.8 0.2 1.0"/>
+  <!-- Tall buoys placed in front of the lidar sensor in the water -->
+  <!-- Red buoy (port marker) -->
+  <xacro:buoy name="red_buoy" xyz="3.5 -1.2 0.0" radius="0.2" length="2.0" rgba="0.9 0.15 0.15 1.0"/>
+  <!-- Green buoy (starboard marker) -->
+  <xacro:buoy name="green_buoy" xyz="5.5 1.5 0.0" radius="0.2" length="2.2" rgba="0.15 0.85 0.2 1.0"/>
+  <!-- Yellow marker buoy -->
+  <xacro:buoy name="yellow_buoy" xyz="7.0 -0.3 0.0" radius="0.22" length="2.0" rgba="0.95 0.85 0.1 1.0"/>
 </robot>
