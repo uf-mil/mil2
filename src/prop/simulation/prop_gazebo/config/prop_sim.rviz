@@ -1,0 +1,164 @@
+---
+# rviz2 -d prop_sim.rviz, or just launch prop_sim.launch.py.
+# Set Views > Current > Target Frame to base_link to chase the boat.
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+      Splitter Ratio: 0.5
+    Tree Height: 600
+Visualization Manager:
+  Class: ""
+  Name: root
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Alpha: 0.4
+      Cell Size: 1
+      Color: 80; 90; 110
+      Line Style:
+        Line Width: 0.03
+        Value: Lines
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 200
+      Reference Frame: <Fixed Frame>
+    - Class: rviz_default_plugins/RobotModel
+      Name: Boat
+      Enabled: true
+      Description Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Visual Enabled: true
+    - Class: rviz_default_plugins/LaserScan
+      Name: Lidar
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /lidar/scan
+      Color: 255; 255; 255
+      Color Transformer: FlatColor
+      Size (m): 0.15
+      Style: Spheres
+      Decay Time: 0
+    - Class: rviz_default_plugins/Odometry
+      Name: Estimate
+      Enabled: true
+      Covariance:
+        Value: false
+      Keep: 200
+      Position Tolerance: 0.5
+      Angle Tolerance: 0.5
+      Shape:
+        Alpha: 1
+        Color: 40; 220; 190
+        Head Length: 0.15
+        Head Radius: 0.08
+        Shaft Length: 0.6
+        Shaft Radius: 0.03
+        Value: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /odometry/filtered/global
+    - Class: rviz_default_plugins/Odometry
+      Name: Ground truth
+      Enabled: false
+      Covariance:
+        Value: false
+      Keep: 200
+      Position Tolerance: 0.5
+      Angle Tolerance: 0.5
+      Shape:
+        Alpha: 1
+        Color: 255; 160; 40
+        Head Length: 0.15
+        Head Radius: 0.08
+        Shaft Length: 0.6
+        Shaft Radius: 0.03
+        Value: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /sim/ground_truth
+    - Class: rviz_default_plugins/Path
+      Name: Plan
+      Enabled: true
+      Alpha: 1
+      Buffer Length: 1
+      Color: 255; 190; 60
+      Line Style: Lines
+      Line Width: 0.03
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Style: Axes
+      Pose Axes Length: 0.6
+      Pose Axes Radius: 0.06
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /plan
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Frame Timeout: 15
+      Marker Scale: 1
+      Show Arrows: false
+      Show Axes: true
+      Show Names: true
+      Update Interval: 0
+  Global Options:
+    Background Color: 22; 26; 34
+    Fixed Frame: map
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+      Line color: 128; 128; 0
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Angle: 0
+      Invert Z Axis: false
+      Near Clip Distance: 0.01
+      Scale: 20
+      Target Frame: <Fixed Frame>
+      X: 10
+      Y: 10
+    Saved: ~
+Window Geometry:
+  Height: 900
+  Width: 1400
+  Displays:
+    collapsed: false
+  Views:
+    collapsed: false
+  Selection:
+    collapsed: false
+  Time:
+    collapsed: false
+  Tool Properties:
+    collapsed: false

@@ -1,1 +1,0 @@
-## GNC - controller/path planner

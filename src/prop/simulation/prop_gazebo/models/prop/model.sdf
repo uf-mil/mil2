@@ -1,0 +1,245 @@
+<?xml version="1.0" ?>
+<!--
+  The prop boat. Differential thrust from two aft thrusters, floating on the
+  water plane the world's buoyancy plugin defines at z = 0.
+
+  Sensors are mounted where prop_localization/urdf/prop.urdf says they are, and
+  publish the same topics the hardware does, so nothing downstream can tell the
+  difference between this and the boat.
+
+  Thrust is applied by the PropThrusters plugin in this package rather than by
+  Gazebo's own thruster system, which models a propeller and does not put out
+  the newtons you ask it for.
+
+  Numbers that also live elsewhere:
+    45 N per thruster and 0.25 m off the centreline -> max_thrust and
+    thruster_y in prop_controller/config/controller.yaml, and the same two
+    parameters on sim_thrusters.py.
+-->
+<sdf version="1.9">
+  <model name="prop">
+    <link name="base_link">
+      <inertial>
+        <!-- Ballast: the batteries sit low in the hull, and Gazebo's buoyancy
+             pushes up through the middle of the box, so this offset is what
+             rights the boat when something heels it over. -->
+        <pose>0 0 -0.15 0 0 0</pose>
+        <mass>25.0</mass>
+        <inertia>
+          <ixx>0.833</ixx>
+          <iyy>2.167</iyy>
+          <izz>2.833</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+
+      <!-- Buoyancy comes from the volume of this box: 25 kg of boat in a
+           1.0 x 0.6 hull floats with a 4 cm draft. -->
+      <collision name="hull_collision">
+        <geometry>
+          <box>
+            <size>1.0 0.6 0.2</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="hull_visual">
+        <geometry>
+          <box>
+            <size>1.0 0.6 0.2</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.85 0.85 0.88 1</ambient>
+          <diffuse>0.85 0.85 0.88 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- A stripe on the bow, so heading is readable in the GUI. -->
+      <visual name="bow_visual">
+        <pose>0.45 0 0.101 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.1 0.6 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1.0 0.45 0.1 1</ambient>
+          <diffuse>1.0 0.45 0.1 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- The thrusters, drawn where they sit: aft, 0.25 m either side of the
+           centreline and level with the centre of mass. -->
+      <visual name="left_thruster_visual">
+        <pose>-0.52 0.25 -0.15 0 1.5707963 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.16</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.2 0.2 0.2 1</ambient>
+          <diffuse>0.2 0.2 0.2 1</diffuse>
+        </material>
+      </visual>
+
+      <visual name="right_thruster_visual">
+        <pose>-0.52 -0.25 -0.15 0 1.5707963 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.16</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.2 0.2 0.2 1</ambient>
+          <diffuse>0.2 0.2 0.2 1</diffuse>
+        </material>
+      </visual>
+
+      <sensor name="imu" type="imu">
+        <pose>0.422165 -0.349025 -0.069291 0 0 3.141592653589793</pose>
+        <topic>sim/imu</topic>
+        <gz_frame_id>imu</gz_frame_id>
+        <update_rate>100</update_rate>
+        <always_on>1</always_on>
+        <imu>
+          <orientation_reference_frame>
+            <localization>ENU</localization>
+          </orientation_reference_frame>
+          <angular_velocity>
+            <x>
+              <noise type="gaussian">
+                <stddev>0.004</stddev>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <stddev>0.004</stddev>
+              </noise>
+            </y>
+            <z>
+              <noise type="gaussian">
+                <stddev>0.004</stddev>
+              </noise>
+            </z>
+          </angular_velocity>
+          <linear_acceleration>
+            <x>
+              <noise type="gaussian">
+                <stddev>0.03</stddev>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <stddev>0.03</stddev>
+              </noise>
+            </y>
+            <z>
+              <noise type="gaussian">
+                <stddev>0.03</stddev>
+              </noise>
+            </z>
+          </linear_acceleration>
+        </imu>
+      </sensor>
+
+      <!-- An F9P holding an RTK fix, so centimetres rather than metres.
+           Gazebo applies the horizontal noise to latitude and longitude in
+           degrees, not metres: 1.8e-7 deg is the 2 cm this sensor is worth. -->
+      <sensor name="gps" type="navsat">
+        <topic>sim/gps_raw</topic>
+        <gz_frame_id>base_link</gz_frame_id>
+        <update_rate>10</update_rate>
+        <always_on>1</always_on>
+        <navsat>
+          <position_sensing>
+            <horizontal>
+              <noise type="gaussian">
+                <stddev>1.8e-07</stddev>
+              </noise>
+            </horizontal>
+            <vertical>
+              <noise type="gaussian">
+                <stddev>0.06</stddev>
+              </noise>
+            </vertical>
+          </position_sensing>
+        </navsat>
+      </sensor>
+
+      <sensor name="lidar" type="gpu_lidar">
+        <pose>0 0 0.25 0 0 0</pose>
+        <topic>lidar/scan</topic>
+        <gz_frame_id>lidar_link</gz_frame_id>
+        <update_rate>10</update_rate>
+        <always_on>1</always_on>
+        <visualize>true</visualize>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>360</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14159</min_angle>
+              <max_angle>3.14159</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.5</min>
+            <max>50.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+      </sensor>
+    </link>
+
+    <plugin filename="PropThrusters" name="prop_gazebo::PropThrusters">
+      <link_name>base_link</link_name>
+      <thruster_y>0.25</thruster_y>
+      <max_thrust>45.0</max_thrust>
+      <topic_left>/prop/thrust/left</topic_left>
+      <topic_right>/prop/thrust/right</topic_right>
+    </plugin>
+
+    <!-- Damping against the water. Surge is cheap, sway is not: the hull slides
+         forwards far more easily than sideways, which is what makes it steer
+         like a boat instead of a hovercraft. -->
+    <plugin
+      filename="gz-sim-hydrodynamics-system"
+      name="gz::sim::systems::Hydrodynamics"
+    >
+      <link_name>base_link</link_name>
+      <xU>-8.0</xU>
+      <xUabsU>-15.0</xUabsU>
+      <yV>-60.0</yV>
+      <yVabsV>-180.0</yVabsV>
+      <!-- Heave is damped hard: the buoyancy plugin is a stiff spring, and
+           left to ring it buzzes the IMU with a couple of m/s^2 of nothing. -->
+      <zW>-1500.0</zW>
+      <zWabsW>-1500.0</zWabsW>
+      <kP>-50.0</kP>
+      <kPabsP>-50.0</kPabsP>
+      <mQ>-50.0</mQ>
+      <mQabsQ>-50.0</mQabsQ>
+      <nR>-20.0</nR>
+      <nRabsR>-15.0</nRabsR>
+    </plugin>
+
+    <!-- Noise free pose and velocity, for scoring a run against the estimate.
+         Nothing in the stack is allowed to subscribe to this. -->
+    <plugin
+      filename="gz-sim-odometry-publisher-system"
+      name="gz::sim::systems::OdometryPublisher"
+    >
+      <odom_frame>map</odom_frame>
+      <robot_base_frame>base_link</robot_base_frame>
+      <odom_topic>/sim/ground_truth</odom_topic>
+      <odom_publish_frequency>30</odom_publish_frequency>
+      <dimensions>3</dimensions>
+    </plugin>
+  </model>
+</sdf>

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!-- Frames only: what the EKFs and perception need to place the sensors on the
+     hull. The simulated hull lives in prop_gazebo/models/prop/model.sdf and
+     mounts its sensors at these same poses. -->
+<robot name="prop">
+  <link name="base_link"/>
+  <link name="imu"/>
+  <link name="lidar_link"/>
+
+  <!-- The IMU is mounted backwards on the boat, hence the yaw of pi. -->
+  <joint name="base_to_imu" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu"/>
+    <origin xyz="0.422165 -0.349025 -0.069291" rpy="0 0 3.141592653589793"/>
+  </joint>
+
+  <joint name="base_to_lidar" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+    <origin xyz="0 0 0.25" rpy="0 0 0"/>
+  </joint>
+</robot>
