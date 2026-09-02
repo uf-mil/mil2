@@ -1,7 +1,7 @@
-# PCD (point cloud detection) 
+# PCD (point cloud detection)
 
 
-Running on lidar_sim launch 
+Running on lidar_sim launch
 
 1. filtering (water/sky rejection)
 2. Clustering
