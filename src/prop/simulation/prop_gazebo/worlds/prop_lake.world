@@ -1,0 +1,200 @@
+<?xml version="1.0" ?>
+<!--
+  Open water with a handful of buoys, which is all the prop boat needs to run a
+  waypoint mission. The water is not a surface anything collides with: the
+  buoyancy plugin below simply treats z = 0 as the waterline, and everything
+  under it as water.
+-->
+<sdf version="1.9">
+  <world name="prop_lake">
+    <physics name="default_physics" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <gravity>0 0 -9.8</gravity>
+    <magnetic_field>2.2e-05 -1.1e-06 -4.2e-05</magnetic_field>
+
+    <!-- Lake Wauburg. Only sets where the simulated GPS thinks it is: the
+         localization stack takes its datum from the first fix either way. -->
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <world_frame_orientation>ENU</world_frame_orientation>
+      <latitude_deg>29.5286</latitude_deg>
+      <longitude_deg>-82.3018</longitude_deg>
+      <elevation>0</elevation>
+      <heading_deg>0</heading_deg>
+    </spherical_coordinates>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics" />
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands"
+    />
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster"
+    />
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors" />
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu" />
+    <plugin filename="gz-sim-navsat-system" name="gz::sim::systems::NavSat" />
+
+    <!-- Water below z = 0, air above it, so hulls float where they should.
+         Graded buoyancy only handles box and sphere collisions. -->
+    <plugin filename="gz-sim-buoyancy-system" name="gz::sim::systems::Buoyancy">
+      <graded_buoyancy>
+        <default_density>1000</default_density>
+        <density_change>
+          <above_depth>0</above_depth>
+          <density>1.225</density>
+        </density_change>
+      </graded_buoyancy>
+    </plugin>
+
+    <scene>
+      <ambient>0.6 0.6 0.6 1</ambient>
+      <background>0.6 0.75 0.9 1</background>
+      <grid>false</grid>
+      <shadows>true</shadows>
+    </scene>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 100 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.2 -0.9</direction>
+    </light>
+
+    <!-- Something to look at. The waterline is the buoyancy plugin's, not
+         this. -->
+    <model name="water">
+      <static>true</static>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>300 300 0.01</size>
+            </box>
+          </geometry>
+          <transparency>0.4</transparency>
+          <cast_shadows>false</cast_shadows>
+          <material>
+            <ambient>0.1 0.3 0.5 1</ambient>
+            <diffuse>0.1 0.35 0.6 1</diffuse>
+            <specular>0.2 0.2 0.3 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Buoys, roughly on the square mission, for the lidar to see. -->
+    <model name="buoy_0">
+      <static>true</static>
+      <pose>20 -3 0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <cylinder>
+              <length>1.0</length>
+              <radius>0.25</radius>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <length>1.0</length>
+              <radius>0.25</radius>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.9 0.3 0.1 1</ambient>
+            <diffuse>0.9 0.3 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="buoy_1">
+      <static>true</static>
+      <pose>23 20 0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <cylinder>
+              <length>1.0</length>
+              <radius>0.25</radius>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <length>1.0</length>
+              <radius>0.25</radius>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.1 0.7 0.3 1</ambient>
+            <diffuse>0.1 0.7 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="buoy_2">
+      <static>true</static>
+      <pose>-3 23 0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <cylinder>
+              <length>1.0</length>
+              <radius>0.25</radius>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <length>1.0</length>
+              <radius>0.25</radius>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.9 0.3 0.1 1</ambient>
+            <diffuse>0.9 0.3 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="buoy_3">
+      <static>true</static>
+      <pose>-4 -4 0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <cylinder>
+              <length>1.0</length>
+              <radius>0.25</radius>
+            </cylinder>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <length>1.0</length>
+              <radius>0.25</radius>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.1 0.7 0.3 1</ambient>
+            <diffuse>0.1 0.7 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>
