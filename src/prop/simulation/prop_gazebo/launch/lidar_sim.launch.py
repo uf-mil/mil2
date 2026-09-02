@@ -1,6 +1,5 @@
 import os
 
-
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
@@ -12,7 +11,7 @@ from launch.actions import (
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node, SetParameter
-import xacro
+from xacro import process_file
 
 
 def pkg_share(pkg, *path):
@@ -22,7 +21,7 @@ def pkg_share(pkg, *path):
 def spawn_robot(context, *args, **kwargs):
     model_name = LaunchConfiguration('model_name').perform(context)
     xacro_file = pkg_share('prop_gazebo', 'urdf', 'lidar_platform.urdf.xacro')
-    robot_desc = xacro.process_file(xacro_file).toxml()
+    robot_desc = process_file(xacro_file).toxml()
 
     return [
         Node(
