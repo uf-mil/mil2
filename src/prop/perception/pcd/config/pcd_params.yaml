@@ -1,0 +1,39 @@
+/**:
+  ros__parameters:
+    # ─────────────────────────────────────────────────
+    # Distance-pass-through filter
+    # ─────────────────────────────────────────────────
+    # Min/max radial distance from the sensor origin (metres).
+    # Points closer than min_distance are considered sensor noise or
+    # reflections off the hull; points beyond max_distance are too
+    # sparse to be reliable.
+    min_distance: 0.5        # [m]  reject points closer than this
+    max_distance: 30.0       # [m]  reject points farther than this
+
+    # ─────────────────────────────────────────────────
+    # Water-surface rejection (Z / height filter)
+    # ─────────────────────────────────────────────────
+    # Points whose Z coordinate is below this threshold are assumed
+    # to be water returns and are discarded.  Set relative to the
+    # sensor frame (negative = below the lidar).
+    water_z_min: -0.5      # [m]  lower bound — reject water below this Z
+
+    # Upper Z bound (optional sky/mast crop).  Set very large to disable.
+    water_z_max: 10.0        # [m]  upper bound — reject sky noise above this Z
+
+    # ─────────────────────────────────────────────────
+    # Voxel-grid down-sampling (pre-clustering)
+    # ─────────────────────────────────────────────────
+    voxel_leaf_size: 0.1     # [m]  leaf edge length; 0.0 disables down-sampling
+
+    # ─────────────────────────────────────────────────
+    # Euclidean cluster extraction
+    # ─────────────────────────────────────────────────
+    cluster_tolerance: 0.5    # [m]  max neighbour distance for the same cluster
+    cluster_min_points: 20    # minimum points to keep a cluster
+    cluster_max_points: 25000 # maximum points allowed in a single cluster
+
+    # ─────────────────────────────────────────────────
+    # I/O topics
+    # ─────────────────────────────────────────────────
+    input_topic: "/velodyne_points"
