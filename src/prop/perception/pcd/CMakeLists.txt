@@ -19,18 +19,11 @@ add_definitions(${PCL_DEFINITIONS})
 
 # ── pcl_filter node ──────────────────────────────────────────────────────────
 add_executable(pcl_filter_node src/pcl_filter_node.cpp)
-target_include_directories(
-  pcl_filter_node PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                         $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(pcl_filter_node rclcpp sensor_msgs pcl_conversions)
 target_link_libraries(pcl_filter_node ${PCL_LIBRARIES})
 
 # ── pcl_clustering node ──────────────────────────────────────────────────────
 add_executable(pcl_clustering_node src/pcl_clustering_node.cpp)
-target_include_directories(
-  pcl_clustering_node
-  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-         $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(pcl_clustering_node rclcpp sensor_msgs
                           visualization_msgs pcl_conversions)
 target_link_libraries(pcl_clustering_node ${PCL_LIBRARIES})
@@ -50,6 +43,9 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
+  # Repo C++ style (.clang-format) is 4-space/Allman, which uncrustify's ROS
+  # profile can never accept; clang-format in pre-commit is the source of truth.
+  set(ament_cmake_uncrustify_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
 
