@@ -10,6 +10,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(mil_msgs REQUIRED)
 find_package(subjugator_msgs REQUIRED)
+find_package(subjugator_thruster_manager REQUIRED)
 
 find_package(OpenCV REQUIRED)
 
@@ -124,7 +125,8 @@ ament_target_dependencies(DepthSensor rclcpp mil_msgs sensor_msgs)
 
 ament_target_dependencies(Hydrophone rclcpp geometry_msgs mil_msgs)
 
-ament_target_dependencies(ThrusterBridge rclcpp subjugator_msgs geometry_msgs)
+ament_target_dependencies(ThrusterBridge rclcpp subjugator_msgs geometry_msgs
+                          subjugator_thruster_manager)
 
 ament_target_dependencies(MarbleDropper rclcpp subjugator_msgs geometry_msgs)
 
