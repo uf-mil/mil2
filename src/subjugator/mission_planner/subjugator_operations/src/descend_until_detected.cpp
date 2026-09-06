@@ -34,6 +34,12 @@ BT::PortsList DescendUntilDetected::providedPorts()
         BT::InputPort<double>("step_m", 0.20, "Downward step per cycle (m)"),
         BT::InputPort<double>("pos_tol", 0.10, "Goal-reached tolerance (m)"),
         BT::InputPort<int>("max_steps", 12, "Max descend steps before FAILURE"),
+        BT::InputPort<double>("min_z", -std::numeric_limits<double>::infinity(),
+                              "Absolute depth floor (odom z, treated as world z). The descent stops "
+                              "here and FAILS rather than sinking past it. Default: no floor, which "
+                              "preserves the historic behaviour. SET IT whenever the target is a "
+                              "surface the camera must stay ABOVE -- max_steps is a step count, not "
+                              "a depth bound, so it does not keep the sub off the target"),
         BT::InputPort<int>("timeout_msec", 45000, "Overall timeout (ms)"),
         BT::InputPort<std::shared_ptr<Context>>("ctx"),
     };
@@ -63,6 +69,7 @@ BT::NodeStatus DescendUntilDetected::onRunning()
     std::string label = "table", camera = "down";
     double min_conf = 0.40, step_m = 0.20, pos_tol = 0.10, min_area_frac = 0.0;
     int max_steps = 12, timeout_msec = 45000, confirm_frames = 3;
+    double min_z = -std::numeric_limits<double>::infinity();
     getInput("label", label);
     getInput("camera", camera);
     getInput("min_conf", min_conf);
@@ -72,6 +79,7 @@ BT::NodeStatus DescendUntilDetected::onRunning()
     getInput("timeout_msec", timeout_msec);
     getInput("confirm_frames", confirm_frames);
     getInput("min_area_frac", min_area_frac);
+    getInput("min_z", min_z);
 
     // Success once the target is seen on confirm_frames consecutive fresh
     // frames (see detection_gate.hpp). Presence and stamp are judged from the
@@ -171,7 +179,16 @@ BT::NodeStatus DescendUntilDetected::onRunning()
         if (ctx_->latest_odom)
             goal = ctx_->latest_odom->pose.pose;
     }
-    goal.position.z -= step_m;
+    // Depth floor, checked against the CURRENT pose rather than the step count:
+    // max_steps bounds how many steps we take, not how deep they reach.
+    auto const next_z = descend::next_descend_z(goal.position.z, step_m, min_z, pos_tol);
+    if (!next_z)
+    {
+        RCLCPP_WARN(ctx_->logger(), "DescendUntilDetected: reached min_z (%.2f) at z=%.2f without '%s'", min_z,
+                    goal.position.z, label.c_str());
+        return BT::NodeStatus::FAILURE;
+    }
+    goal.position.z = *next_z;
     ctx_->command_goal(goal);
     pending_goal_ = goal;
     waiting_for_goal_ = true;

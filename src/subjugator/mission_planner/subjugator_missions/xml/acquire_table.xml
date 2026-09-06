@@ -7,13 +7,26 @@
         OctagonMission capstone. It works whether the sub arrived via S1 acoustic
         homing or was hand-placed above the octagon.
 
-        DetectTarget can FAIL (table drifted off-frame after descent), so the
-        SearchForTarget spiral fallback is actually reachable; HoneOverTarget then
-        degrades gracefully (always succeeds) and downstream stages re-center
-        themselves before acting. min_area_frac="0.15" is what makes that true:
-        the model emits a confident corner phantom 'table' in ~every frame, so
-        without an area floor all three presence checks read "table in frame"
-        forever and the spiral is dead code. See detection_gate.hpp.
+        Two things make the SearchForTarget spiral genuinely reachable, and BOTH
+        are required; it was dead code without either:
+
+        1. min_area_frac="0.15". The model emits a confident corner phantom
+           'table' in ~every frame, so without an area floor all three presence
+           checks read "table in frame" forever and nothing ever searches.
+           See detection_gate.hpp.
+        2. ForceSuccess around DescendUntilDetected. This is a Sequence, so a
+           descend FAILURE used to abort the whole subtree before the Fallback
+           below could tick. The original comment here reasoned only about
+           DetectTarget failing AFTER a successful descent, but at a start
+           offset laterally from the table, descending is exactly what fails,
+           and that is precisely when the spiral is needed. Descending 2.4 m
+           cannot correct a 1.5 m LATERAL offset.
+
+        Measured 2026-07-28 (run_task 5, stage `approach`, `near` start): with (1)
+        alone the descent correctly rejected all 159 phantom boxes over 452
+        frames, then failed the subtree at 45 s and never spiralled.
+
+        min_z on the descend is the third piece: see below.
     -->
     <BehaviorTree ID="AcquireTable">
         <Sequence>
@@ -21,10 +34,27 @@
                  while the YOLO model is being retrained. Once the model is good,
                  make confidence 0.80 or higher, most likely. min_area_frac does
                  the real discrimination meanwhile. -->
-            <!-- Descend step-by-step until the table appears on the down cam. -->
-            <DescendUntilDetected label="table" camera="down" min_conf="0.20" min_area_frac="0.15"
-                                  step_m="0.20" max_steps="12"
-                                  timeout_msec="45000" ctx="{ctx}"/>
+            <!-- Descend step-by-step until the table appears on the down cam.
+                 ForceSuccess: failing to find the table by descending is not a
+                 mission failure, it is the case the spiral below exists to
+                 handle. Without this the Sequence aborts here and the spiral
+                 never ticks.
+
+                 min_z="-0.55" is a hard depth floor. max_steps is a STEP COUNT,
+                 not a depth bound (12 x 0.20 m = 2.4 m, which from z=-0.35
+                 reaches -2.75), and the tabletop is at -0.85 with props resting
+                 on it at -0.80. A measured run sank to -1.41, 0.56 m BELOW the
+                 tabletop, where a down camera cannot see the table at any
+                 lateral offset, so both the descent AND the following spiral
+                 were doomed. -0.55 keeps 0.30 m of clearance over the tabletop
+                 and ~0.15 m over the tallest prop, and the table already fills
+                 0.80-0.94 of the frame at -0.35, so little descent is needed to
+                 clear the 0.15 area floor anyway. -->
+            <ForceSuccess>
+                <DescendUntilDetected label="table" camera="down" min_conf="0.20" min_area_frac="0.15"
+                                      step_m="0.20" max_steps="12" min_z="-0.55"
+                                      timeout_msec="45000" ctx="{ctx}"/>
+            </ForceSuccess>
             <!-- Make sure the table is in frame; spiral-search if it drifted off. -->
             <Fallback>
                 <DetectTarget label="table" camera="down" min_conf="0.20" min_area_frac="0.15" ctx="{ctx}"/>

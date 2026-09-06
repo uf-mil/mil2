@@ -2,6 +2,7 @@
 #include <behaviortree_cpp/action_node.h>
 
 #include "context.hpp"
+#include "descend_floor.hpp"
 #include "detection_gate.hpp"
 
 #include <geometry_msgs/msg/pose.hpp>

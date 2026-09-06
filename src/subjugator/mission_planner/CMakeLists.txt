@@ -131,6 +131,11 @@ if(BUILD_TESTING)
     test_detection_gate
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
 
+  ament_add_gtest(test_descend_floor test/test_descend_floor.cpp)
+  target_include_directories(
+    test_descend_floor
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
   ament_add_gtest(test_target_projection test/test_target_projection.cpp)
   target_include_directories(
     test_target_projection
