@@ -36,6 +36,15 @@ class Settle:
     twist_tol: float = 0.02
     stable_samples: int = 10
     cap_sim_s: float = 40.0
+    # Bring-up postcondition: how far odom may sit from the truth pose after
+    # re-anchoring before the run is abandoned as a harness fault. The settle
+    # gate watches twist, not position, so it happily declares "converged" on a
+    # sub that is dead still in the wrong place. Measured on this box: 0.008 and
+    # 0.013 m when the EKF behaved, 1658 m when it diverged at start -- three
+    # orders of magnitude apart, so this only has to sit somewhere in between.
+    # Not tightened to sim_bringup's own 0.02 m "clean" line: a merely imperfect
+    # settle is worth reporting, not worth throwing the run away over.
+    max_anchor_offset: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -131,6 +140,11 @@ TASKS: dict[int, TaskSpec] = {
             "calib": Stage("CenterCameraTest", 60, "over_table"),
             "combined": Stage("HoneOverTableSelect", 90, "over_table"),
             "grasp": Stage("OctagonGraspMission", 330, "over_table"),
+            # S2 alone, and the only short stage that starts away from the table.
+            # It is what makes the down-cam approach path -- descend, spiral
+            # search, lock -- testable without paying for the whole capstone:
+            # 125 sim-s of declared timeouts against OctagonMission's 1089.
+            "approach": Stage("AcquireTable", 250, "near"),
             # do_pinger=0: S1 sweeps forever when it hears no ping, which would
             # make the tree unbounded. The far/pinger start is a documented
             # follow-up, not v1.

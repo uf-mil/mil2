@@ -4,7 +4,7 @@ from subjugator_bringup.task_runner import tasks
 def test_task5_is_wired():
     spec = tasks.TASKS[5]
     assert spec.default_stage in spec.stages
-    assert set(spec.stages) == {"calib", "combined", "grasp", "full"}
+    assert set(spec.stages) == {"calib", "combined", "grasp", "approach", "full"}
 
 
 def test_every_stage_start_exists():

@@ -282,6 +282,43 @@ def parse_settle_log(path: str) -> dict:
     return result
 
 
+def anchor_error(settle: dict, max_offset: float) -> str:
+    """Bring-up postcondition: did the EKF actually anchor onto the truth pose?
+
+    Returns "" when the anchor is usable, else the harness_error text.
+
+    robot_localization intermittently blows up at start on this box (observed:
+    a first odom sample at y=4.5e41, settling into a ~1644 m bias that never
+    recovers). The controller then holds station in that corrupted frame and
+    flies the sub tens of metres from the commanded start. Every odom-vs-world
+    number in the report is meaningless afterwards -- including the drift stat
+    meant to catch exactly this -- and the mission fails for a reason that has
+    nothing to do with the mission.
+
+    sim_bringup.py already prints a WARN here and exits 0 anyway, so without
+    this gate the run continues and reports a MISSION failure (exit 1) for an
+    infrastructure fault. Failing as a harness error (exit 2) is the honest
+    verdict and stops a doomed run before it burns the budget.
+    """
+    offset = settle.get("offset")
+    if offset is None:
+        return (
+            "the settle never reported an anchor offset, so the EKF anchor is "
+            "unproven.\n"
+            "  sim_bringup.log should show step [6] printing 'offset=... m'."
+        )
+    if offset > max_offset:
+        return (
+            f"EKF anchor failed: odom is {offset:.3f} m from the truth pose "
+            f"after re-anchoring (max {max_offset:.2f} m).\n"
+            "  robot_localization diverged during bring-up; the sub is not at "
+            "the commanded start.\n"
+            "  This is a bring-up fault, not a mission one -- rerun. See "
+            "sim_bringup.log step [6] and trace.csv."
+        )
+    return ""
+
+
 def scan_health(path: str) -> dict:
     try:
         with open(path, errors="replace") as handle:
@@ -410,6 +447,15 @@ def execute(spec, stage_name, stage, start_name, args, run_dir: str) -> dict:
             spin()
             time.sleep(0.1)
         settle = parse_settle_log(settle_log)
+
+        # Anchor postcondition, before any data gate: a diverged anchor still
+        # produces a healthy-looking topic stream, so the readiness gates below
+        # would pass and the mission would run on a corrupted frame.
+        anchor_bad = anchor_error(settle, spec.settle.max_anchor_offset)
+        if anchor_bad:
+            run["settle"] = settle
+            run["harness_error"] = anchor_bad
+            return run
 
         # Data gates: messages actually arriving. Deliberately AFTER the settle,
         # because sim_bringup.py is what unpauses gz and enables the EKF --

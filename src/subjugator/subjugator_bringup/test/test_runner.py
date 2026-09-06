@@ -204,6 +204,35 @@ def test_parse_settle_log_on_a_missing_file():
     }
 
 
+# --------------------------------------------------------------------------
+# anchor postcondition
+# --------------------------------------------------------------------------
+# Measured on this box, same command, minutes apart: 0.0077 m and 0.013 m on
+# good runs, 1658.1285 m when robot_localization blew up during bring-up and
+# never recovered. Nothing lands in between, so the threshold only has to
+# separate "settled" from "diverged".
+def test_anchor_error_passes_a_clean_anchor():
+    assert runner.anchor_error({"offset": 0.013}, 1.0) == ""
+
+
+def test_anchor_error_rejects_a_diverged_anchor():
+    msg = runner.anchor_error({"offset": 1658.1285}, 1.0)
+    assert "1658.129" in msg
+    assert "anchor" in msg.lower()
+
+
+def test_anchor_error_accepts_exactly_the_threshold():
+    assert runner.anchor_error({"offset": 1.0}, 1.0) == ""
+
+
+# A missing offset means sim_bringup never printed the line -- it died before
+# re-anchoring, or its output changed shape. Either way the anchor is unproven,
+# and the whole point of this gate is that unproven must not read as fine.
+def test_anchor_error_rejects_a_missing_offset():
+    assert runner.anchor_error({"offset": None}, 1.0) != ""
+    assert runner.anchor_error({}, 1.0) != ""
+
+
 def test_scan_health_counts_crashes_and_levels(tmp_path):
     path = tmp_path / "console.log"
     path.write_text(
