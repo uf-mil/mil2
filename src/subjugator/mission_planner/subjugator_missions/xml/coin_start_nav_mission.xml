@@ -1,0 +1,126 @@
+<!--
+    CoinStartNav
+    ============
+    First half of the run (standalone counterpart to Semi (semi.xml),
+    which still runs the whole chain in one go):
+
+      1) CoinFlipMission    - one-shot wall-avoidance maneuver (coin_flip_mission.xml)
+         + RememberWaypoint "home" right after it
+      2) StartGateApproach  - survey + hone onto {gate_label}, pass the gate
+                              (start_gate_mission.xml)
+         + GoToWaypointOrientation "home": recover the post-coin-flip heading
+           (orientation only, position stays)
+      3) RelativeMove       - TUNE ME: re-orient from the gate exit toward the
+                              nav channel
+      4) pcNavChannelV2     - nav channel run (pc_nav_channel_v2.xml)
+         (currently swapped for a dead-reckoned zigzag of RelativeMoves)
+
+    The mission ends wherever the nav channel leg leaves us; OctTorp
+    (oct_torp_mission.xml) picks up from there and records that pose itself
+    (waypoints do NOT survive between mission runs - each run is a fresh
+    mission_planner process).
+
+    The ONE thing to configure is gate_label in the Script node below. The
+    nav-channel side follows from it automatically:
+
+      survey&repair  -> LEFT  channel (channel_side = -1)
+      search&rescue  -> RIGHT channel (channel_side = +1)
+
+    (& must be written &amp; inside XML attributes.)
+
+    All depth changes are absolute (AbsDepth); pcNavChannelV2 also dives with
+    AbsDepth internally, so depths hold no matter where the previous stage
+    left us.
+-->
+<root BTCPP_format="4" main_tree_to_execute="CoinStartNav">
+  <BehaviorTree ID="CoinStartNav">
+    <Sequence>
+      <Delay delay_msec="10000"><AlwaysSuccess/></Delay>
+
+      <!-- ================= CONFIG =================
+           Which gate image to hone onto. This single choice also decides the
+           nav-channel side (see Switch2 below). -->
+      <Script code="gate_label := 'search&amp;rescue'"/>
+      <Script code="wall_side := 'right'"/>
+
+      <!-- Map the image choice to the channel side:
+           case_1 survey&repair -> -1 (LEFT), case_2 search&rescue -> +1 (RIGHT),
+           default (typo safety net) -> 0 = auto-detect from the pole colors. -->
+      <Switch2 variable="{gate_label}"
+               case_1="survey&amp;repair" case_2="search&amp;rescue">
+        <Script code="channel_side := -1"/>
+        <Script code="channel_side := 1"/>
+        <Script code="channel_side := 0"/>
+      </Switch2>
+
+      <!-- 0) Dive to coin-flip depth (absolute). TUNE z. -->
+      <SubTree ID="AbsDepth"
+               z="-1" pos_tol="0.15" ori_tol_deg="12.0" msec="20000"
+               ctx="{ctx}"/>
+
+      <!-- 1) Coin flip: single maneuver away from the wall. Launches and
+           tears down its own classifier node. -->
+	<SubTree ID="CoinFlipMission" _autoremap="true" ctx="{ctx}"/>
+
+
+      <!-- 1b) Remember where (and which way) we face after the coin flip.
+           Used below to recover the heading after the gate. -->
+      <Action ID="RememberWaypoint" waypoint="home" ctx="{ctx}"/>
+
+
+      <!-- 2) Start gate: load the gate model, then survey + hone onto the
+           chosen image and push through. TUNE model_filename for the pool. -->
+      <Action ID="CheckYoloModel"
+              model_filename="startgate_robosub26.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+      <SubTree ID="StartGateApproach" _autoremap="true"
+      gate_label="{gate_label}" ctx="{ctx}"/>
+
+      <!-- 2b) Turn back to the post-coin-flip heading. Orientation only:
+           we stay where the gate spat us out. -->
+      <SubTree ID="GoToWaypointOrientation" _autoremap="true"
+               waypoint="home"
+               pos_tol="0.20" ori_tol_deg="8.0" msec="15000"
+               ctx="{ctx}"/>
+
+
+     <!-- =================   NAVCHANNEL!!!!!! ================= -->
+      <!-- 3) TUNE ME: re-orient from the gate exit toward the nav channel.
+           Adjust once we see where the gate spits us out. -->
+           <!-- <SubTree ID="pcNavChannelV2" _autoremap="true"
+               channel_side="{channel_side}" ctx="{ctx}"/> -->
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="0.5" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="3.5" y="0.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="2.5" y="1.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="2.5" y="-1.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+     <SubTree ID="RelativeMove" _autoremap="true"
+               x="2.5" y="0.0" z="0.0"
+               roll_deg="0.0" pitch_deg="0.0" yaw_deg="0.0"
+               pos_tol="0.20" ori_tol_deg="10.0" msec="20000"
+               ctx="{ctx}"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

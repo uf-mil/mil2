@@ -16,8 +16,10 @@
   <exec_depend>mil_msgs</exec_depend>
   <exec_depend>numpy</exec_depend>
   <exec_depend>opencv-python</exec_depend>
+  <exec_depend>python3-torch</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
   <exec_depend>ultralytics</exec_depend>
   <exec_depend>vision_msgs</exec_depend>
 

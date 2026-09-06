@@ -5,6 +5,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+REGISTER(ActuateServo)
+
 namespace
 {
 // Servo.angle is interpreted as PWM duty cycle x10 by servo_controller/driver.py

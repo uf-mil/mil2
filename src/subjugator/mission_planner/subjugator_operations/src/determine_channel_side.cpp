@@ -6,6 +6,8 @@
 
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(DetermineChannelSide)
+
 DetermineChannelSide::DetermineChannelSide(std::string const& name, const BT::NodeConfiguration& cfg)
   : BT::StatefulActionNode(name, cfg)
 {

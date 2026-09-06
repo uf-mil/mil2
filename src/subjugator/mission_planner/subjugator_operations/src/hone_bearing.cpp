@@ -14,6 +14,12 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+REGISTER(HoneBearing)
+
 HoneBearing::HoneBearing(std::string const& name, const BT::NodeConfiguration& cfg) : BT::StatefulActionNode(name, cfg)
 {
 }

@@ -2,9 +2,11 @@
   <BehaviorTree ID="pcNavChannelV2">
     <Sequence>
 
-      <!-- Channel side. +1 = RIGHT (red appears left of white in frame).
-           Set to -1 for LEFT channel, or 0 to auto-detect from first frame
-           that contains both a red and a white pole. -->
+      <!-- Channel side comes in through the {channel_side} port:
+           +1 = RIGHT (red appears left of white in frame), -1 = LEFT,
+           0 = auto-detect from the first frame that contains both a red and
+           a white pole. When run standalone (port unset) both TrackBestPair
+           and NavChannelControl fall back to 0 (auto). -->
 
       <!--<Delay delay_msec="15000"><AlwaysSuccess/></Delay> -->
 
@@ -15,10 +17,9 @@
               models_rel_dir="models"
               ctx="{ctx}"/>
 
-      <!-- 0b) Dive to operating depth -->
-      <SubTree ID="RelativeMove" _autoremap="true"
-               x="0.0" y="0.0" z="-0.4"
-               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+      <!-- 0b) Dive to operating depth (absolute) -->
+      <SubTree ID="AbsDepth"
+               z="-0.9" pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
                ctx="{ctx}"/>
 
       <!-- 1) Initial survey: yaw sweep while TrackBestPair records the
@@ -32,7 +33,7 @@
           <Timeout msec="15000">
             <Action ID="TrackBestPair"
                     min_conf="0.15"
-                    channel_side="0"
+                    channel_side="{channel_side}"
                     ctx="{ctx}"
                     best_qx="{best_qx}" best_qy="{best_qy}"
                     best_qz="{best_qz}" best_qw="{best_qw}"/>
@@ -156,7 +157,7 @@
 
                     <Action ID="NavChannelControl"
                             ctx="{ctx}"
-                            right_channel="-1"
+                            right_channel="{channel_side}"
                             min_conf="0.15"
                             size_center_px="45.0"
                             size_div_px="10.0"

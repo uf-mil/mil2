@@ -14,7 +14,8 @@ include_directories(include)
 
 # Python scripts
 install(PROGRAMS scripts/save_down_images.py scripts/save_front_images.py
-                 scripts/swap_yolo_model.py DESTINATION lib/${PROJECT_NAME})
+                 scripts/swap_yolo_model.py scripts/coin_flip_node.py
+        DESTINATION lib/${PROJECT_NAME})
 
 # YOLO models
 install(DIRECTORY models/ DESTINATION share/${PROJECT_NAME}/models)

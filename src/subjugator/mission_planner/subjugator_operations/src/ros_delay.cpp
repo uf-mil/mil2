@@ -2,6 +2,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+REGISTER(RosDelay)
+
 RosDelay::RosDelay(std::string const& name, const BT::NodeConfig& config) : BT::DecoratorNode(name, config)
 {
 }

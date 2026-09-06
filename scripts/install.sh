@@ -210,6 +210,14 @@ $(hash_header)$(color "$Res")
 EOF
 
 # Install Python 3 dependencies
+if command -v nvidia-smi; then
+	echo "NVIDIA GPU detected; torch will be installed with CUDA support."
+else
+	echo "No NVIDIA GPU detected; pre-installing CPU-only torch (saves ~4 GB)."
+	sudo pip3 install --index-url https://download.pytorch.org/whl/cpu \
+		torch torchvision
+fi
+
 sudo pip3 install --ignore-installed typing_extensions # preinstalled
 sudo pip3 install -r requirements.txt
 

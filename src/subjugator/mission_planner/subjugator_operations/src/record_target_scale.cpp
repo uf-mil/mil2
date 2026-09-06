@@ -2,6 +2,8 @@
 
 #include "detection_scale.hpp"
 
+REGISTER(RecordTargetScale)
+
 BT::NodeStatus RecordTargetScale::tick()
 {
     if (!require_ctx(*this, ctx_, "RecordTargetScale"))

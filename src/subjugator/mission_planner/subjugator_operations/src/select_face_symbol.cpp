@@ -4,6 +4,8 @@
 
 #include "select_face_symbol_logic.hpp"
 
+REGISTER(SelectFaceSymbol)
+
 BT::NodeStatus SelectFaceSymbol::tick()
 {
     std::shared_ptr<Context> ctx;

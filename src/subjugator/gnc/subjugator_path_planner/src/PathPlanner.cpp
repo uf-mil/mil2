@@ -47,39 +47,38 @@ std::vector<geometry_msgs::msg::Pose> PathPlanner::slerp(geometry_msgs::msg::Pos
     mil::geometry::Rotation const goal_rot{ goal_pose.orientation };
     mil::geometry::Slerp const slerp(start_rot, goal_rot);
 
-    // get vector from current to goal with magnitude 0.33, add this to A one too few times, then final path is B
+    // get vector from current to goal with magnitude segment_legnth, add this to A one too few times, then final path
+    // is B
     // TODO rotations??
-    double const segment_legnth = 0.33;
+    double const segment_legnth = 0.5;
     double const x_err = goal_pose.position.x - last_odom_.pose.pose.position.x;
     double const y_err = goal_pose.position.y - last_odom_.pose.pose.position.y;
     double const z_err = goal_pose.position.z - last_odom_.pose.pose.position.z;
     double const err_magnitude = std::sqrt(x_err * x_err + y_err * y_err + z_err * z_err);
+
+    // deadzone or short moves, skip the intermediate breadcrumbs and just send the goal directly
+    double const min_path_dist = 0.5;
+    if (err_magnitude < min_path_dist)
+    {
+        path.push_back(goal_pose);
+        return path;
+    }
+
     double const delta_x = x_err * (segment_legnth / err_magnitude);
     double const delta_y = y_err * (segment_legnth / err_magnitude);
     double const delta_z = z_err * (segment_legnth / err_magnitude);
 
     // casting to an int is basically the same as std::floor, plus we need it to be an int :P
     segment_count_ = (int)(err_magnitude / segment_legnth);
-    double const t_inc_amount = std::min(0.1, 1.0 / ((double)segment_count_));
     for (int i = 1; i < segment_count_ + 1; ++i)
     {
-        // double t = static_cast<double>(i) / (segment_count_);
+        // orientation rides along with translation so short paths stay short
+        double t = static_cast<double>(i) / (segment_count_);
         geometry_msgs::msg::Pose pose;
         pose.position.x = last_odom_.pose.pose.position.x + i * delta_x;
         pose.position.y = last_odom_.pose.pose.position.y + i * delta_y;
         pose.position.z = last_odom_.pose.pose.position.z + i * delta_z;
-        pose.orientation = slerp.at(i * t_inc_amount).quat_msg();
-        path.push_back(pose);
-    }
-
-    double t_so_far = t_inc_amount * segment_count_;
-    while (t_so_far + t_inc_amount < 1)
-    {
-        t_so_far += t_inc_amount;  // the fact that we are in this while loop implies that this sum is <1
-
-        geometry_msgs::msg::Pose pose;
-        pose.position = goal_pose.position;
-        pose.orientation = slerp.at(t_so_far).quat_msg();
+        pose.orientation = slerp.at(t).quat_msg();
         path.push_back(pose);
     }
 

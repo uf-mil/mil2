@@ -1,6 +1,10 @@
 <root BTCPP_format="4" main_tree_to_execute="OctagonPingerMission">
     <BehaviorTree ID="OctagonPingerMission">
         <Sequence>
+            <SubTree ID="AbsDepth"
+                     z="-0.6" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
+                     ctx="{ctx}"/>
+
             <!-- Sweep yaw until first pinger bearing is observed. -->
             <Parallel success_count="1" failure_count="2">
                 <SonarFollower
@@ -9,7 +13,7 @@
                     stop_on_first_ping="true"
                     target_freq="{target_freq}"
                     target_freq_tol="{target_freq_tol}"
-                    sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
+                    sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_yaw_deg="{sonar_yaw_deg}">
                     <AlwaysSuccess/>
                 </SonarFollower>
 
@@ -55,14 +59,32 @@
             <SonarFollower
                 name="follow_ping_to_octagon"
                 ctx="{ctx}"
+                required_passing_pings="3"
                 target_freq="{target_freq}"
                 target_freq_tol="{target_freq_tol}"
-                sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_z="{sonar_z}" sonar_w="{sonar_w}">
+                sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_yaw_deg="{sonar_yaw_deg}">
                 <SubTree ID="RelativeMove" _autoremap="true"
                     x="{sonar_x}" y="{sonar_y}" z="0.0"
+                    yaw_deg="{sonar_yaw_deg}"
                     pos_tol="0.20" ori_tol_deg="12.0" msec="25000"
                     ctx="{ctx}"/>
             </SonarFollower>
+
+            <!-- At the octagon: surface to -0.2 m (absolute), then settle
+                 back down to -0.6 m before handing off to the next task. -->
+            <Fallback>
+              <SubTree ID="AbsDepth"
+                       z="-0.01" pos_tol="0.15" ori_tol_deg="10.0" msec="10000"
+                       ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+
+            <Delay delay_msec="3000"><AlwaysSuccess/></Delay>
+
+            <SubTree ID="AbsDepth"
+                     z="-0.6" pos_tol="0.15" ori_tol_deg="10.0" msec="20000"
+                     ctx="{ctx}"/>
+
         </Sequence>
     </BehaviorTree>
 </root>

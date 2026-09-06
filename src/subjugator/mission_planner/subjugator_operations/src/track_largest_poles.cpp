@@ -8,6 +8,8 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(TrackLargestPoles)
+
 BT::PortsList TrackLargestPoles::providedPorts()
 {
     BT::PortsList ports;

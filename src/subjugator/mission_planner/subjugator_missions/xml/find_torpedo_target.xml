@@ -1,0 +1,111 @@
+<!--
+    FindTorpedoTarget
+    =================
+    Survey for the torpedo board and remember the heading that had the best
+    (largest) torpedoTarget detection, then yaw back to it.
+
+    Modeled on the survey stage of pc_nav_channel_v2, but tracking a single
+    detection (torpedoTarget) instead of a red/white pole pair:
+
+      0) CheckYoloModel   - make sure the torpedo model is loaded
+      1) Dive to operating depth
+      2) Yaw sweep while TrackBestTarget records the orientation with the
+         largest torpedoTarget detection seen so far (updated every time a
+         better one appears)
+      3) Yaw-only move back to that best orientation (position is kept)
+
+    Run with:
+      ros2 run mission_planner mission_planner_node ros-args \
+        -p mission:=FindTorpedoTarget
+    (prefix ros-args with the usual double hyphen; XML comments cannot contain it)
+-->
+
+<root BTCPP_format="4" main_tree_to_execute="FindTorpedoTarget">
+  <BehaviorTree ID="FindTorpedoTarget">
+    <Sequence>
+
+      <!-- 0) Load YOLO model -->
+      <Action ID="CheckYoloModel"
+              model_filename="yolov26_torpedo_nano_June17.pt"
+              yolo_node="/yolo/yolo_node"
+              models_rel_dir="models"
+              ctx="{ctx}"/>
+
+      <!-- 1) Dive to operating depth -->
+      <SubTree ID="RelativeMove" _autoremap="true"
+               x="0.0" y="0.0" z="-0.4"
+               pos_tol="0.1" ori_tol_deg="12.0" msec="25000"
+               ctx="{ctx}"/>
+
+      <!-- 2) Survey: yaw sweep while TrackBestTarget records the orientation
+           with the largest torpedoTarget detection. TrackBestTarget always
+           returns RUNNING, so with success_count="1" the Parallel exits (and
+           halts the tracker) as soon as the sweep finishes — the tracker
+           stays live for the entire sweep, no Timeout needed. -->
+      <Parallel success_count="1" failure_count="2">
+
+        <Action ID="TrackBestTarget"
+                label="torpedoTarget"
+                min_conf="0.15"
+                ctx="{ctx}"
+                best_qx="{best_qx}" best_qy="{best_qy}"
+                best_qz="{best_qz}" best_qw="{best_qw}"/>
+
+        <Sequence>
+          <Repeat num_cycles="3">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="7500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+          <Repeat num_cycles="6">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="-15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="7500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+          <Repeat num_cycles="3">
+            <Fallback>
+              <SubTree ID="RelativeMove" _autoremap="true"
+                       yaw_deg="15.0" pos_tol="0.25" ori_tol_deg="6.0" msec="7500" ctx="{ctx}"/>
+              <AlwaysSuccess/>
+            </Fallback>
+          </Repeat>
+        </Sequence>
+
+      </Parallel>
+
+      <!-- 3) Yaw to the best orientation TrackBestTarget recorded. Position is
+           kept; only heading changes. ForceSuccess so the mission still ends
+           cleanly if the target was never seen (best_q* never written). -->
+      <ForceSuccess>
+        <Sequence>
+          <Action ID="LogToFile"
+                  dir="/home/sub9/mil2/src/subjugator/mission_planner/logs"
+                  filename="mission_debug.txt"
+                  message="Yawing to best torpedoTarget orientation from survey"/>
+          <Action ID="PublishGoalPose"
+                  use_euler_deg="false" relative="false" keep_current_pos_abs="true"
+                  qx="{best_qx}" qy="{best_qy}" qz="{best_qz}" qw="{best_qw}"
+                  ctx="{ctx}"
+                  abs_x="{goal_x}" abs_y="{goal_y}" abs_z="{goal_z}"
+                  abs_qx="{goal_qx}" abs_qy="{goal_qy}" abs_qz="{goal_qz}" abs_qw="{goal_qw}"/>
+          <Timeout msec="8000">
+            <RetryUntilSuccessful num_attempts="-1">
+              <Sequence>
+                <Delay delay_msec="250"><AlwaysSuccess/></Delay>
+                <Condition ID="AtGoalPose"
+                           x="{goal_x}" y="{goal_y}" z="{goal_z}"
+                           qx="{goal_qx}" qy="{goal_qy}" qz="{goal_qz}" qw="{goal_qw}"
+                           pos_tol="0.25" ori_tol_deg="8.0" ctx="{ctx}"/>
+              </Sequence>
+            </RetryUntilSuccessful>
+          </Timeout>
+        </Sequence>
+      </ForceSuccess>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

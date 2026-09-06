@@ -2,6 +2,8 @@
 
 #include "detection_scale.hpp"
 
+REGISTER(ConfirmGraspByScale)
+
 BT::NodeStatus ConfirmGraspByScale::onStart()
 {
     if (!require_ctx(*this, ctx_, "ConfirmGraspByScale"))

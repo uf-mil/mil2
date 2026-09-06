@@ -9,6 +9,8 @@
 
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(SelectTarget)
+
 using select_target::Candidate;
 
 SelectTarget::SelectTarget(std::string const& name, const BT::NodeConfiguration& cfg)

@@ -17,6 +17,11 @@ class PingChecker
   public:
     PingChecker() = default;
 
+    void set_required_passing_pings(size_t n);
+
+    // how many pings so far have met the direction change threshold
+    size_t passing_ping_count() const;
+
     // true if we passed the pinger, false if not
     bool new_ping(mil_msgs::msg::ProcessedPing const& new_ping);
 
@@ -25,6 +30,8 @@ class PingChecker
 
   private:
     std::deque<mil_msgs::msg::ProcessedPing> recent_pings_;
+    size_t required_passing_pings_ = 1;
+    size_t passing_ping_count_ = 0;
 
     void insert_new_ping(mil_msgs::msg::ProcessedPing const& new_ping);
 
@@ -47,6 +54,7 @@ class SonarFollower : public BT::DecoratorNode
     std::shared_ptr<rclcpp::Subscription<mil_msgs::msg::ProcessedPing>> sub_;
     BT::NodeStatus current_status_ = BT::NodeStatus::IDLE;
     bool stop_on_first_ping_ = false;
+    int required_passing_pings_ = 1;
     uint32_t target_freq_ = 0;
     uint32_t target_freq_tol_ = 0;
 

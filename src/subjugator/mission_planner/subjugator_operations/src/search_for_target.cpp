@@ -7,6 +7,8 @@
 #include "detection_gate.hpp"
 #include "search_pattern.hpp"
 
+REGISTER(SearchForTarget)
+
 SearchForTarget::SearchForTarget(std::string const& name, const BT::NodeConfiguration& cfg)
   : BT::StatefulActionNode(name, cfg)
 {

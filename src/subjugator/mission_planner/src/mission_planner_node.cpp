@@ -1,4 +1,3 @@
-#include <behaviortree_cpp/bt_factory.h>
 #include <behaviortree_cpp/loggers/bt_cout_logger.h>
 #include <behaviortree_cpp/loggers/groot2_publisher.h>
 #include <behaviortree_cpp/xml_parsing.h>
@@ -8,45 +7,15 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "actuate_servo.hpp"
-#include "align_depth.hpp"
-#include "align_yaw.hpp"
-#include "any_poles_detected.hpp"
-#include "at_goal_pose.hpp"
-#include "center_camera.hpp"
-#include "check_yolo_model.hpp"
-#include "confirm_grasp_by_scale.hpp"
 #include "context.hpp"
-#include "descend_until_detected.hpp"
-#include "detect_target.hpp"
-#include "determine_channel_side.hpp"
-#include "has_found_pair.hpp"
-#include "hone_bearing.hpp"
-#include "hone_midpoint.hpp"
-#include "lock_target_xy.hpp"
-#include "log_to_file.hpp"
-#include "nav_channel_control.hpp"
-#include "poles_big_enough.hpp"
-#include "publish_goal.hpp"
-#include "record_target_scale.hpp"
-#include "ros_delay.hpp"
-#include "ros_timeout.hpp"
-#include "search_for_target.hpp"
-#include "select_basket.hpp"
-#include "select_face_symbol.hpp"
-#include "select_target.hpp"
+#include "start_coin_flip.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
-#include "track_best_pair.hpp"
-#include "track_largest_poles.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <count_when_ticked.hpp>
-#include <go_to_pinger.hpp>
-#include <spin_style.hpp>  // RollStyle + PitchStyle
-#include <topic_ticker.hpp>
-#include <yaw_style.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
+
+BT::BehaviorTreeFactory factory;
 
 int main(int argc, char** argv)
 {
@@ -74,6 +43,11 @@ int main(int argc, char** argv)
     int const score_level = node->get_parameter("score_level").as_int();
     int const do_pinger = node->get_parameter("do_pinger").as_int();
 
+    node->declare_parameter<std::string>("detections_topic", "/yolo/detections");
+    node->declare_parameter<std::string>("tracking_topic", "/yolo/tracking");
+    std::string detections_topic = node->get_parameter("detections_topic").as_string();
+    std::string tracking_topic = node->get_parameter("tracking_topic").as_string();
+
     // Topics to subscribe/publish to
     ctx->goal_pub = node->create_publisher<geometry_msgs::msg::Pose>("/goal_pose", 10);
     ctx->odom_sub = node->create_subscription<nav_msgs::msg::Odometry>("/odometry/filtered", 10,
@@ -83,14 +57,31 @@ int main(int argc, char** argv)
                                                                            ctx->latest_odom = *msg;
                                                                        });
 
-    // Perception targets: from your YOLO node
-    ctx->targets_sub =
-        node->create_subscription<yolo_msgs::msg::DetectionArray>("/yolo/detections", 10,
+    RCLCPP_INFO(node->get_logger(), "Subscribing to YOLO detections on '%s' and tracking on '%s'",
+                detections_topic.c_str(), tracking_topic.c_str());
+    ctx->detections_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(detections_topic, 10,
                                                                   [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
                                                                   {
                                                                       std::scoped_lock lk(ctx->detections_mx);
                                                                       ctx->latest_detections = *msg;
                                                                   });
+    ctx->tracking_sub =
+        node->create_subscription<yolo_msgs::msg::DetectionArray>(tracking_topic, 10,
+                                                                  [ctx](yolo_msgs::msg::DetectionArray::SharedPtr msg)
+                                                                  {
+                                                                      std::scoped_lock lk(ctx->tracking_mx);
+                                                                      ctx->latest_tracking = *msg;
+                                                                  });
+
+    // Wall orientation from the coin_flip classifier node (subjugator_vision)
+    ctx->wall_direction_sub =
+        node->create_subscription<std_msgs::msg::String>("/coin_flip/direction", 10,
+                                                         [ctx](std_msgs::msg::String::SharedPtr msg)
+                                                         {
+                                                             std::scoped_lock lk(ctx->wall_direction_mx);
+                                                             ctx->latest_wall_direction = msg->data;
+                                                         });
 
     // Image size (for pixel->angle mapping). Probably do not need
     ctx->image_sub = node->create_subscription<sensor_msgs::msg::Image>("/front_cam/image_raw", 10,
@@ -154,44 +145,6 @@ int main(int argc, char** argv)
         }
         wait_rate.sleep();
     }
-
-    BT::BehaviorTreeFactory factory;
-    factory.registerNodeType<PublishGoalPose>("PublishGoalPose");
-    factory.registerNodeType<AtGoalPose>("AtGoalPose");
-    factory.registerNodeType<LogToFile>("LogToFile");
-    factory.registerNodeType<DetectTarget>("DetectTarget");
-    factory.registerNodeType<HoneBearing>("HoneBearing");
-    factory.registerNodeType<CenterCamera>("CenterCamera");
-    factory.registerNodeType<LockTargetXY>("LockTargetXY");
-    factory.registerNodeType<SelectTarget>("SelectTarget");
-    factory.registerNodeType<SelectBasket>("SelectBasket");
-    factory.registerNodeType<SelectFaceSymbol>("SelectFaceSymbol");
-    factory.registerNodeType<CheckYoloModel>("CheckYoloModel");
-    factory.registerNodeType<TrackLargestPoles>("TrackLargestPoles");
-    factory.registerNodeType<PolesBigEnough>("PolesBigEnough");
-    factory.registerNodeType<DetermineChannelSide>("DetermineChannelSide");
-    factory.registerNodeType<AnyPolesDetected>("AnyPolesDetected");
-    factory.registerNodeType<HasFoundPair>("HasFoundPair");
-    factory.registerNodeType<ActuateServo>("ActuateServo");
-    factory.registerNodeType<RecordTargetScale>("RecordTargetScale");
-    factory.registerNodeType<ConfirmGraspByScale>("ConfirmGraspByScale");
-    factory.registerNodeType<TrackBestPair>("TrackBestPair");
-    factory.registerNodeType<HoneMidpoint>("HoneMidpoint");
-    factory.registerNodeType<NavChannelControl>("NavChannelControl");
-    factory.registerNodeType<AlignDepth>("AlignDepth");
-    factory.registerNodeType<AlignYaw>("AlignYaw");
-    factory.registerNodeType<DescendUntilDetected>("DescendUntilDetected");
-    factory.registerNodeType<SearchForTarget>("SearchForTarget");
-    // ROS-time (sim-aware) replacements for the builtin <Timeout>/<Delay>.
-    factory.registerNodeType<RosTimeout>("RosTimeout");
-    factory.registerNodeType<RosDelay>("RosDelay");
-
-    factory.registerNodeType<TopicTicker<nav_msgs::msg::Odometry>>("TopicTicker");
-    factory.registerNodeType<CountWhenTicked>("CountWhenTicked");
-    factory.registerNodeType<SonarFollower>("SonarFollower");
-    factory.registerNodeType<YawStyle>("YawStyle");
-    factory.registerNodeType<RollStyle>("RollStyle");
-    factory.registerNodeType<PitchStyle>("PitchStyle");
 
     // Load all tree models from installed xml
     std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");
@@ -278,6 +231,10 @@ int main(int argc, char** argv)
         }
         rate.sleep();
     }
+
+    // Kill the coin_flip_node if the mission launched it. Runs on every exit
+    // path, including Ctrl-C, since the loop ends when ok() is false.
+    stopCoinFlip(*ctx);
 
     rclcpp::shutdown();
     return 0;

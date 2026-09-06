@@ -2,6 +2,8 @@
 
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(DetectTarget)
+
 BT::NodeStatus DetectTarget::onStart()
 {
     if (!require_ctx(*this, ctx_, "DetectTarget"))

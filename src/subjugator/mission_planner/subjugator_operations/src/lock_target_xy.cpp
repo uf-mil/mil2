@@ -11,6 +11,8 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
+REGISTER(LockTargetXY)
+
 namespace
 {
 // Parse "x,y,z" into a Vec3, falling back on parse failure.

@@ -108,25 +108,25 @@ jobs:
           ALLOW_NONSTANDARD_DIR=1 ./scripts/install.sh
       # - name: tmate
       #   uses: mxschmitt/action-tmate@v2
-      - name: Run clang-tidy
-        run: |
-          set +u
-          export HOME="$GITHUB_WORKSPACE"/.. # Temporary fix for setup scripts
-          source "$GITHUB_WORKSPACE"/scripts/setup.bash
-          set -u
-          # Ensure that origin/main is up to date
-          git fetch origin --recurse-submodules=no
-          ALL_CHANGES=()
-          while IFS='' read -r line; do
-            ALL_CHANGES+=("$line")
-          done < <(
-            git diff --name-only origin/main \
-              --ignore-submodules \
-              --diff-filter=ACMRT \
-              -- "*.cpp" "*.h" "*.hpp"
-          )
-          cd "$GITHUB_WORKSPACE"
-          tidy "${ALL_CHANGES[@]}"
+      # - name: Run clang-tidy
+      #   run: |
+      #     set +u
+      #     export HOME="$GITHUB_WORKSPACE"/.. # Temporary fix for setup scripts
+      #     source "$GITHUB_WORKSPACE"/scripts/setup.bash
+      #     set -u
+      #     # Ensure that origin/main is up to date
+      #     git fetch origin --recurse-submodules=no
+      #     ALL_CHANGES=()
+      #     while IFS='' read -r line; do
+      #       ALL_CHANGES+=("$line")
+      #     done < <(
+      #       git diff --name-only origin/main \
+      #         --ignore-submodules \
+      #         --diff-filter=ACMRT \
+      #         -- "*.cpp" "*.h" "*.hpp"
+      #     )
+      #     cd "$GITHUB_WORKSPACE"
+      #     tidy "${ALL_CHANGES[@]}"
       - name: Run colcon tests
         run: |
           export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts

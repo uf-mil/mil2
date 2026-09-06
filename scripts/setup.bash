@@ -27,7 +27,6 @@ alias search_root='sudo find / ... | grep -i'
 alias search='find . -print | grep -i'
 alias fd="fdfind"
 
-alias imu-socat="sudo socat PTY,link=/dev/ttyV0,mode=777 TCP:192.168.37.61:10001"
 alias sonar-socat="sdgps connect-sonar-raw-tcp 192.168.37.61 2006 ! filter-sonar-raw-samples --highpass 15e3 --lowpass 45e3 --notch 40e3 ! extract-robosub-pings ! robosub-ping-solver ! listen-robosub-ping-solution-tcp 2007"
 alias kill="ros2 service call /kill std_srvs/srv/Empty && stop-controller"
 alias unkill="ros2 service call /unkill std_srvs/srv/Empty"
@@ -322,10 +321,6 @@ function move_rel() {
 	python3 "$MIL_REPO/scripts/move_rel.py" "$@"
 }
 
-function largest_area_sum() {
-	python3 "$MIL_REPO/scripts/largest_area_sum.py" "$@"
-}
-
 alias list_mil_devices="list_lan_devices 192.168.37.1/24"
 
 # aliases for localization and controller service calls
@@ -334,6 +329,16 @@ alias reset-localization="ros2 service call /subjugator_localization/reset std_s
 alias start-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: true}"'
 alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: false}"'
 alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"
+
+# Launch the start-wand node, optionally choosing which mission it runs.
+# Usage: start-wand [mission_name]   (defaults to the node's built-in mission)
+start-wand() {
+	if [ $# -lt 1 ]; then
+		ros2 run auto start_wand
+	else
+		ros2 run auto start_wand --ros-args -p mission:="$1"
+	fi
+}
 
 #explain
 dropper() {
@@ -364,30 +369,22 @@ torpedo() {
 # Mission Planner launcher
 mp() {
 	if [[ $# -ne 1 ]]; then
-		echo "Usage: mp <SquareTestMission|StartGateMission|PassPoleMission|BUSTMission|NavChannelMission|ETHAN|pcNavChannel>"
+		echo "Usage: mp <mission_name>   (any tree in sub9_missions.xml)"
+		echo "Known missions: Semi CoinStartNav OctTorp SquareTestMission StartGateMission BUSTMission NavChannelMission ETHAN"
+		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
 		return 2
 	fi
 
 	local mission="$1"
-	case "$mission" in
-	SquareTestMission | StartGateMission | PassPoleMission | BUSTMission | NavChannelMission | ETHAN | pcNavChannel)
-		echo "Launching mission_planner with mission: ${mission}"
-		ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
-		;;
-	*)
-		echo "Invalid mission: ${mission}"
-		echo "Valid missions: SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
-		echo "(Note: RelativeMove is a subtree and cannot run standalone.)"
-		return 2
-		;;
-	esac
+	echo "Launching mission_planner with mission: ${mission}"
+	ros2 run mission_planner mission_planner_node --ros-args -p mission:="${mission}"
 }
 
 _mp_complete() {
 	local cur
 	cur=${COMP_WORDS[COMP_CWORD]}
 
-	local opts="SquareTestMission StartGateMission PassPoleMission BUSTMission NavChannelMission ETHAN pcNavChannel"
+	local opts="Semi CoinStartNav OctTorp SquareTestMission StartGateMission BUSTMission NavChannelMission ETHAN"
 	COMPREPLY=()
 	while IFS='' read -r line; do
 		COMPREPLY+=("$line")

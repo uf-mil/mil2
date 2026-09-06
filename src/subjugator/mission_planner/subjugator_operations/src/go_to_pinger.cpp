@@ -4,38 +4,55 @@
 #include <cmath>
 #include <cstdlib>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+void PingChecker::set_required_passing_pings(size_t n)
+{
+    required_passing_pings_ = std::max<size_t>(n, 1);
+}
+
+// how many pings so far have met the direction change threshold
+size_t PingChecker::passing_ping_count() const
+{
+    return passing_ping_count_;
+}
+
 // true if we passed the pinger, false if not
 bool PingChecker::new_ping(mil_msgs::msg::ProcessedPing const& new_ping)
 {
+    // does this ping's direction differ enough from any recent ping?
+    bool meets_threshold = false;
+    for (auto const& old_ping : recent_pings_)
+    {
+        if (compare_two_pings(old_ping, new_ping))
+        {
+            meets_threshold = true;
+            break;
+        }
+    }
+
+    if (meets_threshold)
+    {
+        passing_ping_count_++;
+    }
+
     // insert new ping into queue
     this->insert_new_ping(new_ping);
+
     // trim length
     trim_to_n_elements(10);
 
-    size_t const k = 2;
-
-    // sanity check
-    if (recent_pings_.size() < k + 1)
-    {
-        return false;
-    }
-
-    auto const& baseline = recent_pings_.front();
-    // check for passing pinger
-    for (size_t i = recent_pings_.size() - k; i < recent_pings_.size(); ++i)
-    {
-        if (!compare_two_pings(baseline, recent_pings_[i]))
-        {
-            return false;
-        }
-    }
-    return true;
+    // passed the pinger once enough pings met the threshold
+    return passing_ping_count_ >= required_passing_pings_;
 }
 
 // delete all recent pings
 void PingChecker::reset()
 {
     recent_pings_.clear();
+    passing_ping_count_ = 0;
 }
 
 void PingChecker::insert_new_ping(mil_msgs::msg::ProcessedPing const& new_ping)
@@ -98,13 +115,14 @@ BT::PortsList SonarFollower::providedPorts()
     return {
         BT::InputPort<std::shared_ptr<Context>>("ctx"),
         BT::InputPort<bool>("stop_on_first_ping", false, "stop on first ping"),
+        BT::InputPort<int>("required_passing_pings", 1,
+                           "number of pings that must meet the direction change threshold before success"),
         BT::InputPort<uint32_t>("target_freq", 0, "only follow ping with this HZ; 0 for all pings"),
         BT::InputPort<uint32_t>("target_freq_tol", 0, "accept pings within +/- this many HZ of target_freq"),
 
         BT::OutputPort<double>("sonar_x"),
         BT::OutputPort<double>("sonar_y"),
-        BT::OutputPort<double>("sonar_z"),
-        BT::OutputPort<double>("sonar_w"),
+        BT::OutputPort<double>("sonar_yaw_deg"),
     };
 }
 
@@ -122,6 +140,13 @@ void SonarFollower::get_port_data()
     {
         stop_on_first_ping_ = stop_res.value();
     }
+
+    auto required_res = getInput<int>("required_passing_pings");
+    if (required_res)
+    {
+        required_passing_pings_ = std::max(required_res.value(), 1);
+    }
+    pc.set_required_passing_pings(static_cast<size_t>(required_passing_pings_));
 
     auto freq_res = getInput<uint32_t>("target_freq");
     if (freq_res)
@@ -162,7 +187,13 @@ void SonarFollower::topic_cb(mil_msgs::msg::ProcessedPing const& msg)
     }
 
     // check ping
+    size_t const count_before = pc.passing_ping_count();
     bool passed_the_pinger = pc.new_ping(msg);
+    if (pc.passing_ping_count() > count_before)
+    {
+        RCLCPP_INFO(ctx_->node->get_logger(), "SonarFollower: ping met direction change threshold (%zu/%d)",
+                    pc.passing_ping_count(), required_passing_pings_);
+    }
     if (passed_the_pinger)
     {
         current_status_ = BT::NodeStatus::SUCCESS;
@@ -186,20 +217,28 @@ void SonarFollower::move_towards_ping(mil_msgs::msg::ProcessedPing const& new_pi
     }
     x /= mag;
     y /= mag;
-    // (x, y) dot (1, 0) = 1*1*cos(theta) (1 times 1 since both are unit length)
-    // x = cos(theta)
-    auto angle_rad = acos(std::clamp(x, -1.0, 1.0));
-    auto z = std::sin(angle_rad / 2);
-    auto w = std::cos(angle_rad / 2);
+
+    // signed heading to the pinger relative to our current body frame
+    auto const yaw_deg = std::atan2(y, x) * 180.0 / M_PI;
 
     // set outputs
     setOutput("sonar_x", x * 0.5);
     setOutput("sonar_y", y * 0.5);
-    setOutput("sonar_z", z);
-    setOutput("sonar_w", w);
+    setOutput("sonar_yaw_deg", yaw_deg);
 
-    // Tick the child
-    child_node_->executeTick();
+    // restart the child so it targets the fresh bearing instead of
+    // finishing a move aimed at a stale one
+    if (child_node_->status() != BT::NodeStatus::IDLE)
+    {
+        haltChild();
+    }
+
+    auto const child_status = child_node_->executeTick();
+    if (child_status == BT::NodeStatus::FAILURE)
+    {
+        current_status_ = BT::NodeStatus::FAILURE;
+        pc.reset();
+    }
 }
 
 BT::NodeStatus SonarFollower::tick()
@@ -210,7 +249,7 @@ BT::NodeStatus SonarFollower::tick()
     }
 
     auto temp = current_status_;
-    if (current_status_ == BT::NodeStatus::SUCCESS)
+    if (current_status_ == BT::NodeStatus::SUCCESS || current_status_ == BT::NodeStatus::FAILURE)
     {
         current_status_ = BT::NodeStatus::IDLE;
     }
