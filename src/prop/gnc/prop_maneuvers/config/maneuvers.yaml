@@ -34,16 +34,16 @@
     acquire_max_range: 30.0     # m, ignore blobs further out than this
 
     # ── Matching a blob to the remembered point ──────────────────────────
-    match_radius: 3.0       # m, further than this from the prediction is a miss
-    ambiguous_margin: 1.0   # m, two candidates closer than this is ambiguous
-    reading_max_age: 5.0        # s, a lock older than this counts as stale
+    match_radius: 3.0     # m, further than this from the prediction is a miss
+    ambiguous_margin: 1.0 # m, two candidates closer than this is ambiguous
+    reading_max_age: 5.0  # s, a lock older than this counts as stale
 
     # ── Distances ────────────────────────────────────────────────────────
-    circle_radius: 6.0          # m, how far out to circle
-    circle_legs: 4         # 4 gives the diamond; raise it if blind spots bite
+    circle_radius: 6.0       # m, how far out to circle
+    circle_legs: 4           # 4 gives the diamond; raise it if blind spots bite
     circle_counter_clockwise: true
-    approach_standoff: 3.0      # m, gap left between boat and object surface
-    detour_clearance: 2.0       # m, gap left when stepping around an obstacle
+    approach_standoff: 3.0   # m, gap left between boat and object surface
+    detour_clearance: 2.0    # m, gap left when stepping around an obstacle
 
     # ── Tolerances ───────────────────────────────────────────────────────
     arrive_tolerance: 1.5       # m, close enough to count as arrived

@@ -11,6 +11,7 @@
 #pragma once
 
 #include <cmath>
+#include <stdexcept>
 #include <vector>
 
 #include <rclcpp/rclcpp.hpp>
@@ -30,19 +31,19 @@ class Constants
         // ── Hull and sensor geometry ──────────────────────────────────────
         auto const spots = node->declare_parameter("blind_spots_deg", std::vector<double>{});
         use_blind_spots_ = node->declare_parameter("use_blind_spots", true);
+        // Refuse to start on a malformed list rather than quietly carrying on
+        // with no blind spots. An odd-length list is always a typo, and the
+        // quiet path is the dangerous one: the Task 10 mask would then mask
+        // nothing, and the blind-spot test would pass without testing anything.
         if (spots.size() % 2 != 0)
         {
-            RCLCPP_ERROR(node->get_logger(),
-                         "blind_spots_deg needs a flat list of from, to pairs; got %zu values. "
-                         "Treating the lidar as having no blind spots.",
+            RCLCPP_FATAL(node->get_logger(), "blind_spots_deg needs a flat list of from, to pairs; got %zu values.",
                          spots.size());
+            throw std::runtime_error("blind_spots_deg must hold an even number of values");
         }
-        else
+        for (std::size_t i = 0; i + 1 < spots.size(); i += 2)
         {
-            for (std::size_t i = 0; i + 1 < spots.size(); i += 2)
-            {
-                blind_spots_.push_back(BlindSpot{ deg(spots[i]), deg(spots[i + 1]) });
-            }
+            blind_spots_.push_back(BlindSpot{ deg(spots[i]), deg(spots[i + 1]) });
         }
 
         // ── Acquiring ─────────────────────────────────────────────────────
@@ -73,6 +74,12 @@ class Constants
         maneuver_timeout_ = node->declare_parameter("maneuver_timeout", 300.0);
     }
 
+    // Public, deliberately. The sibling pattern in pcd_constants.hpp keeps its
+    // cached values protected because only derived nodes read them. Here the
+    // helper classes -- Driver, Spinner, TargetLock, Context -- hold a
+    // `Constants const &` WITHOUT inheriting it, so protected would not compile.
+    // The YAML in config/maneuvers.yaml and the defaults below must be kept
+    // identical; nothing enforces that automatically.
     std::vector<BlindSpot> blind_spots_;
     bool use_blind_spots_{ true };
     double acquire_cone_{ 0.0 };
