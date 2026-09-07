@@ -21,7 +21,7 @@ using namespace prop_maneuvers;
 class FaceObjectNode : public rclcpp::Node, public Constants
 {
   public:
-    FaceObjectNode() : rclcpp::Node("face_object"), Constants(this)
+    FaceObjectNode() : rclcpp::Node("face_object"), Constants(this), acquire_deadline_(this, maneuver_timeout_)
     {
         use_front_ = declare_parameter("use_front", false);
         target_x_ = declare_parameter("target_x", 0.0);
@@ -33,11 +33,30 @@ class FaceObjectNode : public rclcpp::Node, public Constants
     }
 
   private:
+    // A maneuver that can never see its target must say so and exit, not
+    // spin forever. This is separate from the Deadline inside FaceObject
+    // itself, which only starts once a lock exists and times out the drive.
+    bool give_up_if_stuck(char const *why)
+    {
+        if (!acquire_deadline_.expired())
+        {
+            return false;
+        }
+        RCLCPP_ERROR(get_logger(), "could not lock on within %.0f s: %s", maneuver_timeout_, why);
+        timer_->cancel();
+        rclcpp::shutdown();
+        return true;
+    }
+
     void tick()
     {
         Boat const boat = context_->boat();
         if (!boat.valid)
         {
+            if (give_up_if_stuck("no position estimate"))
+            {
+                return;
+            }
             RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 2000, "waiting for the position estimate");
             return;
         }
@@ -49,6 +68,10 @@ class FaceObjectNode : public rclcpp::Node, public Constants
                                           context_->lock.acquire_near(Point{ target_x_, target_y_ });
             if (!got)
             {
+                if (give_up_if_stuck(context_->lock.why().c_str()))
+                {
+                    return;
+                }
                 RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 2000, "waiting to lock on: %s",
                                      context_->lock.why().c_str());
                 return;
@@ -78,6 +101,7 @@ class FaceObjectNode : public rclcpp::Node, public Constants
     std::unique_ptr<Context> context_;
     std::unique_ptr<FaceObject> maneuver_;
     rclcpp::TimerBase::SharedPtr timer_;
+    Deadline acquire_deadline_;
 };
 
 int main(int argc, char **argv)
