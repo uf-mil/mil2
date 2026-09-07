@@ -4,11 +4,14 @@
  *
  * Each maneuver is stepped on a timer and reports Running, Succeeded or
  * Failed. They share a Context holding the boat's position, the driver, the
- * spinner and the target lock.
+ * spinner, the reverser and the target lock.
  *
  * The rule every maneuver follows: only one thing commands the motors at a
  * time. Before the spinner is used, the driver is released; before the driver
- * is used, the spinner is stopped.
+ * is used, the spinner is stopped. The reverser is a third claimant on the
+ * same cmd_vel topic and obeys the same rule at both ends: the driver is
+ * released before it starts, and it is stopped before anything else takes
+ * over -- including when a maneuver times out part-way through a reverse.
  */
 
 #pragma once
@@ -21,6 +24,7 @@
 #include "prop_maneuvers/constants.hpp"
 #include "prop_maneuvers/driver.hpp"
 #include "prop_maneuvers/geometry.hpp"
+#include "prop_maneuvers/reverser.hpp"
 #include "prop_maneuvers/spinner.hpp"
 #include "prop_maneuvers/target_lock.hpp"
 
@@ -59,6 +63,7 @@ class Context
     Constants const &settings;
     Driver driver;
     Spinner spinner;
+    Reverser reverser;
     TargetLock lock;
 
   private:
@@ -139,20 +144,25 @@ class CircleObject
 /// LIMITATION: obstacle handling here is a sidestep, not path planning. It
 /// steps around one blocking blob at a time and makes no promise in a crowded
 /// field. Real planning is a separate effort.
+///
+/// When the boat starts so close to a blocking blob that no swing wide enough
+/// to clear it exists, the approach backs straight up once to make room and
+/// then re-plans. Once, deliberately -- see has_reversed_ below.
 class ApproachObject
 {
   public:
-    ApproachObject(Context &context, double standoff, double clearance);
+    ApproachObject(Context &context, double standoff);
     Status step();
 
   private:
     enum class Phase
     {
         FaceTarget,
+        BackingOff,  ///< too close to swing around something; make room first
         Driving,
     };
 
-    /// Where to stop, plus a detour waypoint if something blocks the line.
+    /// Where to stop, plus straddle waypoints if something blocks the line.
     std::vector<Point> plan_route(Boat const &boat) const;
 
     /// True when `fresh` is different enough from the route in flight to be
@@ -163,11 +173,25 @@ class ApproachObject
     Context &context_;
     Deadline deadline_;
     double standoff_;
-    double clearance_;
 
     Phase phase_{ Phase::FaceTarget };
     bool released_for_turn_{ false };
     std::vector<Point> route_;
+
+    // Backing off. One reverse per approach: if the boat is still too close
+    // afterwards, take the best route available rather than shuffling
+    // backwards forever. Reversing again would only help if the picture had
+    // changed, and the picture that put us here is the obstacle's, not ours.
+    //
+    // Reverser keeps no state of its own -- same as Spinner -- so the start
+    // point and the heading to hold are stashed here on entering the phase
+    // and handed back on every step. These three are the only things that are
+    // deliberately snapshots; whether it is SAFE to keep reversing is re-read
+    // live on every step instead, in Phase::BackingOff.
+    bool has_reversed_{ false };
+    Point reverse_start_;
+    double reverse_held_direction_{ 0.0 };
+    double reverse_distance_{ 0.0 };
 
     // How often to re-confirm the object is actually still seen while
     // driving, in simulated seconds (this is compared against node clock

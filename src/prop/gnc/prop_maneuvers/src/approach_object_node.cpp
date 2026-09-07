@@ -75,7 +75,7 @@ class ApproachObjectNode : public rclcpp::Node, public Constants
                                      context_->lock.why().c_str());
                 return;
             }
-            maneuver_ = std::make_unique<ApproachObject>(*context_, approach_standoff_, detour_clearance_);
+            maneuver_ = std::make_unique<ApproachObject>(*context_, approach_standoff_);
         }
 
         switch (maneuver_->step())
