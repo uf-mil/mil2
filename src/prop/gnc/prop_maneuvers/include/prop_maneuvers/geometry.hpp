@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include <optional>
 #include <vector>
 
 namespace prop_maneuvers
@@ -91,14 +90,58 @@ Point standoff_point(Point const &start, Point const &target, double standoff);
 /// `within_segment` as "far away".
 Offset distance_to_segment(Point const &p, Point const &a, Point const &b);
 
-/// A single waypoint that steps around `obstacle` when travelling `a` -> `b`,
-/// leaving `keep_out` metres between the waypoint and the obstacle centre.
+/// True distance from `p` to the nearest point ON the polyline through
+/// `path`, clamped at every segment end.
 ///
-/// Returns nothing when the obstacle does not block the leg -- either it is
-/// further than `keep_out` from the line, or its closest approach falls
-/// outside the segment. When the obstacle sits exactly on the line, the
-/// detour goes to the left of travel.
-std::optional<Point> detour_point(Point const &a, Point const &b, Point const &obstacle, double keep_out);
+/// Unlike distance_to_segment, which reports the perpendicular to an infinite
+/// line, this is the distance the boat actually keeps. That difference is the
+/// whole reason the old single-waypoint detour under-delivered: the waypoint
+/// was correct and the path was not.
+///
+/// An empty path returns infinity; a one-point path returns the distance to
+/// that point.
+double distance_to_polyline(Point const &p, std::vector<Point> const &path);
+
+/// What, if anything, the boat should do about an obstacle on its leg.
+enum class DetourNeed
+{
+    None,             ///< nothing blocking; drive straight
+    Straddle,         ///< go around, via `before` then `after`
+    TooCloseToSwing,  ///< too close to make the clearance; back off first
+};
+
+/// A planned way past one obstacle.
+struct Detour
+{
+    DetourNeed need{ DetourNeed::None };
+    Point before;            ///< only meaningful when need == Straddle
+    Point after;             ///< only meaningful when need == Straddle
+    double achieved{ 0.0 };  ///< hull-to-surface clearance the driven path delivers
+};
+
+/// Plan a way past `obstacle` while travelling `from` -> `to`.
+///
+/// Every distance here is measured from the HULL to the obstacle's SURFACE,
+/// so the numbers mean what a person would picture. `hull_half_width` is how
+/// far the hull reaches to the side of base_link, which is what odometry
+/// reports and what this function's points are expressed in.
+///
+///   - `min_gap` decides only WHETHER a detour is needed: an obstacle the
+///     hull would pass no closer than this is left alone. Wide enough
+///     obstacles are avoided, gates are driven through.
+///   - `clearance` is how far out the detour actually swings.
+///
+/// Two waypoints, not one. A single waypoint reaches full sideways offset
+/// only as the boat draws level with the obstacle, so the path bulges inward
+/// before it -- measured at 1.05 m against 1.25 m asked for. Two waypoints
+/// finish the sideways move before the obstacle and hold it past.
+///
+/// `achieved` reports the clearance the composed path really delivers. It can
+/// be less than `clearance`, and can even be negative, when the goal itself
+/// lies inside the clearance: the path ends at the goal, so no routing can
+/// recover that. Callers should log the shortfall rather than refuse.
+Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, double hull_half_width, double min_gap,
+                   double clearance);
 
 /// Why a match attempt did not produce a blob.
 enum class MatchFailure

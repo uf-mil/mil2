@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <limits>
 #include <vector>
 
 #include "prop_maneuvers/geometry.hpp"
@@ -202,32 +203,123 @@ TEST(DistanceToSegment, ZeroLengthLegReturnsDistanceToThatPoint)
     EXPECT_FALSE(off.within_segment);
 }
 
-TEST(DetourPoint, NothingWhenTheObstacleIsClearOfTheLeg)
+// ── distance_to_polyline ─────────────────────────────────────────────────
+
+TEST(DistanceToPolyline, ClampsToTheSegmentEndsUnlikeDistanceToSegment)
 {
-    EXPECT_FALSE(detour_point({ 0, 0 }, { 10, 0 }, { 5, 5 }, 2.0).has_value());
+    // distance_to_segment reports the perpendicular to the INFINITE line, so
+    // it calls this point 0.0 away. The boat never goes there: the leg stops
+    // at (10, 0), so the real closest approach is 0.5 m.
+    std::vector<Point> const path{ { 0, 0 }, { 10, 0 } };
+    EXPECT_NEAR(distance_to_polyline({ 10.5, 0 }, path), 0.5, kTol);
+    EXPECT_NEAR(distance_to_segment({ 10.5, 0 }, { 0, 0 }, { 10, 0 }).perpendicular, 0.0, kTol);
 }
 
-TEST(DetourPoint, NothingWhenTheObstacleIsPastTheEnd)
+TEST(DistanceToPolyline, TakesTheSmallestOverEveryLeg)
 {
-    EXPECT_FALSE(detour_point({ 0, 0 }, { 10, 0 }, { 15, 0.5 }, 2.0).has_value());
+    std::vector<Point> const path{ { 0, 0 }, { 10, 0 }, { 10, 10 } };
+    // Nearest to the second leg, not the first.
+    EXPECT_NEAR(distance_to_polyline({ 12, 5 }, path), 2.0, kTol);
 }
 
-TEST(DetourPoint, StepsAwayFromAnObstacleBesideTheLine)
+TEST(DistanceToPolyline, HandlesADegeneratePath)
 {
-    auto const p = detour_point({ 0, 0 }, { 10, 0 }, { 5, 0.5 }, 2.0);
-    ASSERT_TRUE(p.has_value());
-    // Pushed to the far side of the line from the obstacle, exactly keep_out away.
-    EXPECT_NEAR(distance(*p, { 5, 0.5 }), 2.0, kTol);
-    EXPECT_NEAR(p->x, 5.0, kTol);
-    EXPECT_LT(p->y, 0.0);
+    EXPECT_NEAR(distance_to_polyline({ 3, 4 }, { { 0, 0 } }), 5.0, kTol);
+    EXPECT_EQ(distance_to_polyline({ 3, 4 }, {}), std::numeric_limits<double>::infinity());
 }
 
-TEST(DetourPoint, GoesLeftWhenTheObstacleSitsExactlyOnTheLine)
+// ── plan_detour ──────────────────────────────────────────────────────────
+//
+// Shared setup for every case below: a 0.25 m buoy, a boat whose hull reaches
+// 0.5 m either side of base_link, a 0.15 m trigger and 1.0 m of swing. That
+// puts the trigger at 0.25 + 0.5 + 0.15 = 0.90 m from the buoy centre and the
+// swing at 0.25 + 0.5 + 1.0 = 1.75 m.
+
+namespace
 {
-    auto const p = detour_point({ 0, 0 }, { 10, 0 }, { 5, 0 }, 2.0);
-    ASSERT_TRUE(p.has_value());
-    EXPECT_NEAR(p->x, 5.0, kTol);
-    EXPECT_NEAR(p->y, 2.0, kTol);
+constexpr double kHalfWidth{ 0.5 };
+constexpr double kMinGap{ 0.15 };
+constexpr double kClearance{ 1.0 };
+Blob buoy(double x, double y)
+{
+    return Blob{ { x, y }, 0.25 };
+}
+}  // namespace
+
+TEST(PlanDetour, NothingWhenTheObstacleIsClearOfTheLeg)
+{
+    auto const d = plan_detour({ 0, 0 }, { 10, 0 }, buoy(5, 2.0), kHalfWidth, kMinGap, kClearance);
+    EXPECT_EQ(d.need, DetourNeed::None);
+}
+
+TEST(PlanDetour, NothingWhenTheObstacleIsPastTheEnd)
+{
+    auto const d = plan_detour({ 0, 0 }, { 10, 0 }, buoy(12, 0.1), kHalfWidth, kMinGap, kClearance);
+    EXPECT_EQ(d.need, DetourNeed::None);
+}
+
+TEST(PlanDetour, StraddlesABlockingObstacleAndDeliversTheClearance)
+{
+    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(10, 0.3), kHalfWidth, kMinGap, kClearance);
+    ASSERT_EQ(d.need, DetourNeed::Straddle);
+
+    // One waypoint before the buoy and one after, both pushed to the far side.
+    EXPECT_NEAR(d.before.x, 8.25, kTol);
+    EXPECT_NEAR(d.before.y, -1.45, kTol);
+    EXPECT_NEAR(d.after.x, 11.75, kTol);
+    EXPECT_NEAR(d.after.y, -1.45, kTol);
+
+    // The point of the whole exercise: measure the PATH, not the waypoints.
+    EXPECT_NEAR(d.achieved, kClearance, kTol);
+}
+
+TEST(PlanDetour, TheDrivenPathIsWhatIsMeasuredNotTheWaypoints)
+{
+    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(10, 0.3), kHalfWidth, kMinGap, kClearance);
+    ASSERT_EQ(d.need, DetourNeed::Straddle);
+
+    // Recomputed here independently of plan_detour's own bookkeeping.
+    std::vector<Point> const driven{ { 0, 0 }, d.before, d.after, { 20, 0 } };
+    double const hull_gap = distance_to_polyline({ 10, 0.3 }, driven) - 0.25 - kHalfWidth;
+    EXPECT_NEAR(hull_gap, kClearance, kTol);
+}
+
+TEST(PlanDetour, RefusesToSwingWhenTheBoatStartsTooClose)
+{
+    // 1.51 m from the buoy centre, inside the 1.75 m the swing needs.
+    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(1.5, 0.2), kHalfWidth, kMinGap, kClearance);
+    EXPECT_EQ(d.need, DetourNeed::TooCloseToSwing);
+}
+
+TEST(PlanDetour, BestEffortWhenTheGoalItselfSitsInsideTheClearance)
+{
+    // The path ends at the goal, so a buoy 0.58 m from it caps what any route
+    // can achieve. Report the shortfall; do not refuse -- on a buoy course
+    // this is ordinary, and the caller chose the destination.
+    auto const d = plan_detour({ 0, 0 }, { 10, 0 }, buoy(9.5, 0.3), kHalfWidth, kMinGap, kClearance);
+    ASSERT_EQ(d.need, DetourNeed::Straddle);
+    EXPECT_LT(d.achieved, kClearance);
+}
+
+TEST(PlanDetour, GoesLeftWhenTheObstacleSitsExactlyOnTheLine)
+{
+    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(5, 0), kHalfWidth, kMinGap, kClearance);
+    ASSERT_EQ(d.need, DetourNeed::Straddle);
+    EXPECT_NEAR(d.before.x, 3.25, kTol);
+    EXPECT_NEAR(d.before.y, 1.75, kTol);
+    EXPECT_NEAR(d.after.x, 6.75, kTol);
+    EXPECT_NEAR(d.after.y, 1.75, kTol);
+}
+
+TEST(PlanDetour, SpacingEqualsTheSidewaysOffset)
+{
+    // The swept result: any narrower under-delivers, any wider only drives
+    // further. Recorded as a test so a future "tidy-up" cannot quietly change it.
+    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(10, 0.3), kHalfWidth, kMinGap, kClearance);
+    ASSERT_EQ(d.need, DetourNeed::Straddle);
+    double const spacing = distance(d.before, d.after) / 2.0;
+    double const offset = 0.25 + kHalfWidth + kClearance;
+    EXPECT_NEAR(spacing, offset, kTol);
 }
 
 TEST(MatchNearest, PicksTheClosestBlob)

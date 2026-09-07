@@ -1,5 +1,6 @@
 #include "prop_maneuvers/geometry.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -102,44 +103,107 @@ Offset distance_to_segment(Point const &p, Point const &a, Point const &b)
     return Offset{ across, along >= 0.0 && along <= 1.0 };
 }
 
-std::optional<Point> detour_point(Point const &a, Point const &b, Point const &obstacle, double keep_out)
+double distance_to_polyline(Point const &p, std::vector<Point> const &path)
 {
-    Offset const offset = distance_to_segment(obstacle, a, b);
-    if (!offset.within_segment || offset.perpendicular >= keep_out)
+    if (path.empty())
     {
-        return std::nullopt;
+        return std::numeric_limits<double>::infinity();
+    }
+    if (path.size() == 1)
+    {
+        return distance(p, path.front());
     }
 
-    double const dx = b.x - a.x;
-    double const dy = b.y - a.y;
-    // A zero-length leg (a == b) is already excluded above: distance_to_segment
-    // forces within_segment = false in that case, so the check on offset
-    // above already returned.
+    double best = std::numeric_limits<double>::infinity();
+    for (std::size_t i = 0; i + 1 < path.size(); ++i)
+    {
+        Point const &a = path[i];
+        Point const &b = path[i + 1];
+        double const dx = b.x - a.x;
+        double const dy = b.y - a.y;
+        double const length_squared = dx * dx + dy * dy;
+
+        double t = 0.0;
+        if (length_squared > 0.0)
+        {
+            t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / length_squared;
+            t = std::clamp(t, 0.0, 1.0);  // the clamp is the point of this function
+        }
+        best = std::min(best, distance(p, Point{ a.x + dx * t, a.y + dy * t }));
+    }
+    return best;
+}
+
+Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, double hull_half_width, double min_gap,
+                   double clearance)
+{
+    // Everything the caller gave us is hull-to-surface. Convert once, here, to
+    // centre-to-centre, which is what the geometry below works in.
+    double const trigger_radius = obstacle.radius + hull_half_width + min_gap;
+    double const swing_radius = obstacle.radius + hull_half_width + clearance;
+
+    Detour result;
+
+    Offset const offset = distance_to_segment(obstacle.centre, from, to);
+    if (!offset.within_segment || offset.perpendicular >= trigger_radius)
+    {
+        result.need = DetourNeed::None;
+        return result;
+    }
+
+    // No path can be further from the obstacle than the point it starts at, so
+    // if the boat is already inside the swing there is nothing to plan yet.
+    if (distance(from, obstacle.centre) < swing_radius)
+    {
+        result.need = DetourNeed::TooCloseToSwing;
+        return result;
+    }
+
+    double const dx = to.x - from.x;
+    double const dy = to.y - from.y;
+    // A zero-length leg cannot reach here: distance_to_segment forces
+    // within_segment = false for one, and that returned above.
     double const length_squared = dx * dx + dy * dy;
+    double const length = std::sqrt(length_squared);
+
+    // Along-track unit vector.
+    double const tx = dx / length;
+    double const ty = dy / length;
 
     // Foot of the perpendicular from the obstacle onto the leg.
-    double const along = ((obstacle.x - a.x) * dx + (obstacle.y - a.y) * dy) / length_squared;
-    Point const foot{ a.x + dx * along, a.y + dy * along };
+    double const along = ((obstacle.centre.x - from.x) * dx + (obstacle.centre.y - from.y) * dy) / length_squared;
+    Point const foot{ from.x + dx * along, from.y + dy * along };
 
-    // Unit vector pointing from the obstacle towards the leg. When the
-    // obstacle sits exactly on the leg there is no such direction, so step to
-    // the left of travel.
-    double nx = foot.x - obstacle.x;
-    double ny = foot.y - obstacle.y;
-    double const length = std::hypot(nx, ny);
-    if (length < 1e-9)
+    // Unit vector from the obstacle towards the leg -- the clear side. When
+    // the obstacle sits exactly on the leg there is no such direction, so step
+    // to the left of travel.
+    double nx = foot.x - obstacle.centre.x;
+    double ny = foot.y - obstacle.centre.y;
+    double const across = std::hypot(nx, ny);
+    if (across < 1e-9)
     {
-        double const leg = std::sqrt(length_squared);
-        nx = -dy / leg;
-        ny = dx / leg;
+        nx = -ty;
+        ny = tx;
     }
     else
     {
-        nx /= length;
-        ny /= length;
+        nx /= across;
+        ny /= across;
     }
 
-    return Point{ obstacle.x + nx * keep_out, obstacle.y + ny * keep_out };
+    // Spacing equals the sideways offset: the tightest that meets the
+    // clearance across the swept range, and a 45 degree entry leg.
+    double const spacing = swing_radius;
+
+    result.need = DetourNeed::Straddle;
+    result.before = Point{ obstacle.centre.x + nx * swing_radius - tx * spacing,
+                           obstacle.centre.y + ny * swing_radius - ty * spacing };
+    result.after = Point{ obstacle.centre.x + nx * swing_radius + tx * spacing,
+                          obstacle.centre.y + ny * swing_radius + ty * spacing };
+
+    std::vector<Point> const driven{ from, result.before, result.after, to };
+    result.achieved = distance_to_polyline(obstacle.centre, driven) - obstacle.radius - hull_half_width;
+    return result;
 }
 
 Match match_nearest(std::vector<Blob> const &blobs, Point const &prediction, double match_radius,
