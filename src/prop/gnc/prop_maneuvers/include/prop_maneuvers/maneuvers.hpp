@@ -168,6 +168,19 @@ class ApproachObject
     Phase phase_{ Phase::FaceTarget };
     bool released_for_turn_{ false };
     std::vector<Point> route_;
+
+    // How often to re-confirm the object is actually still seen while
+    // driving, in simulated seconds (this is compared against node clock
+    // time, which follows use_sim_time -- see Deadline). Refreshing on
+    // literally every 100 ms tick would work but logs at 10 Hz. 0.3 s is
+    // small next to the default reading_max_age (5.0 s), so several refresh
+    // attempts happen before a genuine loss would go stale, and it is also
+    // small next to a short final approach: on this machine RTF has been
+    // measured as low as ~0.4x, so even a two-second real-world drive can be
+    // under one second of simulated time -- a coarser interval risked never
+    // firing at all on a close-in approach, not just logging less often.
+    static constexpr double kRefreshInterval{ 0.3 };
+    rclcpp::Time last_refresh_;
 };
 
 }  // namespace prop_maneuvers

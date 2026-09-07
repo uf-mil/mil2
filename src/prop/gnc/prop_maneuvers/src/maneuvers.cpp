@@ -46,6 +46,7 @@ Status FaceObject::step()
     if (deadline_.expired())
     {
         context_.spinner.stop();
+        context_.driver.release();
         RCLCPP_ERROR(context_.node->get_logger(), "face: gave up after %.0f s", context_.settings.maneuver_timeout_);
         return Status::Failed;
     }
@@ -365,6 +366,7 @@ Status ApproachObject::step()
 
             // Pointed at it: best possible look, so re-read before planning.
             context_.lock.refresh();
+            last_refresh_ = context_.node->now();
 
             route_ = plan_route(boat);
             context_.spinner.stop();
@@ -384,6 +386,25 @@ Status ApproachObject::step()
                 RCLCPP_INFO(context_.node->get_logger(), "approach: arrived, %.1f m from the object",
                             distance(boat.position, context_.lock.point()));
                 return Status::Succeeded;
+            }
+
+            // Keep confirming the object is actually still there while
+            // driving. Without this, the lock's timestamp freezes the moment
+            // the drive starts (refresh() is only otherwise called once, back
+            // in FaceTarget), and stale() below would fire on the clock alone
+            // -- aborting a perfectly good approach just because it takes
+            // longer than reading_max_age to arrive. A single failed refresh
+            // is survivable, same as CircleObject: it does not clear the
+            // lock, so the remembered point is still used until a refresh
+            // actually succeeds or the lock goes genuinely stale.
+            if ((context_.node->now() - last_refresh_).seconds() >= kRefreshInterval)
+            {
+                if (!context_.lock.refresh() && !context_.lock.stale())
+                {
+                    RCLCPP_WARN(context_.node->get_logger(), "approach: keeping the remembered point (%s)",
+                                context_.lock.why().c_str());
+                }
+                last_refresh_ = context_.node->now();
             }
 
             // A stale lock means we have not seen the object for

@@ -76,8 +76,8 @@ class Constants
 
     // Public, deliberately. The sibling pattern in pcd_constants.hpp keeps its
     // cached values protected because only derived nodes read them. Here the
-    // helper classes -- Driver, Spinner, TargetLock, Context -- hold a
-    // `Constants const &` WITHOUT inheriting it, so protected would not compile.
+    // helper classes -- TargetLock, Context -- hold a `Constants const &`
+    // WITHOUT inheriting it, so protected would not compile.
     // The YAML in config/maneuvers.yaml and the defaults below must be kept
     // identical; nothing enforces that automatically.
     std::vector<BlindSpot> blind_spots_;
