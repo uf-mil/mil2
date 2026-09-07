@@ -119,6 +119,14 @@ def sim_bringup_parser():
     return parser
 
 
+# Stand-in for the harness's own process group. Real os.getpgrp() is whatever
+# pid the runner happened to be given -- in a container that is a small number
+# that can equal a fake group id below, which silently reroutes a killpg
+# assertion into kill_stale's "never signal our own group" branch. Fixed and
+# far out of the range any test uses, the collision cannot happen.
+OWN_GROUP = 999_000
+
+
 class FakeKills:
     """Records the process-signalling syscalls kill_stale makes."""
 
@@ -127,6 +135,7 @@ class FakeKills:
         self.kill = []
         self.groups = groups or {}
         self._killpg_raises = killpg_raises
+        monkeypatch.setattr(os, "getpgrp", lambda: OWN_GROUP)
         monkeypatch.setattr(os, "getpgid", self._getpgid)
         monkeypatch.setattr(os, "killpg", self._killpg)
         monkeypatch.setattr(os, "kill", self._kill)
@@ -675,8 +684,7 @@ def test_kill_stale_never_kills_the_harness_itself(monkeypatch):
 def test_kill_stale_signals_a_group_mate_individually(monkeypatch):
     # A child sharing our process group: killing the group would take the
     # harness down with it, along with the report it has not written yet.
-    own = os.getpgrp()
-    fake = FakeKills(monkeypatch, groups={555: own})
+    fake = FakeKills(monkeypatch, groups={555: OWN_GROUP})
     lifecycle.kill_stale([lifecycle.Stray(pid="555", name="mission_planner_node")])
     assert fake.killpg == []
     assert fake.kill == [(555, signal.SIGTERM)]

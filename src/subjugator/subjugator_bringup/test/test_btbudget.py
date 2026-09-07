@@ -13,7 +13,7 @@ XML_DIR = str(
 # trees are invisible here. Owned by mission_planner, deliberately not fixed
 # from this package -- pinned so a NEW malformed file fails loudly instead of
 # quietly shrinking some stage's budget.
-KNOWN_UNPARSABLE = {"lock_target_xy_test_mission.xml", "roll_style.xml"}
+KNOWN_UNPARSABLE = {"lock_target_xy_test_mission.xml"}
 
 # Durations in a stage tree that genuinely cannot resolve statically. Pinned so
 # that a new unresolvable port shows up as a failure rather than as a silently
