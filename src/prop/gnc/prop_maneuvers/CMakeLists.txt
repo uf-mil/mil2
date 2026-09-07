@@ -24,7 +24,8 @@ add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp src/spinner.cpp)
 # Split out deliberately: with four sources on one line, cmake-format wraps the
 # call onto a hanging continuation that ament_lint_cmake then rejects as "weird
 # indentation". Both tools accept this form. Do not fold it back in.
-target_sources(prop_maneuvers_lib PRIVATE src/target_lock.cpp src/maneuvers.cpp)
+target_sources(prop_maneuvers_lib PRIVATE src/target_lock.cpp src/maneuvers.cpp
+                                          src/reverser.cpp)
 ament_target_dependencies(
   prop_maneuvers_lib
   rclcpp
