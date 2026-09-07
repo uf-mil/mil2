@@ -40,13 +40,11 @@ class Driver
 
     /// True once `boat` is within tolerance of the last point handed over.
     /// False when nothing has been handed over.
+    ///
+    /// Only the last point is checked. Callers must ensure it is the real
+    /// destination; any earlier points in a multi-point go_to() are routing
+    /// aids only, and arrived() does not check whether they were visited.
     bool arrived(Point const &boat) const;
-
-    /// The last point handed over, for logging.
-    std::vector<Point> const &points() const
-    {
-        return points_;
-    }
 
   private:
     rclcpp::Node *node_;
