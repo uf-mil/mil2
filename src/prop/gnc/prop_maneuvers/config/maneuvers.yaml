@@ -1,0 +1,57 @@
+---
+# Settings for the prop_maneuvers blocks. Every tunable lives here and nowhere
+# else; constants.hpp declares them and is the only thing that reads them.
+#
+# Angles are DEGREES in this file and are converted to radians on load.
+# They are measured from the front of the boat, with LEFT counting as positive:
+#     0    straight ahead
+#   +90    directly left
+#  +/-180  directly behind
+#   -90    directly right
+
+/**:
+  ros__parameters:
+
+    # ── Hull and sensor geometry ─────────────────────────────────────────
+    # CHANGE THESE IF THE LIDAR MOVES.
+    #
+    # Ranges the lidar cannot see through, as a flat list of from, to pairs.
+    # Currently a GUESS: two mirrored wedges reaching from beside the boat
+    # round towards the back, where the motors and their mounts block the
+    # view. Re-measure once CAD exists, or from lidar returns on open water.
+    #
+    # NOTE: where the lidar is physically bolted is deliberately NOT here. It
+    # lives in prop_localization/urdf/prop.urdf and reaches this code through
+    # the position chain at runtime, so a physical move is corrected in one
+    # place only.
+    blind_spots_deg: [90.0, 160.0, -160.0, -90.0]
+    use_blind_spots: true
+
+    # ── Acquiring the target ─────────────────────────────────────────────
+    # Used when no rough position is given and the block must pick the blob
+    # "in front" of the boat by itself.
+    acquire_cone_deg: 45.0      # half-angle of the forward cone
+    acquire_max_range: 30.0     # m, ignore blobs further out than this
+
+    # ── Matching a blob to the remembered point ──────────────────────────
+    match_radius: 3.0       # m, further than this from the prediction is a miss
+    ambiguous_margin: 1.0   # m, two candidates closer than this is ambiguous
+    reading_max_age: 5.0        # s, a lock older than this counts as stale
+
+    # ── Distances ────────────────────────────────────────────────────────
+    circle_radius: 6.0          # m, how far out to circle
+    circle_legs: 4         # 4 gives the diamond; raise it if blind spots bite
+    circle_counter_clockwise: true
+    approach_standoff: 3.0      # m, gap left between boat and object surface
+    detour_clearance: 2.0       # m, gap left when stepping around an obstacle
+
+    # ── Tolerances ───────────────────────────────────────────────────────
+    arrive_tolerance: 1.5       # m, close enough to count as arrived
+    point_tolerance_deg: 5.0    # how close counts as pointing at it
+
+    # ── Turning ──────────────────────────────────────────────────────────
+    turn_gain: 1.2              # turn rate commanded per radian of error
+    max_turn_rate: 0.6          # rad/s cap, matches guidance
+
+    # ── Giving up ────────────────────────────────────────────────────────
+    maneuver_timeout: 300.0     # s of SIMULATED time before a maneuver fails
