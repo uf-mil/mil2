@@ -20,7 +20,8 @@ find_package(visualization_msgs REQUIRED)
 include_directories(include)
 
 # ── Shared library ───────────────────────────────────────────────────────────
-add_library(prop_maneuvers_lib src/geometry.cpp)
+add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp)
+ament_target_dependencies(prop_maneuvers_lib rclcpp nav_msgs geometry_msgs)
 
 install(TARGETS prop_maneuvers_lib DESTINATION lib)
 
