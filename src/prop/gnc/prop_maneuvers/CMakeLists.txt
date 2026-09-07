@@ -81,7 +81,11 @@ install(TARGETS face_object circle_object approach_object
 add_executable(scan_to_cloud src/scan_to_cloud_node.cpp)
 ament_target_dependencies(scan_to_cloud rclcpp sensor_msgs laser_geometry)
 
-install(TARGETS scan_to_cloud DESTINATION lib/${PROJECT_NAME})
+add_executable(blind_spot_mask src/blind_spot_mask_node.cpp)
+target_link_libraries(blind_spot_mask prop_maneuvers_lib)
+ament_target_dependencies(blind_spot_mask rclcpp sensor_msgs)
+
+install(TARGETS scan_to_cloud blind_spot_mask DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 
 # ── Install ──────────────────────────────────────────────────────────────────

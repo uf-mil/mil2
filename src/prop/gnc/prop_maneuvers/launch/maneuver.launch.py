@@ -25,7 +25,7 @@ from launch.actions import (
     TimerAction,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
@@ -53,6 +53,23 @@ def generate_launch_description():
             DeclareLaunchArgument("use_front", default_value="true"),
             DeclareLaunchArgument("target_x", default_value="20.0"),
             DeclareLaunchArgument("target_y", default_value="-3.0"),
+            DeclareLaunchArgument(
+                "blind_spots",
+                default_value="false",
+                description="Fake the real boat's blind spots by masking the scan.",
+            ),
+            DeclareLaunchArgument(
+                "scan_topic",
+                default_value=PythonExpression(
+                    [
+                        '"/lidar/scan_masked" if "',
+                        LaunchConfiguration("blind_spots"),
+                        '" == "true" else "/lidar/scan"',
+                    ],
+                ),
+                description="Topic the perception chain reads. Defaults to the masked "
+                "scan when blind_spots is true, so blind_spots:=true alone is enough.",
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(gazebo_share, "launch", "prop_sim.launch.py"),
@@ -62,6 +79,10 @@ def generate_launch_description():
                 PythonLaunchDescriptionSource(
                     os.path.join(maneuvers_share, "launch", "perception.launch.py"),
                 ),
+                launch_arguments={
+                    "blind_spots": LaunchConfiguration("blind_spots"),
+                    "scan_topic": LaunchConfiguration("scan_topic"),
+                }.items(),
             ),
             TimerAction(
                 period=LaunchConfiguration("control_delay"),

@@ -25,6 +25,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     """Launch scan_to_cloud (sim only), pcl_filter, and pcl_clustering, wired together."""
+    maneuvers_share = get_package_share_directory("prop_maneuvers")
     pcd_params = os.path.join(
         get_package_share_directory("pcd"),
         "config",
@@ -56,6 +57,31 @@ def generate_launch_description():
                     "so a buoy at circling distance is only a handful of points."
                 ),
             ),
+            DeclareLaunchArgument(
+                "blind_spots",
+                default_value="false",
+                description="Fake the real boat's blind spots by masking the scan.",
+            ),
+            DeclareLaunchArgument(
+                "scan_topic",
+                default_value="/lidar/scan",
+                description="Set to /lidar/scan_masked when blind_spots is true.",
+            ),
+            Node(
+                package="prop_maneuvers",
+                executable="blind_spot_mask",
+                name="blind_spot_mask",
+                output="screen",
+                parameters=[
+                    os.path.join(maneuvers_share, "config", "maneuvers.yaml"),
+                    {"use_sim_time": True},
+                ],
+                remappings=[
+                    ("scan", "/lidar/scan"),
+                    ("masked_scan", "/lidar/scan_masked"),
+                ],
+                condition=IfCondition(LaunchConfiguration("blind_spots")),
+            ),
             Node(
                 package="prop_maneuvers",
                 executable="scan_to_cloud",
@@ -63,7 +89,7 @@ def generate_launch_description():
                 output="screen",
                 parameters=[{"use_sim_time": LaunchConfiguration("use_sim_time")}],
                 remappings=[
-                    ("scan", "/lidar/scan"),
+                    ("scan", LaunchConfiguration("scan_topic")),
                     ("points", LaunchConfiguration("cloud_topic")),
                 ],
                 condition=IfCondition(LaunchConfiguration("scan_to_cloud")),
