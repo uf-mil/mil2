@@ -1,0 +1,322 @@
+#include "lock_target_xy.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <limits>
+#include <optional>
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <geometry_msgs/msg/pose.hpp>
+#include <yolo_msgs/msg/detection_array.hpp>
+
+REGISTER(LockTargetXY)
+
+namespace
+{
+// Parse "x,y,z" into a Vec3, falling back on parse failure.
+target_projection::Vec3 parse_vec3(std::string const& s, target_projection::Vec3 fallback)
+{
+    double a = 0.0, b = 0.0, c = 0.0;
+    if (std::sscanf(s.c_str(), "%lf,%lf,%lf", &a, &b, &c) == 3)
+    {
+        return { a, b, c };
+    }
+    return fallback;
+}
+
+// Rotate a body-frame vector into world by the sub's orientation quaternion:
+// v' = v + 2w(u x v) + 2(u x (u x v)),  u = (x,y,z).
+target_projection::Vec3 rotate_by_quat(geometry_msgs::msg::Quaternion const& q, target_projection::Vec3 v)
+{
+    double const ux = q.x, uy = q.y, uz = q.z, w = q.w;
+    double const cx = uy * v.z - uz * v.y;
+    double const cy = uz * v.x - ux * v.z;
+    double const cz = ux * v.y - uy * v.x;
+    double const ccx = uy * cz - uz * cy;
+    double const ccy = uz * cx - ux * cz;
+    double const ccz = ux * cy - uy * cx;
+    return { v.x + 2.0 * w * cx + 2.0 * ccx, v.y + 2.0 * w * cy + 2.0 * ccy, v.z + 2.0 * w * cz + 2.0 * ccz };
+}
+}  // namespace
+
+LockTargetXY::LockTargetXY(std::string const& name, const BT::NodeConfiguration& cfg)
+  : BT::StatefulActionNode(name, cfg)
+{
+}
+
+BT::PortsList LockTargetXY::providedPorts()
+{
+    return { BT::InputPort<std::string>("label", "table", "Target class to center on"),
+             BT::InputPort<std::string>("camera", "down", "Detection stream: 'front' or 'down'"),
+             BT::InputPort<double>("min_conf", 0.30, "Minimum detection confidence"),
+             BT::InputPort<std::string>("select", "confidence",
+                                        "Which same-label candidate wins: 'confidence' (default) or 'largest' "
+                                        "(biggest box). Use 'largest' for the table, whose real detection the "
+                                        "model scores below its tiny corner phantom"),
+             BT::InputPort<double>("min_area_frac", 0.0,
+                                   "Minimum bbox area as a fraction of the image before a detection counts. "
+                                   "0 = disabled. Use ~0.15 for the down-cam TABLE only, to reject the "
+                                   "model's tiny corner phantom. Do NOT set it for the grasp props or "
+                                   "basket markers -- they are the same apparent size as the phantoms "
+                                   "(0.04-0.11 of frame) and would be rejected outright"),
+             BT::InputPort<double>("tol_world", 0.05, "Locked when gripper is within this many m of the target"),
+             BT::InputPort<double>("est_stable_tol", 0.02,
+                                   "Estimate has settled when its per-frame EMA step is below this (m)"),
+             BT::InputPort<int>("settle_ticks", 3, "Consecutive fresh locked+settled frames for SUCCESS"),
+             BT::InputPort<int>("miss_frames", 5, "Consecutive fresh misses before FAILURE"),
+             BT::InputPort<double>("table_z", 0.0, "Table-top world z (m) the ray is cast onto"),
+             BT::InputPort<double>("hfov", 1.919862177, "Camera horizontal FOV (rad); URDF default"),
+             // Static base_link->down_cam optical basis expressed in base_link.
+             // Origin from sub9.urdf.xacro down_cam (xyz=0.45222 0.027913 -0.22,
+             // rpy=0 1.57 0). Image-axis directions MEASURED in sim (2026-07-14)
+             // against props of known world XY: image +x -> body -y, image +y ->
+             // body -x (verified to ~1-5 cm on bandaid_box/pill_cylinder). The
+             // 90deg-pitch mount plus optical convention makes these non-obvious;
+             // trust the measurement, not first-principles.
+             BT::InputPort<std::string>("cam_offset", "0.45222,0.027913,-0.22", "Camera origin in base_link x,y,z"),
+             BT::InputPort<std::string>("cam_right", "0,-1,0", "Image +x dir in base_link x,y,z"),
+             BT::InputPort<std::string>("cam_down", "-1,0,0", "Image +y dir in base_link x,y,z"),
+             BT::InputPort<std::string>("cam_forward", "0,0,-1", "Optical view dir in base_link x,y,z"),
+             BT::InputPort<double>("gripper_x", 0.0, "Gripper x offset in base_link (m)"),
+             BT::InputPort<double>("gripper_y", 0.0, "Gripper y offset in base_link (m)"),
+             BT::InputPort<double>("ema_alpha", 0.3, "World-XY smoothing (0-1, higher = faster)"),
+             BT::InputPort<double>("max_step", 0.25, "Per-cycle goal slew clamp (m)"),
+             BT::InputPort<double>("hold_z", std::numeric_limits<double>::quiet_NaN(),
+                                   "Fixed hover depth to command (m, world z). NaN = capture at start"),
+             BT::InputPort<double>("ki_world", 0.0, "World-error integral gain (0 = off); nulls controller droop"),
+             BT::InputPort<double>("i_max", 0.5, "Integrator clamp magnitude (m)"),
+             BT::InputPort<std::shared_ptr<Context>>("ctx") };
+}
+
+BT::NodeStatus LockTargetXY::onStart()
+{
+    if (!require_ctx(*this, ctx_, "LockTargetXY"))
+    {
+        return BT::NodeStatus::FAILURE;
+    }
+    in_tol_count_ = 0;
+    have_estimate_ = false;
+    have_hold_z_ = false;
+    i_x_ = 0.0;
+    i_y_ = 0.0;
+    std::string camera = "down";
+    (void)getInput("camera", camera);
+    gate_.seed_from(ctx_->detections_for(camera));
+    return BT::NodeStatus::RUNNING;
+}
+
+BT::NodeStatus LockTargetXY::onRunning()
+{
+    std::string label = "table", camera = "down", select = "confidence";
+    double min_conf = 0.30, min_area_frac = 0.0, tol_world = 0.05, est_stable_tol = 0.02, table_z = 0.0,
+           hfov = 1.919862177;
+    double gripper_x = 0.0, gripper_y = 0.0, ema_alpha = 0.3, max_step = 0.25;
+    double hold_z = std::numeric_limits<double>::quiet_NaN();
+    double ki_world = 0.0, i_max = 0.5;
+    int settle_ticks = 3, miss_frames = 5;
+    std::string cam_offset = "0.45222,0.027913,-0.22", cam_right = "0,-1,0", cam_down = "-1,0,0",
+                cam_forward = "0,0,-1";
+
+    (void)getInput("label", label);
+    (void)getInput("camera", camera);
+    (void)getInput("min_conf", min_conf);
+    (void)getInput("select", select);
+    (void)getInput("min_area_frac", min_area_frac);
+    (void)getInput("tol_world", tol_world);
+    (void)getInput("est_stable_tol", est_stable_tol);
+    (void)getInput("settle_ticks", settle_ticks);
+    (void)getInput("miss_frames", miss_frames);
+    (void)getInput("table_z", table_z);
+    (void)getInput("hfov", hfov);
+    (void)getInput("cam_offset", cam_offset);
+    (void)getInput("cam_right", cam_right);
+    (void)getInput("cam_down", cam_down);
+    (void)getInput("cam_forward", cam_forward);
+    (void)getInput("gripper_x", gripper_x);
+    (void)getInput("gripper_y", gripper_y);
+    (void)getInput("ema_alpha", ema_alpha);
+    (void)getInput("max_step", max_step);
+    (void)getInput("hold_z", hold_z);
+    (void)getInput("ki_world", ki_world);
+    (void)getInput("i_max", i_max);
+
+    std::optional<geometry_msgs::msg::Pose> current;
+    {
+        std::scoped_lock lk(ctx_->odom_mx);
+        if (ctx_->latest_odom)
+        {
+            current = ctx_->latest_odom->pose.pose;
+        }
+    }
+    if (!current)
+    {
+        return BT::NodeStatus::RUNNING;  // wait for odom
+    }
+
+    uint32_t W = 0, H = 0;
+    if (!ctx_->image_size_for(camera, W, H))
+    {
+        return BT::NodeStatus::RUNNING;  // cold start
+    }
+
+    std::optional<yolo_msgs::msg::DetectionArray> arr = ctx_->detections_for(camera);
+    if (!arr)
+    {
+        return BT::NodeStatus::RUNNING;
+    }
+    // The area floor is what makes `best != nullptr` below an honest presence
+    // test. This node's presence check IS the selection result, so on a frame
+    // where the real table has drifted out of view the phantom was returned,
+    // read as a hit, ray-cast, and chased for the full timeout (observed: the
+    // estimate frozen 0.44 m off while the gripper sat over the real table).
+    // Filtered, that frame is a miss -> kLost -> FAILURE, which the call site's
+    // AlwaysSuccess degrades to dead-reckon. See detection_gate.hpp.
+    auto const* best = detection_gate::best_detection(*arr, label, min_conf, detection_gate::select_from(select),
+                                                      detection_gate::SizeGate{ min_area_frac, W, H });
+    std::int64_t stamp_ns = rclcpp::Time(arr->header.stamp).nanoseconds();
+    switch (gate_.update(best != nullptr, stamp_ns, miss_frames))
+    {
+        case detection_gate::MissGate::Verdict::kStale:
+            return BT::NodeStatus::RUNNING;
+        case detection_gate::MissGate::Verdict::kMiss:
+            in_tol_count_ = 0;
+            return BT::NodeStatus::RUNNING;
+        case detection_gate::MissGate::Verdict::kLost:
+            RCLCPP_WARN(ctx_->logger(), "LockTargetXY: '%s' lost (%d fresh frames without it)", label.c_str(),
+                        gate_.misses);
+            return BT::NodeStatus::FAILURE;
+        case detection_gate::MissGate::Verdict::kHit:
+            break;
+    }
+
+    // Normalized image error only feeds the ray direction now; success is judged
+    // in the world frame below, not on these pixels.
+    double const ex = (best->bbox.center.position.x - static_cast<double>(W) / 2.0) / (static_cast<double>(W) / 2.0);
+    double const ey = (best->bbox.center.position.y - static_cast<double>(H) / 2.0) / (static_cast<double>(H) / 2.0);
+
+    // Build the camera frame in world from odom + the static basis, then cast the
+    // detection ray onto the table plane to estimate the target's world XY.
+    auto const& q = current->orientation;
+    target_projection::Vec3 const off_w = rotate_by_quat(q, parse_vec3(cam_offset, { 0.45222, 0.027913, -0.22 }));
+    target_projection::CameraFrame cam;
+    cam.origin = { current->position.x + off_w.x, current->position.y + off_w.y, current->position.z + off_w.z };
+    cam.right = rotate_by_quat(q, parse_vec3(cam_right, { 0.0, -1.0, 0.0 }));
+    cam.down = rotate_by_quat(q, parse_vec3(cam_down, { -1.0, 0.0, 0.0 }));
+    cam.forward = rotate_by_quat(q, parse_vec3(cam_forward, { 0.0, 0.0, -1.0 }));
+
+    auto const hit = target_projection::project_to_plane(ex, ey, hfov, static_cast<double>(H) / static_cast<double>(W),
+                                                         cam, table_z);
+    if (!hit)
+    {
+        RCLCPP_WARN_THROTTLE(ctx_->logger(), *ctx_->node->get_clock(), 1000,
+                             "LockTargetXY: ray misses table plane, holding");
+        return BT::NodeStatus::RUNNING;
+    }
+
+    // EMA-smooth the world-XY estimate. est_step (how far this fresh frame moved
+    // the estimate) is the "settled yet?" signal for the gate: on the seed frame
+    // it is infinite so a lock can never be declared before a second frame
+    // confirms the estimate has stopped moving.
+    double est_step = std::numeric_limits<double>::infinity();
+    if (!have_estimate_)
+    {
+        est_ = *hit;
+        have_estimate_ = true;
+    }
+    else
+    {
+        target_projection::Vec2 const prev = est_;
+        est_.x += ema_alpha * (hit->x - est_.x);
+        est_.y += ema_alpha * (hit->y - est_.y);
+        est_step = std::hypot(est_.x - prev.x, est_.y - prev.y);
+    }
+
+    double const yaw = std::atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+    double const c = std::cos(yaw), s = std::sin(yaw);
+
+    // Gate A: measure the residual in METRES between where the gripper actually is
+    // (odom base + body offset, rotated to world) and the estimated target. This
+    // is the real grasp objective and matches the frame/units of the goal we
+    // command; the base position cancels between the two, so absolute odom drift
+    // does not enter. The settle guard (est_step) blocks a half-converged EMA from
+    // passing on a single lucky frame.
+    double const gwx = current->position.x + (c * gripper_x - s * gripper_y);
+    double const gwy = current->position.y + (s * gripper_x + c * gripper_y);
+    double const world_err = std::hypot(est_.x - gwx, est_.y - gwy);
+
+    if (world_err < tol_world && est_step < est_stable_tol)
+    {
+        if (++in_tol_count_ >= settle_ticks)
+        {
+            RCLCPP_INFO(ctx_->logger(), "LockTargetXY: locked (err=%.3f m, world(%.2f,%.2f))", world_err, est_.x,
+                        est_.y);
+            return BT::NodeStatus::SUCCESS;
+        }
+    }
+    else
+    {
+        in_tol_count_ = 0;
+    }
+
+    target_projection::Vec2 base = target_projection::goal_base_xy(est_, yaw, gripper_x, gripper_y);
+
+    // Integrate the world-frame residual (est - gripper_world) against the FIXED
+    // world target and bias the base goal by it, so the position controller's
+    // steady-state droop is nulled instead of leaving the gripper parked ~0.15 m
+    // short. Clamped to +/-i_max. Only runs on a fresh kHit, so it freezes while
+    // the target is lost/stale. Off (ki_world=0) reproduces Stage-1 behavior.
+    if (ki_world > 0.0)
+    {
+        i_x_ = std::clamp(i_x_ + ki_world * (est_.x - gwx), -i_max, i_max);
+        i_y_ = std::clamp(i_y_ + ki_world * (est_.y - gwy), -i_max, i_max);
+        base.x += i_x_;
+        base.y += i_y_;
+    }
+
+    // Slew clamp per cycle so a bad estimate can't command a large jump.
+    double dx = base.x - current->position.x;
+    double dy = base.y - current->position.y;
+    double const dist = std::hypot(dx, dy);
+    if (dist > max_step)
+    {
+        dx *= max_step / dist;
+        dy *= max_step / dist;
+    }
+
+    // Capture the hover depth once so the goal commands a CONSTANT z rather than
+    // chasing a floating odom z. NaN port => use the depth we started centering at.
+    if (!have_hold_z_)
+    {
+        hold_z_ = std::isnan(hold_z) ? current->position.z : hold_z;
+        have_hold_z_ = true;
+    }
+
+    // Command a LEVEL, yaw-preserving orientation and the fixed hover depth. Do NOT
+    // copy current orientation/z: that abandons attitude/depth regulation and lets
+    // a pitch disturbance latch and run away, tilting the down_cam until the
+    // ray-cast estimate collapses onto the camera nadir (goal -> base + cam-gripper
+    // offset, a moving setpoint that floors the residual and walks the target out
+    // of frame). Holding level keeps the camera nadir-down so est_ stays world-fixed.
+    geometry_msgs::msg::Pose goal;
+    goal.position.x = current->position.x + dx;
+    goal.position.y = current->position.y + dy;
+    goal.position.z = hold_z_;
+    goal.orientation.x = 0.0;
+    goal.orientation.y = 0.0;
+    goal.orientation.z = std::sin(yaw / 2.0);
+    goal.orientation.w = std::cos(yaw / 2.0);
+    ctx_->command_goal(goal);
+
+    RCLCPP_INFO(ctx_->logger(),
+                "LockTargetXY: err=%.3f ex=%.2f ey=%.2f base(%.2f,%.2f) grip(%.2f,%.2f) world(%.2f,%.2f) "
+                "goal(%.2f,%.2f) i(%.3f,%.3f)",
+                world_err, ex, ey, current->position.x, current->position.y, gwx, gwy, est_.x, est_.y, goal.position.x,
+                goal.position.y, i_x_, i_y_);
+    return BT::NodeStatus::RUNNING;
+}
+
+void LockTargetXY::onHalted()
+{
+}

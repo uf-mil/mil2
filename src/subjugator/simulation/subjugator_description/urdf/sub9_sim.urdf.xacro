@@ -1,5 +1,16 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="sub9">
+  <!-- Canonical Task-5 grasp-target list, loaded once from mission_planner so the
+       GripperControl <graspable> allowlist below and the mission target labels share a
+       single source (mission_planner/config/grasp_targets.yaml). -->
+  <xacro:property name="grasp_cfg" value="${xacro.load_yaml('$(find mission_planner)/config/grasp_targets.yaml')}"/>
+  <xacro:macro name="graspables" params="names">
+    <xacro:if value="${names}">
+      <graspable>${names[0]}</graspable>
+      <xacro:graspables names="${names[1:]}"/>
+    </xacro:if>
+  </xacro:macro>
+
   <!-- XACRO INCLUDES -->
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/fixed_link.xacro"/>
   <xacro:include filename="$(find subjugator_description)/urdf/xacro/camera.xacro"/>
@@ -19,7 +30,24 @@
 
     <!-- Inertial Properties -->
     <inertial>
-      <origin rpy="0 0 0" xyz="0.352 0 0"/>
+      <!-- CoG placed 3 cm directly BELOW the center of buoyancy to give the sub
+           positive metacentric height. Previously CoG and CoB were coincident
+           (both z=0) -> zero righting moment -> no passive self-leveling, so the
+           sub held a steady few-deg pitch/roll that tilted the down_cam and
+           corrupted the LockTargetXY ray-cast. A vertical CoB-above-CoG offset
+           makes it a pendulum that returns to level on its own.
+           x MUST match the net CoB x (0.354, the volume-weighted centroid of all
+           base_link buoyancy collisions: sphere+shells), not the old 0.352:
+           with GM introduced, a 2 mm x-gap between CoB and CoG hangs the pendulum
+           at atan(0.002/0.03) ~= 3.8 deg of steady pitch. Aligning x zeroes it.
+           z (-0.08) is the metacentric height GM; larger = stronger leveling and
+           less sensitive to residual x error. 3 cm self-levels at REST but under
+           a sustained surge the sub still pitches ~13 deg (righting couple too
+           weak vs the sim's surge disturbance torque); 8 cm holds the approach
+           closer to level. SIM PLACEHOLDER: the real GM is a measured ballast
+           property of the physical sub, not this tuned value; set it to the real
+           inclining-test figure when available. -->
+      <origin rpy="0 0 0" xyz="0.354 0 -0.08"/>
       <!-- Need to be properly calculated at some point -->
       <mass value="20.5"/>
       <inertia ixx="2.4" ixy="0" ixz="0" iyy="2.4" iyz="0.0" izz="3.0"/>
@@ -106,6 +134,9 @@
     <plugin filename="GripperControl" name="gripper_control::GripperControl">
       <left_joint_name>gripper_leftArm_joint</left_joint_name>
       <right_joint_name>gripper_rightArm_joint</right_joint_name>
+      <gripper_link_name>gripper_link</gripper_link_name>
+      <attach_radius>0.25</attach_radius>
+      <xacro:graspables names="${grasp_cfg['grasp_targets']}"/>
     </plugin>
   </gazebo>
 

@@ -1,0 +1,35 @@
+<root BTCPP_format="4">
+    <!--
+        S7 face step. Try to face the correct symbol; if it is never detected,
+        fall back to facing the best of all four symbols (still scores "any image").
+        HoneBearing runs with wait_for_detection=true, so a momentary absence of
+        detections returns RUNNING (not FAILURE): the Repeat keeps waiting and the
+        RosTimeout (ROS-time budget, sim-aware), not a transient miss, is what
+        bounds each branch and triggers the Fallback. Iterating with a settle
+        converges the bearing instead of a single coarse correction. all_symbols comes from SelectFaceSymbol (all_symbols(),
+        the single tested source); do not hardcode the class list here.
+        Tuning constants are placeholders, to be measured in GUI sim.
+    -->
+    <BehaviorTree ID="FaceOctagonImage">
+        <Fallback>
+            <RosTimeout msec="20000" ctx="{ctx}">
+                <Repeat num_cycles="4">
+                    <Sequence>
+                        <Action ID="HoneBearing" label="{target_symbol}" fov_deg="110"
+                                wait_for_detection="true" ctx="{ctx}"/>
+                        <RosDelay delay_msec="3000" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
+                    </Sequence>
+                </Repeat>
+            </RosTimeout>
+            <RosTimeout msec="20000" ctx="{ctx}">
+                <Repeat num_cycles="4">
+                    <Sequence>
+                        <Action ID="HoneBearing" labels="{all_symbols}" fov_deg="110"
+                                wait_for_detection="true" ctx="{ctx}"/>
+                        <RosDelay delay_msec="3000" ctx="{ctx}"><AlwaysSuccess/></RosDelay>
+                    </Sequence>
+                </Repeat>
+            </RosTimeout>
+        </Fallback>
+    </BehaviorTree>
+</root>

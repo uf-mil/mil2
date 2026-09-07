@@ -19,6 +19,11 @@ if(BUILD_TESTING)
   # when this package is in a git repo and when a copyright and license is added
   # to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
+  # This package's source dir contains the nested pcd package, so its lint runs
+  # over pcd's files too. Repo C++ style (.clang-format) is 4-space/Allman,
+  # which uncrustify's ROS profile can never accept; clang-format in pre-commit
+  # is the source of truth. Mirrors the same skip in pcd/CMakeLists.txt.
+  set(ament_cmake_uncrustify_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
 

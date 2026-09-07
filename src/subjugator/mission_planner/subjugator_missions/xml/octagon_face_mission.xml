@@ -1,0 +1,18 @@
+<root BTCPP_format="4" main_tree_to_execute="OctagonFaceMission">
+    <!--
+        Standalone S7 harness. Seeds the inputs S6 / the full mission would provide,
+        then runs OrientToOctagonImage. Pre-model this exercises tree instantiation +
+        port validation of the whole S7 subtree chain, and fails honestly at
+        CheckYoloModel (model file absent). Edit score_level (4/5/6) and items_collected
+        to tune once a trained octagon_symbols model exists. role is seeded as a string;
+        SelectFaceSymbol also falls back to the Context role when the port is empty.
+    -->
+    <BehaviorTree ID="OctagonFaceMission">
+        <Sequence>
+            <Script code="role := 'survey_repair'; items_collected := 2; score_level := 6"/>
+            <SubTree ID="OrientToOctagonImage" _autoremap="true"
+                     role="{role}" items_collected="{items_collected}"
+                     score_level="{score_level}" ctx="{ctx}"/>
+        </Sequence>
+    </BehaviorTree>
+</root>

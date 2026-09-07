@@ -1,3 +1,15 @@
+# Servo command for the dropper / gripper / torpedo PWM outputs.
+#
+# angle is the single shared unit between hardware and sim: it is the PWM duty
+# cycle x10. servo_controller/driver.py does duty = angle / 10 and feeds it to
+# RPi.GPIO ChangeDutyCycle (valid duty 0-100, so angle 0-1000). The Gazebo
+# GripperControl plugin maps this SAME angle to a gripper joint position. Keep the
+# angles used in missions consistent with the hardware so a tree tuned in sim
+# transfers to the robot.
+#
+# Hardware reference points (from driver.py):
+#   gripper idle  ~= angle 82  (duty 8.2)
+#   dropper load   = angle 120 (duty 12);  drops at angle 70 then 40
 uint16 angle
 ---
 # Empty response

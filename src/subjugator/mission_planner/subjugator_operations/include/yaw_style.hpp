@@ -76,11 +76,7 @@ class YawStyle : public BT::SyncActionNode
         last_goal.orientation.z = z3;
         last_goal.orientation.w = w3;
 
-        ctx_->goal_pub->publish(last_goal);
-        {
-            std::scoped_lock lk(ctx_->last_goal_mx);
-            ctx_->last_goal.emplace(last_goal);
-        }
+        ctx_->command_goal(last_goal);
 
         return BT::NodeStatus::SUCCESS;
     }

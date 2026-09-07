@@ -1,0 +1,44 @@
+<root BTCPP_format="4">
+    <!--
+        Reusable subtree (S6 building block): one full grab-and-place cycle
+        (S3 -> S4 -> S5), then record that one more object has been placed. The
+        counter bump is the LAST node, so items_collected only advances on a fully
+        placed object; if any stage fails the Sequence stops before the increment.
+
+        grabbed_label carries object identity across cycles: S4 sets it, S5 leaves
+        it intact, and SelectTargetS3's exclude="{grabbed_label}" makes the NEXT
+        cycle skip it. On cycle 1 grabbed_label is unset -> excludes nothing.
+
+        Knobs are baked here (mirroring OctagonGraspMission + OctagonPlaceMission)
+        so the loop has one source of truth for collection tuning and no
+        safety-critical motion knob relies on multi-level blackboard propagation.
+        The grasp descend_z (-0.6) and place descend_z (-0.4) differ and are literal
+        at each child call, so they never alias. ctx / target_label / grabbed_label /
+        grasp_baseline_area are shared within scope via _autoremap; items_collected
+        is remapped explicitly to the caller's key so the count reaches S7.
+    -->
+    <BehaviorTree ID="CollectOneObject">
+        <Sequence>
+            <!-- S3: pick the role's object (excludes grabbed_label), sets target_label -->
+            <SubTree ID="SelectTargetS3" _autoremap="true" ctx="{ctx}"/>
+            <!-- S4: center, open, descend, close, lift; sets grabbed_label -->
+            <SubTree ID="ApproachAndGrasp" _autoremap="true" ctx="{ctx}"
+                     grasp_attempts="2"
+                     center_tol_norm="0.05" center_timeout_msec="20000"
+                     open_angle="85" close_angle="0"
+                     descend_z="-0.6" lift_z="0.6"
+                     grip_settle_msec="1500" move_timeout_msec="30000"
+                     grasp_keep_ratio="0.5"/>
+            <!-- S5: carry to the role's basket, release; leaves grabbed_label intact -->
+            <SubTree ID="TransportAndPlace" _autoremap="true" ctx="{ctx}"
+                     role_timeout_msec="15000" place_attempts="2"
+                     lateral_x="0.0" lateral_y="1.0"
+                     center_tol_norm="0.05" center_timeout_msec="20000"
+                     descend_z="-0.4" lift_z="0.6"
+                     open_angle="85" settle_msec="1500"
+                     move_timeout_msec="30000"/>
+            <!-- Count this placement (feeds S7's turn_ticks / symbol selection) -->
+            <Script code="items_collected := items_collected + 1"/>
+        </Sequence>
+    </BehaviorTree>
+</root>

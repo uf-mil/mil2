@@ -20,4 +20,5 @@ class HoneBearing : public BT::StatefulActionNode
   private:
     std::shared_ptr<Context> ctx_;
     bool published_{ false };
+    bool warned_empty_labels_{ false };  // one-shot: 'labels' set but parsed to no classes
 };

@@ -4,7 +4,6 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    ExecuteProcess,
     IncludeLaunchDescription,
 )
 from launch.conditions import IfCondition
@@ -37,12 +36,9 @@ def generate_launch_description():
         value_type=str,
     )
 
-    # Write an on-disk URDF
-    urdf_out = pkg_share("subjugator_description", "urdf", "sub9.urdf")
-    generate_urdf = ExecuteProcess(
-        cmd=["xacro", LaunchConfiguration("xacro_file"), "-o", urdf_out],
-        output="screen",
-    )
+    # sub9.urdf (the on-disk URDF the Gazebo worlds <include>) is now expanded from
+    # sub9_sim.urdf.xacro at build time by subjugator_description; no launch-time
+    # generation needed. robot_state_publisher still expands xacro_file in-memory above.
 
     # # Convert URDF to SDF using Gazebo's gz tool
     # sdf_file = os.path.join(pkg_project_description, 'urdf', 'sub9.sdf')
@@ -129,7 +125,6 @@ def generate_launch_description():
         [
             gui_cmd,
             xacro_file_arg,
-            generate_urdf,
             robot_state_publisher_node,
             rviz,
             thruster_manager,

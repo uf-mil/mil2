@@ -18,8 +18,10 @@ find_package(sensor_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(subjugator_msgs REQUIRED)
 find_package(yolo_msgs REQUIRED)
+find_package(subjugator_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
+find_package(yaml-cpp REQUIRED)
 find_package(subjugator_msgs REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -33,17 +35,24 @@ add_library(
   subjugator_operations/src/at_goal_pose.cpp
   subjugator_operations/src/detect_target.cpp
   subjugator_operations/src/hone_bearing.cpp
+  subjugator_operations/src/center_camera.cpp
+  subjugator_operations/src/lock_target_xy.cpp
   subjugator_operations/src/check_yolo_model.cpp
   subjugator_operations/src/track_largest_poles.cpp
   subjugator_operations/src/poles_big_enough.cpp
   subjugator_operations/src/target_big_enough.cpp
   subjugator_operations/src/determine_channel_side.cpp
+  subjugator_operations/src/select_target.cpp
+  subjugator_operations/src/select_basket.cpp
+  subjugator_operations/src/select_face_symbol.cpp
   subjugator_operations/src/detect_wall_direction.cpp
   subjugator_operations/src/start_coin_flip.cpp
   subjugator_operations/src/stop_coin_flip.cpp
   subjugator_operations/src/any_poles_detected.cpp
   subjugator_operations/src/has_found_pair.cpp
   subjugator_operations/src/select_hole_depth.cpp
+  subjugator_operations/src/record_target_scale.cpp
+  subjugator_operations/src/confirm_grasp_by_scale.cpp
   subjugator_operations/src/track_best_pair.cpp
   subjugator_operations/src/track_best_target.cpp
   subjugator_operations/src/hone_midpoint.cpp
@@ -53,7 +62,12 @@ add_library(
   subjugator_operations/src/align_yaw.cpp
   subjugator_operations/src/actuate_servo.cpp
   subjugator_operations/src/target_centered.cpp
-  subjugator_operations/src/board_arch_step.cpp)
+  subjugator_operations/src/board_arch_step.cpp
+  subjugator_operations/src/go_to_pinger.cpp
+  subjugator_operations/src/descend_until_detected.cpp
+  subjugator_operations/src/search_for_target.cpp
+  subjugator_operations/src/ros_timeout.cpp
+  subjugator_operations/src/ros_delay.cpp)
 
 ament_target_dependencies(
   operations
@@ -76,7 +90,7 @@ ament_target_dependencies(
 # Node
 add_executable(mission_planner_node src/mission_planner_node.cpp)
 target_link_libraries(mission_planner_node
-                      "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
+                      "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>" yaml-cpp)
 ament_target_dependencies(
   mission_planner_node
   rclcpp
@@ -99,6 +113,57 @@ install(
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY subjugator_operations/include/ DESTINATION include)
 install(DIRECTORY subjugator_missions/xml/ DESTINATION share/${PROJECT_NAME}/bt)
+install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../gnc/subjugator_vision/models/
         DESTINATION share/${PROJECT_NAME}/models)
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_select_target_logic test/test_select_target_logic.cpp)
+  target_include_directories(
+    test_select_target_logic
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_select_basket_logic test/test_select_basket_logic.cpp)
+  target_include_directories(
+    test_select_basket_logic
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_select_face_symbol_logic
+                  test/test_select_face_symbol_logic.cpp)
+  target_include_directories(
+    test_select_face_symbol_logic
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_search_pattern test/test_search_pattern.cpp)
+  target_include_directories(
+    test_search_pattern
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_detection_gate test/test_detection_gate.cpp)
+  target_include_directories(
+    test_detection_gate
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_descend_floor test/test_descend_floor.cpp)
+  target_include_directories(
+    test_descend_floor
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_target_projection test/test_target_projection.cpp)
+  target_include_directories(
+    test_target_projection
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_ros_time_budget test/test_ros_time_budget.cpp)
+  target_include_directories(
+    test_ros_time_budget
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+
+  ament_add_gtest(test_quat_math test/test_quat_math.cpp)
+  target_include_directories(
+    test_quat_math
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/subjugator_operations/include)
+  ament_target_dependencies(test_quat_math geometry_msgs)
+endif()
+
 ament_package()

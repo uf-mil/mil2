@@ -1,0 +1,35 @@
+<root BTCPP_format="4">
+    <!--
+        S6: collect up to `max_objects` objects by repeating CollectOneObject.
+
+        Object 1 is REQUIRED: its failure fails the phase (vision broken, table
+        empty, or gripper problem) so the operator sees it rather than a silent
+        "success". Object 2 is BEST-EFFORT: grabbing one object still scores, so a
+        miss (no distinct 2nd object visible, or a grasp/place failure) is absorbed
+        by the Fallback and the phase still SUCCEEDs with items_collected == 1.
+
+        Deliberately NOT a <Repeat num_cycles="2">: BT.CPP's Repeat fails the instant
+        its child fails, which would discard object 1 whenever object 2 is missing.
+        The explicit two-step form keeps object 1 on a clean success path.
+
+        items_collected is remapped from the caller so S7 sees the final count.
+        max_objects is supplied by the caller (OctagonLoopMission = 2; OctagonMission
+        derives it from score_level: 1 at level 2, 2 at level 3+).
+    -->
+    <BehaviorTree ID="CollectObjects">
+        <Sequence>
+            <Script code="items_collected := 0"/>
+            <!-- Object 1: required -->
+            <SubTree ID="CollectOneObject" _autoremap="true" ctx="{ctx}"
+                     items_collected="{items_collected}"/>
+            <!-- Object 2: best-effort, only when max_objects allows a second -->
+            <Precondition if="max_objects >= 2" else="SUCCESS">
+                <Fallback>
+                    <SubTree ID="CollectOneObject" _autoremap="true" ctx="{ctx}"
+                             items_collected="{items_collected}"/>
+                    <AlwaysSuccess/>
+                </Fallback>
+            </Precondition>
+        </Sequence>
+    </BehaviorTree>
+</root>

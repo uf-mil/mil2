@@ -2,9 +2,8 @@
 #include "count_when_ticked.hpp"
 #include "go_to_pinger.hpp"
 #include "lookup_waypoint.hpp"
-#include "pitch_style.hpp"
 #include "remember_waypoint.hpp"
-#include "roll_style.hpp"
+#include "spin_style.hpp"  // RollStyle + PitchStyle
 #include "topic_ticker.hpp"
 #include "yaw_style.hpp"
 

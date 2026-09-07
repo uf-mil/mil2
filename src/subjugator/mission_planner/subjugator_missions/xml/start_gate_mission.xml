@@ -22,10 +22,13 @@
         <RetryUntilSuccessful num_attempts="-1">
           <Sequence>
             <Delay delay_msec="200"><AlwaysSuccess/></Delay>
-            <Condition ID="DetectTarget"
-                       label="{gate_label}"
-                       min_conf="0.20"
-                       ctx="{ctx}"/>
+            <!-- flicker-tolerant guard: SUCCESS on a fresh sighting, FAILURE
+                 after 5 fresh misses or 5s -> Retry polls it again.
+                 DetectTarget is a StatefulActionNode now, hence <Action>. -->
+            <Action ID="DetectTarget"
+                    label="{gate_label}"
+                    min_conf="0.20"
+                    ctx="{ctx}"/>
           </Sequence>
         </RetryUntilSuccessful>
 

@@ -1,0 +1,13 @@
+<root BTCPP_format="4" main_tree_to_execute="OctagonLoopMission">
+    <!--
+        Standalone S6 test. Assumes the sub is already centered over the table
+        (S2 done, hand-positioned in a pool or sim). role comes from the `role`
+        launch param via Context (SelectTarget/SelectBasket read it there), e.g.
+        -p role:=survey_repair. Runs the collection loop for up to two objects,
+        exercising S3 -> S4 -> S5 twice with grabbed_label exclusion between cycles.
+    -->
+    <BehaviorTree ID="OctagonLoopMission">
+        <SubTree ID="CollectObjects" _autoremap="true" ctx="{ctx}"
+                 max_objects="2" items_collected="{items_collected}"/>
+    </BehaviorTree>
+</root>
