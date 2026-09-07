@@ -143,6 +143,20 @@ struct Detour
 Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, double hull_half_width, double min_gap,
                    double clearance);
 
+/// True when nothing sits in the strip the hull would sweep reversing
+/// `distance` metres from `boat`, which points along `boat_direction`.
+///
+/// The strip runs from base_link to `hull_behind + distance` behind it, and
+/// `hull_half_width` either side. A blob counts as intruding when its circle
+/// touches that rectangle at all.
+///
+/// Deliberately separate from Reverser, which stays as dumb as Driver and
+/// Spinner. The caller checks this before and during a reverse; the boat can
+/// see straight out the back -- the blind spots are on the sides -- so the
+/// check runs on live data, not a snapshot taken before setting off.
+bool clear_behind(std::vector<Blob> const &blobs, Point const &boat, double boat_direction, double distance_back,
+                  double hull_half_width, double hull_behind);
+
 /// Why a match attempt did not produce a blob.
 enum class MatchFailure
 {

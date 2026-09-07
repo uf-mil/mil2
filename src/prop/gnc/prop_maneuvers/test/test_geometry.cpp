@@ -385,3 +385,59 @@ TEST(MatchNearest, PinsBehaviorWhenTheGapIsExactlyTheAmbiguousMargin)
     ASSERT_TRUE(match.ok);
     EXPECT_NEAR(match.blob.centre.x, 0.2, kTol);
 }
+
+// ── clear_behind ─────────────────────────────────────────────────────────
+//
+// Boat at the origin facing +x throughout unless stated. Hull reaches 0.5 m
+// either side and 1.0 m behind base_link, and the reverse is 2.0 m, so the
+// swept strip runs from base_link to 3.0 m behind it, 0.5 m either side.
+
+TEST(ClearBehind, ClearWhenThereAreNoBlobs)
+{
+    EXPECT_TRUE(clear_behind({}, { 0, 0 }, 0.0, 2.0, 0.5, 1.0));
+}
+
+TEST(ClearBehind, NotClearWhenSomethingSitsInTheStrip)
+{
+    std::vector<Blob> const blobs{ { { -2.0, 0.0 }, 0.25 } };
+    EXPECT_FALSE(clear_behind(blobs, { 0, 0 }, 0.0, 2.0, 0.5, 1.0));
+}
+
+TEST(ClearBehind, ClearWhenTheBlobIsBeyondTheSweptDistance)
+{
+    // Strip ends 3.0 m back; this blob's near edge is at 3.25 m.
+    std::vector<Blob> const blobs{ { { -3.5, 0.0 }, 0.25 } };
+    EXPECT_TRUE(clear_behind(blobs, { 0, 0 }, 0.0, 2.0, 0.5, 1.0));
+}
+
+TEST(ClearBehind, ClearWhenTheBlobIsBesideTheStrip)
+{
+    // 2.0 m to the side; strip edge is at 0.5 m, blob edge at 1.75 m.
+    std::vector<Blob> const blobs{ { { -2.0, 2.0 }, 0.25 } };
+    EXPECT_TRUE(clear_behind(blobs, { 0, 0 }, 0.0, 2.0, 0.5, 1.0));
+}
+
+TEST(ClearBehind, NotClearWhenTheBlobOverlapsTheStripEdge)
+{
+    // Centre 0.7 m to the side, radius 0.25, so it reaches 0.45 m -- inside
+    // the 0.5 m half-width.
+    std::vector<Blob> const blobs{ { { -2.0, 0.7 }, 0.25 } };
+    EXPECT_FALSE(clear_behind(blobs, { 0, 0 }, 0.0, 2.0, 0.5, 1.0));
+}
+
+TEST(ClearBehind, ClearWhenTheBlobIsInFront)
+{
+    std::vector<Blob> const blobs{ { { 5.0, 0.0 }, 0.25 } };
+    EXPECT_TRUE(clear_behind(blobs, { 0, 0 }, 0.0, 2.0, 0.5, 1.0));
+}
+
+TEST(ClearBehind, TheStripFollowsTheBoatNotTheMap)
+{
+    // Same blob, twice. Facing +x it is in front and irrelevant; facing +y
+    // (90 degrees) "behind" points down the -y axis, so it is still clear --
+    // but facing -x (180 degrees) puts it squarely behind.
+    std::vector<Blob> const blobs{ { { 2.0, 0.0 }, 0.25 } };
+    EXPECT_TRUE(clear_behind(blobs, { 0, 0 }, 0.0, 2.0, 0.5, 1.0));
+    EXPECT_TRUE(clear_behind(blobs, { 0, 0 }, M_PI / 2.0, 2.0, 0.5, 1.0));
+    EXPECT_FALSE(clear_behind(blobs, { 0, 0 }, M_PI, 2.0, 0.5, 1.0));
+}

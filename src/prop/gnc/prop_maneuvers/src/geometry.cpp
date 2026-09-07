@@ -206,6 +206,39 @@ Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, dou
     return result;
 }
 
+bool clear_behind(std::vector<Blob> const &blobs, Point const &boat, double boat_direction, double distance_back,
+                  double hull_half_width, double hull_behind)
+{
+    // Backwards along the hull, and to its left. Working in the boat's own
+    // frame turns "is it in the strip" into a point-to-rectangle question.
+    double const bx = -std::cos(boat_direction);
+    double const by = -std::sin(boat_direction);
+    double const lx = -std::sin(boat_direction);
+    double const ly = std::cos(boat_direction);
+
+    double const strip_length = hull_behind + distance_back;
+
+    for (auto const &blob : blobs)
+    {
+        double const ox = blob.centre.x - boat.x;
+        double const oy = blob.centre.y - boat.y;
+
+        double const back = ox * bx + oy * by;  // positive is behind the boat
+        double const side = ox * lx + oy * ly;  // positive is to its left
+
+        // Distance from the blob's centre to the rectangle [0, strip_length]
+        // x [-half_width, +half_width]. Zero when the centre is inside it.
+        double const dback = std::max({ 0.0, -back, back - strip_length });
+        double const dside = std::max(0.0, std::abs(side) - hull_half_width);
+
+        if (std::hypot(dback, dside) < blob.radius)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 Match match_nearest(std::vector<Blob> const &blobs, Point const &prediction, double match_radius,
                     double ambiguous_margin)
 {
