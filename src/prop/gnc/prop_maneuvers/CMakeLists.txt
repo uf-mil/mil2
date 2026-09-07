@@ -21,6 +21,9 @@ include_directories(include)
 
 # ── Shared library ───────────────────────────────────────────────────────────
 add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp src/spinner.cpp)
+# Split out deliberately: with four sources on one line, cmake-format wraps the
+# call onto a hanging continuation that ament_lint_cmake then rejects as "weird
+# indentation". Both tools accept this form. Do not fold it back in.
 target_sources(prop_maneuvers_lib PRIVATE src/target_lock.cpp src/maneuvers.cpp)
 ament_target_dependencies(
   prop_maneuvers_lib
@@ -47,7 +50,19 @@ ament_target_dependencies(
   tf2_ros
   tf2_geometry_msgs)
 
-install(TARGETS face_object DESTINATION lib/${PROJECT_NAME})
+add_executable(circle_object src/circle_object_node.cpp)
+target_link_libraries(circle_object prop_maneuvers_lib)
+ament_target_dependencies(
+  circle_object
+  rclcpp
+  nav_msgs
+  geometry_msgs
+  visualization_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs)
+
+install(TARGETS face_object circle_object DESTINATION lib/${PROJECT_NAME})
 
 # ── Simulator support ────────────────────────────────────────────────────────
 add_executable(scan_to_cloud src/scan_to_cloud_node.cpp)

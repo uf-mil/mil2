@@ -94,4 +94,44 @@ class FaceObject
     bool released_{ false };
 };
 
+/// Go all the way round the locked object along straight legs.
+///
+/// The boat cannot slide sideways, so a circle becomes a ring of corners with
+/// a straight run between each pair. At every corner the boat stops, turns to
+/// face the buoy -- which puts it straight ahead and clear of the blind spots
+/// -- takes a fresh reading, and redraws the remaining corners around it.
+///
+/// Four legs gives the diamond. More legs keeps the buoy nearer the front of
+/// the boat during each run: four spans 45 to 135 degrees off the front, six
+/// spans 60 to 120, eight spans 67.5 to 112.5. Raise it if the blind spots
+/// turn out worse than the guess in the settings file.
+class CircleObject
+{
+  public:
+    CircleObject(Context &context, double radius, int legs, bool counter_clockwise);
+    Status step();
+
+  private:
+    enum class Phase
+    {
+        FaceForEntry,   ///< turn towards the buoy before working out the entry point
+        DriveToEntry,   ///< run out to the ring
+        FaceBuoy,       ///< at a corner: turn to the buoy and re-read it
+        DriveToCorner,  ///< run the leg
+    };
+
+    /// Turn towards the remembered point. Returns true once pointed.
+    bool turn_towards_buoy();
+
+    Context &context_;
+    Deadline deadline_;
+    double radius_;
+    int legs_;
+    bool counter_clockwise_;
+
+    Phase phase_{ Phase::FaceForEntry };
+    int legs_driven_{ 0 };
+    bool released_for_turn_{ false };
+};
+
 }  // namespace prop_maneuvers
