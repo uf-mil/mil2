@@ -62,7 +62,20 @@ ament_target_dependencies(
   tf2_ros
   tf2_geometry_msgs)
 
-install(TARGETS face_object circle_object DESTINATION lib/${PROJECT_NAME})
+add_executable(approach_object src/approach_object_node.cpp)
+target_link_libraries(approach_object prop_maneuvers_lib)
+ament_target_dependencies(
+  approach_object
+  rclcpp
+  nav_msgs
+  geometry_msgs
+  visualization_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs)
+
+install(TARGETS face_object circle_object approach_object
+        DESTINATION lib/${PROJECT_NAME})
 
 # ── Simulator support ────────────────────────────────────────────────────────
 add_executable(scan_to_cloud src/scan_to_cloud_node.cpp)

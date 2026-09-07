@@ -134,4 +134,40 @@ class CircleObject
     bool released_for_turn_{ false };
 };
 
+/// Face the object, drive to it, and stop short of it.
+///
+/// LIMITATION: obstacle handling here is a sidestep, not path planning. It
+/// steps around one blocking blob at a time and makes no promise in a crowded
+/// field. Real planning is a separate effort.
+class ApproachObject
+{
+  public:
+    ApproachObject(Context &context, double standoff, double clearance);
+    Status step();
+
+  private:
+    enum class Phase
+    {
+        FaceTarget,
+        Driving,
+    };
+
+    /// Where to stop, plus a detour waypoint if something blocks the line.
+    std::vector<Point> plan_route(Boat const &boat) const;
+
+    /// True when `fresh` is different enough from the route in flight to be
+    /// worth handing over again. Re-publishing every tick would restart
+    /// guidance's leg on every cycle.
+    bool worth_replanning(std::vector<Point> const &fresh) const;
+
+    Context &context_;
+    Deadline deadline_;
+    double standoff_;
+    double clearance_;
+
+    Phase phase_{ Phase::FaceTarget };
+    bool released_for_turn_{ false };
+    std::vector<Point> route_;
+};
+
 }  // namespace prop_maneuvers
