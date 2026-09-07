@@ -229,3 +229,43 @@ TEST(DetourPoint, GoesLeftWhenTheObstacleSitsExactlyOnTheLine)
     EXPECT_NEAR(p->x, 5.0, kTol);
     EXPECT_NEAR(p->y, 2.0, kTol);
 }
+
+TEST(MatchNearest, PicksTheClosestBlob)
+{
+    std::vector<Blob> const blobs{ { { 10.0, 0.0 }, 0.25 }, { { 0.5, 0.0 }, 0.25 } };
+    auto const match = match_nearest(blobs, { 0.0, 0.0 }, 3.0, 1.0);
+    ASSERT_TRUE(match.ok);
+    EXPECT_NEAR(match.blob.centre.x, 0.5, kTol);
+}
+
+TEST(MatchNearest, FailsWhenThereAreNoBlobs)
+{
+    auto const match = match_nearest({}, { 0.0, 0.0 }, 3.0, 1.0);
+    EXPECT_FALSE(match.ok);
+    EXPECT_EQ(match.failure, MatchFailure::NoBlobs);
+}
+
+TEST(MatchNearest, FailsWhenTheNearestIsTooFarFromThePrediction)
+{
+    std::vector<Blob> const blobs{ { { 10.0, 0.0 }, 0.25 } };
+    auto const match = match_nearest(blobs, { 0.0, 0.0 }, 3.0, 1.0);
+    EXPECT_FALSE(match.ok);
+    EXPECT_EQ(match.failure, MatchFailure::TooFar);
+}
+
+TEST(MatchNearest, RefusesToGuessBetweenTwoEquallyPlausibleBlobs)
+{
+    // Two buoys side by side, both about a metre from where we expected one.
+    std::vector<Blob> const blobs{ { { 1.0, 0.0 }, 0.25 }, { { -1.0, 0.0 }, 0.25 } };
+    auto const match = match_nearest(blobs, { 0.0, 0.0 }, 3.0, 1.0);
+    EXPECT_FALSE(match.ok);
+    EXPECT_EQ(match.failure, MatchFailure::Ambiguous);
+}
+
+TEST(MatchNearest, AcceptsWhenTheRunnerUpIsClearlyFurtherAway)
+{
+    std::vector<Blob> const blobs{ { { 0.2, 0.0 }, 0.25 }, { { 2.8, 0.0 }, 0.25 } };
+    auto const match = match_nearest(blobs, { 0.0, 0.0 }, 3.0, 1.0);
+    ASSERT_TRUE(match.ok);
+    EXPECT_NEAR(match.blob.centre.x, 0.2, kTol);
+}

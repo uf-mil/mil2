@@ -21,7 +21,16 @@ include_directories(include)
 
 # ── Shared library ───────────────────────────────────────────────────────────
 add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp src/spinner.cpp)
-ament_target_dependencies(prop_maneuvers_lib rclcpp nav_msgs geometry_msgs)
+target_sources(prop_maneuvers_lib PRIVATE src/target_lock.cpp)
+ament_target_dependencies(
+  prop_maneuvers_lib
+  rclcpp
+  nav_msgs
+  geometry_msgs
+  visualization_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs)
 
 install(TARGETS prop_maneuvers_lib DESTINATION lib)
 

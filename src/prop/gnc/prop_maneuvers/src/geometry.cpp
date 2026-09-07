@@ -1,6 +1,7 @@
 #include "prop_maneuvers/geometry.hpp"
 
 #include <cmath>
+#include <limits>
 
 namespace prop_maneuvers
 {
@@ -139,6 +140,73 @@ std::optional<Point> detour_point(Point const &a, Point const &b, Point const &o
     }
 
     return Point{ obstacle.x + nx * keep_out, obstacle.y + ny * keep_out };
+}
+
+Match match_nearest(std::vector<Blob> const &blobs, Point const &prediction, double match_radius,
+                    double ambiguous_margin)
+{
+    Match result;
+
+    if (blobs.empty())
+    {
+        result.failure = MatchFailure::NoBlobs;
+        return result;
+    }
+
+    // Find the nearest and the runner-up in one pass.
+    std::size_t nearest = 0;
+    double nearest_range = distance(blobs[0].centre, prediction);
+    double runner_up_range = std::numeric_limits<double>::max();
+
+    for (std::size_t i = 1; i < blobs.size(); ++i)
+    {
+        double const range = distance(blobs[i].centre, prediction);
+        if (range < nearest_range)
+        {
+            runner_up_range = nearest_range;
+            nearest_range = range;
+            nearest = i;
+        }
+        else if (range < runner_up_range)
+        {
+            runner_up_range = range;
+        }
+    }
+
+    if (nearest_range > match_radius)
+    {
+        result.failure = MatchFailure::TooFar;
+        return result;
+    }
+
+    // Two blobs about equally close to where we expected one. Latching onto
+    // the wrong buoy would send the boat round the wrong thing, so stop.
+    if (runner_up_range - nearest_range < ambiguous_margin)
+    {
+        result.failure = MatchFailure::Ambiguous;
+        return result;
+    }
+
+    result.ok = true;
+    result.blob = blobs[nearest];
+    result.failure = MatchFailure::None;
+    return result;
+}
+
+char const *describe(MatchFailure failure)
+{
+    switch (failure)
+    {
+        case MatchFailure::None:
+            return "matched";
+        case MatchFailure::NoBlobs:
+            return "nothing in view";
+        case MatchFailure::TooFar:
+            return "nearest blob is too far from where the buoy was expected";
+        case MatchFailure::Ambiguous:
+            return "two blobs are equally plausible; refusing to guess";
+    }
+    return "unknown";
 }
 
 }  // namespace prop_maneuvers

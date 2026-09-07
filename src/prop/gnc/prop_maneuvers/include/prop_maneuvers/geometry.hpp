@@ -100,4 +100,32 @@ Offset distance_to_segment(Point const &p, Point const &a, Point const &b);
 /// detour goes to the left of travel.
 std::optional<Point> detour_point(Point const &a, Point const &b, Point const &obstacle, double keep_out);
 
+/// Why a match attempt did not produce a blob.
+enum class MatchFailure
+{
+    None,       ///< matched
+    NoBlobs,    ///< nothing in range at all
+    TooFar,     ///< nearest blob is further than the limit from the prediction
+    Ambiguous,  ///< two blobs are equally plausible; refuse to guess
+};
+
+/// The result of trying to match one blob to a predicted position.
+struct Match
+{
+    bool ok{ false };
+    Blob blob;
+    MatchFailure failure{ MatchFailure::NoBlobs };
+};
+
+/// Pick the blob nearest `prediction`.
+///
+/// Fails when the nearest is further than `match_radius`, and fails when a
+/// second blob is within `ambiguous_margin` of the nearest one's distance --
+/// silently latching onto the wrong buoy is worse than stopping.
+Match match_nearest(std::vector<Blob> const &blobs, Point const &prediction, double match_radius,
+                    double ambiguous_margin);
+
+/// Human-readable reason, for logging.
+char const *describe(MatchFailure failure);
+
 }  // namespace prop_maneuvers
