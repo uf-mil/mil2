@@ -110,6 +110,14 @@ bool TargetLock::acquire_in_front(Point const &boat, double boat_direction)
 
     // Nearest one in the cone wins. Ambiguity is not checked here: the caller
     // asked for whatever is in front, so picking the closest is the answer.
+    // There is no prediction to disambiguate against, unlike acquire_near and
+    // refresh, which lean on match_nearest's margin check. The tradeoff is
+    // real: two buoys at similar range inside the forward cone resolve
+    // silently to the nearer one, with no warning that the pick was close.
+    // This is the one acquisition path meant for autonomous use on the real
+    // boat, and the only one with no such protection -- a future reader
+    // should weigh that knowingly rather than assume the ambiguity check
+    // above applies here too.
     Blob nearest = candidates.front();
     for (auto const &blob : candidates)
     {

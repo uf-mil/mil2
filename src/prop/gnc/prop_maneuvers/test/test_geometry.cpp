@@ -269,3 +269,27 @@ TEST(MatchNearest, AcceptsWhenTheRunnerUpIsClearlyFurtherAway)
     ASSERT_TRUE(match.ok);
     EXPECT_NEAR(match.blob.centre.x, 0.2, kTol);
 }
+
+TEST(MatchNearest, PinsBehaviorAtExactlyMatchRadius)
+{
+    // The nearest blob sits exactly on the match_radius boundary. The
+    // implementation only rejects when the range is strictly greater than
+    // match_radius, so this is a deliberate accept, not an accident of
+    // floating point -- pinned here so nobody "fixes" it to `>=` later.
+    std::vector<Blob> const blobs{ { { 3.0, 0.0 }, 0.25 } };
+    auto const match = match_nearest(blobs, { 0.0, 0.0 }, 3.0, 1.0);
+    ASSERT_TRUE(match.ok);
+    EXPECT_NEAR(match.blob.centre.x, 3.0, kTol);
+}
+
+TEST(MatchNearest, PinsBehaviorWhenTheGapIsExactlyTheAmbiguousMargin)
+{
+    // The runner-up is exactly ambiguous_margin further away than the
+    // nearest. The implementation only flags Ambiguous when the gap is
+    // strictly less than ambiguous_margin, so a gap equal to the margin is a
+    // deliberate accept -- pinned here so nobody "fixes" it to `<=` later.
+    std::vector<Blob> const blobs{ { { 0.2, 0.0 }, 0.25 }, { { 1.2, 0.0 }, 0.25 } };
+    auto const match = match_nearest(blobs, { 0.0, 0.0 }, 3.0, 1.0);
+    ASSERT_TRUE(match.ok);
+    EXPECT_NEAR(match.blob.centre.x, 0.2, kTol);
+}
