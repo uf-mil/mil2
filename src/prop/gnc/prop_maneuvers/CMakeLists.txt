@@ -24,6 +24,13 @@ add_library(prop_maneuvers_lib src/geometry.cpp)
 
 install(TARGETS prop_maneuvers_lib DESTINATION lib)
 
+# ── Simulator support ────────────────────────────────────────────────────────
+add_executable(scan_to_cloud src/scan_to_cloud_node.cpp)
+ament_target_dependencies(scan_to_cloud rclcpp sensor_msgs laser_geometry)
+
+install(TARGETS scan_to_cloud DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
+
 # ── Install ──────────────────────────────────────────────────────────────────
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
