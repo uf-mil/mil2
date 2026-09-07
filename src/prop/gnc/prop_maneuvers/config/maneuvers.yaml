@@ -16,15 +16,30 @@
     # CHANGE THESE IF THE LIDAR MOVES.
     #
     # Ranges the lidar cannot see through, as a flat list of from, to pairs.
-    # Currently a GUESS: two mirrored wedges reaching from beside the boat
-    # round towards the back, where the motors and their mounts block the
-    # view. Re-measure once CAD exists, or from lidar returns on open water.
+    # Two mirrored wedges on the SIDES, where the pontoons block the view.
+    # Measured by David, 2026-09-07, described on a clock face with the tips
+    # of the pontoons at 12 and the thrusters at 6: blind from 3:00 to 4:30 on
+    # the right, and 7:30 to 9:00 on the left.
+    #
+    # The boat CAN see straight out the back, through the gap between the
+    # pontoons -- a 90 degree window centred on 180. Do not assume otherwise:
+    # the previous value here was a guess of 70 degree wedges that left only a
+    # 40 degree slot behind, which made reversing look blinder than it is.
     #
     # NOTE: where the lidar is physically bolted is deliberately NOT here. It
     # lives in prop_localization/urdf/prop.urdf and reaches this code through
     # the position chain at runtime, so a physical move is corrected in one
     # place only.
-    blind_spots_deg: [90.0, 160.0, -160.0, -90.0]
+    #
+    # How far the hull reaches from base_link. ASSUMPTIONS, not measurements:
+    # taken from the competition size box (a USV must fit within 2 x 1 x 1 m,
+    # handbook p88) with base_link assumed central. Nothing establishes that it
+    # is central. prop.urdf puts the lidar directly above base_link, so in
+    # practice these are distances from the LIDAR to the edges of the boat.
+    # Measure and replace.
+    hull_half_width: 0.5    # m, base_link to the side of the hull
+    hull_behind: 1.0        # m, base_link to the back of the hull
+    blind_spots_deg: [90.0, 135.0, -135.0, -90.0]
     use_blind_spots: true
 
     # ── Acquiring the target ─────────────────────────────────────────────
@@ -43,7 +58,30 @@
     circle_legs: 4           # 4 gives the diamond; raise it if blind spots bite
     circle_counter_clockwise: true
     approach_standoff: 3.0   # m, gap left between boat and object surface
-    detour_clearance: 2.0    # m, gap left when stepping around an obstacle
+
+    # Both measured HULL to buoy SURFACE, so they mean what you would picture.
+    #
+    # min_gap decides only WHETHER to step around something. It has to stay
+    # under about 0.65 m or the boat would try to detour around both sides of
+    # a gate it is meant to drive through: the narrowest gate in the handbook
+    # is 1.83 m between buoys (p45), which after two 0.23 m buoy radii and a
+    # 1 m boat leaves 0.19 m of hull clearance either side. NOTE that figure
+    # comes from a PRACTICE course; the mission course spacing is not published.
+    min_gap: 0.15
+    # How far out the detour actually swings, once one is needed.
+    # Was 2.0 and measured from the boat's CENTRE, which was undeliverable --
+    # 2 m from each buoy needs 4 m of room in a 1.83 m gate.
+    detour_clearance: 1.0
+    # How near the target a blob has to be to count as the target itself
+    # rather than an obstacle to avoid. Was hardcoded in plan_route.
+    target_blob_margin: 1.0
+
+    # ── Reversing ────────────────────────────────────────────────────────
+    # Used only to back away from something too close to swing around. The
+    # boat can see straight out the back, so this is not a blind manoeuvre --
+    # but it is capped anyway, because one recovery should not become a voyage.
+    reverse_speed: 0.4          # m/s
+    reverse_max_distance: 2.0   # m, cap on a single reverse
 
     # ── Tolerances ───────────────────────────────────────────────────────
     arrive_tolerance: 1.5       # m, close enough to count as arrived

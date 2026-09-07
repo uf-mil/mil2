@@ -29,6 +29,17 @@ class Constants
         auto const deg = [](double d) { return d * M_PI / 180.0; };
 
         // ── Hull and sensor geometry ──────────────────────────────────────
+        // ASSUMPTIONS, not measurements. Both come from the competition size
+        // box (a USV must fit within 2 x 1 x 1 m, handbook p88) with base_link
+        // assumed to sit at the middle of the boat -- and nothing establishes
+        // that it does. David is measuring the real numbers; until then these
+        // are the honest upper bounds.
+        //
+        // Two extents because the boat meets things differently by direction:
+        // passing something to the side is bounded by the hull's width,
+        // backing into something by how far the hull reaches behind base_link.
+        hull_half_width_ = node->declare_parameter("hull_half_width", 0.5);
+        hull_behind_ = node->declare_parameter("hull_behind", 1.0);
         auto const spots = node->declare_parameter("blind_spots_deg", std::vector<double>{});
         use_blind_spots_ = node->declare_parameter("use_blind_spots", true);
         // Refuse to start on a malformed list rather than quietly carrying on
@@ -60,7 +71,13 @@ class Constants
         circle_legs_ = static_cast<int>(node->declare_parameter("circle_legs", 4));
         circle_counter_clockwise_ = node->declare_parameter("circle_counter_clockwise", true);
         approach_standoff_ = node->declare_parameter("approach_standoff", 3.0);
-        detour_clearance_ = node->declare_parameter("detour_clearance", 2.0);
+        min_gap_ = node->declare_parameter("min_gap", 0.15);
+        detour_clearance_ = node->declare_parameter("detour_clearance", 1.0);
+        target_blob_margin_ = node->declare_parameter("target_blob_margin", 1.0);
+
+        // ── Reversing ─────────────────────────────────────────────────────
+        reverse_speed_ = node->declare_parameter("reverse_speed", 0.4);
+        reverse_max_distance_ = node->declare_parameter("reverse_max_distance", 2.0);
 
         // ── Tolerances ────────────────────────────────────────────────────
         arrive_tolerance_ = node->declare_parameter("arrive_tolerance", 1.5);
@@ -80,6 +97,8 @@ class Constants
     // WITHOUT inheriting it, so protected would not compile.
     // The YAML in config/maneuvers.yaml and the defaults below must be kept
     // identical; nothing enforces that automatically.
+    double hull_half_width_{ 0.0 };
+    double hull_behind_{ 0.0 };
     std::vector<BlindSpot> blind_spots_;
     bool use_blind_spots_{ true };
     double acquire_cone_{ 0.0 };
@@ -91,7 +110,11 @@ class Constants
     int circle_legs_{ 4 };
     bool circle_counter_clockwise_{ true };
     double approach_standoff_{ 0.0 };
+    double min_gap_{ 0.0 };
     double detour_clearance_{ 0.0 };
+    double target_blob_margin_{ 0.0 };
+    double reverse_speed_{ 0.0 };
+    double reverse_max_distance_{ 0.0 };
     double arrive_tolerance_{ 0.0 };
     double point_tolerance_{ 0.0 };
     double turn_gain_{ 0.0 };
