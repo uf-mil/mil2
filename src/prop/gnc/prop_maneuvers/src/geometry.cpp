@@ -111,11 +111,10 @@ std::optional<Point> detour_point(Point const &a, Point const &b, Point const &o
 
     double const dx = b.x - a.x;
     double const dy = b.y - a.y;
+    // A zero-length leg (a == b) is already excluded above: distance_to_segment
+    // forces within_segment = false in that case, so the check on offset
+    // above already returned.
     double const length_squared = dx * dx + dy * dy;
-    if (length_squared == 0.0)
-    {
-        return std::nullopt;
-    }
 
     // Foot of the perpendicular from the obstacle onto the leg.
     double const along = ((obstacle.x - a.x) * dx + (obstacle.y - a.y) * dy) / length_squared;

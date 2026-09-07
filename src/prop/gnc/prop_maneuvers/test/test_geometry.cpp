@@ -63,6 +63,39 @@ TEST(IsBlind, MirroredWedgesBehindTheBoat)
     EXPECT_FALSE(is_blind(deg(180.0), spots));  // the gap directly behind
 }
 
+TEST(IsBlind, ZeroWidthSpotBlindsNothing)
+{
+    // from == to: the code requires span > 0.0, so a degenerate spot never
+    // matches, not even the angle it sits on.
+    std::vector<BlindSpot> const spots{ { deg(45.0), deg(45.0) } };
+
+    EXPECT_FALSE(is_blind(deg(45.0), spots));
+    EXPECT_FALSE(is_blind(deg(0.0), spots));
+    EXPECT_FALSE(is_blind(deg(180.0), spots));
+}
+
+TEST(IsBlind, SpotWiderThanAHalfTurn)
+{
+    // 0 to 270 degrees, going the long way round (counter-clockwise, i.e. the
+    // positive-wrap direction from `from` to `to`).
+    std::vector<BlindSpot> const spots{ { deg(0.0), deg(270.0) } };
+
+    EXPECT_TRUE(is_blind(deg(269.0), spots));
+    EXPECT_FALSE(is_blind(deg(271.0), spots));
+}
+
+TEST(IsBlind, TwoOverlappingSpotsOrTogether)
+{
+    // 0-100 and 50-150 overlap on 50-100; each angle should be blind if
+    // EITHER spot covers it, not only where both do.
+    std::vector<BlindSpot> const spots{ { deg(0.0), deg(100.0) }, { deg(50.0), deg(150.0) } };
+
+    EXPECT_TRUE(is_blind(deg(10.0), spots));    // only the first spot
+    EXPECT_TRUE(is_blind(deg(75.0), spots));    // both spots
+    EXPECT_TRUE(is_blind(deg(140.0), spots));   // only the second spot
+    EXPECT_FALSE(is_blind(deg(170.0), spots));  // neither
+}
+
 TEST(IsBlind, RangeThatWrapsAcrossDirectlyBehind)
 {
     // A single wedge covering the back, written the only way it can be: from
@@ -110,6 +143,18 @@ TEST(RingCorners, HonoursTheLegCountAndRejectsTooFew)
     EXPECT_TRUE(ring_corners({ 0, 0 }, { 10, 0 }, 5.0, 2, true).empty());
 }
 
+TEST(RingCorners, DegenerateRayWhenFromEqualsCentreStartsDueEast)
+{
+    // `from == centre` leaves the starting direction undefined; atan2(0, 0)
+    // is 0 in C++, so this pins down the (arbitrary) resulting behaviour:
+    // the ring silently starts due east of the centre. Not a considered
+    // default -- just what happens, and a caller should not rely on it.
+    auto const corners = ring_corners({ 3, 4 }, { 3, 4 }, 5.0, 4, true);
+    ASSERT_EQ(corners.size(), 4u);
+    EXPECT_NEAR(corners[0].x, 8.0, kTol);
+    EXPECT_NEAR(corners[0].y, 4.0, kTol);
+}
+
 TEST(RingCorners, CentredOnSomewhereOtherThanTheOrigin)
 {
     auto const corners = ring_corners({ 20, -3 }, { 30, -3 }, 6.0, 4, true);
@@ -145,6 +190,16 @@ TEST(DistanceToSegment, KnowsWhenThePointIsPastAnEnd)
 {
     EXPECT_FALSE(distance_to_segment({ -5, 2 }, { 0, 0 }, { 10, 0 }).within_segment);
     EXPECT_FALSE(distance_to_segment({ 15, 2 }, { 0, 0 }, { 10, 0 }).within_segment);
+}
+
+TEST(DistanceToSegment, ZeroLengthLegReturnsDistanceToThatPoint)
+{
+    // a == b: the "leg" is a single point. distance_to_segment falls back to
+    // plain distance-to-a-point and reports within_segment == false, which
+    // is what detour_point relies on to skip the length_squared == 0 case.
+    auto const off = distance_to_segment({ 3, 4 }, { 0, 0 }, { 0, 0 });
+    EXPECT_NEAR(off.perpendicular, 5.0, kTol);
+    EXPECT_FALSE(off.within_segment);
 }
 
 TEST(DetourPoint, NothingWhenTheObstacleIsClearOfTheLeg)
