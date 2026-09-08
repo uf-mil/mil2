@@ -23,7 +23,8 @@ void PropThrusters::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf
 
     this->link_name_ = sdf->Get<std::string>("link_name", this->link_name_).first;
     this->thruster_y_ = sdf->Get<double>("thruster_y", this->thruster_y_).first;
-    this->max_thrust_ = sdf->Get<double>("max_thrust", this->max_thrust_).first;
+    this->max_force_pos_ = sdf->Get<double>("max_force_pos", this->max_force_pos_).first;
+    this->max_force_neg_ = sdf->Get<double>("max_force_neg", this->max_force_neg_).first;
 
     auto const left = sdf->Get<std::string>("topic_left", "/prop/thrust/left").first;
     auto const right = sdf->Get<std::string>("topic_right", "/prop/thrust/right").first;
@@ -37,13 +38,13 @@ void PropThrusters::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf
 void PropThrusters::OnLeft(gz::msgs::Double const &msg)
 {
     std::lock_guard<std::mutex> lock(this->mutex_);
-    this->left_ = std::clamp(msg.data(), -this->max_thrust_, this->max_thrust_);
+    this->left_ = std::clamp(msg.data(), -this->max_force_neg_, this->max_force_pos_);
 }
 
 void PropThrusters::OnRight(gz::msgs::Double const &msg)
 {
     std::lock_guard<std::mutex> lock(this->mutex_);
-    this->right_ = std::clamp(msg.data(), -this->max_thrust_, this->max_thrust_);
+    this->right_ = std::clamp(msg.data(), -this->max_force_neg_, this->max_force_pos_);
 }
 
 void PropThrusters::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &ecm)

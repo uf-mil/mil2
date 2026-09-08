@@ -25,6 +25,8 @@ endforeach()
 install(TARGETS mission guidance thruster_manager
         DESTINATION lib/${PROJECT_NAME})
 
+install(PROGRAMS scripts/plan.py DESTINATION lib/${PROJECT_NAME})
+
 install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 
 install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})

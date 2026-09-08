@@ -17,15 +17,17 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
 {
     rate_ = declare_parameter("rate", 20.0);
     command_timeout_ = declare_parameter("command_timeout", 1.0);
-    max_thrust_ = declare_parameter("max_thrust", 45.0);
-    thruster_y_ = declare_parameter("thruster_y", 0.25);
+    max_force_pos_ = declare_parameter("max_force_pos", 55.21);
+    max_force_neg_ = declare_parameter("max_force_neg", 27.56);
+    thruster_y_ = declare_parameter("thruster_y", 0.27305);
     kp_surge_ = declare_parameter("kp_surge", 60.0);
     ki_surge_ = declare_parameter("ki_surge", 30.0);
     kp_yaw_ = declare_parameter("kp_yaw", 30.0);
     ki_yaw_ = declare_parameter("ki_yaw", 15.0);
 
-    surge_limit_ = 2 * max_thrust_;
-    yaw_limit_ = 2 * max_thrust_ * thruster_y_;
+    surge_limit_pos_ = 2 * max_force_pos_;
+    surge_limit_neg_ = 2 * max_force_neg_;
+    yaw_limit_ = thruster_y_ * (max_force_pos_ + max_force_neg_);
 
     command_sub_ = create_subscription<geometry_msgs::msg::Twist>("cmd_vel", 10,
                                                                   [this](geometry_msgs::msg::Twist::SharedPtr const msg)
@@ -61,18 +63,26 @@ void ThrusterManager::step()
     double const dt = 1.0 / rate_;
     double const surge_error = command_.linear.x - surge_;
     double const yaw_error = command_.angular.z - yaw_rate_;
-    surge_integral_ = clamp(surge_integral_ + surge_error * dt, surge_limit_ / ki_surge_);
+    surge_integral_ =
+        std::clamp(surge_integral_ + surge_error * dt, -surge_limit_neg_ / ki_surge_, surge_limit_pos_ / ki_surge_);
     yaw_integral_ = clamp(yaw_integral_ + yaw_error * dt, yaw_limit_ / ki_yaw_);
 
     double const force = kp_surge_ * surge_error + ki_surge_ * surge_integral_;
     double const moment = kp_yaw_ * yaw_error + ki_yaw_ * yaw_integral_;
 
-    // Both efforts are normalized against one thruster at full thrust, so the
-    // turn takes what it needs and surge gets whatever headroom is left.
-    double const turn = clamp(moment / thruster_y_ / 2 / max_thrust_, 1.0);
-    double const surge = clamp(force / 2 / max_thrust_, 1.0 - std::abs(turn));
-    publish(surge - turn, surge + turn);
+    double const differential = clamp(moment / thruster_y_ / 2.0, (max_force_pos_ + max_force_neg_) / 2.0);
+    double const common =
+        std::clamp(force / 2.0, std::abs(differential) - max_force_neg_, max_force_pos_ - std::abs(differential));
+
+    publish(effort(common - differential), effort(common + differential));
     beat_pub_->publish(std_msgs::msg::Empty());
+}
+
+// Newtons to the normalized effort the driver takes. Full effort is worth
+// more thrust ahead than astern, so which limit divides depends on the sign.
+double ThrusterManager::effort(double newtons) const
+{
+    return newtons >= 0.0 ? newtons / max_force_pos_ : newtons / max_force_neg_;
 }
 
 void ThrusterManager::publish(double left, double right)

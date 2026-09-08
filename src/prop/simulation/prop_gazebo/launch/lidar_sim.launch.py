@@ -51,7 +51,7 @@ def generate_launch_description():
             '-name',
             LaunchConfiguration('model_name'),
             '-file',
-            pkg_share('prop_gazebo', 'models', 'lidar_platform', 'lidar_platform.sdf'),
+            pkg_share('prop_gazebo', 'models', 'lidar_platform', 'model.sdf'),
             '-x',
             '0.0',
             '-y',

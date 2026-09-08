@@ -1,5 +1,7 @@
 #include "prop_controller/mission.hpp"
 
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -10,6 +12,9 @@ Mission::Mission() : Node("mission")
 {
     auto const waypoints = declare_parameter("waypoints", std::vector<double>{});
     auto const frame = declare_parameter<std::string>("frame_id", "map");
+
+    // Optional, so it needs a value no mission would ever mean.
+    auto const final_heading = declare_parameter("final_heading", std::numeric_limits<double>::quiet_NaN());
 
     if (waypoints.empty() || waypoints.size() % 2 != 0)
     {
@@ -36,6 +41,20 @@ Mission::Mission() : Node("mission")
         pose.pose.position.y = waypoints[i + 1];
         pose.pose.orientation.w = 1.0;
         path.poses.push_back(pose);
+    }
+
+    // Guidance reads the last pose's orientation and nothing else, so that is
+    // the only one worth setting. A zero quaternion there asks for no
+    // particular finishing heading; the ones before it are driven through.
+    if (std::isnan(final_heading))
+    {
+        path.poses.back().pose.orientation.w = 0.0;
+    }
+    else
+    {
+        double const yaw = final_heading * M_PI / 180.0;
+        path.poses.back().pose.orientation.z = std::sin(yaw / 2.0);
+        path.poses.back().pose.orientation.w = std::cos(yaw / 2.0);
     }
 
     publisher_->publish(path);

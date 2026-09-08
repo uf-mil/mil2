@@ -31,16 +31,18 @@ class Guidance : public rclcpp::Node
     void plan_callback(nav_msgs::msg::Path const& path);
     void step();
 
-    // Each returns the speed and heading error to command.
+    // Each returns the speed and heading error to command. hold latches, so
+    // unlike follow it is not const.
     std::pair<double, double> follow() const;
-    std::pair<double, double> hold() const;
+    std::pair<double, double> hold();
 
-    double speed_;          // m/s along a leg
+    double speed_;
     double lookahead_;      // m, larger converges more gently
     double accept_radius_;  // m
     double kp_heading_;
-    double max_yaw_rate_;   // rad/s
-    double hold_radius_;    // m, station keeping deadband
+    double max_yaw_rate_;
+    double hold_radius_;    // station keeping deadband
+    double yaw_tolerance_;  // heading deadband once it is on the point
     double approach_gain_;  // m/s per m remaining
 
     std::vector<Point> waypoints_;
@@ -49,6 +51,10 @@ class Guidance : public rclcpp::Node
     double heading_{ 0.0 };
     bool located_{ false };
     std::size_t target_{ 0 };  // Keeps track of whether or not we arrived at the end of goal
+
+    double goal_heading_{ 0.0 };  // only meaningful with has_goal_heading_
+    bool has_goal_heading_{ false };
+    bool holding_heading_{ false };
 
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr plan_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;

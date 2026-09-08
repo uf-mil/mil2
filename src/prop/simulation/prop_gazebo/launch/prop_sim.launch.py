@@ -3,6 +3,8 @@ The simulated boat, its sensors and localization, optionally under control.
 
     ros2 launch prop_gazebo prop_sim.launch.py
     ros2 launch prop_gazebo prop_sim.launch.py control:=true mission:=square
+    ros2 launch prop_gazebo prop_sim.launch.py \
+        world_pkg:=navigator_gazebo world:=robotx_2024.world
     ros2 launch prop_gazebo prop_sim.launch.py rviz:=false \
         gz_args:="-s --headless-rendering"
 
@@ -21,6 +23,7 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node, SetParameter
+from launch_ros.substitutions import FindPackageShare
 
 
 def pkg_share(pkg, *path):
@@ -28,8 +31,14 @@ def pkg_share(pkg, *path):
 
 
 def generate_launch_description():
+    # Any package that installs worlds/ will do, so the boat can be dropped
+    # into the RobotX course as easily as into its own lake.
     world = PathJoinSubstitution(
-        [pkg_share("prop_gazebo", "worlds"), LaunchConfiguration("world")],
+        [
+            FindPackageShare(LaunchConfiguration("world_pkg")),
+            "worlds",
+            LaunchConfiguration("world"),
+        ],
     )
 
     gz_sim = IncludeLaunchDescription(
@@ -50,12 +59,14 @@ def generate_launch_description():
             "-file",
             pkg_share("prop_gazebo", "models", "prop", "model.sdf"),
             "-x",
-            "0.0",
+            LaunchConfiguration("x"),
             "-y",
-            "0.0",
+            LaunchConfiguration("y"),
             # About where the hull settles, so it does not drop in.
             "-z",
             "0.06",
+            "-Y",
+            LaunchConfiguration("yaw"),
         ],
         output="screen",
     )
@@ -73,6 +84,19 @@ def generate_launch_description():
         [
             DeclareLaunchArgument("world", default_value="prop_lake.world"),
             DeclareLaunchArgument(
+                "world_pkg",
+                default_value="prop_gazebo",
+                description="Package the world lives in, under its worlds/ "
+                "directory. navigator_gazebo for robotx_2024.world.",
+            ),
+            DeclareLaunchArgument("x", default_value="0.0"),
+            DeclareLaunchArgument("y", default_value="0.0"),
+            DeclareLaunchArgument(
+                "yaw",
+                default_value="0.0",
+                description="Spawn heading in radians, ENU.",
+            ),
+            DeclareLaunchArgument(
                 "gz_args",
                 default_value="--render-engine ogre2",
                 description="Extra gz sim flags. Pass '-s --headless-rendering' "
@@ -84,7 +108,13 @@ def generate_launch_description():
                 default_value="false",
                 description="Run the mission, guidance and thruster manager.",
             ),
-            DeclareLaunchArgument("mission", default_value="square"),
+            DeclareLaunchArgument(
+                "mission",
+                default_value="square",
+                description="Mission the controller starts on. Pass none to "
+                "come up idle and send a plan with "
+                "'ros2 run prop_controller plan.py' instead.",
+            ),
             DeclareLaunchArgument(
                 "control_delay",
                 default_value="15.0",

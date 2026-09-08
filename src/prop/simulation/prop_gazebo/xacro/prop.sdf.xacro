@@ -1,6 +1,9 @@
-<?xml version="1.0" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
-  The prop boat. Differential thrust from two aft thrusters, floating on the
+  The prop boat. Generated into models/prop/model.sdf at build time; edit this
+  file, not that one.
+
+  Differential thrust from two aft thrusters, floating on the
   water plane the world's buoyancy plugin defines at z = 0.
 
   Sensors are mounted where prop_localization/urdf/prop.urdf says they are, and
@@ -12,11 +15,14 @@
   the newtons you ask it for.
 
   Numbers that also live elsewhere:
-    45 N per thruster and 0.25 m off the centreline -> max_thrust and
-    thruster_y in prop_controller/config/controller.yaml, and the same two
-    parameters on sim_thrusters.py.
+    the M200's 55.21 N ahead / 27.56 N astern and 0.27305 m off the
+    centreline (a 0.5461 m span) -> max_force_pos, max_force_neg and thruster_y in
+    prop_controller/config/controller.yaml, and the same three on
+    sim_thrusters.py.
 -->
-<sdf version="1.9">
+<sdf version="1.9" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="components/vlp16_lidar.xacro"/>
+
   <model name="prop">
     <link name="base_link">
       <inertial>
@@ -71,10 +77,11 @@
         </material>
       </visual>
 
-      <!-- The thrusters, drawn where they sit: aft, 0.25 m either side of the
-           centreline and level with the centre of mass. -->
+      <!-- The thrusters, drawn where they sit: aft, 0.27305 m either side of
+           the centreline and level with the centre of mass. That is a 0.5461 m
+           span inside a 0.6 m beam, so they sit close to the chines. -->
       <visual name="left_thruster_visual">
-        <pose>-0.52 0.25 -0.15 0 1.5707963 0</pose>
+        <pose>-0.52 0.27305 -0.15 0 1.5707963 0</pose>
         <geometry>
           <cylinder>
             <length>0.16</length>
@@ -88,7 +95,7 @@
       </visual>
 
       <visual name="right_thruster_visual">
-        <pose>-0.52 -0.25 -0.15 0 1.5707963 0</pose>
+        <pose>-0.52 -0.27305 -0.15 0 1.5707963 0</pose>
         <geometry>
           <cylinder>
             <length>0.16</length>
@@ -172,35 +179,33 @@
         </navsat>
       </sensor>
 
-      <sensor name="lidar" type="gpu_lidar">
-        <pose>0 0 0.25 0 0 0</pose>
-        <topic>lidar/scan</topic>
-        <gz_frame_id>lidar_link</gz_frame_id>
-        <update_rate>10</update_rate>
-        <always_on>1</always_on>
-        <visualize>true</visualize>
-        <lidar>
-          <scan>
-            <horizontal>
-              <samples>360</samples>
-              <resolution>1</resolution>
-              <min_angle>-3.14159</min_angle>
-              <max_angle>3.14159</max_angle>
-            </horizontal>
-          </scan>
-          <range>
-            <min>0.5</min>
-            <max>50.0</max>
-            <resolution>0.01</resolution>
-          </range>
-        </lidar>
-      </sensor>
+      <!-- The mast the lidar sits on. Visual only: the hull's buoyancy is a
+           tuned number and every collision added to this link changes it. -->
+      <visual name="mast_visual">
+        <pose>0 0 0.265 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.33</length>
+            <radius>0.03</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.3 0.3 0.33 1</ambient>
+          <diffuse>0.3 0.3 0.33 1</diffuse>
+        </material>
+      </visual>
     </link>
+
+    <!-- The lidar, on top of the mast and clear of the hull, looking out over
+         the water. lidar_link and this height are also in
+         prop_localization/urdf/prop.urdf; keep the two in step. -->
+    <xacro:vlp16_lidar parent="base_link" name="lidar" frame="lidar_link" xyz="0 0 0.45" rpy="0 0 0" topic="lidar/scan" collision="false"/>
 
     <plugin filename="PropThrusters" name="prop_gazebo::PropThrusters">
       <link_name>base_link</link_name>
-      <thruster_y>0.25</thruster_y>
-      <max_thrust>45.0</max_thrust>
+      <thruster_y>0.27305</thruster_y>
+      <max_force_pos>55.21</max_force_pos>
+      <max_force_neg>27.56</max_force_neg>
       <topic_left>/prop/thrust/left</topic_left>
       <topic_right>/prop/thrust/right</topic_right>
     </plugin>
@@ -208,10 +213,7 @@
     <!-- Damping against the water. Surge is cheap, sway is not: the hull slides
          forwards far more easily than sideways, which is what makes it steer
          like a boat instead of a hovercraft. -->
-    <plugin
-      filename="gz-sim-hydrodynamics-system"
-      name="gz::sim::systems::Hydrodynamics"
-    >
+    <plugin filename="gz-sim-hydrodynamics-system" name="gz::sim::systems::Hydrodynamics">
       <link_name>base_link</link_name>
       <xU>-8.0</xU>
       <xUabsU>-15.0</xUabsU>
@@ -231,10 +233,7 @@
 
     <!-- Noise free pose and velocity, for scoring a run against the estimate.
          Nothing in the stack is allowed to subscribe to this. -->
-    <plugin
-      filename="gz-sim-odometry-publisher-system"
-      name="gz::sim::systems::OdometryPublisher"
-    >
+    <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
       <odom_frame>map</odom_frame>
       <robot_base_frame>base_link</robot_base_frame>
       <odom_topic>/sim/ground_truth</odom_topic>

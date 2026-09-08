@@ -15,6 +15,10 @@
     <topic>/points, so topic:=lidar yields /lidar and /lidar/points.
     Give each instance its own name/frame/topic when a model carries more
     than one, since <topic> is absolute rather than model-scoped.
+
+    collision:=false leaves the puck out of the physics. A floating hull wants
+    that: the world's graded buoyancy only understands box and sphere
+    collisions and warns once per step about anything else.
   -->
   <xacro:macro
     name="vlp16_lidar"
@@ -24,6 +28,7 @@
             xyz:='0.1 0 0.175'
             rpy:='0 0 0'
             topic:=lidar
+            collision:=true
             update_rate:=10
             horizontal_samples:=1875
             max_range:=100.0
@@ -52,14 +57,16 @@
         </material>
       </visual>
 
-      <collision name="${name}_collision">
-        <geometry>
-          <cylinder>
-            <radius>0.05</radius>
-            <length>0.04</length>
-          </cylinder>
-        </geometry>
-      </collision>
+      <xacro:if value="${collision}">
+        <collision name="${name}_collision">
+          <geometry>
+            <cylinder>
+              <radius>0.05</radius>
+              <length>0.04</length>
+            </cylinder>
+          </geometry>
+        </collision>
+      </xacro:if>
 
       <sensor name="${name}_sensor" type="gpu_lidar">
         <topic>${topic}</topic>

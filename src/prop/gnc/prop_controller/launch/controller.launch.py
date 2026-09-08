@@ -2,6 +2,10 @@
 The autonomy stack: mission -> guidance -> thruster manager.
 
     ros2 launch prop_controller controller.launch.py mission:=square
+    ros2 launch prop_controller controller.launch.py mission:=none
+
+mission:=none brings guidance and the thruster manager up with nothing to
+follow, ready for a plan from "ros2 run prop_controller plan.py".
 
 Needs odometry/filtered/global from prop_localization and something listening on
 thrusters/left and thrusters/right - the driver on the boat, or the Gazebo
@@ -14,7 +18,12 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.conditions import UnlessCondition
+from launch.substitutions import (
+    LaunchConfiguration,
+    PathJoinSubstitution,
+    PythonExpression,
+)
 from launch_ros.actions import Node
 
 
@@ -36,7 +45,8 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "mission",
                 default_value="square",
-                description="Mission file in prop_controller/config/missions.",
+                description="Mission file in prop_controller/config/missions, "
+                "or none to wait for a plan instead.",
             ),
             Node(
                 package="prop_controller",
@@ -44,6 +54,11 @@ def generate_launch_description():
                 name="mission",
                 parameters=[mission_file],
                 output="screen",
+                condition=UnlessCondition(
+                    PythonExpression(
+                        ['"', LaunchConfiguration("mission"), '" == "none"'],
+                    ),
+                ),
             ),
             Node(
                 package="prop_controller",
