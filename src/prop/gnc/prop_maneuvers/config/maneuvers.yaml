@@ -57,7 +57,18 @@
     # than rejected, because a too-big object should still be avoided -- it
     # just should not be trusted to size a standoff.
     max_object_radius: 1.5  # m
+    # Two different jobs, deliberately two numbers.
+    #
+    # match_radius is for FINDING an object near a rough position the caller
+    # supplied. Three metres of slack is right there -- the hint is a guess.
     match_radius: 3.0     # m, further than this from the prediction is a miss
+    # refresh_max_jump is for TRACKING one we are already locked onto. The
+    # buoys are bolted to the seabed: between refreshes a fifth of a second
+    # apart, the remembered point should move by measurement noise and the
+    # boat's own position error, nothing more. Sharing match_radius let a
+    # phantom cluster 2.63 m away capture the lock mid-manoeuvre and hand the
+    # approach a target that was not there.
+    refresh_max_jump: 1.0 # m
     ambiguous_margin: 1.0 # m, two candidates closer than this is ambiguous
     reading_max_age: 5.0  # s, a lock older than this counts as stale
 

@@ -212,7 +212,10 @@ bool TargetLock::refresh()
         return false;
     }
 
-    Match const match = match_nearest(blobs(), locked_->centre, settings_.match_radius_, settings_.ambiguous_margin_);
+    // Tracking, not finding: use the tight gate. See refresh_max_jump in
+    // config/maneuvers.yaml for why this is not match_radius.
+    Match const match =
+        match_nearest(blobs(), locked_->centre, settings_.refresh_max_jump_, settings_.ambiguous_margin_);
 
     if (!match.ok)
     {

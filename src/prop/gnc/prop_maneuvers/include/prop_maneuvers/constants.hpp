@@ -64,6 +64,7 @@ class Constants
         // ── Matching ──────────────────────────────────────────────────────
         max_object_radius_ = node->declare_parameter("max_object_radius", 1.5);
         match_radius_ = node->declare_parameter("match_radius", 3.0);
+        refresh_max_jump_ = node->declare_parameter("refresh_max_jump", 1.0);
         ambiguous_margin_ = node->declare_parameter("ambiguous_margin", 1.0);
         reading_max_age_ = node->declare_parameter("reading_max_age", 5.0);
 
@@ -107,6 +108,7 @@ class Constants
     double acquire_max_range_{ 0.0 };
     double max_object_radius_{ 0.0 };
     double match_radius_{ 0.0 };
+    double refresh_max_jump_{ 0.0 };
     double ambiguous_margin_{ 0.0 };
     double reading_max_age_{ 0.0 };
     double circle_radius_{ 0.0 };
