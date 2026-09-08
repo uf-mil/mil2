@@ -55,6 +55,18 @@
     hull_half_width: 0.443  # m, base_link to the side of the hull
     hull_behind: 0.367      # m, base_link to the propellers -- see caveat above
     hull_front: 0.760       # m, base_link to the front of the boat
+
+    # MIRRORS prop_controller's hold_radius. guidance stops commanding once it
+    # is this close to its final waypoint, so a route handed over as-is leaves
+    # the boat parked up to a metre short and nothing moves it any nearer.
+    # Measured 2026-09-08: asked to stop with the bow 1.00 m off a buoy, the
+    # boat finished 2.07 m off it -- 0.24 m of that was lock error and 0.83 m
+    # was guidance simply stopping early.
+    #
+    # The approach therefore aims this much beyond where it wants to end up,
+    # so guidance's parking lands on the mark. Keep in step with
+    # prop_controller/config/controller.yaml; nothing enforces that.
+    guidance_hold_radius: 1.0  # m
     blind_spots_deg: [90.0, 135.0, -135.0, -90.0]
     use_blind_spots: true
 

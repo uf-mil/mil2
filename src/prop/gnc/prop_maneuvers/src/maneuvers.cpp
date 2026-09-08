@@ -321,8 +321,14 @@ ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
     // is the part of the boat that gets close to things. base_link is the
     // lidar, 0.760 m aft of the bow, so leaving that out would put the front
     // of the boat three quarters of a metre nearer than asked.
-    Point const goal =
-        standoff_point(boat.position, target, context_.lock.radius() + standoff_ + context_.settings.hull_front_);
+    // Aim past the intended stopping point by guidance's hold radius: it stops
+    // commanding once it is that close to the final waypoint, so a goal placed
+    // exactly on the mark leaves the boat parked short with nothing left to
+    // close the gap. Clamped so the aim point never crosses the object itself.
+    double const want_from_centre = context_.lock.radius() + standoff_ + context_.settings.hull_front_;
+    double const aim_from_centre =
+        std::max(context_.lock.radius(), want_from_centre - context_.settings.guidance_hold_radius_);
+    Point const goal = standoff_point(boat.position, target, aim_from_centre);
 
     Plan plan;
     plan.goal = goal;

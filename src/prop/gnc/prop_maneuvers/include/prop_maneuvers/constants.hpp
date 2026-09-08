@@ -45,6 +45,7 @@ class Constants
         hull_half_width_ = node->declare_parameter("hull_half_width", 0.443);
         hull_behind_ = node->declare_parameter("hull_behind", 0.367);
         hull_front_ = node->declare_parameter("hull_front", 0.760);
+        guidance_hold_radius_ = node->declare_parameter("guidance_hold_radius", 1.0);
         auto const spots = node->declare_parameter("blind_spots_deg", std::vector<double>{});
         use_blind_spots_ = node->declare_parameter("use_blind_spots", true);
         // Refuse to start on a malformed list rather than quietly carrying on
@@ -108,6 +109,7 @@ class Constants
     double hull_half_width_{ 0.0 };
     double hull_behind_{ 0.0 };
     double hull_front_{ 0.0 };
+    double guidance_hold_radius_{ 0.0 };
     std::vector<BlindSpot> blind_spots_;
     bool use_blind_spots_{ true };
     double acquire_cone_{ 0.0 };
