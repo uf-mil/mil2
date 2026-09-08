@@ -100,8 +100,31 @@ std::vector<Blob> TargetLock::blobs() const
 
         // The clustering publishes a box; treat the larger of its two ground
         // dimensions as a diameter.
+        //
+        // Clamped here, for EVERY consumer, not just the locked object. The
+        // clustering merges returns over open water now and then and reports
+        // one enormous blob: radii of 3.2 m and 5.2 m were seen on
+        // 2026-09-07, and 9.3 m earlier the same evening. Left raw, such a
+        // phantom does real damage -- it inflated an approach's standoff past
+        // its own distance to the target, and it reached into the reverse
+        // strip from 1.8 m off to the side and blocked backing off entirely,
+        // leaving the boat stuck with nowhere it was willing to go.
+        //
+        // Clamping rather than discarding: something is there, or at least
+        // might be, so it should still be avoided. It just must not be
+        // believed about its size. Anything on this course is a buoy about
+        // 0.46 m across, so max_object_radius is generous already.
         double const width = std::max(marker.scale.x, marker.scale.y);
-        out.push_back(Blob{ Point{ out_point.point.x, out_point.point.y }, width / 2.0 });
+        double radius = width / 2.0;
+        if (radius > settings_.max_object_radius_)
+        {
+            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000,
+                                 "clustering reported a %.1f m radius blob; clamping to %.1f m -- probably merged "
+                                 "returns rather than one object",
+                                 radius, settings_.max_object_radius_);
+            radius = settings_.max_object_radius_;
+        }
+        out.push_back(Blob{ Point{ out_point.point.x, out_point.point.y }, radius });
     }
 
     return out;
