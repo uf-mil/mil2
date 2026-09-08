@@ -29,17 +29,21 @@ class Constants
         auto const deg = [](double d) { return d * M_PI / 180.0; };
 
         // ── Hull and sensor geometry ──────────────────────────────────────
-        // ASSUMPTIONS, not measurements. Both come from the competition size
-        // box (a USV must fit within 2 x 1 x 1 m, handbook p88) with base_link
-        // assumed to sit at the middle of the boat -- and nothing establishes
-        // that it does. David is measuring the real numbers; until then these
-        // are the honest upper bounds.
+        // MEASURED on the boat 2026-09-08, from the lidar's edge and converted
+        // to its centre with the lidar's 4 7/8 in diameter. prop.urdf puts the
+        // lidar directly above base_link, so they are base_link-relative as
+        // these need to be. See config/maneuvers.yaml for the tape figures.
         //
-        // Two extents because the boat meets things differently by direction:
-        // passing something to the side is bounded by the hull's width,
-        // backing into something by how far the hull reaches behind base_link.
-        hull_half_width_ = node->declare_parameter("hull_half_width", 0.5);
-        hull_behind_ = node->declare_parameter("hull_behind", 1.0);
+        // base_link is NOT in the middle of the boat: 0.760 m to the front and
+        // 0.367 m to the propellers. Two extents, because the boat meets things
+        // differently by direction -- passing something to the side is bounded
+        // by the hull's width, backing into something by how far it reaches
+        // behind base_link.
+        //
+        // hull_behind is to the PROPELLERS; the pontoons reach further back, so
+        // it is optimistic for reversing until the tails are measured.
+        hull_half_width_ = node->declare_parameter("hull_half_width", 0.443);
+        hull_behind_ = node->declare_parameter("hull_behind", 0.367);
         auto const spots = node->declare_parameter("blind_spots_deg", std::vector<double>{});
         use_blind_spots_ = node->declare_parameter("use_blind_spots", true);
         // Refuse to start on a malformed list rather than quietly carrying on

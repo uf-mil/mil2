@@ -31,14 +31,31 @@
     # the position chain at runtime, so a physical move is corrected in one
     # place only.
     #
-    # How far the hull reaches from base_link. ASSUMPTIONS, not measurements:
-    # taken from the competition size box (a USV must fit within 2 x 1 x 1 m,
-    # handbook p88) with base_link assumed central. Nothing establishes that it
-    # is central. prop.urdf puts the lidar directly above base_link, so in
-    # practice these are distances from the LIDAR to the edges of the boat.
-    # Measure and replace.
-    hull_half_width: 0.5    # m, base_link to the side of the hull
-    hull_behind: 1.0        # m, base_link to the back of the hull
+    # How far the hull reaches from base_link. MEASURED on the boat by David,
+    # 2026-09-08, with a tape from the edge of the lidar and converted to its
+    # centre using the lidar's own 4 7/8 in diameter:
+    #
+    #   lidar radius              2 7/16 in   0.062 m
+    #   edge -> front of boat        27 1/2 in   -> centre 0.760 m
+    #   edge -> side                 15    in    -> centre 0.443 m
+    #   back of lidar -> propellers  12    in    -> centre 0.367 m
+    #
+    # prop.urdf puts the lidar directly above base_link, so these are
+    # base_link-relative as required. Total width works out at 0.886 m, inside
+    # the 1 m the rules allow, which is a good check on the arithmetic.
+    #
+    # These replace guesses of 0.5 and 1.0 taken from the competition size box
+    # with base_link assumed to sit in the middle of the boat. It does not:
+    # it is 0.760 m from the front and 0.367 m from the propellers.
+    #
+    # CAVEAT on hull_behind: 0.367 m is to the PROPELLERS, and the pontoons
+    # visibly extend further back than that in the photographs. When reversing,
+    # the rearmost point is what strikes something, so this is optimistic.
+    # Replace it with the distance to the pontoon tails when that is measured.
+    hull_half_width: 0.443  # m, base_link to the side of the hull
+    hull_behind: 0.367      # m, base_link to the propellers -- see caveat above
+    # Not used by any code yet; recorded here so the measurement is not lost.
+    # hull_front: 0.760     # m, base_link to the front of the boat
     blind_spots_deg: [90.0, 135.0, -135.0, -90.0]
     use_blind_spots: true
 
