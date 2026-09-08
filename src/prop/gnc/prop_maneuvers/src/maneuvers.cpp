@@ -289,7 +289,7 @@ DetourNeed worst_need(Context const &context, Point const &boat, Point const &go
 }
 }  // namespace
 
-std::vector<Point> ApproachObject::plan_route(Boat const &boat) const
+ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
 {
     Point const target = context_.lock.point();
 
@@ -297,8 +297,13 @@ std::vector<Point> ApproachObject::plan_route(Boat const &boat) const
     // whatever size the object is.
     Point const goal = standoff_point(boat.position, target, context_.lock.radius() + standoff_);
 
+    Plan plan;
+    plan.goal = goal;
+    plan.route = { goal };
+
     // Step around whichever blocking blob is nearest the boat.
     Detour chosen;
+    Blob chosen_blob;
     double nearest_block = std::numeric_limits<double>::max();
 
     for (auto const &blob : context_.lock.blobs())
@@ -323,6 +328,7 @@ std::vector<Point> ApproachObject::plan_route(Boat const &boat) const
         {
             nearest_block = range;
             chosen = step_around;
+            chosen_blob = blob;
         }
     }
 
@@ -332,7 +338,7 @@ std::vector<Point> ApproachObject::plan_route(Boat const &boat) const
     // nothing left to try, so best effort beats refusing to move.
     if (chosen.need != DetourNeed::Straddle)
     {
-        return { goal };
+        return plan;
     }
 
     if (chosen.achieved < context_.settings.detour_clearance_ - 1e-6)
@@ -343,7 +349,34 @@ std::vector<Point> ApproachObject::plan_route(Boat const &boat) const
                     chosen.achieved, context_.settings.detour_clearance_);
     }
 
-    return { chosen.before, chosen.after, goal };
+    plan.route = { chosen.before, chosen.after, goal };
+    // The straddle was planned for the leg boat -> goal, so that is the
+    // direction "past it" is measured along later.
+    plan.commitment = Commitment{ chosen_blob, chosen.before, chosen.after, bearing(boat.position, goal) };
+    return plan;
+}
+
+bool ApproachObject::supersedes(std::optional<Commitment> const &fresh, Boat const &boat) const
+{
+    if (!commitment_ || !fresh)
+    {
+        return false;
+    }
+
+    // Blobs carry no identity from one frame to the next, so "the same
+    // obstacle" has to be "close enough to the one remembered". match_radius
+    // is the tolerance the lock already uses to re-find an object it is
+    // tracking, and the job here is the same one.
+    if (distance(fresh->obstacle.centre, commitment_->obstacle.centre) <= context_.settings.match_radius_)
+    {
+        return false;
+    }
+
+    // Something else, but further off than the obstacle being stepped around.
+    // Deal with it after this one rather than instead of it: swapping now
+    // would drop the committed pair half way through and cut straight back
+    // across the near obstacle, which is exactly what the commitment is for.
+    return distance(boat.position, fresh->obstacle.centre) < distance(boat.position, commitment_->obstacle.centre);
 }
 
 bool ApproachObject::worth_replanning(std::vector<Point> const &fresh) const
@@ -438,7 +471,9 @@ Status ApproachObject::step()
                 return Status::Running;
             }
 
-            route_ = plan_route(boat);
+            Plan const plan = plan_route(boat);
+            route_ = plan.route;
+            commitment_ = plan.commitment;
             context_.spinner.stop();
             context_.driver.go_to(route_);
             phase_ = Phase::Driving;
@@ -462,7 +497,9 @@ Status ApproachObject::step()
                 context_.reverser.stop();
                 RCLCPP_WARN(context_.node->get_logger(), "approach: something behind us, taking the best route "
                                                          "available instead");
-                route_ = plan_route(boat);
+                Plan const plan = plan_route(boat);
+                route_ = plan.route;
+                commitment_ = plan.commitment;
                 context_.driver.go_to(route_);
                 phase_ = Phase::Driving;
                 return Status::Running;
@@ -494,7 +531,9 @@ Status ApproachObject::step()
                 // branch above stops it too.
                 context_.reverser.stop();
                 RCLCPP_INFO(context_.node->get_logger(), "approach: backed off, re-planning");
-                route_ = plan_route(boat);
+                Plan const plan = plan_route(boat);
+                route_ = plan.route;
+                commitment_ = plan.commitment;
                 context_.driver.go_to(route_);
                 phase_ = Phase::Driving;
             }
@@ -543,14 +582,59 @@ Status ApproachObject::step()
                 return Status::Failed;
             }
 
+            // Let a committed straddle go once the obstacle it steps around is
+            // genuinely behind the hull. From there the direct line to the
+            // goal cannot cross it, so there is nothing left to hold.
+            if (commitment_ && !obstacle_ahead(boat.position, commitment_->travel, commitment_->obstacle,
+                                               context_.settings.hull_behind_))
+            {
+                commitment_.reset();
+                RCLCPP_INFO(context_.node->get_logger(), "approach: past the obstacle, back on the direct line");
+            }
+
             // The picture can change while driving: the object's estimate can
             // shift, or a blob can move into the way. Re-hand the route only
             // when it has actually changed, since a new plan restarts
             // guidance's leg from the boat's current position.
-            auto const fresh = plan_route(boat);
-            if (worth_replanning(fresh))
+            Plan plan = plan_route(boat);
+
+            // KEEP THE COMMITTED STRADDLE. This is not a missing optimisation
+            // and must not be tidied away: the plan above is made from where
+            // the boat is NOW, and driving to the first straddle waypoint
+            // moves the boat sideways, which pushes the obstacle further off
+            // the line from here to the goal. Part way along that first leg
+            // the obstacle stops counting as blocking at all, plan_route
+            // collapses to the goal alone, and guidance is handed a straight
+            // line back across the very obstacle it was stepping around --
+            // delivering min_gap instead of detour_clearance, whatever
+            // detour_clearance is set to. The pair only works as a pair, so it
+            // is held until obstacle_ahead() says the obstacle is behind us.
+            //
+            // The route is still live: the goal is re-taken from the plan
+            // every tick, so the target moving is followed, and a different,
+            // nearer obstacle turning up replaces the commitment outright.
+            if (commitment_ && !supersedes(plan.commitment, boat))
             {
-                route_ = fresh;
+                // Waypoints already behind the boat are left out. guidance
+                // restarts at waypoint 0 from wherever the boat is on every
+                // hand-over, so a passed waypoint left in the list would turn
+                // the boat round to go back and collect it.
+                plan.route.clear();
+                for (Point const &waypoint : { commitment_->before, commitment_->after })
+                {
+                    if (along_track(boat.position, commitment_->travel, waypoint) > 0.0)
+                    {
+                        plan.route.push_back(waypoint);
+                    }
+                }
+                plan.route.push_back(plan.goal);
+                plan.commitment = commitment_;
+            }
+            commitment_ = plan.commitment;
+
+            if (worth_replanning(plan.route))
+            {
+                route_ = plan.route;
                 context_.driver.go_to(route_);
                 RCLCPP_INFO(context_.node->get_logger(), "approach: route changed, now %zu point(s)", route_.size());
             }

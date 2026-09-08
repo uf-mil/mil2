@@ -206,6 +206,20 @@ Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, dou
     return result;
 }
 
+double along_track(Point const &boat, double travel_direction, Point const &p)
+{
+    double const tx = std::cos(travel_direction);
+    double const ty = std::sin(travel_direction);
+    return (p.x - boat.x) * tx + (p.y - boat.y) * ty;
+}
+
+bool obstacle_ahead(Point const &boat, double travel_direction, Blob const &obstacle, double hull_behind)
+{
+    // Behind only once the obstacle's near SURFACE has cleared the back of the
+    // hull, not merely once its centre draws level with base_link.
+    return along_track(boat, travel_direction, obstacle.centre) > -(obstacle.radius + hull_behind);
+}
+
 bool clear_behind(std::vector<Blob> const &blobs, Point const &boat, double boat_direction, double distance_back,
                   double hull_half_width, double hull_behind)
 {

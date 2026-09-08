@@ -143,6 +143,35 @@ struct Detour
 Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, double hull_half_width, double min_gap,
                    double clearance);
 
+/// How far `p` lies ahead of a boat at `boat` pointing along
+/// `travel_direction`. Negative means behind it.
+///
+/// Only the along-track component; sideways offset is ignored entirely. This
+/// is the primitive behind "have I passed that yet?", asked of an obstacle by
+/// obstacle_ahead() and of a waypoint by the maneuvers.
+double along_track(Point const &boat, double travel_direction, Point const &p);
+
+/// True while `obstacle` still lies ahead of a boat at `boat` travelling in
+/// `travel_direction`.
+///
+/// This answers "have I finished stepping around it yet?", which is the
+/// question a caller driving a straddle has to keep asking. A straddle is only
+/// correct as a whole: driving to its first waypoint carries the boat
+/// SIDEWAYS, which pushes the obstacle further off the straight line from the
+/// boat to the goal, so a plan made half way along it finds nothing in the way
+/// and hands back the very line the straddle exists to avoid. Holding the
+/// committed pair until this returns false is what stops that.
+///
+/// Only the along-track component counts. An obstacle level with the boat but
+/// well off to one side is still "ahead": the boat has not passed it, and how
+/// far it has to swing is plan_detour's question, not this one.
+///
+/// Measured hull-to-surface, like everything else here: the obstacle is behind
+/// only once its near surface has cleared the back of the hull, `hull_behind`
+/// metres behind base_link. Its centre drawing level with base_link is not
+/// enough -- the hull is still alongside it.
+bool obstacle_ahead(Point const &boat, double travel_direction, Blob const &obstacle, double hull_behind);
+
 /// True when nothing sits in the strip the hull would sweep reversing
 /// `distance` metres from `boat`, which points along `boat_direction`.
 ///

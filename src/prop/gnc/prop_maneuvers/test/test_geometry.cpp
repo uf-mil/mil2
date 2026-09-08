@@ -441,3 +441,56 @@ TEST(ClearBehind, TheStripFollowsTheBoatNotTheMap)
     EXPECT_TRUE(clear_behind(blobs, { 0, 0 }, M_PI / 2.0, 2.0, 0.5, 1.0));
     EXPECT_FALSE(clear_behind(blobs, { 0, 0 }, M_PI, 2.0, 0.5, 1.0));
 }
+
+// ── along_track and obstacle_ahead ───────────────────────────────────────
+//
+// The pair behind "have I got past that yet?". A committed straddle has to be
+// held until the obstacle is behind the boat, because a plan made half way
+// along it no longer sees the obstacle as blocking and would hand back the
+// straight line the straddle exists to avoid.
+
+TEST(AlongTrack, MeasuresForwardAndBackwardAlongTheHeading)
+{
+    EXPECT_NEAR(along_track({ 0, 0 }, 0.0, { 5, 0 }), 5.0, kTol);
+    EXPECT_NEAR(along_track({ 0, 0 }, 0.0, { -5, 0 }), -5.0, kTol);
+}
+
+TEST(AlongTrack, IgnoresSidewaysOffsetEntirely)
+{
+    // Level with the boat but a long way to the side is still level with it.
+    EXPECT_NEAR(along_track({ 0, 0 }, 0.0, { 5, 100 }), 5.0, kTol);
+    EXPECT_NEAR(along_track({ 0, 0 }, 0.0, { 0, 100 }), 0.0, kTol);
+}
+
+TEST(AlongTrack, FollowsTheHeadingNotTheMapAxes)
+{
+    EXPECT_NEAR(along_track({ 0, 0 }, M_PI / 2.0, { 0, 5 }), 5.0, kTol);
+    EXPECT_NEAR(along_track({ 0, 0 }, M_PI, { -5, 0 }), 5.0, kTol);
+}
+
+TEST(ObstacleAhead, TrueWhileTheObstacleIsStillInFront)
+{
+    EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { 5, 0 }, 0.25 }, 1.0));
+}
+
+TEST(ObstacleAhead, StillAheadWhenLevelWithTheBoat)
+{
+    // base_link is level with it, but the hull reaches 1 m further back and is
+    // still alongside. Letting go here would cut the corner on the way out.
+    EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { 0, 2 }, 0.25 }, 1.0));
+}
+
+TEST(ObstacleAhead, BehindOnlyOnceItsSurfaceClearsTheBackOfTheHull)
+{
+    // Threshold is -(radius + hull_behind) = -1.25 m.
+    EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.2, 0 }, 0.25 }, 1.0));
+    EXPECT_FALSE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.3, 0 }, 0.25 }, 1.0));
+}
+
+TEST(ObstacleAhead, ABiggerObstacleStaysAheadForLonger)
+{
+    // Same centre, same hull: only the radius differs, and the wide one is
+    // still alongside when the narrow one has been cleared.
+    EXPECT_FALSE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.5, 0 }, 0.25 }, 1.0));
+    EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.5, 0 }, 1.00 }, 1.0));
+}

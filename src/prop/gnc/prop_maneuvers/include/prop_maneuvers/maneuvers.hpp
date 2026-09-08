@@ -162,8 +162,34 @@ class ApproachObject
         Driving,
     };
 
+    /// A straddle the approach has started driving and is holding on to.
+    ///
+    /// The pair only works as a pair: the first waypoint carries the boat
+    /// sideways, and the second holds that offset until the obstacle is
+    /// behind. See obstacle_ahead() and the replan site in Phase::Driving for
+    /// why it is remembered rather than re-derived every tick.
+    struct Commitment
+    {
+        Blob obstacle;         ///< the blob the pair steps around
+        Point before;          ///< the waypoint short of it
+        Point after;           ///< the waypoint past it
+        double travel{ 0.0 };  ///< direction the straddled leg runs in, radians
+    };
+
+    /// A route to hand guidance, and what it commits the boat to.
+    struct Plan
+    {
+        std::vector<Point> route;              ///< the points, ending at the goal
+        Point goal;                            ///< where to stop; always route.back()
+        std::optional<Commitment> commitment;  ///< set only when the route straddles something
+    };
+
     /// Where to stop, plus straddle waypoints if something blocks the line.
-    std::vector<Point> plan_route(Boat const &boat) const;
+    Plan plan_route(Boat const &boat) const;
+
+    /// True when a freshly planned straddle is reason enough to abandon the
+    /// one already being driven. Only a DIFFERENT and NEARER obstacle is.
+    bool supersedes(std::optional<Commitment> const &fresh, Boat const &boat) const;
 
     /// True when `fresh` is different enough from the route in flight to be
     /// worth handing over again. Re-publishing every tick would restart
@@ -177,6 +203,11 @@ class ApproachObject
     Phase phase_{ Phase::FaceTarget };
     bool released_for_turn_{ false };
     std::vector<Point> route_;
+
+    // The straddle currently being driven, if any. Held for the whole of the
+    // detour rather than re-planned from wherever the boat has got to, which
+    // would throw it away half way through -- see Phase::Driving.
+    std::optional<Commitment> commitment_;
 
     // Backing off. One reverse per approach: if the boat is still too close
     // afterwards, take the best route available rather than shuffling
