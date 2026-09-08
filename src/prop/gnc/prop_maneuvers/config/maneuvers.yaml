@@ -49,6 +49,14 @@
     acquire_max_range: 30.0     # m, ignore blobs further out than this
 
     # ── Matching a blob to the remembered point ──────────────────────────
+    # Biggest thing we will believe is one object. The clustering normally
+    # reports a 0.25 m buoy as about 0.18 m, but it occasionally merges
+    # returns while the boat is moving: on 2026-09-07 it briefly reported a
+    # radius of 9.3 m, which inflated the approach's standoff from 3.2 m to
+    # 12.3 m and let it declare arrival while still 4.2 m out. Clamped rather
+    # than rejected, because a too-big object should still be avoided -- it
+    # just should not be trusted to size a standoff.
+    max_object_radius: 1.5  # m
     match_radius: 3.0     # m, further than this from the prediction is a miss
     ambiguous_margin: 1.0 # m, two candidates closer than this is ambiguous
     reading_max_age: 5.0  # s, a lock older than this counts as stale
@@ -107,6 +115,13 @@
 
     # ── Tolerances ───────────────────────────────────────────────────────
     arrive_tolerance: 1.5       # m, close enough to count as arrived
+    # How close to the requested standoff the approach must actually get.
+    # Deliberately much tighter than arrive_tolerance: that one asks whether
+    # the boat is near the goal WAYPOINT, which at 1.5 m against a 3.0 m
+    # standoff let the approach stop half a standoff short and report success.
+    # This one is measured against the object itself, which is what the
+    # maneuver actually promises.
+    standoff_tolerance: 0.3     # m
     point_tolerance_deg: 5.0    # how close counts as pointing at it
 
     # ── Turning ──────────────────────────────────────────────────────────

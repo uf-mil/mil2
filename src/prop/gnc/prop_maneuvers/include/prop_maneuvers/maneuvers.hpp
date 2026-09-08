@@ -82,7 +82,8 @@ class Deadline
 
   private:
     rclcpp::Node *node_;
-    rclcpp::Time start_;
+    mutable rclcpp::Time start_;
+    mutable bool started_{ false };
     double seconds_;
 };
 

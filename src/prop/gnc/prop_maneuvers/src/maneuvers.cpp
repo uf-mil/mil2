@@ -30,11 +30,34 @@ Context::Context(rclcpp::Node *node_in, Constants const &settings_in)
 
 Deadline::Deadline(rclcpp::Node *node, double seconds) : node_(node), start_(node->now()), seconds_(seconds)
 {
+    // A node built with use_sim_time before its first /clock message reads
+    // now() as 0. Starting the clock here would then measure "seconds since
+    // the simulation began" instead of "seconds from now", so the deadline is
+    // born already expired against any sim that has been up longer than it.
+    // Observed on 2026-09-07: a maneuver launched against a sim at t=604 s
+    // gave up "after 300 s" in the same millisecond it started, on the first
+    // momentary gap in perception.
+    started_ = start_.nanoseconds() > 0;
 }
 
 bool Deadline::expired() const
 {
-    return (node_->now() - start_).seconds() > seconds_;
+    rclcpp::Time const now = node_->now();
+
+    // Start the count from the first real reading rather than from a zero
+    // that only meant "the clock had not arrived yet".
+    if (!started_)
+    {
+        if (now.nanoseconds() == 0)
+        {
+            return false;  // still no clock; nothing has begun, so nothing can be late
+        }
+        start_ = now;
+        started_ = true;
+        return false;
+    }
+
+    return (now - start_).seconds() > seconds_;
 }
 
 FaceObject::FaceObject(Context &context)
@@ -566,13 +589,40 @@ Status ApproachObject::step()
 
         case Phase::Driving:
         {
-            if (context_.driver.arrived(boat.position))
+            // Judge arrival on the STANDOFF, which is what this maneuver
+            // promises, not on nearness to the goal waypoint.
+            //
+            // driver.arrived() asks whether the boat is within
+            // arrive_tolerance of the last waypoint, and that tolerance is
+            // 1.5 m against a 3.0 m standoff -- so the approach was allowed to
+            // stop half a standoff short and call it success. Measured in
+            // simulation on 2026-09-07: asked to stop 3.22 m from a buoy, it
+            // reported "arrived" at 4.70 m, short by exactly arrive_tolerance,
+            // having driven barely half a metre. The gap also moves whenever
+            // the lock does, so the error is not even consistent.
+            //
+            // guidance parks on the final waypoint, so it keeps closing on its
+            // own; the maneuver simply has to stop declaring victory early.
+            double const wanted = context_.lock.radius() + standoff_;
+            double const actual = distance(boat.position, context_.lock.point());
+            if (actual <= wanted + context_.settings.standoff_tolerance_)
             {
                 context_.driver.release();
                 context_.spinner.stop();  // release only silences guidance; this stops the boat
-                RCLCPP_INFO(context_.node->get_logger(), "approach: arrived, %.1f m from the object",
-                            distance(boat.position, context_.lock.point()));
+                RCLCPP_INFO(context_.node->get_logger(), "approach: arrived, %.2f m from the object (asked for %.2f)",
+                            actual, wanted);
                 return Status::Succeeded;
+            }
+
+            // Still short, but guidance thinks it has parked. Nothing more is
+            // coming, so say what was actually achieved rather than waiting
+            // out the timeout in silence.
+            if (context_.driver.arrived(boat.position))
+            {
+                RCLCPP_WARN_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 2000,
+                                     "approach: guidance has parked %.2f m from the object, %.2f m short of the "
+                                     "standoff; still closing",
+                                     actual, actual - wanted);
             }
 
             // Keep confirming the object is actually still there while

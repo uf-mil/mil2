@@ -62,6 +62,7 @@ class Constants
         acquire_max_range_ = node->declare_parameter("acquire_max_range", 30.0);
 
         // ── Matching ──────────────────────────────────────────────────────
+        max_object_radius_ = node->declare_parameter("max_object_radius", 1.5);
         match_radius_ = node->declare_parameter("match_radius", 3.0);
         ambiguous_margin_ = node->declare_parameter("ambiguous_margin", 1.0);
         reading_max_age_ = node->declare_parameter("reading_max_age", 5.0);
@@ -81,6 +82,7 @@ class Constants
 
         // ── Tolerances ────────────────────────────────────────────────────
         arrive_tolerance_ = node->declare_parameter("arrive_tolerance", 1.5);
+        standoff_tolerance_ = node->declare_parameter("standoff_tolerance", 0.3);
         point_tolerance_ = deg(node->declare_parameter("point_tolerance_deg", 5.0));
 
         // ── Turning ───────────────────────────────────────────────────────
@@ -103,6 +105,7 @@ class Constants
     bool use_blind_spots_{ true };
     double acquire_cone_{ 0.0 };
     double acquire_max_range_{ 0.0 };
+    double max_object_radius_{ 0.0 };
     double match_radius_{ 0.0 };
     double ambiguous_margin_{ 0.0 };
     double reading_max_age_{ 0.0 };
@@ -116,6 +119,7 @@ class Constants
     double reverse_speed_{ 0.0 };
     double reverse_max_distance_{ 0.0 };
     double arrive_tolerance_{ 0.0 };
+    double standoff_tolerance_{ 0.0 };
     double point_tolerance_{ 0.0 };
     double turn_gain_{ 0.0 };
     double max_turn_rate_{ 0.0 };

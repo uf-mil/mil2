@@ -7,6 +7,24 @@
 
 namespace prop_maneuvers
 {
+namespace
+{
+/// Keep an implausible cluster from sizing a standoff or a clearance.
+///
+/// The clustering merges returns now and then while the boat is moving, and a
+/// merged blob's half-width is not the object's radius. Everything downstream
+/// adds this to a distance, so one bad frame quietly moves the goalposts.
+Blob sane(Blob blob, double limit, rclcpp::Node *node)
+{
+    if (blob.radius > limit)
+    {
+        RCLCPP_WARN_THROTTLE(node->get_logger(), *node->get_clock(), 2000,
+                             "clustering reported a %.1f m radius; clamping to %.1f m", blob.radius, limit);
+        blob.radius = limit;
+    }
+    return blob;
+}
+}  // namespace
 
 TargetLock::TargetLock(rclcpp::Node *node, Constants const &settings)
   : node_(node), settings_(settings), locked_at_(node->now())
@@ -39,17 +57,45 @@ std::vector<Blob> TargetLock::blobs() const
         geometry_msgs::msg::PointStamped out_point;
         try
         {
-            // Use the latest available transform rather than the marker's own
-            // stamp: the position chain updates faster than the lidar, and an
-            // exact-time lookup fails more often than it helps here.
-            in.header.stamp = rclcpp::Time(0);
+            // Transform at the MARKER'S OWN STAMP, not the latest available.
+            //
+            // An earlier version forced rclcpp::Time(0) here on the reasoning
+            // that the position chain updates faster than the lidar. That is
+            // true and it is exactly the problem: pairing old lidar data with
+            // a new pose swings every static object by roughly range times the
+            // yaw that happened in between. Measured in simulation on
+            // 2026-09-07, a stationary buoy 5.2 m away appeared to jump 1.93 m
+            // in a single refresh while the boat turned -- about 22 degrees of
+            // yaw, well under a second at the 0.6 rad/s cap. The lock followed
+            // the phantom, the standoff point collapsed onto the boat, and the
+            // approach reported "arrived" without moving. This is very likely
+            // the same unexplained 1.4 m lock drift seen on an earlier run.
+            //
+            // tf2 interpolates within its buffer, so asking for the scan's own
+            // time is both cheap and correct.
             out_point = tf_buffer_->transform(in, "map");
         }
         catch (tf2::TransformException const &error)
         {
-            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000,
-                                 "cannot place blobs on the map yet: %s", error.what());
-            return {};
+            // Fall back to the latest transform rather than going blind. This
+            // reintroduces the swing above, so it is a degraded mode and says
+            // so: better a wobbly position than none while tf catches up.
+            try
+            {
+                geometry_msgs::msg::PointStamped latest = in;
+                latest.header.stamp = rclcpp::Time(0);
+                out_point = tf_buffer_->transform(latest, "map");
+                RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000,
+                                     "no transform at the scan's own time (%s); falling back to the latest one, "
+                                     "which smears object positions while turning",
+                                     error.what());
+            }
+            catch (tf2::TransformException const &fallback_error)
+            {
+                RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000,
+                                     "cannot place blobs on the map yet: %s", fallback_error.what());
+                return {};
+            }
         }
 
         // The clustering publishes a box; treat the larger of its two ground
@@ -76,7 +122,7 @@ bool TargetLock::acquire_near(Point const &hint)
         return false;
     }
 
-    locked_ = match.blob;
+    locked_ = sane(match.blob, settings_.max_object_radius_, node_);
     locked_at_ = node_->now();
     why_.clear();
     RCLCPP_INFO(node_->get_logger(), "locked on at (%.1f, %.1f), radius %.2f m", locked_->centre.x, locked_->centre.y,
@@ -127,7 +173,7 @@ bool TargetLock::acquire_in_front(Point const &boat, double boat_direction)
         }
     }
 
-    locked_ = nearest;
+    locked_ = sane(nearest, settings_.max_object_radius_, node_);
     locked_at_ = node_->now();
     why_.clear();
     RCLCPP_INFO(node_->get_logger(), "locked on in front at (%.1f, %.1f), radius %.2f m", locked_->centre.x,
@@ -153,7 +199,7 @@ bool TargetLock::refresh()
     }
 
     double const moved = distance(match.blob.centre, locked_->centre);
-    locked_ = match.blob;
+    locked_ = sane(match.blob, settings_.max_object_radius_, node_);
     locked_at_ = node_->now();
     why_.clear();
     RCLCPP_INFO(node_->get_logger(), "refreshed, moved %.2f m to (%.1f, %.1f)", moved, locked_->centre.x,
