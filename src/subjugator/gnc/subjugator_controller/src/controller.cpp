@@ -134,11 +134,8 @@ void PIDController::control_loop()
         double yaw = atan2(dcm(1, 0), dcm(0, 0));
         errors(Eigen::seq(3, 5)) = Eigen::Vector3d(roll, pitch, yaw);
 
-        // the goal holds still between waypoints, so error changes at -velocity.
-        // rotate the body frame twist into the odom frame the errors are in.
-        Eigen::Matrix<double, 6, 1> error_dots;
-        error_dots.head<3>() = -(odom_quat * last_twist_.head<3>());
-        error_dots.tail<3>() = -(odom_quat * last_twist_.tail<3>());
+        // the goal holds still between waypoints, so error changes at -velocity
+        Eigen::Matrix<double, 6, 1> error_dots = -last_twist_;
 
         // apply PID control to errors
         for (size_t i = 0; i < pid_vec_.size(); i++)
