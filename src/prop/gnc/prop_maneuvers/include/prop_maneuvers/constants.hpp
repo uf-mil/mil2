@@ -79,8 +79,8 @@ class Constants
         circle_legs_ = static_cast<int>(node->declare_parameter("circle_legs", 4));
         circle_counter_clockwise_ = node->declare_parameter("circle_counter_clockwise", true);
         approach_standoff_ = node->declare_parameter("approach_standoff", 1.0);
-        min_gap_ = node->declare_parameter("min_gap", 0.15);
-        detour_clearance_ = node->declare_parameter("detour_clearance", 1.0);
+        min_gap_ = node->declare_parameter("min_gap", 0.5);
+        detour_clearance_ = node->declare_parameter("detour_clearance", 0.5);
         target_blob_margin_ = node->declare_parameter("target_blob_margin", 1.0);
 
         // ── Reversing ─────────────────────────────────────────────────────

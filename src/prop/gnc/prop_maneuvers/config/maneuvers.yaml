@@ -115,32 +115,31 @@
 
     # Both measured HULL to buoy SURFACE, so they mean what you would picture.
     #
-    # min_gap decides only WHETHER to step around something, and the ceiling on
-    # it is far tighter than it looks. Narrowest gate in the handbook is 1.83 m
-    # between buoys (p45), so a buoy sits 0.915 m from the centreline. Not
-    # detouring needs 0.915 >= buoy radius + hull_half_width + min_gap, i.e.
+    # min_gap and detour_clearance MUST BE KEPT EQUAL, or nearly so.
     #
-    #     min_gap <= 0.915 - 0.23 - 0.50 = 0.185 m
+    # min_gap is when the boat starts caring; detour_clearance is how far it
+    # then swings. If the swing is larger, the boat reacts only once it is
+    # already inside the room it needs, and the start point caps what any route
+    # can achieve. Observed 2026-09-08 with min_gap 0.15 and clearance 1.00: a
+    # buoy 0.90 m off the route did not trip the 0.74 m trigger, so the boat
+    # set off straight; by the time the geometry tightened enough to react it
+    # could only manage 0.86 m, then 0.23 m as it closed. Asking for a metre
+    # bought nothing but a wrong number in the log.
     #
-    # so 0.15 leaves THIRTY-FIVE MILLIMETRES of lateral error against the gate
-    # centreline before the nearer buoy triggers a detour -- and a straddle on
-    # a gate buoy is a collision, because the waypoint lands 0.10 m from the
-    # far buoy's centre. Do not raise this number without redoing that sum.
+    # 0.5 m is a placeholder for testing, chosen with David 2026-09-08.
     #
-    # An earlier version of this comment said the bound was 0.65 m. That was
-    # wrong: it omitted hull_half_width, carrying a centre-relative figure into
-    # a hull-relative setting.
-    #
-    # The real lesson is that a gate cannot be driven by obstacle avoidance at
-    # all -- it needs a behaviour that deliberately aims at the midpoint.
-    # NOTE 1.83 m comes from a PRACTICE course; mission spacing is unpublished.
-    min_gap: 0.15
-    # How far out the detour actually swings, once one is needed.
-    # Was 2.0 and measured from the boat's CENTRE, which was undeliverable --
-    # 2 m from each buoy needs 4 m of room in a 1.83 m gate.
-    detour_clearance: 1.0
-    # How near the target a blob has to be to count as the target itself
-    # rather than an obstacle to avoid. Was hardcoded in plan_route.
+    # NOTE on gates. The narrowest gate anywhere in the handbook is 1.83 m
+    # between buoys, which after two buoy radii and this boat leaves 0.24 m
+    # either side -- so min_gap above 0.242 m makes the boat try to detour
+    # around a gate it is meant to drive through. That 1.83 m comes from the
+    # PROOF OF READINESS course, which teams build themselves; the mission
+    # course spacing is not published anywhere (the buoy field in sections
+    # 3.3.x is described in words only). If a run ever does need threading
+    # between close buoys, drop both numbers together, and note that a gate
+    # really wants a behaviour that aims at the midpoint rather than obstacle
+    # avoidance at all.
+    min_gap: 0.5
+    detour_clearance: 0.5
     target_blob_margin: 1.0
 
     # ── Reversing ────────────────────────────────────────────────────────
