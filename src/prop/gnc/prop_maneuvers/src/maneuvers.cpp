@@ -491,7 +491,31 @@ Status ApproachObject::step()
             // behind us. Stopping short and taking a worse route is always
             // better than backing into a buoy: Reverser has no sensors of its
             // own and will do exactly that if nobody is watching for it.
-            if (!clear_behind(context_.lock.blobs(), boat.position, boat.direction, reverse_distance_,
+            // An EMPTY blob list is not evidence the water is clear. blobs()
+            // returns {} both when the clustering genuinely sees nothing and
+            // when the transform lookup throws, and those mean opposite
+            // things here. Tell them apart by the situation rather than the
+            // list: the approach is locked onto a blob, so during a reverse
+            // the clustering should always be reporting at least that one.
+            // Nothing at all means we have stopped seeing, not that there is
+            // nothing to see -- and reversing on a blind reading is the one
+            // thing reverser.hpp tells callers never to do.
+            std::vector<Blob> const behind_us = context_.lock.blobs();
+            if (behind_us.empty())
+            {
+                context_.reverser.stop();
+                RCLCPP_WARN(context_.node->get_logger(),
+                            "approach: cannot see behind us (%s); stopping the reverse rather than guessing",
+                            context_.lock.why().c_str());
+                Plan const plan = plan_route(boat);
+                route_ = plan.route;
+                commitment_ = plan.commitment;
+                context_.driver.go_to(route_);
+                phase_ = Phase::Driving;
+                return Status::Running;
+            }
+
+            if (!clear_behind(behind_us, boat.position, boat.direction, reverse_distance_,
                               context_.settings.hull_half_width_, context_.settings.hull_behind_))
             {
                 context_.reverser.stop();
