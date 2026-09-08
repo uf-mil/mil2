@@ -80,6 +80,15 @@
     # Used only to back away from something too close to swing around. The
     # boat can see straight out the back, so this is not a blind manoeuvre --
     # but it is capped anyway, because one recovery should not become a voyage.
+    #
+    # WATCH THE RATIO. A full-length reverse takes
+    # reverse_max_distance / reverse_speed seconds, and at the values below
+    # that is 2.0 / 0.4 = 5.0 s -- exactly reading_max_age. ApproachObject
+    # refreshes the lock while backing off precisely so this does not abort
+    # the approach on the clock alone, which is the same bug shape that once
+    # cost a whole drive. If you lengthen the reverse or slow it down, keep
+    # that refresh in mind, or give the ratio some real margin under
+    # reading_max_age instead of relying on it.
     reverse_speed: 0.4          # m/s
     reverse_max_distance: 2.0   # m, cap on a single reverse
 
