@@ -54,8 +54,7 @@
     # Replace it with the distance to the pontoon tails when that is measured.
     hull_half_width: 0.443  # m, base_link to the side of the hull
     hull_behind: 0.367      # m, base_link to the propellers -- see caveat above
-    # Not used by any code yet; recorded here so the measurement is not lost.
-    # hull_front: 0.760     # m, base_link to the front of the boat
+    hull_front: 0.760       # m, base_link to the front of the boat
     blind_spots_deg: [90.0, 135.0, -135.0, -90.0]
     use_blind_spots: true
 
@@ -93,7 +92,14 @@
     circle_radius: 6.0       # m, how far out to circle
     circle_legs: 4           # 4 gives the diamond; raise it if blind spots bite
     circle_counter_clockwise: true
-    approach_standoff: 3.0   # m, gap left between boat and object surface
+    # Water left between the FRONT OF THE BOAT and the object's surface.
+    #
+    # Measured from the bow, not from base_link. base_link is the lidar, which
+    # sits 0.760 m back from the bow, so a standoff measured there would leave
+    # far less real clearance than it appears to promise: 1.0 m from base_link
+    # would put the bow 0.24 m off the buoy. Same trap as measuring obstacle
+    # clearance from the boat's centre instead of its hull.
+    approach_standoff: 1.0   # m, bow to the object's surface
 
     # Both measured HULL to buoy SURFACE, so they mean what you would picture.
     #

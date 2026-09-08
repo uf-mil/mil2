@@ -35,6 +35,15 @@ struct Blob
 {
     Point centre;
     double radius{ 0.0 };
+
+    /// True when the clustering reported this bigger than any single object on
+    /// the course could be, so its size has been clamped and its centre cannot
+    /// be trusted either -- it is the centroid of whatever got merged.
+    ///
+    /// Such a blob is still AVOIDED: something is there, or might be. It is
+    /// never adopted as the object being tracked, because the thing we are
+    /// approaching is a 0.46 m buoy and this is not one.
+    bool merged{ false };
 };
 
 /// How a point sits relative to a straight leg.

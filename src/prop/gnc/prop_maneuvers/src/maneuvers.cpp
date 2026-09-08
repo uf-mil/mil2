@@ -317,8 +317,12 @@ ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
     Point const target = context_.lock.point();
 
     // Stop clear of the object's SURFACE, so the standoff means the same thing
-    // whatever size the object is.
-    Point const goal = standoff_point(boat.position, target, context_.lock.radius() + standoff_);
+    // whatever size the object is -- and measure it from the BOW, because that
+    // is the part of the boat that gets close to things. base_link is the
+    // lidar, 0.760 m aft of the bow, so leaving that out would put the front
+    // of the boat three quarters of a metre nearer than asked.
+    Point const goal =
+        standoff_point(boat.position, target, context_.lock.radius() + standoff_ + context_.settings.hull_front_);
 
     Plan plan;
     plan.goal = goal;
@@ -603,14 +607,15 @@ Status ApproachObject::step()
             //
             // guidance parks on the final waypoint, so it keeps closing on its
             // own; the maneuver simply has to stop declaring victory early.
-            double const wanted = context_.lock.radius() + standoff_;
+            double const wanted = context_.lock.radius() + standoff_ + context_.settings.hull_front_;
             double const actual = distance(boat.position, context_.lock.point());
             if (actual <= wanted + context_.settings.standoff_tolerance_)
             {
                 context_.driver.release();
                 context_.spinner.stop();  // release only silences guidance; this stops the boat
-                RCLCPP_INFO(context_.node->get_logger(), "approach: arrived, %.2f m from the object (asked for %.2f)",
-                            actual, wanted);
+                RCLCPP_INFO(context_.node->get_logger(),
+                            "approach: arrived, bow %.2f m from the object's surface (asked for %.2f)",
+                            actual - context_.lock.radius() - context_.settings.hull_front_, standoff_);
                 return Status::Succeeded;
             }
 

@@ -37,6 +37,23 @@ TargetLock::TargetLock(rclcpp::Node *node, Constants const &settings)
         [this](visualization_msgs::msg::MarkerArray::SharedPtr const msg) { latest_ = *msg; });
 }
 
+namespace
+{
+/// The blobs that could plausibly BE the object we are tracking.
+///
+/// Merged clusters are dropped here and nowhere else: they still have to be
+/// avoided, so plan_detour and clear_behind keep seeing them, but adopting one
+/// as the target hands the approach a phantom. Measured 2026-09-08: a merged
+/// blob whose centroid sat within a metre of the real buoy captured the lock,
+/// inflated the standoff to 4.50 m by way of its clamped radius, and stopped
+/// the boat 1.24 m short while reporting that it had arrived.
+std::vector<Blob> real_only(std::vector<Blob> blobs)
+{
+    blobs.erase(std::remove_if(blobs.begin(), blobs.end(), [](Blob const &b) { return b.merged; }), blobs.end());
+    return blobs;
+}
+}  // namespace
+
 std::vector<Blob> TargetLock::blobs() const
 {
     std::vector<Blob> out;
@@ -116,6 +133,7 @@ std::vector<Blob> TargetLock::blobs() const
         // 0.46 m across, so max_object_radius is generous already.
         double const width = std::max(marker.scale.x, marker.scale.y);
         double radius = width / 2.0;
+        bool merged = false;
         if (radius > settings_.max_object_radius_)
         {
             RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000,
@@ -123,8 +141,9 @@ std::vector<Blob> TargetLock::blobs() const
                                  "returns rather than one object",
                                  radius, settings_.max_object_radius_);
             radius = settings_.max_object_radius_;
+            merged = true;
         }
-        out.push_back(Blob{ Point{ out_point.point.x, out_point.point.y }, radius });
+        out.push_back(Blob{ Point{ out_point.point.x, out_point.point.y }, radius, merged });
     }
 
     return out;
@@ -156,7 +175,7 @@ bool TargetLock::acquire_near(Point const &hint)
 bool TargetLock::acquire_in_front(Point const &boat, double boat_direction)
 {
     std::vector<Blob> candidates;
-    for (auto const &blob : blobs())
+    for (auto const &blob : real_only(blobs()))
     {
         double const range = distance(boat, blob.centre);
         if (range > settings_.acquire_max_range_)
@@ -215,7 +234,7 @@ bool TargetLock::refresh()
     // Tracking, not finding: use the tight gate. See refresh_max_jump in
     // config/maneuvers.yaml for why this is not match_radius.
     Match const match =
-        match_nearest(blobs(), locked_->centre, settings_.refresh_max_jump_, settings_.ambiguous_margin_);
+        match_nearest(real_only(blobs()), locked_->centre, settings_.refresh_max_jump_, settings_.ambiguous_margin_);
 
     if (!match.ok)
     {

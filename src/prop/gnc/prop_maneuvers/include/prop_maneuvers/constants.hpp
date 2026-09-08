@@ -44,6 +44,7 @@ class Constants
         // it is optimistic for reversing until the tails are measured.
         hull_half_width_ = node->declare_parameter("hull_half_width", 0.443);
         hull_behind_ = node->declare_parameter("hull_behind", 0.367);
+        hull_front_ = node->declare_parameter("hull_front", 0.760);
         auto const spots = node->declare_parameter("blind_spots_deg", std::vector<double>{});
         use_blind_spots_ = node->declare_parameter("use_blind_spots", true);
         // Refuse to start on a malformed list rather than quietly carrying on
@@ -76,7 +77,7 @@ class Constants
         circle_radius_ = node->declare_parameter("circle_radius", 6.0);
         circle_legs_ = static_cast<int>(node->declare_parameter("circle_legs", 4));
         circle_counter_clockwise_ = node->declare_parameter("circle_counter_clockwise", true);
-        approach_standoff_ = node->declare_parameter("approach_standoff", 3.0);
+        approach_standoff_ = node->declare_parameter("approach_standoff", 1.0);
         min_gap_ = node->declare_parameter("min_gap", 0.15);
         detour_clearance_ = node->declare_parameter("detour_clearance", 1.0);
         target_blob_margin_ = node->declare_parameter("target_blob_margin", 1.0);
@@ -106,6 +107,7 @@ class Constants
     // identical; nothing enforces that automatically.
     double hull_half_width_{ 0.0 };
     double hull_behind_{ 0.0 };
+    double hull_front_{ 0.0 };
     std::vector<BlindSpot> blind_spots_;
     bool use_blind_spots_{ true };
     double acquire_cone_{ 0.0 };
