@@ -49,6 +49,8 @@ class PIDController : public rclcpp::Node
         param_map_;
 
     Eigen::Matrix<double, 7, 1> last_odom_;
+    // linear then angular velocity, in the body frame odom reports it in
+    Eigen::Matrix<double, 6, 1> last_twist_;
     Eigen::Matrix<double, 7, 1> last_goal_trajectory_;
     std::array<control_toolbox::Pid, 6> pid_vec_;
     void control_loop();

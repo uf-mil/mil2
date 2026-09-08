@@ -134,10 +134,16 @@ void PIDController::control_loop()
         double yaw = atan2(dcm(1, 0), dcm(0, 0));
         errors(Eigen::seq(3, 5)) = Eigen::Vector3d(roll, pitch, yaw);
 
+        // the goal holds still between waypoints, so error changes at -velocity.
+        // rotate the body frame twist into the odom frame the errors are in.
+        Eigen::Matrix<double, 6, 1> error_dots;
+        error_dots.head<3>() = -(odom_quat * last_twist_.head<3>());
+        error_dots.tail<3>() = -(odom_quat * last_twist_.tail<3>());
+
         // apply PID control to errors
         for (size_t i = 0; i < pid_vec_.size(); i++)
         {
-            commands[i] = pid_vec_[i].compute_command(errors[i], dt_s);
+            commands[i] = pid_vec_[i].compute_command(errors[i], error_dots[i], dt_s);
         }
 
         Eigen::Vector3d goal_euler = goal_quat.toRotationMatrix().eulerAngles(0, 1, 2);
@@ -203,6 +209,8 @@ void PIDController::odom_cb(nav_msgs::msg::Odometry::UniquePtr const msg)
     last_odom_ << msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z,
         msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z,
         msg->pose.pose.orientation.w;
+    last_twist_ << msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z,
+        msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z;
     this->heard_odom = true;
 }
 
