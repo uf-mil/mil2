@@ -61,12 +61,25 @@
 
     # Both measured HULL to buoy SURFACE, so they mean what you would picture.
     #
-    # min_gap decides only WHETHER to step around something. It has to stay
-    # under about 0.65 m or the boat would try to detour around both sides of
-    # a gate it is meant to drive through: the narrowest gate in the handbook
-    # is 1.83 m between buoys (p45), which after two 0.23 m buoy radii and a
-    # 1 m boat leaves 0.19 m of hull clearance either side. NOTE that figure
-    # comes from a PRACTICE course; the mission course spacing is not published.
+    # min_gap decides only WHETHER to step around something, and the ceiling on
+    # it is far tighter than it looks. Narrowest gate in the handbook is 1.83 m
+    # between buoys (p45), so a buoy sits 0.915 m from the centreline. Not
+    # detouring needs 0.915 >= buoy radius + hull_half_width + min_gap, i.e.
+    #
+    #     min_gap <= 0.915 - 0.23 - 0.50 = 0.185 m
+    #
+    # so 0.15 leaves THIRTY-FIVE MILLIMETRES of lateral error against the gate
+    # centreline before the nearer buoy triggers a detour -- and a straddle on
+    # a gate buoy is a collision, because the waypoint lands 0.10 m from the
+    # far buoy's centre. Do not raise this number without redoing that sum.
+    #
+    # An earlier version of this comment said the bound was 0.65 m. That was
+    # wrong: it omitted hull_half_width, carrying a centre-relative figure into
+    # a hull-relative setting.
+    #
+    # The real lesson is that a gate cannot be driven by obstacle avoidance at
+    # all -- it needs a behaviour that deliberately aims at the midpoint.
+    # NOTE 1.83 m comes from a PRACTICE course; mission spacing is unpublished.
     min_gap: 0.15
     # How far out the detour actually swings, once one is needed.
     # Was 2.0 and measured from the boat's CENTRE, which was undeliverable --
