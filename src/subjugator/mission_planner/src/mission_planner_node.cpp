@@ -40,6 +40,22 @@ int main(int argc, char** argv)
                                                                            ctx->latest_odom = *msg;
                                                                        });
 
+    // movement_manager request topics + its status feed (see SendMove)
+    ctx->absolute_move_pub = node->create_publisher<subjugator_msgs::msg::AbsoluteMove>("/absolute_move", 10);
+    ctx->relative_move_pub = node->create_publisher<subjugator_msgs::msg::RelativeMove>("/relative_move", 10);
+    ctx->move_status_sub = node->create_subscription<subjugator_msgs::msg::MoveStatus>(
+        "/move_status", 10,
+        [ctx](subjugator_msgs::msg::MoveStatus::SharedPtr msg)
+        {
+            using subjugator_msgs::msg::MoveStatus;
+            if (msg->state == MoveStatus::ACTIVE)
+            {
+                return;  // still in flight
+            }
+            ctx->settleMove(msg->command_id,
+                            msg->state == MoveStatus::REACHED || msg->state == MoveStatus::REACHED_LOOSE);
+        });
+
     RCLCPP_INFO(node->get_logger(), "Subscribing to YOLO detections on '%s' and tracking on '%s'",
                 detections_topic.c_str(), tracking_topic.c_str());
     ctx->detections_sub =
