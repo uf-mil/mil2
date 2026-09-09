@@ -7,8 +7,10 @@
   gz_type_name: "gz.msgs.Clock"
   direction: GZ_TO_ROS
 
+# gz-sensors publishes the gpu_lidar scan on <topic> and the cloud on
+# <topic>/points, so the model's <topic>lidar</topic> lands on /lidar there.
 - ros_topic_name: "/lidar/scan"
-  gz_topic_name: "/lidar/scan"
+  gz_topic_name: "/lidar"
   ros_type_name: "sensor_msgs/msg/LaserScan"
   gz_type_name: "gz.msgs.LaserScan"
   direction: GZ_TO_ROS
