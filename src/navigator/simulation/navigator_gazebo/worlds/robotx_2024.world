@@ -55,6 +55,26 @@
 
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors" />
 
+    <!-- The prop boat carries an IMU and a NavSat; VRX's own vehicles do not
+         go through these systems, so they cost nothing when it is not here. -->
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu" />
+    <plugin filename="gz-sim-navsat-system" name="gz::sim::systems::NavSat" />
+
+    <!-- What floats the prop boat: water below z = 0, air above it. VRX's
+         hulls and buoys float on their own PolyhedraBuoyancyDrag and Surface
+         plugins and must not be lifted twice, so this is scoped to prop.
+         Graded buoyancy only understands box and sphere collisions. -->
+    <plugin filename="gz-sim-buoyancy-system" name="gz::sim::systems::Buoyancy">
+      <graded_buoyancy>
+        <default_density>1000</default_density>
+        <density_change>
+          <above_depth>0</above_depth>
+          <density>1.225</density>
+        </density_change>
+      </graded_buoyancy>
+      <enable>prop</enable>
+    </plugin>
+
     <gui fullscreen='0'>
       <camera name='user_camera'>
         <pose>-506.934 129.78 113.428 -0 1.04434 1.87286</pose>
