@@ -33,7 +33,7 @@ HEARTBEAT_TIMEOUT = 2.0  # seconds of silence before thrust is cut
 
 
 def counts(effort: float) -> int:
-    """Normalized effort to a PWM count at PWM_FREQ_HZ."""
+    """Convert normalized effort to a PWM count at PWM_FREQ_HZ."""
     effort = max(-1.0, min(1.0, effort))
     pulse_us = NEUTRAL_US + effort * RANGE_US
     return round(PWM_COUNTS * pulse_us / (1_000_000 / PWM_FREQ_HZ))
