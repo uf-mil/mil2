@@ -9,6 +9,27 @@ def generate_launch_description():
     pcd_pkg_dir = get_package_share_directory('pcd')
     params_file = os.path.join(pcd_pkg_dir, 'config', 'pcd_params.yaml')
 
+    velodyne_driver_params = os.path.join(
+        get_package_share_directory('prop_gazebo'),
+        'config',
+        'VLP16-velodyne_driver_node-params.yaml',
+    )
+
+    driver_node = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        name='velodyne_driver_node',
+        parameters=[velodyne_driver_params],
+        output='screen',
+    )
+
+    pointcloud_node = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        name='velodyne_convert_node',
+        output='screen',
+    )
+
     filter_node = Node(
         package='pcd',
         executable='pcl_filter_node',
@@ -17,4 +38,4 @@ def generate_launch_description():
         output='screen',
     )
 
-    return LaunchDescription([filter_node])
+    return LaunchDescription([driver_node, pointcloud_node, filter_node])
