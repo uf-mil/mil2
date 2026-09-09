@@ -1,0 +1,8 @@
+---
+# Local ENU metres, x east and y north of the datum, as a flat x, y list.
+/**:
+  ros__parameters:
+    waypoints: [20.0, 0.0,
+                20.0, 20.0,
+                0.0, 20.0,
+                0.0, 0.0]

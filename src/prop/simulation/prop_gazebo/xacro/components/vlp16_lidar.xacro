@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf version="1.9" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="../macros/inertial.xacro"/>
+
+  <!--
+    Velodyne VLP-16 lidar, mounted on a parent link of any SDF model.
+
+    VLP-16 specs:
+      - 16 vertical beams
+      - +/-15 deg vertical FOV
+      - 360 deg horizontal FOV
+      - 10 Hz update rate
+
+    gz-sensors publishes the LaserScan on <topic> and the point cloud on
+    <topic>/points, so topic:=lidar yields /lidar and /lidar/points.
+    Give each instance its own name/frame/topic when a model carries more
+    than one, since <topic> is absolute rather than model-scoped.
+
+    collision:=false leaves the puck out of the physics. A floating hull wants
+    that: the world's graded buoyancy only understands box and sphere
+    collisions and warns once per step about anything else.
+  -->
+  <xacro:macro
+    name="vlp16_lidar"
+    params="parent
+            name:=vlp16
+            frame:=laser_frame
+            xyz:='0.1 0 0.175'
+            rpy:='0 0 0'
+            topic:=lidar
+            collision:=true
+            update_rate:=10
+            horizontal_samples:=1875
+            max_range:=100.0
+            noise_stddev:=0.01"
+  >
+    <joint name="${name}_joint" type="fixed">
+      <parent>${parent}</parent>
+      <child>${frame}</child>
+    </joint>
+
+    <link name="${frame}">
+      <pose relative_to="${parent}">${xyz} ${rpy}</pose>
+
+      <xacro:inertial_cylinder mass="0.1" length="0.04" radius="0.05"/>
+
+      <visual name="${name}_visual">
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>0.04</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.13 0.13 0.13 1.0</ambient>
+          <diffuse>0.13 0.13 0.13 1.0</diffuse>
+        </material>
+      </visual>
+
+      <xacro:if value="${collision}">
+        <collision name="${name}_collision">
+          <geometry>
+            <cylinder>
+              <radius>0.05</radius>
+              <length>0.04</length>
+            </cylinder>
+          </geometry>
+        </collision>
+      </xacro:if>
+
+      <sensor name="${name}_sensor" type="gpu_lidar">
+        <topic>${topic}</topic>
+        <gz_frame_id>${frame}</gz_frame_id>
+        <update_rate>${update_rate}</update_rate>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>${horizontal_samples}</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14159</min_angle>
+              <max_angle>3.14159</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>16</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.261799</min_angle>
+              <max_angle>0.261799</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>0.1</min>
+            <max>${max_range}</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>${noise_stddev}</stddev>
+          </noise>
+        </lidar>
+        <always_on>1</always_on>
+        <visualize>true</visualize>
+      </sensor>
+    </link>
+  </xacro:macro>
+</sdf>

@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>subjugator</name>
+  <version>0.0.0</version>
+  <description>SubjuGator metapackage</description>
+  <license>TODO</license>
+  <maintainer email="a@a.com">Dean</maintainer>
+
+  <depend>down_cam</depend>
+  <depend>front_cam</depend>
+  <depend>mil_msgs</depend>
+  <depend>mil_passive_sonar</depend>
+  <depend>mission_planner</depend>
+  <depend>new_depth_driver</depend>
+  <depend>servo_controller</depend>
+  <depend>subjugator_bringup</depend>
+  <depend>subjugator_controller</depend>
+  <depend>subjugator_description</depend>
+  <depend>subjugator_gazebo</depend>
+  <depend>subjugator_keyboard_control</depend>
+  <depend>subjugator_localization</depend>
+  <depend>subjugator_mission_planner</depend>
+  <depend>subjugator_msgs</depend>
+  <depend>subjugator_path_planner</depend>
+  <depend>subjugator_thruster_manager</depend>
+  <depend>subjugator_trajectory_planner</depend>
+  <depend>thrust_and_kill_board</depend>
+  <depend>waterlinked_dvl_driver</depend>
+  <depend>yolo_ros</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

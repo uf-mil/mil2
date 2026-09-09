@@ -27,7 +27,6 @@ alias search_root='sudo find / ... | grep -i'
 alias search='find . -print | grep -i'
 alias fd="fdfind"
 
-alias imu-socat="sudo socat PTY,link=/dev/ttyV0,mode=777 TCP:192.168.37.61:10001"
 alias sonar-socat="sdgps connect-sonar-raw-tcp 192.168.37.61 2006 ! filter-sonar-raw-samples --highpass 15e3 --lowpass 45e3 --notch 40e3 ! extract-robosub-pings ! robosub-ping-solver ! listen-robosub-ping-solution-tcp 2007"
 alias kill="ros2 service call /kill std_srvs/srv/Empty && stop-controller"
 alias unkill="ros2 service call /unkill std_srvs/srv/Empty"
@@ -91,7 +90,10 @@ cb() {
 	done
 
 	if [ "${#packages[@]}" -eq 0 ]; then
-		rm_symlink_dirs                                     # remove symlink directories
+		rm_symlink_dirs # remove symlink directories
+		if [ -n "$CB_META" ]; then
+			colcon_flags+=("--packages-up-to" "$CB_META")
+		fi
 		colcon build --symlink-install "${colcon_flags[@]}" # Build the workspace
 	else
 		colcon build --symlink-install "${colcon_flags[@]}" --packages-select "${packages[@]}" # Build the workspace
