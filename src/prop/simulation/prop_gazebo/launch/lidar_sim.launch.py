@@ -45,21 +45,21 @@ def generate_launch_description():
     )
 
     spawn_platform = Node(
-        package='ros_gz_sim',
-        executable='create',
+        package="ros_gz_sim",
+        executable="create",
         arguments=[
-            '-name',
-            LaunchConfiguration('model_name'),
-            '-file',
-            pkg_share('prop_gazebo', 'models', 'lidar_platform', 'model.sdf'),
-            '-x',
-            '0.0',
-            '-y',
-            '0.0',
-            '-z',
-            '2.0',
+            "-name",
+            LaunchConfiguration("model_name"),
+            "-file",
+            pkg_share("prop_gazebo", "models", "lidar_platform", "model.sdf"),
+            "-x",
+            "0.0",
+            "-y",
+            "0.0",
+            "-z",
+            "2.0",
         ],
-        output='screen',
+        output="screen",
     )
 
     bridge = Node(
@@ -76,16 +76,16 @@ def generate_launch_description():
     # The model is rigid and pinned, so the sensor frame never moves relative to
     # the hull: a static broadcaster covers what robot_state_publisher used to.
     laser_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='laser_frame_tf',
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="laser_frame_tf",
         arguments=[
-            '--frame-id',
-            'base_link',
-            '--child-frame-id',
-            'laser_frame',
+            "--frame-id",
+            "base_link",
+            "--child-frame-id",
+            "laser_frame",
         ],
-        output='screen',
+        output="screen",
     )
 
     return LaunchDescription(
