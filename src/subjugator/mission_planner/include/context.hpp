@@ -17,6 +17,9 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <subjugator_msgs/msg/absolute_move.hpp>
+#include <subjugator_msgs/msg/move_status.hpp>
+#include <subjugator_msgs/msg/relative_move.hpp>
 #include <subjugator_msgs/srv/servo.hpp>
 #include <yolo_msgs/msg/detection_array.hpp>
 
@@ -34,6 +37,10 @@ struct Context
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr wall_direction_sub;
 
+    rclcpp::Publisher<subjugator_msgs::msg::AbsoluteMove>::SharedPtr absolute_move_pub;
+    rclcpp::Publisher<subjugator_msgs::msg::RelativeMove>::SharedPtr relative_move_pub;
+    rclcpp::Subscription<subjugator_msgs::msg::MoveStatus>::SharedPtr move_status_sub;
+
     // Service clients to actuate servos (driver.py services)
     rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr dropper_client;
     rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr gripper_client;
@@ -47,6 +54,35 @@ struct Context
 
     std::mutex last_goal_mx;
     std::optional<geometry_msgs::msg::Pose> last_goal;
+
+    // The move_status callback boils the manager's telemetry down to one verdict for
+    // the command that just settled: did it reach the goal or not. Keyed by id, so a
+    // verdict left over from a finished move is never read as the next move arriving.
+    // Watch /move_status directly for the numbers behind a verdict.
+    std::mutex move_mx;
+    uint32_t next_command_id{ 1 };  // 0 reads as "no command issued"
+    uint32_t settled_id{ 0 };
+    bool settled_reached{ false };
+
+    uint32_t nextCommandId()
+    {
+        std::scoped_lock lk(move_mx);
+        return next_command_id++;
+    }
+
+    void settleMove(uint32_t command_id, bool reached)
+    {
+        std::scoped_lock lk(move_mx);
+        settled_id = command_id;
+        settled_reached = reached;
+    }
+
+    // Empty while the move is still in flight.
+    std::optional<bool> moveVerdict(uint32_t command_id)
+    {
+        std::scoped_lock lk(move_mx);
+        return settled_id == command_id ? std::optional<bool>{ settled_reached } : std::nullopt;
+    }
 
     // Raw per-frame YOLO detections (/yolo/detections).
     std::mutex detections_mx;

@@ -1,0 +1,32 @@
+<!--
+    BUST - Backward Underwater Square Test, driven through movement_manager.
+
+    Same shape as BUST_mission.xml (dive, about-face, then a 1.5 m square driven
+    backward), but each leg is a single SendMove instead of a PublishGoalPose +
+    AtGoalPose polling loop. The manager composes the goal, judges arrival and
+    times the move out, so this file only says where to go.
+
+    Tolerances are no longer set per move here - they come from
+    gnc/subjugator_movement_manager/config/movement_manager.yaml. Set
+    precise="true" on a leg to opt into the tight pair instead.
+
+    Body frame: +x forward, +y left, +z up.
+-->
+<root BTCPP_format="4" main_tree_to_execute="BUSTMissionMM">
+  <BehaviorTree ID="BUSTMissionMM">
+    <Sequence name="bust">
+
+      <!-- Get off the surface first -->
+      <Action ID="SendMove" name="dive" ctx="{ctx}" z="-0.5"/>
+
+      <!-- About-face, so the square below is driven backward -->
+      <Action ID="SendMove" name="about_face" ctx="{ctx}" yaw_deg="180.0"/>
+
+      <Action ID="SendMove" name="leg_back"    ctx="{ctx}" x="-1.5"/>
+      <Action ID="SendMove" name="leg_right"   ctx="{ctx}" y="-1.5"/>
+      <Action ID="SendMove" name="leg_forward" ctx="{ctx}" x="1.5"/>
+      <Action ID="SendMove" name="leg_left"    ctx="{ctx}" y="1.5"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

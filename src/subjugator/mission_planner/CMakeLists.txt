@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_compile_options(-Wall -Wextra -Wpedantic)
 
 find_package(ament_cmake REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(mil_tools REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -30,6 +32,7 @@ add_library(
   operations
   subjugator_operations/src/header_only.cpp
   subjugator_operations/src/publish_goal.cpp
+  subjugator_operations/src/send_move.cpp
   subjugator_operations/src/at_goal_pose.cpp
   subjugator_operations/src/detect_target.cpp
   subjugator_operations/src/hone_bearing.cpp
@@ -57,6 +60,8 @@ add_library(
 
 ament_target_dependencies(
   operations
+  Eigen3
+  mil_tools
   rclcpp
   geometry_msgs
   std_srvs
