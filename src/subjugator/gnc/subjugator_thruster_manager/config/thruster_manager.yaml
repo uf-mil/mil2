@@ -10,6 +10,6 @@
       rx: [0.0,           0.0,            0.0,            0.0,          -0.14922,  0.14922,  -0.14922,  0.14922 ] # roll
       ry: [0.0,           0.0,            0.0,            0.0,          -0.230185, -0.230185, 0.230185,0.231085] # pitch
       rz: [0.2695308,     -0.2695308,     0.337687697,  -0.337687697,   0.0,      0.0,      0.0,      0.0     ] # yaw
+    # Per-thruster effort limit in [0, 1]. The force<->effort curve (lut.h)
+    # supplies the actual forward/reverse max thrust, so no max_force params here.
     thruster_cap: 1.0
-    max_force_pos: 51.5
-    max_force_neg: 40.2

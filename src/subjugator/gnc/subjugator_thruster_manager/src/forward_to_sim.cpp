@@ -5,17 +5,13 @@
 
 #include "std_msgs/msg/float64.hpp"
 #include "subjugator_msgs/msg/thruster_efforts.hpp"
+#include "subjugator_thruster_manager/lut.h"
 
 class SimulatedThrusterCmds : public rclcpp::Node
 {
   public:
     SimulatedThrusterCmds() : Node("simulate_thruster_cmds")
     {
-        this->declare_parameter("max_force_pos", 0.0);
-        max_force_pos_ = this->get_parameter("max_force_pos").as_double();
-        this->declare_parameter("max_force_neg", 0.0);
-        max_force_neg_ = this->get_parameter("max_force_neg").as_double();
-
         std::vector<std::string> thruster_topics = { "thruster/FLH", "thruster/FRH", "thruster/BLH", "thruster/BRH",
                                                      "thruster/FLV", "thruster/FRV", "thruster/BLV", "thruster/BRV" };
 
@@ -32,8 +28,10 @@ class SimulatedThrusterCmds : public rclcpp::Node
             for (size_t i = 0; i < publishers_.size(); ++i)
             {
                 std_msgs::msg::Float64 msg_thruster;
-                msg_thruster.data =
-                    (thrust_values[i] > 0) ? thrust_values[i] * max_force_pos_ : thrust_values[i] * max_force_neg_;
+                // Convert normalized effort back to force (N) for the sim plugin
+                // using the same asymmetric, nonlinear curve the thruster manager
+                // inverts, so sim and vehicle share one thrust model.
+                msg_thruster.data = force_from_effort(thrust_values[i]);
                 publishers_[i]->publish(msg_thruster);
             }
         };
@@ -43,8 +41,6 @@ class SimulatedThrusterCmds : public rclcpp::Node
     }
 
   private:
-    double max_force_pos_;
-    double max_force_neg_;
     rclcpp::Subscription<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr subscription_;
     std::vector<rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr> publishers_;
 };
