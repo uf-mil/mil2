@@ -244,7 +244,7 @@ if [[ $SCRIPT_DIR != "$HOME/mil2/scripts" && -z ${ALLOW_NONSTANDARD_DIR:-} ]]; t
 fi
 
 install_zenoh() {
-	sed "s|MIL_HOME|$HOME|" "$SCRIPT_DIR/../hw/zenoh.service" |
+	sed -e "s|MIL_HOME|$HOME|" -e "s|MIL_USER|$(whoami)|" "$SCRIPT_DIR/zenoh.service" |
 		sudo tee /etc/systemd/system/zenoh.service
 	sudo systemctl enable zenoh --now || true
 }

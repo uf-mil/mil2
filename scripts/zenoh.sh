@@ -1,6 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 
 ROS2="$(which ros2)"
+ZENOH_CONFIG="$(realpath "$(dirname $0)")/zenoh_config.json5"
 
 do_usage() {
 	echo "Usage: zenoh.sh {start <ips>|restart <ips>|stop|status}" >&2
@@ -17,7 +18,14 @@ do_start() {
 		export ZENOH_CONFIG_OVERRIDE="connect/endpoints=[\"$ENDPOINTS\"]"
 	fi
 
-	start-stop-daemon -v --start -b --name rmw_zenohd -O /tmp/zenoh.log \
+	export ZENOH_ROUTER_CONFIG_URI="${ZENOH_ROUTER_CONFIG_URI:-$ZENOH_CONFIG}"
+	export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-37}"
+
+	if [ -z "$ZENOH_FOREGROUND" ]; then
+		BG_ARGS=(-b -O /tmp/zenoh.log)
+	fi
+
+	start-stop-daemon -v --start "${BG_ARGS[@]}" --name rmw_zenohd \
 		--startas "$ROS2" run rmw_zenoh_cpp rmw_zenohd
 
 	if [ "$?" = 0 ] && [ -n "$ENDPOINTS" ]; then
