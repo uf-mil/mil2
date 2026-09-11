@@ -39,9 +39,7 @@
     /// or different lists for router, peer and client (e.g. endpoints: { router: ["tcp/10.10.10.10:7447"], peer: ["tcp/11.11.11.11:7447"] }).
     ///
     /// See https://docs.rs/zenoh/latest/zenoh/config/struct.EndPoint.html
-    endpoints: [
-      "tcp/192.168.37.61:7447"
-    ],
+    endpoints: [],
 
     /// Global connect configuration,
     /// Accepts a single value or different values for router, peer and client.
