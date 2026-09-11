@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>prop_path_planner</name>
+  <version>0.0.0</version>
+  <description>Path planner for the propulsion and guidance, navigation, and control system.</description>
+
+  <maintainer email="maintainer@example.com">maintainer</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
