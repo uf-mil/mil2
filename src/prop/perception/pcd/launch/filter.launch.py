@@ -17,4 +17,20 @@ def generate_launch_description():
         output="screen",
     )
 
-    return LaunchDescription([filter_node])
+    clustering_node = Node(
+        package="pcd",
+        executable="pcl_clustering_node",
+        name="pcl_clustering",
+        parameters=[params_file],
+        output="screen",
+    )
+
+    tracker_node = Node(
+        package="pcd",
+        executable="pcl_tracker_node",
+        name="pcl_tracker",
+        parameters=[params_file],
+        output="screen",
+    )
+
+    return LaunchDescription([filter_node, clustering_node, tracker_node])

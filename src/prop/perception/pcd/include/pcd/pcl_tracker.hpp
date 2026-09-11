@@ -332,8 +332,6 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         Mat22 S_inv = mat22_inv(S);
 
         // Kalman gain K = P * H^T * S_inv  (4×2)
-        Mat42 PHt = mat42_mul_22(Ht, S_inv);  // reuse: PHt = Ht * S_inv temporarily
-        // Actually compute P * H^T first (4×2)
         Mat42 PHt_real{};
         for (int i = 0; i < 4; ++i)
             for (int j = 0; j < 2; ++j)
