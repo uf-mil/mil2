@@ -1,5 +1,7 @@
 #include "prop_maneuvers/target_lock.hpp"
 
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 
 #include <geometry_msgs/msg/point_stamped.hpp>
@@ -9,6 +11,11 @@ namespace prop_maneuvers
 {
 namespace
 {
+/// How long to wait for the transform at a scan's own stamp before giving up
+/// on it and taking the degraded latest-transform path. The clustering runs at
+/// roughly 3 Hz, so this is a small fraction of one frame.
+constexpr auto kTransformWait = std::chrono::milliseconds(50);
+
 /// Keep an implausible cluster from sizing a standoff or a clearance.
 ///
 /// The clustering merges returns now and then while the boat is moving, and a
@@ -90,7 +97,18 @@ std::vector<Blob> TargetLock::blobs() const
             //
             // tf2 interpolates within its buffer, so asking for the scan's own
             // time is both cheap and correct.
-            out_point = tf_buffer_->transform(in, "map");
+            //
+            // Waiting a moment for it matters more than it looks. The scan is
+            // stamped when it was taken and the position chain publishes just
+            // after, so the correct transform routinely does not exist YET --
+            // observed in simulation on 2026-09-12, the lookup wanted t=43.200
+            // while tf held up to t=43.190 and fell through to the degraded
+            // branch below on ten milliseconds. Without the wait the "correct"
+            // path is the one almost never taken, and every blob is smeared by
+            // the fallback exactly as the comment above warns. The wait is
+            // bounded well under the clustering's own period, so a genuinely
+            // absent transform still fails fast.
+            out_point = tf_buffer_->transform(in, "map", kTransformWait);
         }
         catch (tf2::TransformException const &error)
         {
@@ -109,9 +127,18 @@ std::vector<Blob> TargetLock::blobs() const
             }
             catch (tf2::TransformException const &fallback_error)
             {
+                // Skip THIS marker, not the whole frame. An earlier version
+                // returned {} here, which threw away every blob already
+                // converted from the same MarkerArray -- so one late or
+                // duplicated cluster blanked perception for that tick. An
+                // empty list is read elsewhere as "we have stopped seeing",
+                // and Phase::BackingOff aborts a perfectly good reverse on
+                // it, so manufacturing one from a single bad marker is the
+                // expensive failure. If every marker fails, the list still
+                // comes back empty and that guard still fires correctly.
                 RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000,
-                                     "cannot place blobs on the map yet: %s", fallback_error.what());
-                return {};
+                                     "cannot place a blob on the map: %s (skipping it)", fallback_error.what());
+                continue;
             }
         }
 
@@ -151,7 +178,15 @@ std::vector<Blob> TargetLock::blobs() const
 
 bool TargetLock::acquire_near(Point const &hint)
 {
-    auto const all = blobs();
+    // real_only, for the same reason refresh() uses it: a merged blob must
+    // never BE the target. This is the acquisition path the three nodes take
+    // whenever use_front is false -- which is their default, and how every
+    // documented command line drives them -- so leaving it raw meant the one
+    // path most used was the one path a phantom could capture. Measured on
+    // 2026-09-12: the clustering emitted 9.7, 10.1 and 12.7 m radius blobs
+    // over open water during a single four-leg circle, any of which would
+    // have been adopted here had one landed within match_radius of the hint.
+    auto const all = real_only(blobs());
     // The hint must land within match_radius of the real buoy. Using the much
     // larger acquire_max_range here would make the ambiguity check fire almost
     // every time, because several buoys would sit inside it.
