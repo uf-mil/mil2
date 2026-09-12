@@ -110,62 +110,6 @@ TEST(IsBlind, RangeThatWrapsAcrossDirectlyBehind)
     EXPECT_FALSE(is_blind(deg(0.0), spots));
 }
 
-TEST(RingCorners, FirstCornerFacesTheBoatSoItDoesNotDoubleBack)
-{
-    // Boat out along +x; the first corner must also be out along +x.
-    auto const corners = ring_corners({ 0, 0 }, { 10, 0 }, 5.0, 4, true);
-    ASSERT_EQ(corners.size(), 4u);
-    EXPECT_NEAR(corners[0].x, 5.0, kTol);
-    EXPECT_NEAR(corners[0].y, 0.0, kTol);
-}
-
-TEST(RingCorners, CounterClockwiseGoesLeft)
-{
-    auto const corners = ring_corners({ 0, 0 }, { 10, 0 }, 5.0, 4, true);
-    ASSERT_EQ(corners.size(), 4u);
-    EXPECT_NEAR(corners[1].x, 0.0, kTol);
-    EXPECT_NEAR(corners[1].y, 5.0, kTol);
-    EXPECT_NEAR(corners[2].x, -5.0, kTol);
-    EXPECT_NEAR(corners[3].y, -5.0, kTol);
-}
-
-TEST(RingCorners, ClockwiseGoesRight)
-{
-    auto const corners = ring_corners({ 0, 0 }, { 10, 0 }, 5.0, 4, false);
-    ASSERT_EQ(corners.size(), 4u);
-    EXPECT_NEAR(corners[1].x, 0.0, kTol);
-    EXPECT_NEAR(corners[1].y, -5.0, kTol);
-}
-
-TEST(RingCorners, HonoursTheLegCountAndRejectsTooFew)
-{
-    EXPECT_EQ(ring_corners({ 0, 0 }, { 10, 0 }, 5.0, 6, true).size(), 6u);
-    EXPECT_EQ(ring_corners({ 0, 0 }, { 10, 0 }, 5.0, 8, true).size(), 8u);
-    EXPECT_TRUE(ring_corners({ 0, 0 }, { 10, 0 }, 5.0, 2, true).empty());
-}
-
-TEST(RingCorners, DegenerateRayWhenFromEqualsCentreStartsDueEast)
-{
-    // `from == centre` leaves the starting direction undefined; atan2(0, 0)
-    // is 0 in C++, so this pins down the (arbitrary) resulting behaviour:
-    // the ring silently starts due east of the centre. Not a considered
-    // default -- just what happens, and a caller should not rely on it.
-    auto const corners = ring_corners({ 3, 4 }, { 3, 4 }, 5.0, 4, true);
-    ASSERT_EQ(corners.size(), 4u);
-    EXPECT_NEAR(corners[0].x, 8.0, kTol);
-    EXPECT_NEAR(corners[0].y, 4.0, kTol);
-}
-
-TEST(RingCorners, CentredOnSomewhereOtherThanTheOrigin)
-{
-    auto const corners = ring_corners({ 20, -3 }, { 30, -3 }, 6.0, 4, true);
-    ASSERT_EQ(corners.size(), 4u);
-    EXPECT_NEAR(corners[0].x, 26.0, kTol);
-    EXPECT_NEAR(corners[0].y, -3.0, kTol);
-    EXPECT_NEAR(corners[1].x, 20.0, kTol);
-    EXPECT_NEAR(corners[1].y, 3.0, kTol);
-}
-
 TEST(StandoffPoint, StopsShortOfTheTarget)
 {
     auto const p = standoff_point({ 0, 0 }, { 10, 0 }, 3.0);
@@ -320,6 +264,44 @@ TEST(PlanDetour, SpacingEqualsTheSidewaysOffset)
     double const spacing = distance(d.before, d.after) / 2.0;
     double const offset = 0.25 + kHalfWidth + kClearance;
     EXPECT_NEAR(spacing, offset, kTol);
+}
+
+TEST(PlanDetour, NeverPutsTheFirstWaypointBehindTheBoat)
+{
+    // An obstacle close on the bow passes both gates: 0.85 m off the leg trips
+    // the 0.90 m trigger, and at 1.81 m away the boat is outside the 1.75 m
+    // swing, so this is not TooCloseToSwing. Unclamped, `before` lands at
+    // along-track -0.15 m -- astern. guidance restarts at waypoint 0 on every
+    // hand-over and scales forward speed by the cosine of the bearing error,
+    // so a point astern means the boat spins on the spot instead of driving.
+    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(1.6, 0.85), kHalfWidth, kMinGap, kClearance);
+    ASSERT_EQ(d.need, DetourNeed::Straddle);
+    EXPECT_GE(d.before.x, -kTol) << "first straddle waypoint is behind the boat";
+    EXPECT_GE(d.after.x, -kTol);
+}
+
+TEST(PlanDetour, NeverPutsTheSecondWaypointPastTheGoal)
+{
+    // An obstacle close to the goal pushes `after` beyond it, which would
+    // carry the bow nearer the object than the standoff promises before the
+    // boat turned back for the goal.
+    auto const d = plan_detour({ 0, 0 }, { 10, 0 }, buoy(9.5, 0.3), kHalfWidth, kMinGap, kClearance);
+    ASSERT_EQ(d.need, DetourNeed::Straddle);
+    EXPECT_LE(d.after.x, 10.0 + kTol) << "second straddle waypoint is past the goal";
+    EXPECT_LE(d.before.x, 10.0 + kTol);
+}
+
+TEST(PlanDetour, ClampingStillReportsWhatThePathActuallyAchieves)
+{
+    // A clamped straddle delivers less than was asked for. It must still
+    // measure the path it really produced, so the caller's under-delivery
+    // warning stays truthful rather than quoting an ideal it did not drive.
+    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(1.6, 0.85), kHalfWidth, kMinGap, kClearance);
+    ASSERT_EQ(d.need, DetourNeed::Straddle);
+
+    std::vector<Point> const driven{ { 0, 0 }, d.before, d.after, { 20, 0 } };
+    double const hull_gap = distance_to_polyline({ 1.6, 0.85 }, driven) - 0.25 - kHalfWidth;
+    EXPECT_NEAR(d.achieved, hull_gap, kTol);
 }
 
 TEST(MatchNearest, PicksTheClosestBlob)

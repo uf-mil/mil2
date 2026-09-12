@@ -129,6 +129,18 @@ class CircleObject
     /// Turn towards the remembered point. Returns true once pointed.
     bool turn_towards_buoy();
 
+    /// The `index`-th corner of the ring around `centre`, at an ABSOLUTE angle
+    /// measured from the bearing the boat entered on. Index 0 is the entry
+    /// point, so index `legs_` is the entry point again, one lap later.
+    Point corner_for(int index, Point const &centre) const;
+
+    /// `corner` pushed further along the boat's line of travel by guidance's
+    /// hold radius, so guidance parking short lands the boat ON the corner.
+    Point aim_past(Point const &from, Point const &corner) const;
+
+    /// Drive to `corner`, aiming past it. Returns true once the boat is there.
+    bool run_to_corner(Boat const &boat);
+
     Context &context_;
     Deadline deadline_;
     double radius_;
@@ -138,6 +150,15 @@ class CircleObject
     Phase phase_{ Phase::FaceForEntry };
     int legs_driven_{ 0 };
     bool released_for_turn_{ false };
+
+    /// Bearing from the object out through the boat when the ring was entered.
+    /// Every corner is measured from this, NOT from wherever the boat happens
+    /// to be, so the lap closes at exactly 360 degrees. See corner_for.
+    double entry_bearing_{ 0.0 };
+
+    /// The corner being driven to -- the real one on the ring, not the aim
+    /// point handed to guidance. Arrival is judged against this.
+    Point corner_{};
 };
 
 /// Face the object, drive to it, and stop short of it.
@@ -184,6 +205,14 @@ class ApproachObject
         Point goal;                            ///< where to stop; always route.back()
         std::optional<Commitment> commitment;  ///< set only when the route straddles something
     };
+
+    /// Where to aim so the boat ends up at the requested standoff.
+    ///
+    /// The one definition of the goal, used both by plan_route and by the
+    /// back-off decision, so the two can never judge different legs. It
+    /// accounts for the bow being ahead of base_link and for guidance parking
+    /// short of its final waypoint.
+    Point aim_goal(Point const &boat) const;
 
     /// Where to stop, plus straddle waypoints if something blocks the line.
     Plan plan_route(Boat const &boat) const;

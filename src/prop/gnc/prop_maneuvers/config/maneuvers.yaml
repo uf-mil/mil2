@@ -167,6 +167,18 @@
     # This one is measured against the object itself, which is what the
     # maneuver actually promises.
     standoff_tolerance: 0.3     # m
+    # How close to a ring corner the circle must actually get. Same reasoning
+    # as standoff_tolerance: arrive_tolerance asks about the goal WAYPOINT and
+    # at 1.5 m is looser than guidance's own 1.0 m hold radius, so it could
+    # report a corner reached before guidance had stopped driving. Short of a
+    # corner always means INSIDE the ring, so the error only ever goes one way
+    # and compounds. Measured 2026-09-12 before the fix: a circle asked for
+    # 6.00 m never got beyond 5.28 m and closed to 1.84 m.
+    #
+    # Reachable only because the circle now aims guidance_hold_radius past each
+    # corner; without that, nothing could close the last metre and this would
+    # hang until the timeout.
+    corner_tolerance: 0.5       # m
     point_tolerance_deg: 5.0    # how close counts as pointing at it
 
     # ── Turning ──────────────────────────────────────────────────────────

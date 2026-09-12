@@ -51,28 +51,6 @@ bool is_blind(double relative_angle, std::vector<BlindSpot> const &blind_spots)
     return false;
 }
 
-std::vector<Point> ring_corners(Point const &centre, Point const &from, double radius, int legs, bool counter_clockwise)
-{
-    std::vector<Point> corners;
-    if (legs < 3)
-    {
-        return corners;
-    }
-
-    // Start on the line from the centre out through the boat, so a boat that
-    // is already about the right distance out does not have to double back.
-    double const start = bearing(centre, from);
-    double const step = (counter_clockwise ? 1.0 : -1.0) * 2.0 * M_PI / static_cast<double>(legs);
-
-    corners.reserve(static_cast<std::size_t>(legs));
-    for (int i = 0; i < legs; ++i)
-    {
-        double const angle = start + step * static_cast<double>(i);
-        corners.push_back(Point{ centre.x + radius * std::cos(angle), centre.y + radius * std::sin(angle) });
-    }
-    return corners;
-}
-
 Point standoff_point(Point const &start, Point const &target, double standoff)
 {
     double const span = distance(start, target);
@@ -195,11 +173,35 @@ Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, dou
     // clearance across the swept range, and a 45 degree entry leg.
     double const spacing = swing_radius;
 
+    // Both waypoints are held ON the leg, between the boat and the goal.
+    //
+    // The perpendicular offset contributes nothing along-track, so before and
+    // after sit at the obstacle's along-track position minus and plus spacing.
+    // Neither trigger gate bounds that. within_segment only says the obstacle
+    // is somewhere between the ends, and TooCloseToSwing only rejects a boat
+    // already inside the swing -- so an obstacle nearly ABEAM of the boat
+    // passes both and puts `before` behind it, while one nearly AT the goal
+    // puts `after` past it.
+    //
+    // A waypoint behind the boat is the worse of the two: guidance restarts at
+    // waypoint 0 on every hand-over and scales its forward speed by the cosine
+    // of the bearing error, so a point astern reads as zero speed and a full
+    // rate turn -- the boat spins on the spot and backtracks for a point it
+    // has already passed. A waypoint past the goal simply carries the bow
+    // nearer the object than the standoff promises.
+    //
+    // Clamping rather than refusing: a squeezed straddle still beats a
+    // straight line, and `achieved` below is measured on the points actually
+    // produced, so the caller's under-delivery warning stays honest.
+    double const foot_along = along * length;
+    double const before_along = std::max(0.0, foot_along - spacing);
+    double const after_along = std::min(length, foot_along + spacing);
+
     result.need = DetourNeed::Straddle;
-    result.before = Point{ obstacle.centre.x + nx * swing_radius - tx * spacing,
-                           obstacle.centre.y + ny * swing_radius - ty * spacing };
-    result.after = Point{ obstacle.centre.x + nx * swing_radius + tx * spacing,
-                          obstacle.centre.y + ny * swing_radius + ty * spacing };
+    result.before = Point{ obstacle.centre.x + nx * swing_radius + tx * (before_along - foot_along),
+                           obstacle.centre.y + ny * swing_radius + ty * (before_along - foot_along) };
+    result.after = Point{ obstacle.centre.x + nx * swing_radius + tx * (after_along - foot_along),
+                          obstacle.centre.y + ny * swing_radius + ty * (after_along - foot_along) };
 
     std::vector<Point> const driven{ from, result.before, result.after, to };
     result.achieved = distance_to_polyline(obstacle.centre, driven) - obstacle.radius - hull_half_width;

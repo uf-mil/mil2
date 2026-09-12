@@ -60,6 +60,25 @@ class Constants
         }
         for (std::size_t i = 0; i + 1 < spots.size(); i += 2)
         {
+            // Each pair is read anticlockwise from `from` to `to`, so a pair
+            // given the wrong way round does not describe a narrow wedge -- it
+            // describes everything EXCEPT that wedge. Swapping 90 and 135 turns
+            // a 45 degree blind spot into a 315 degree one and the mask blanks
+            // almost the whole scan, which looks like a dead lidar rather than
+            // a typo. Same reasoning as the odd-length check above: refuse
+            // rather than run on a list that cannot mean what was intended.
+            //
+            // A pair is legitimate up to 180 degrees; wider than that and the
+            // sighted arc is the smaller one, which is certainly not a "spot".
+            double const span = wrap_angle(deg(spots[i + 1]) - deg(spots[i]));
+            if (span <= 0.0)
+            {
+                RCLCPP_FATAL(node->get_logger(),
+                             "blind_spots_deg pair (%.1f, %.1f) runs backwards; each pair goes anticlockwise from "
+                             "the first value to the second.",
+                             spots[i], spots[i + 1]);
+                throw std::runtime_error("blind_spots_deg pairs must run anticlockwise from, to");
+            }
             blind_spots_.push_back(BlindSpot{ deg(spots[i]), deg(spots[i + 1]) });
         }
 
@@ -90,6 +109,7 @@ class Constants
         // ── Tolerances ────────────────────────────────────────────────────
         arrive_tolerance_ = node->declare_parameter("arrive_tolerance", 1.5);
         standoff_tolerance_ = node->declare_parameter("standoff_tolerance", 0.3);
+        corner_tolerance_ = node->declare_parameter("corner_tolerance", 0.5);
         point_tolerance_ = deg(node->declare_parameter("point_tolerance_deg", 5.0));
 
         // ── Turning ───────────────────────────────────────────────────────
@@ -130,6 +150,7 @@ class Constants
     double reverse_max_distance_{ 0.0 };
     double arrive_tolerance_{ 0.0 };
     double standoff_tolerance_{ 0.0 };
+    double corner_tolerance_{ 0.0 };
     double point_tolerance_{ 0.0 };
     double turn_gain_{ 0.0 };
     double max_turn_rate_{ 0.0 };

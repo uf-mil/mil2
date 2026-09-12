@@ -67,22 +67,6 @@ double distance(Point const &a, Point const &b);
 /// An empty list means the lidar sees everywhere.
 bool is_blind(double relative_angle, std::vector<BlindSpot> const &blind_spots);
 
-/// The corner points of the shape driven around `centre` at `radius`.
-///
-/// The FIRST corner lies on the line from `centre` out through `from`, so a
-/// boat already near that line enters the shape without doubling back. The
-/// remaining corners follow at even spacing in the chosen direction. Driving
-/// corner 0 -> 1 -> ... -> n-1 -> 0 goes all the way round.
-///
-/// `legs` must be at least 3; smaller values return an empty list.
-///
-/// `from == centre` is a degenerate ray with no defined direction; `atan2(0,
-/// 0)` is 0 in C++, so this silently starts the ring due east. That is an
-/// arbitrary answer to an undefined question, not a considered default --
-/// callers should not rely on it, and should avoid asking the question.
-std::vector<Point> ring_corners(Point const &centre, Point const &from, double radius, int legs,
-                                bool counter_clockwise);
-
 /// The point short of `target` by `standoff`, on the line from `start`.
 /// Returns `start` unchanged when the target is already closer than the
 /// standoff, so the boat never reverses to make room.

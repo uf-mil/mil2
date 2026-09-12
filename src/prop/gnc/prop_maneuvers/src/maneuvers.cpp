@@ -133,6 +133,73 @@ bool CircleObject::turn_towards_buoy()
     return context_.spinner.step(boat.direction, bearing(boat.position, context_.lock.point()));
 }
 
+Point CircleObject::corner_for(int index, Point const &centre) const
+{
+    // ABSOLUTE angles, from the bearing the ring was entered on.
+    //
+    // An earlier version redrew the ring from the boat's CURRENT bearing every
+    // corner and took the next one a full step on from there. Because the boat
+    // always stops a little short of a corner, each leg then began a little
+    // behind where the last was aimed, and the shortfall accumulated instead of
+    // cancelling: measured in simulation on 2026-09-12, four "90 degree" legs
+    // advanced 90, 76, 83 and 90 degrees and the boat finished 316 degrees
+    // round, reporting "finished 4 of 4 legs" having never closed the lap.
+    //
+    // Taking the angle from a fixed entry bearing makes a short corner a local
+    // error that the next leg absorbs, rather than a debt carried all the way
+    // round. The centre is still re-read every corner, so a moving estimate is
+    // followed exactly as before -- it is only the ANGLES that are pinned.
+    double const step = (counter_clockwise_ ? 1.0 : -1.0) * 2.0 * M_PI / static_cast<double>(legs_);
+    double const angle = entry_bearing_ + step * static_cast<double>(index);
+    return Point{ centre.x + radius_ * std::cos(angle), centre.y + radius_ * std::sin(angle) };
+}
+
+Point CircleObject::aim_past(Point const &from, Point const &corner) const
+{
+    // Same trick, and the same reason, as ApproachObject::aim_goal: guidance
+    // stops commanding once it is hold_radius from its last waypoint, so a
+    // corner handed over as-is leaves the boat parked short of the ring. Short
+    // of a corner means INSIDE the ring, which is the direction that matters:
+    // measured in simulation on 2026-09-12, a circle asked for 6.00 m never
+    // got further out than 5.28 m and closed to 1.84 m.
+    double const span = distance(from, corner);
+    if (span < 1e-6)
+    {
+        return corner;
+    }
+    double const scale = (span + context_.settings.guidance_hold_radius_) / span;
+    return Point{ from.x + (corner.x - from.x) * scale, from.y + (corner.y - from.y) * scale };
+}
+
+bool CircleObject::run_to_corner(Boat const &boat)
+{
+    // Judged on the REAL corner, not on nearness to the aim point handed over.
+    // driver.arrived() asks about the last waypoint with arrive_tolerance,
+    // which at 1.5 m is larger than guidance's own 1.0 m hold radius -- so it
+    // can report arrival before guidance has even stopped driving. Same defect
+    // ApproachObject documents and fixes for itself with standoff_tolerance.
+    if (distance(boat.position, corner_) <= context_.settings.corner_tolerance_)
+    {
+        return true;
+    }
+
+    // Backstop. Once guidance has parked there is nothing left to close the
+    // gap, so waiting for the tight tolerance would hang until the maneuver
+    // timed out. Take what was achieved and say how far off it was, rather
+    // than either hanging or pretending the corner was reached. This fires
+    // when maneuvers.yaml's guidance_hold_radius has drifted out of step with
+    // prop_controller's hold_radius, which nothing enforces.
+    if (context_.driver.arrived(boat.position))
+    {
+        RCLCPP_WARN(context_.node->get_logger(),
+                    "circle: guidance parked %.2f m from the corner, outside the %.2f m wanted; taking it",
+                    distance(boat.position, corner_), context_.settings.corner_tolerance_);
+        return true;
+    }
+
+    return false;
+}
+
 Status CircleObject::step()
 {
     if (deadline_.expired())
@@ -167,19 +234,24 @@ Status CircleObject::step()
                 return Status::Running;
             }
 
-            // Pointed at the buoy: best possible look, so re-read before
-            // committing to a shape.
-            context_.lock.refresh();
-
-            auto const corners = ring_corners(context_.lock.point(), boat.position, radius_, legs_, counter_clockwise_);
-            if (corners.empty())
+            if (legs_ < 3)
             {
                 RCLCPP_ERROR(context_.node->get_logger(), "circle: %d legs is not a shape; need at least 3", legs_);
                 return Status::Failed;
             }
 
+            // Pointed at the buoy: best possible look, so re-read before
+            // committing to a shape.
+            context_.lock.refresh();
+
+            // Pin the lap to the line out through the boat, so the boat does
+            // not have to double back to start, and every later corner is
+            // measured from here.
+            entry_bearing_ = bearing(context_.lock.point(), boat.position);
+            corner_ = corner_for(0, context_.lock.point());
+
             context_.spinner.stop();
-            context_.driver.go_to(corners.front());
+            context_.driver.go_to(aim_past(boat.position, corner_));
             phase_ = Phase::DriveToEntry;
             RCLCPP_INFO(context_.node->get_logger(), "circle: running out to the ring at %.1f m", radius_);
             return Status::Running;
@@ -187,7 +259,7 @@ Status CircleObject::step()
 
         case Phase::DriveToEntry:
         {
-            if (!context_.driver.arrived(boat.position))
+            if (!run_to_corner(boat))
             {
                 return Status::Running;
             }
@@ -229,27 +301,22 @@ Status CircleObject::step()
                             context_.lock.why().c_str());
             }
 
-            // Redraw around wherever the buoy now is. ring_corners puts the
-            // first corner on the line out through the boat, which is where
-            // the boat already is, so the next corner is always index 1.
-            auto const corners = ring_corners(context_.lock.point(), boat.position, radius_, legs_, counter_clockwise_);
-            if (corners.size() < 2)
-            {
-                RCLCPP_ERROR(context_.node->get_logger(), "circle: %d legs is not a shape; need at least 3", legs_);
-                return Status::Failed;
-            }
+            // Redraw around wherever the buoy now is, but at the angle this
+            // leg was always going to end on. The centre follows the lock; the
+            // angle does not follow the boat. See corner_for.
+            corner_ = corner_for(legs_driven_ + 1, context_.lock.point());
 
             context_.spinner.stop();
-            context_.driver.go_to(corners[1]);
+            context_.driver.go_to(aim_past(boat.position, corner_));
             phase_ = Phase::DriveToCorner;
             RCLCPP_INFO(context_.node->get_logger(), "circle: leg %d of %d, to (%.1f, %.1f)", legs_driven_ + 1, legs_,
-                        corners[1].x, corners[1].y);
+                        corner_.x, corner_.y);
             return Status::Running;
         }
 
         case Phase::DriveToCorner:
         {
-            if (!context_.driver.arrived(boat.position))
+            if (!run_to_corner(boat))
             {
                 return Status::Running;
             }
@@ -312,10 +379,8 @@ DetourNeed worst_need(Context const &context, Point const &boat, Point const &go
 }
 }  // namespace
 
-ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
+Point ApproachObject::aim_goal(Point const &boat) const
 {
-    Point const target = context_.lock.point();
-
     // Stop clear of the object's SURFACE, so the standoff means the same thing
     // whatever size the object is -- and measure it from the BOW, because that
     // is the part of the boat that gets close to things. base_link is the
@@ -324,11 +389,27 @@ ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
     // Aim past the intended stopping point by guidance's hold radius: it stops
     // commanding once it is that close to the final waypoint, so a goal placed
     // exactly on the mark leaves the boat parked short with nothing left to
-    // close the gap. Clamped so the aim point never crosses the object itself.
+    // close the gap.
     double const want_from_centre = context_.lock.radius() + standoff_ + context_.settings.hull_front_;
-    double const aim_from_centre =
-        std::max(context_.lock.radius(), want_from_centre - context_.settings.guidance_hold_radius_);
-    Point const goal = standoff_point(boat.position, target, aim_from_centre);
+
+    // The floor is where the BOW touches the object, not where base_link does.
+    // The goal is a base_link pose and the bow is hull_front_ ahead of it, so
+    // clamping at lock.radius() would still command the front of the boat
+    // 0.760 m inside the buoy. With the shipped defaults the aim-past and the
+    // standoff happen to cancel exactly, and only guidance parking short kept
+    // the boat off it; any approach_standoff below guidance_hold_radius drove
+    // straight through. Nothing keeps maneuvers.yaml's guidance_hold_radius in
+    // step with prop_controller's own hold_radius either, so this floor is the
+    // only thing standing between a mismatched pair and a collision.
+    double const floor = context_.lock.radius() + context_.settings.hull_front_;
+    double const aim_from_centre = std::max(floor, want_from_centre - context_.settings.guidance_hold_radius_);
+    return standoff_point(boat, context_.lock.point(), aim_from_centre);
+}
+
+ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
+{
+    Point const target = context_.lock.point();
+    Point const goal = aim_goal(boat.position);
 
     Plan plan;
     plan.goal = goal;
@@ -480,7 +561,13 @@ Status ApproachObject::step()
             context_.lock.refresh();
             last_refresh_ = context_.node->now();
 
-            Point const goal = standoff_point(boat.position, context_.lock.point(), context_.lock.radius() + standoff_);
+            // The SAME goal plan_route will use. An earlier version rebuilt it
+            // here without the bow offset or the aim-past, so the back-off
+            // decision was taken on a leg the boat would never drive -- and
+            // the gap between the two grows with hull_front or
+            // guidance_hold_radius, either of which could make the approach
+            // skip a back-off it needed or take one it did not.
+            Point const goal = aim_goal(boat.position);
 
             // Asked once, here, on the reading taken a moment ago. This is the
             // only point in the approach where the boat is stopped and pointed
@@ -548,7 +635,17 @@ Status ApproachObject::step()
                 return Status::Running;
             }
 
-            if (!clear_behind(behind_us, boat.position, boat.direction, reverse_distance_,
+            // Check the water the boat has LEFT to cover, not the whole
+            // reverse over again. reverse_distance_ is measured from
+            // reverse_start_, but this strip is measured from where the boat
+            // is NOW, so passing the full distance every step slides the strip
+            // backwards with the boat and by the end sweeps roughly twice the
+            // reverse. A buoy sitting just past the end of the reverse would
+            // then abort it with the boat a handspan from finishing, having
+            // never been on course to reach the buoy at all.
+            double const still_to_cover = std::max(0.0, reverse_distance_ - distance(reverse_start_, boat.position));
+
+            if (!clear_behind(behind_us, boat.position, boat.direction, still_to_cover,
                               context_.settings.hull_half_width_, context_.settings.hull_behind_))
             {
                 context_.reverser.stop();
