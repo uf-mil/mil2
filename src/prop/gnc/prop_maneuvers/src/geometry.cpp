@@ -51,6 +51,13 @@ bool is_blind(double relative_angle, std::vector<BlindSpot> const &blind_spots)
     return false;
 }
 
+Point ring_corner(Point const &centre, double radius, double entry_bearing, int index, int legs, bool counter_clockwise)
+{
+    double const step = (counter_clockwise ? 1.0 : -1.0) * 2.0 * M_PI / static_cast<double>(legs);
+    double const angle = entry_bearing + step * static_cast<double>(index);
+    return Point{ centre.x + radius * std::cos(angle), centre.y + radius * std::sin(angle) };
+}
+
 Point standoff_point(Point const &start, Point const &target, double standoff)
 {
     double const span = distance(start, target);

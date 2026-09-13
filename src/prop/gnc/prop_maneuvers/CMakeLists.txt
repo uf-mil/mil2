@@ -118,6 +118,11 @@ if(BUILD_TESTING)
   ament_add_gtest(test_constants_compiles test/test_constants_compiles.cpp)
   ament_target_dependencies(test_constants_compiles rclcpp)
   target_link_libraries(test_constants_compiles prop_maneuvers_lib)
+  # The source tree's copy, not the installed one: the test must fail on a bad
+  # config before it is installed anywhere.
+  target_compile_definitions(
+    test_constants_compiles
+    PRIVATE MANEUVERS_YAML="${CMAKE_CURRENT_SOURCE_DIR}/config/maneuvers.yaml")
 
   ament_lint_auto_find_test_dependencies()
 endif()

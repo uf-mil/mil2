@@ -115,43 +115,8 @@ CircleObject::CircleObject(Context &context, double radius, int legs, bool count
   , radius_(radius)
   , legs_(legs)
   , counter_clockwise_(counter_clockwise)
+  , last_refresh_(context.node->now())
 {
-}
-
-bool CircleObject::turn_towards_buoy()
-{
-    // Release the driver before commanding a turn, once per turn. guidance
-    // publishes cmd_vel continuously while it holds any points, and the two
-    // streams interleaving makes the boat stutter.
-    if (!released_for_turn_)
-    {
-        context_.driver.release();
-        released_for_turn_ = true;
-    }
-
-    Boat const boat = context_.boat();
-    return context_.spinner.step(boat.direction, bearing(boat.position, context_.lock.point()));
-}
-
-Point CircleObject::corner_for(int index, Point const &centre) const
-{
-    // ABSOLUTE angles, from the bearing the ring was entered on.
-    //
-    // An earlier version redrew the ring from the boat's CURRENT bearing every
-    // corner and took the next one a full step on from there. Because the boat
-    // always stops a little short of a corner, each leg then began a little
-    // behind where the last was aimed, and the shortfall accumulated instead of
-    // cancelling: measured in simulation on 2026-09-12, four "90 degree" legs
-    // advanced 90, 76, 83 and 90 degrees and the boat finished 316 degrees
-    // round, reporting "finished 4 of 4 legs" having never closed the lap.
-    //
-    // Taking the angle from a fixed entry bearing makes a short corner a local
-    // error that the next leg absorbs, rather than a debt carried all the way
-    // round. The centre is still re-read every corner, so a moving estimate is
-    // followed exactly as before -- it is only the ANGLES that are pinned.
-    double const step = (counter_clockwise_ ? 1.0 : -1.0) * 2.0 * M_PI / static_cast<double>(legs_);
-    double const angle = entry_bearing_ + step * static_cast<double>(index);
-    return Point{ centre.x + radius_ * std::cos(angle), centre.y + radius_ * std::sin(angle) };
 }
 
 Point CircleObject::aim_past(Point const &from, Point const &corner) const
@@ -225,30 +190,48 @@ Status CircleObject::step()
         return Status::Failed;
     }
 
+    // Keep confirming the buoy is there, on the move. Same idiom and same
+    // reason as ApproachObject: without it the lock's timestamp would freeze
+    // for the whole lap and stale() would fire on the clock alone.
+    //
+    // A failed refresh is expected here and is not treated as a problem. The
+    // buoy sits 90 degrees off the beam while circling, which is exactly
+    // where the antenna blind wedges are, so it goes unseen for part of every
+    // leg by geometry. TargetLock::refresh throttles its own complaint about
+    // that. Only a lock that has gone genuinely stale -- unseen for
+    // reading_max_age, well past the time a wedge can hide it -- says the
+    // buoy is actually lost.
+    if ((context_.node->now() - last_refresh_).seconds() >= kRefreshInterval)
+    {
+        context_.lock.refresh();
+        last_refresh_ = context_.node->now();
+    }
+
+    if (context_.lock.stale())
+    {
+        context_.driver.release();
+        context_.spinner.stop();
+        RCLCPP_ERROR(context_.node->get_logger(),
+                     "circle: lost the buoy on leg %d of %d (%s); stopping rather than circling a memory",
+                     legs_driven_ + 1, legs_, context_.lock.why().c_str());
+        return Status::Failed;
+    }
+
     switch (phase_)
     {
-        case Phase::FaceForEntry:
+        case Phase::Enter:
         {
-            if (!turn_towards_buoy())
-            {
-                return Status::Running;
-            }
-
             if (legs_ < 3)
             {
                 RCLCPP_ERROR(context_.node->get_logger(), "circle: %d legs is not a shape; need at least 3", legs_);
                 return Status::Failed;
             }
 
-            // Pointed at the buoy: best possible look, so re-read before
-            // committing to a shape.
-            context_.lock.refresh();
-
             // Pin the lap to the line out through the boat, so the boat does
             // not have to double back to start, and every later corner is
             // measured from here.
             entry_bearing_ = bearing(context_.lock.point(), boat.position);
-            corner_ = corner_for(0, context_.lock.point());
+            corner_ = ring_corner(context_.lock.point(), radius_, entry_bearing_, 0, legs_, counter_clockwise_);
 
             context_.spinner.stop();
             context_.driver.go_to(aim_past(boat.position, corner_));
@@ -263,54 +246,11 @@ Status CircleObject::step()
             {
                 return Status::Running;
             }
-            context_.driver.release();
-            context_.spinner.stop();  // release only silences guidance; this stops the boat
-            released_for_turn_ = true;
+
             legs_driven_ = 0;
-            phase_ = Phase::FaceBuoy;
-            RCLCPP_INFO(context_.node->get_logger(), "circle: on the ring, starting %d legs", legs_);
-            return Status::Running;
-        }
-
-        case Phase::FaceBuoy:
-        {
-            if (!turn_towards_buoy())
-            {
-                return Status::Running;
-            }
-
-            if (!context_.lock.refresh())
-            {
-                // One failed refresh is survivable: the remembered point is
-                // still good enough for the next leg, and the following corner
-                // tries again. A lock that has gone STALE is not survivable --
-                // it means the buoy has not actually been seen for
-                // reading_max_age, so every remaining corner would steer at an
-                // increasingly wrong memory and quietly circle nothing.
-                if (context_.lock.stale())
-                {
-                    context_.driver.release();
-                    context_.spinner.stop();
-                    RCLCPP_ERROR(context_.node->get_logger(),
-                                 "circle: lost the buoy on leg %d of %d (%s); stopping rather than "
-                                 "circling a memory",
-                                 legs_driven_ + 1, legs_, context_.lock.why().c_str());
-                    return Status::Failed;
-                }
-                RCLCPP_WARN(context_.node->get_logger(), "circle: keeping the remembered point (%s)",
-                            context_.lock.why().c_str());
-            }
-
-            // Redraw around wherever the buoy now is, but at the angle this
-            // leg was always going to end on. The centre follows the lock; the
-            // angle does not follow the boat. See corner_for.
-            corner_ = corner_for(legs_driven_ + 1, context_.lock.point());
-
-            context_.spinner.stop();
-            context_.driver.go_to(aim_past(boat.position, corner_));
+            start_leg(boat);
             phase_ = Phase::DriveToCorner;
-            RCLCPP_INFO(context_.node->get_logger(), "circle: leg %d of %d, to (%.1f, %.1f)", legs_driven_ + 1, legs_,
-                        corner_.x, corner_.y);
+            RCLCPP_INFO(context_.node->get_logger(), "circle: on the ring, starting %d legs", legs_);
             return Status::Running;
         }
 
@@ -321,23 +261,36 @@ Status CircleObject::step()
                 return Status::Running;
             }
 
-            context_.driver.release();
-            context_.spinner.stop();  // release only silences guidance; this stops the boat
-            released_for_turn_ = true;
             ++legs_driven_;
 
             if (legs_driven_ >= legs_)
             {
+                context_.driver.release();
+                context_.spinner.stop();  // release only silences guidance; this stops the boat
                 RCLCPP_INFO(context_.node->get_logger(), "circle: finished %d of %d legs", legs_driven_, legs_);
                 return Status::Succeeded;
             }
 
-            phase_ = Phase::FaceBuoy;
+            // Roll straight on. Nothing is released and nothing is stopped:
+            // handing guidance a new plan replaces the old one, so the boat
+            // turns towards the next corner while still carrying way.
+            start_leg(boat);
             return Status::Running;
         }
     }
 
     return Status::Running;
+}
+
+void CircleObject::start_leg(Boat const &boat)
+{
+    // Redraw around wherever the buoy now is, but at the angle this leg was
+    // always going to end on. The centre follows the lock; the angle does not
+    // follow the boat. See ring_corner.
+    corner_ = ring_corner(context_.lock.point(), radius_, entry_bearing_, legs_driven_ + 1, legs_, counter_clockwise_);
+    context_.driver.go_to(aim_past(boat.position, corner_));
+    RCLCPP_INFO(context_.node->get_logger(), "circle: leg %d of %d, to (%.1f, %.1f)", legs_driven_ + 1, legs_,
+                corner_.x, corner_.y);
 }
 
 ApproachObject::ApproachObject(Context &context, double standoff)
@@ -746,8 +699,8 @@ Status ApproachObject::step()
             {
                 if (!context_.lock.refresh() && !context_.lock.stale())
                 {
-                    RCLCPP_WARN(context_.node->get_logger(), "approach: keeping the remembered point (%s)",
-                                context_.lock.why().c_str());
+                    RCLCPP_WARN_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 2000,
+                                         "approach: keeping the remembered point (%s)", context_.lock.why().c_str());
                 }
                 last_refresh_ = context_.node->now();
             }

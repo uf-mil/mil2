@@ -2,8 +2,9 @@
  * @file blind_spot_mask_node.cpp
  * @brief Drops the angles the real lidar cannot see, out of a simulated scan.
  *
- * TEST SUPPORT ONLY. The simulated lidar sees a full circle; the real one is
- * blocked by the motors and their mounts over two wedges towards the back.
+ * TEST SUPPORT ONLY. The simulated lidar sees a full circle; on the real boat
+ * the two antennas standing beside it shadow a wedge of about 25 degrees on
+ * each side, near abeam. See blind_spots_deg in config/maneuvers.yaml.
  * Masking here, before the clustering sees the scan, tests the whole chain
  * rather than just the maneuver code.
  *

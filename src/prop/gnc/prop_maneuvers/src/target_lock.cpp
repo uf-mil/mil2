@@ -274,7 +274,15 @@ bool TargetLock::refresh()
     if (!match.ok)
     {
         why_ = describe(match.failure);
-        RCLCPP_WARN(node_->get_logger(), "refresh failed: %s (keeping the remembered point)", why_.c_str());
+        // THROTTLED. Callers refresh every kRefreshInterval (0.3 s) while
+        // driving, and a run of failures is normal rather than alarming: the
+        // object spends part of every circle leg inside an antenna blind
+        // wedge, and the clustering drops a frame now and then. Unthrottled
+        // this logged at 3 Hz and buried everything else in the run. A lock
+        // that is genuinely lost is reported by the caller's stale() check,
+        // which is the line worth reading.
+        RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000,
+                             "refresh failed: %s (keeping the remembered point)", why_.c_str());
         return false;
     }
 
@@ -282,8 +290,8 @@ bool TargetLock::refresh()
     locked_ = sane(match.blob, settings_.max_object_radius_, node_);
     locked_at_ = node_->now();
     why_.clear();
-    RCLCPP_INFO(node_->get_logger(), "refreshed, moved %.2f m to (%.1f, %.1f)", moved, locked_->centre.x,
-                locked_->centre.y);
+    RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000, "refreshed, moved %.2f m to (%.1f, %.1f)",
+                         moved, locked_->centre.x, locked_->centre.y);
     return true;
 }
 

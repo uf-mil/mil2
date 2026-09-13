@@ -16,15 +16,45 @@
     # CHANGE THESE IF THE LIDAR MOVES.
     #
     # Ranges the lidar cannot see through, as a flat list of from, to pairs.
-    # Two mirrored wedges on the SIDES, where the pontoons block the view.
-    # Measured by David, 2026-09-07, described on a clock face with the tips
-    # of the pontoons at 12 and the thrusters at 6: blind from 3:00 to 4:30 on
-    # the right, and 7:30 to 9:00 on the left.
+    # Two mirrored wedges on the SIDES, where the white antennas stand beside
+    # the lidar and cast a shadow across its sweep.
     #
-    # The boat CAN see straight out the back, through the gap between the
-    # pontoons -- a 90 degree window centred on 180. Do not assume otherwise:
-    # the previous value here was a guess of 70 degree wedges that left only a
-    # 40 degree slot behind, which made reversing look blinder than it is.
+    # Measured by David, 2026-09-12: each antenna is about 3-4 in across and
+    # stands 8-10 in out from the lidar's centre, at roughly the same fore-aft
+    # position. A post that size at that distance hides 2*asin(r/d) of the
+    # sweep -- 17 degrees at the slim-and-far end of those tolerances, 29 at
+    # the fat-and-near end, so about 25. Written here as the 30 degree span
+    # from 60 to 90 on each side, which rounds outwards: see the safe-direction
+    # note below.
+    #
+    # ARITHMETIC NOTE, unresolved: antennas at the SAME fore-aft position as
+    # the lidar would shadow a wedge centred on 90, that is 79 to 101, rather
+    # than one ending at 90. For the shadow to end at 90 they would have to
+    # sit about 2.3 in forward of the lidar's centre. Both are inside the slop
+    # of "approximately" and "roughly", and the difference decides whether a
+    # circling buoy goes dark before or after the halfway point of a leg. Put
+    # a tape on it if it ever matters. Widening is the safe direction: the
+    # only consumer is a simulation mask, and a wider mask makes the sim a
+    # harder test than the boat rather than an easier one.
+    #
+    # An earlier note here put these on a clock face -- blind 3:00 to 4:30 on
+    # the right, 7:30 to 9:00 on the left -- with the pontoon tips at 12 and
+    # the thrusters at 6. That was a LOCATION reference, not a claim that the
+    # pontoons block anything; the antennas were always the blocker. These
+    # numbers are the more precise version of the same measurement and
+    # supersede it.
+    #
+    # The boat CAN see straight out the back: everything from 90 through 180
+    # round to -90 is clear, a 180 degree window. Do not assume otherwise --
+    # an early guess of 70 degree wedges left only a 40 degree slot behind and
+    # made reversing look far blinder than it is.
+    #
+    # WHO ACTUALLY READS THIS: only blind_spot_mask_node, which deletes these
+    # angles from the SIMULATED scan so the sim resembles the real boat. No
+    # maneuver consults them when deciding anything -- the reverser's
+    # blindness guard only notices that nothing came back, not that it could
+    # never have seen. If obstacle handling ever needs to tell "I cannot see
+    # there" from "I see nothing there", this is the setting it should read.
     #
     # NOTE: where the lidar is physically bolted is deliberately NOT here. It
     # lives in prop_localization/urdf/prop.urdf and reaches this code through
@@ -67,7 +97,7 @@
     # so guidance's parking lands on the mark. Keep in step with
     # prop_controller/config/controller.yaml; nothing enforces that.
     guidance_hold_radius: 1.0  # m
-    blind_spots_deg: [90.0, 135.0, -135.0, -90.0]
+    blind_spots_deg: [60.0, 90.0, -90.0, -60.0]
     use_blind_spots: true
 
     # ── Acquiring the target ─────────────────────────────────────────────

@@ -67,6 +67,21 @@ double distance(Point const &a, Point const &b);
 /// An empty list means the lidar sees everywhere.
 bool is_blind(double relative_angle, std::vector<BlindSpot> const &blind_spots);
 
+/// The `index`-th corner of a ring of `legs` evenly spaced corners, at
+/// `radius` about `centre`.
+///
+/// The angle is ABSOLUTE, measured from `entry_bearing` -- the bearing from
+/// the object out through the boat when the ring was entered. Index 0 is
+/// therefore the entry point, and index `legs` is the entry point again, one
+/// full lap later. That is the whole point of taking a fixed reference:
+/// stepping on from wherever the boat actually reached turns every short
+/// corner into a debt carried round the lap, and the lap never closes.
+/// Measured in simulation on 2026-09-12, four "90 degree" legs drawn that way
+/// advanced 90, 76, 83 and 90 degrees and finished 316 degrees round while
+/// reporting four of four legs done.
+Point ring_corner(Point const &centre, double radius, double entry_bearing, int index, int legs,
+                  bool counter_clockwise);
+
 /// The point short of `target` by `standoff`, on the line from `start`.
 /// Returns `start` unchanged when the target is already closer than the
 /// standoff, so the boat never reverses to make room.

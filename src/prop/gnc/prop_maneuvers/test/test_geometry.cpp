@@ -476,3 +476,71 @@ TEST(ObstacleAhead, ABiggerObstacleStaysAheadForLonger)
     EXPECT_FALSE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.5, 0 }, 0.25 }, 1.0));
     EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.5, 0 }, 1.00 }, 1.0));
 }
+
+// ── ring_corner ──────────────────────────────────────────────────────────────
+// The circle's corner sequence. These properties used to be comments backed by
+// one simulation run; the lap-closing one in particular is the fix for a real
+// defect and deserves to fail loudly if anyone re-derives corners from the
+// boat's current bearing again.
+
+TEST(RingCorner, IndexZeroIsWhereTheRingWasEntered)
+{
+    // entry_bearing is the bearing from the object out through the boat, so
+    // corner 0 sits on that ray at the ring radius -- the boat runs straight
+    // out to it rather than doubling back to some canonical start.
+    Point const c = ring_corner({ 2.0, -3.0 }, 6.0, deg(30.0), 0, 4, true);
+    EXPECT_NEAR(c.x, 2.0 + 6.0 * std::cos(deg(30.0)), kTol);
+    EXPECT_NEAR(c.y, -3.0 + 6.0 * std::sin(deg(30.0)), kTol);
+}
+
+TEST(RingCorner, ClosesTheLapExactlyAtIndexLegs)
+{
+    for (int legs : { 3, 4, 5, 6, 8 })
+    {
+        Point const first = ring_corner({ -4.0, -4.0 }, 6.0, deg(17.0), 0, legs, true);
+        Point const second = ring_corner({ -4.0, -4.0 }, 6.0, deg(17.0), 1, legs, true);
+        Point const lap = ring_corner({ -4.0, -4.0 }, 6.0, deg(17.0), legs, legs, true);
+        EXPECT_NEAR(distance(first, lap), 0.0, kTol) << "legs = " << legs;
+        // ... and the lap is a lap, not a function that returns one point.
+        EXPECT_GT(distance(first, second), 1.0) << "legs = " << legs;
+    }
+}
+
+TEST(RingCorner, EveryCornerSitsOnTheRing)
+{
+    Point const centre{ 1.0, 2.0 };
+    for (int i = 0; i <= 6; ++i)
+    {
+        EXPECT_NEAR(distance(centre, ring_corner(centre, 6.0, deg(-80.0), i, 6, true)), 6.0, kTol) << "index = " << i;
+    }
+}
+
+TEST(RingCorner, ConsecutiveCornersAreOneEvenShareApart)
+{
+    Point const centre{ 0.0, 0.0 };
+    for (int i = 0; i < 4; ++i)
+    {
+        Point const a = ring_corner(centre, 6.0, 0.0, i, 4, true);
+        Point const b = ring_corner(centre, 6.0, 0.0, i + 1, 4, true);
+        EXPECT_NEAR(wrap_angle(bearing(centre, b) - bearing(centre, a)), deg(90.0), kTol) << "index = " << i;
+    }
+}
+
+TEST(RingCorner, ClockwiseStepsTheOtherWay)
+{
+    Point const centre{ 0.0, 0.0 };
+    Point const a = ring_corner(centre, 6.0, 0.0, 1, 4, false);
+    EXPECT_NEAR(wrap_angle(bearing(centre, a)), deg(-90.0), kTol);
+}
+
+TEST(RingCorner, ClockwiseAndAnticlockwiseMeetAgainAfterAFullLap)
+{
+    Point const centre{ 3.0, 3.0 };
+    Point const ccw = ring_corner(centre, 5.0, deg(200.0), 6, 6, true);
+    Point const cw = ring_corner(centre, 5.0, deg(200.0), 6, 6, false);
+    EXPECT_NEAR(distance(ccw, cw), 0.0, kTol);
+    // They agree only after the full lap; one corner in they are far apart.
+    EXPECT_GT(
+        distance(ring_corner(centre, 5.0, deg(200.0), 1, 6, true), ring_corner(centre, 5.0, deg(200.0), 1, 6, false)),
+        1.0);
+}

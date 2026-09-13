@@ -35,6 +35,23 @@ TEST_F(Fixture, LoadsWithDefaults)
     EXPECT_GT(settings.max_turn_rate_, 0.0);
 }
 
+// The shipped config is what actually runs, and nothing else loads it. Both
+// guards in Constants -- the odd-length check and the backwards-pair check --
+// are fatal at construction, so a typo in maneuvers.yaml surfaces as a node
+// that dies on the water rather than as a red test. A backwards pair has
+// already happened once; it turned a 45 degree blind spot into a 315 degree
+// one and looked like a dead lidar.
+TEST_F(Fixture, TheShippedConfigLoads)
+{
+    rclcpp::NodeOptions options;
+    options.arguments({ "--ros-args", "--params-file", MANEUVERS_YAML });
+    auto node = std::make_shared<rclcpp::Node>("constants_shipped", options);
+    prop_maneuvers::Constants settings(node.get());
+
+    // Two mirrored antenna wedges, one per side.
+    EXPECT_EQ(settings.blind_spots_.size(), 2u);
+}
+
 TEST_F(Fixture, RefusesAMalformedBlindSpotList)
 {
     rclcpp::NodeOptions options;

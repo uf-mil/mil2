@@ -87,6 +87,21 @@ class Deadline
     double seconds_;
 };
 
+/// How often a maneuver re-confirms the object is actually still seen while
+/// driving, in simulated seconds (this is compared against node clock time,
+/// which follows use_sim_time -- see Deadline). Refreshing on literally every
+/// 100 ms tick would work but logs at 10 Hz. 0.3 s is small next to the
+/// default reading_max_age (5.0 s), so several refresh attempts happen before
+/// a genuine loss would go stale, and it is also small next to a short final
+/// approach: on this machine RTF has been measured as low as ~0.4x, so even a
+/// two-second real-world drive can be under one second of simulated time -- a
+/// coarser interval risked never firing at all on a close-in approach, not
+/// just logging less often.
+///
+/// Shared by ApproachObject and CircleObject, which confirm the lock the same
+/// way for the same reason.
+constexpr double kRefreshInterval{ 0.3 };
+
 /// Hold position and turn until the front of the boat points at the lock.
 class FaceObject
 {
@@ -103,14 +118,25 @@ class FaceObject
 /// Go all the way round the locked object along straight legs.
 ///
 /// The boat cannot slide sideways, so a circle becomes a ring of corners with
-/// a straight run between each pair. At every corner the boat stops, turns to
-/// face the buoy -- which puts it straight ahead and clear of the blind spots
-/// -- takes a fresh reading, and redraws the remaining corners around it.
+/// a straight run between each pair. The boat does NOT stop at a corner: it
+/// simply hands guidance the next one and keeps moving, re-reading the buoy
+/// on the way round.
 ///
-/// Four legs gives the diamond. More legs keeps the buoy nearer the front of
-/// the boat during each run: four spans 45 to 135 degrees off the front, six
-/// spans 60 to 120, eight spans 67.5 to 112.5. Raise it if the blind spots
-/// turn out worse than the guess in the settings file.
+/// An earlier version stopped at every corner, turned to face the buoy, took
+/// a reading and turned back. That was never needed. refresh() matches blobs
+/// near the remembered point and does not look at the boat's heading at all,
+/// so pointing the bow at the buoy bought a tidier picture and nothing else.
+/// It cost two things: a turn of 360/legs at every corner, and an inward
+/// bulge of about 1.4 m mid-leg as the boat carried the turn's momentum into
+/// the start of each run.
+///
+/// Where the buoy sits while circling: dead abeam, by definition, sweeping
+/// 90 -/+ 180/legs off the front across a leg -- 45 to 135 degrees for four
+/// legs, 60 to 120 for six, 67.5 to 112.5 for eight. The antenna blind wedges
+/// reach out to exactly 90 (see blind_spots_deg), so that arc always overlaps
+/// one of them however many legs are used, and the buoy goes unseen for part
+/// of every leg. A failed refresh mid-leg is therefore expected rather than
+/// alarming; only a lock gone genuinely stale stops the maneuver.
 class CircleObject
 {
   public:
@@ -120,19 +146,10 @@ class CircleObject
   private:
     enum class Phase
     {
-        FaceForEntry,   ///< turn towards the buoy before working out the entry point
+        Enter,          ///< pin the lap to the entry bearing and set off
         DriveToEntry,   ///< run out to the ring
-        FaceBuoy,       ///< at a corner: turn to the buoy and re-read it
-        DriveToCorner,  ///< run the leg
+        DriveToCorner,  ///< run the leg, rolling straight on at each corner
     };
-
-    /// Turn towards the remembered point. Returns true once pointed.
-    bool turn_towards_buoy();
-
-    /// The `index`-th corner of the ring around `centre`, at an ABSOLUTE angle
-    /// measured from the bearing the boat entered on. Index 0 is the entry
-    /// point, so index `legs_` is the entry point again, one lap later.
-    Point corner_for(int index, Point const &centre) const;
 
     /// `corner` pushed further along the boat's line of travel by guidance's
     /// hold radius, so guidance parking short lands the boat ON the corner.
@@ -141,19 +158,24 @@ class CircleObject
     /// Drive to `corner`, aiming past it. Returns true once the boat is there.
     bool run_to_corner(Boat const &boat);
 
+    /// Point guidance at the next corner, re-drawn around the current lock.
+    /// Does not release guidance or stop the boat -- a new plan replaces the
+    /// old one, so the boat rolls through the corner still carrying way.
+    void start_leg(Boat const &boat);
+
     Context &context_;
     Deadline deadline_;
     double radius_;
     int legs_;
     bool counter_clockwise_;
 
-    Phase phase_{ Phase::FaceForEntry };
+    Phase phase_{ Phase::Enter };
     int legs_driven_{ 0 };
-    bool released_for_turn_{ false };
+    rclcpp::Time last_refresh_;
 
     /// Bearing from the object out through the boat when the ring was entered.
     /// Every corner is measured from this, NOT from wherever the boat happens
-    /// to be, so the lap closes at exactly 360 degrees. See corner_for.
+    /// to be, so the lap closes at exactly 360 degrees. See ring_corner.
     double entry_bearing_{ 0.0 };
 
     /// The corner being driven to -- the real one on the ring, not the aim
@@ -254,17 +276,6 @@ class ApproachObject
     double reverse_held_direction_{ 0.0 };
     double reverse_distance_{ 0.0 };
 
-    // How often to re-confirm the object is actually still seen while
-    // driving, in simulated seconds (this is compared against node clock
-    // time, which follows use_sim_time -- see Deadline). Refreshing on
-    // literally every 100 ms tick would work but logs at 10 Hz. 0.3 s is
-    // small next to the default reading_max_age (5.0 s), so several refresh
-    // attempts happen before a genuine loss would go stale, and it is also
-    // small next to a short final approach: on this machine RTF has been
-    // measured as low as ~0.4x, so even a two-second real-world drive can be
-    // under one second of simulated time -- a coarser interval risked never
-    // firing at all on a close-in approach, not just logging less often.
-    static constexpr double kRefreshInterval{ 0.3 };
     rclcpp::Time last_refresh_;
 };
 
