@@ -24,6 +24,7 @@ Context::Context(rclcpp::Node *node_in, Constants const &settings_in)
         {
             boat_.position = Point{ msg->pose.pose.position.x, msg->pose.pose.position.y };
             boat_.direction = tf2::getYaw(msg->pose.pose.orientation);
+            boat_.surge = msg->twist.twist.linear.x;
             boat_.valid = true;
         });
 }
@@ -151,10 +152,18 @@ bool CircleObject::run_to_corner(Boat const &boat)
     // Backstop. Once guidance has parked there is nothing left to close the
     // gap, so waiting for the tight tolerance would hang until the maneuver
     // timed out. Take what was achieved and say how far off it was, rather
-    // than either hanging or pretending the corner was reached. This fires
-    // when maneuvers.yaml's guidance_hold_radius has drifted out of step with
-    // prop_controller's hold_radius, which nothing enforces.
-    if (context_.driver.arrived(boat.position))
+    // than either hanging or pretending the corner was reached.
+    //
+    // "Parked" is a question about GUIDANCE: it stops commanding once it is
+    // within its own hold radius of its own final waypoint, which is the aim
+    // point and not the corner. Asking driver.arrived() instead measures
+    // arrive_tolerance -- 1.5 m, and about a different point -- so the two
+    // agreed only by coincidence, while the aim-past happened to make up the
+    // difference. Measured 2026-09-13, after prop_controller moved hold_radius
+    // from 1.0 to 0.10 and the aim-past shrank with it: the backstop began
+    // firing 1.40 m from EVERY corner, took each one early, and pulled a
+    // 6.00 m ring in to a 3.92 m worst sag against an ideal of 4.24 m.
+    if (distance(boat.position, aim_) <= context_.settings.guidance_hold_radius_)
     {
         RCLCPP_WARN(context_.node->get_logger(),
                     "circle: guidance parked %.2f m from the corner, outside the %.2f m wanted; taking it",
@@ -232,9 +241,10 @@ Status CircleObject::step()
             // measured from here.
             entry_bearing_ = bearing(context_.lock.point(), boat.position);
             corner_ = ring_corner(context_.lock.point(), radius_, entry_bearing_, 0, legs_, counter_clockwise_);
+            aim_ = aim_past(boat.position, corner_);
 
             context_.spinner.stop();
-            context_.driver.go_to(aim_past(boat.position, corner_));
+            context_.driver.go_to(aim_);
             phase_ = Phase::DriveToEntry;
             RCLCPP_INFO(context_.node->get_logger(), "circle: running out to the ring at %.1f m", radius_);
             return Status::Running;
@@ -288,7 +298,8 @@ void CircleObject::start_leg(Boat const &boat)
     // always going to end on. The centre follows the lock; the angle does not
     // follow the boat. See ring_corner.
     corner_ = ring_corner(context_.lock.point(), radius_, entry_bearing_, legs_driven_ + 1, legs_, counter_clockwise_);
-    context_.driver.go_to(aim_past(boat.position, corner_));
+    aim_ = aim_past(boat.position, corner_);
+    context_.driver.go_to(aim_);
     RCLCPP_INFO(context_.node->get_logger(), "circle: leg %d of %d, to (%.1f, %.1f)", legs_driven_ + 1, legs_,
                 corner_.x, corner_.y);
 }
@@ -667,12 +678,24 @@ Status ApproachObject::step()
             double const actual = distance(boat.position, context_.lock.point());
             if (actual <= wanted + context_.settings.standoff_tolerance_)
             {
-                context_.driver.release();
-                context_.spinner.stop();  // release only silences guidance; this stops the boat
+                // Crossing the standoff is not arriving on it. Measured
+                // 2026-09-13, the boat crossed at 1.58 m/s and carried on for
+                // another 0.85 m before stopping, so the distance reported
+                // here described a place it was only passing through.
+                //
+                // Hold station on the spot rather than releasing. A plan of
+                // one waypoint AT THE BOAT leaves guidance inside its own
+                // hold_radius, so it returns zero speed -- but it keeps
+                // publishing, which matters as much as the zero does:
+                // thruster_manager drops thrust entirely after command_timeout
+                // of silence, so releasing here cut the brake off mid-stop and
+                // left the boat coasting on whatever it still carried.
+                context_.driver.go_to(boat.position);
+                settle_deadline_.emplace(context_.node, context_.settings.stop_timeout_);
+                phase_ = Phase::Settling;
                 RCLCPP_INFO(context_.node->get_logger(),
-                            "approach: arrived, bow %.2f m from the object's surface (asked for %.2f)",
-                            actual - context_.lock.radius() - context_.settings.hull_front_, standoff_);
-                return Status::Succeeded;
+                            "approach: reached the standoff at %.2f m/s, holding here to settle", boat.surge);
+                return Status::Running;
             }
 
             // Still short, but guidance thinks it has parked. Nothing more is
@@ -775,6 +798,40 @@ Status ApproachObject::step()
             }
 
             return Status::Running;
+        }
+
+        case Phase::Settling:
+        {
+            bool const stopped = std::abs(boat.surge) <= context_.settings.stop_speed_;
+            bool const gave_up = settle_deadline_ && settle_deadline_->expired();
+            if (!stopped && !gave_up)
+            {
+                RCLCPP_INFO_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 1000,
+                                     "approach: settling, %.2f m/s", boat.surge);
+                return Status::Running;
+            }
+
+            // Report where the boat ACTUALLY IS, re-measured now, not where it
+            // was when it crossed. That is the whole point of waiting.
+            double const resting = distance(boat.position, context_.lock.point());
+            double const bow = resting - context_.lock.radius() - context_.settings.hull_front_;
+
+            context_.driver.release();
+            context_.spinner.stop();
+
+            if (gave_up)
+            {
+                // Still moving after stop_timeout. The standoff was reached, so
+                // this is not a failure -- but the number below is a snapshot
+                // of something still in motion, and saying so is the whole
+                // reason this phase exists.
+                RCLCPP_WARN(context_.node->get_logger(),
+                            "approach: still making %.2f m/s after %.0f s; reporting anyway", boat.surge,
+                            context_.settings.stop_timeout_);
+            }
+            RCLCPP_INFO(context_.node->get_logger(),
+                        "approach: stopped, bow %.2f m from the object's surface (asked for %.2f)", bow, standoff_);
+            return Status::Succeeded;
         }
     }
 

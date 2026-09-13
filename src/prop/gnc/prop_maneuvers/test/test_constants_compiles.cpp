@@ -50,6 +50,12 @@ TEST_F(Fixture, TheShippedConfigLoads)
 
     // Two mirrored antenna wedges, one per side.
     EXPECT_EQ(settings.blind_spots_.size(), 2u);
+
+    // Settling, used by ApproachObject to wait for the boat to actually stop
+    // before it reports where it ended up. Both must be positive or the wait
+    // either never ends or never happens.
+    EXPECT_GT(settings.stop_speed_, 0.0);
+    EXPECT_GT(settings.stop_timeout_, 0.0);
 }
 
 TEST_F(Fixture, RefusesAMalformedBlindSpotList)

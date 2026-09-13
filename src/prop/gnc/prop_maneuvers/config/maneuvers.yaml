@@ -96,7 +96,15 @@
     # The approach therefore aims this much beyond where it wants to end up,
     # so guidance's parking lands on the mark. Keep in step with
     # prop_controller/config/controller.yaml; nothing enforces that.
-    guidance_hold_radius: 1.0  # m
+    #
+    # Updated 2026-09-13 from 1.0 to match prop_controller moving hold_radius
+    # to 0.10 on main. The mismatch was not cosmetic: this value is what the
+    # circle aims each corner past by, and what the approach pulls its goal in
+    # by, so a stale 1.0 would have overshot every corner by 0.9 m and dragged
+    # the approach's goal a metre too close. The 2026-09-08 measurement above
+    # is from the 1.0 m era -- guidance parking 0.83 m short is not something
+    # to expect at 0.10 m.
+    guidance_hold_radius: 0.10  # m
     blind_spots_deg: [60.0, 90.0, -90.0, -60.0]
     use_blind_spots: true
 
@@ -210,6 +218,31 @@
     # hang until the timeout.
     corner_tolerance: 0.5       # m
     point_tolerance_deg: 5.0    # how close counts as pointing at it
+
+    # ── Settling ─────────────────────────────────────────────────────────
+    # Crossing the standoff is not the same as stopping on it. The approach
+    # used to declare success the moment it crossed and exit in the same tick,
+    # with the boat still making way, so the distance it printed described a
+    # place the boat was only passing through.
+    #
+    # Measured 2026-09-13 against ground truth: the boat crossed at 1.58 m/s,
+    # got to 2.44 m of the buoy, and came to rest 3.29 m off -- 0.85 m further
+    # out, under power, because cmd_vel going to zero is a request to reach
+    # zero SPEED, and the PI loop in thruster_manager brakes through zero and
+    # accelerates the boat backwards. A different run of the same maneuver
+    # instead over-ran to 0.79 m from the buoy centre, which on the real hull
+    # (hull_front 0.760 m) puts the bow inside a 0.25 m buoy. Which way it goes
+    # depends on the speed it happens to be carrying.
+    #
+    # So the approach now holds station where it crossed and waits for the boat
+    # to settle before reporting. These two bound that wait.
+    stop_speed: 0.1             # m/s, at or below this it counts as stopped
+    # Simulated seconds. Generous: at the hull's surge drag the coast decays
+    # with a time constant of mass/xU = 25/8 = 3.1 s, so settling takes a few
+    # seconds even with nothing driving. Expiring is not a failure -- the
+    # standoff was still reached -- so it reports what it achieved and says the
+    # boat had not finished moving.
+    stop_timeout: 10.0          # s
 
     # ── Turning ──────────────────────────────────────────────────────────
     turn_gain: 1.2              # turn rate commanded per radian of error

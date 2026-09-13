@@ -45,6 +45,11 @@ struct Boat
 {
     Point position;
     double direction{ 0.0 };
+    /// Forward speed in m/s, body frame, straight off the position estimate.
+    /// This is the same quantity thruster_manager closes its loop on, so a
+    /// maneuver asking "have I stopped?" and the controller trying to stop
+    /// are talking about the same number.
+    double surge{ 0.0 };
     bool valid{ false };
 };
 
@@ -178,6 +183,12 @@ class CircleObject
     /// to be, so the lap closes at exactly 360 degrees. See ring_corner.
     double entry_bearing_{ 0.0 };
 
+    /// The aim point actually handed to guidance -- the corner pushed a hold
+    /// radius further along. Remembered because "has guidance parked?" is a
+    /// question about ITS waypoint and ITS hold radius, and asking it any
+    /// other way silently changes meaning when either of those moves.
+    Point aim_{};
+
     /// The corner being driven to -- the real one on the ring, not the aim
     /// point handed to guidance. Arrival is judged against this.
     Point corner_{};
@@ -204,6 +215,7 @@ class ApproachObject
         FaceTarget,
         BackingOff,  ///< too close to swing around something; make room first
         Driving,
+        Settling,  ///< standoff reached; hold here until the boat is actually stopped
     };
 
     /// A straddle the approach has started driving and is holding on to.
@@ -277,6 +289,11 @@ class ApproachObject
     double reverse_distance_{ 0.0 };
 
     rclcpp::Time last_refresh_;
+
+    /// Started when the standoff is crossed, so Settling cannot wait forever.
+    /// Separate from the maneuver's own Deadline, which is 300 s and would let
+    /// a boat that never settles hang for five minutes having already arrived.
+    std::optional<Deadline> settle_deadline_;
 };
 
 }  // namespace prop_maneuvers
