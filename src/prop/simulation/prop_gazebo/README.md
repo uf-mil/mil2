@@ -15,19 +15,25 @@ listens on `/thrusters/left` and `/thrusters/right`.
 | Argument | Default | |
 |---|---|---|
 | `world` | `prop_lake.world` | World in `worlds/` |
+| `world_pkg` | `prop_gazebo` | Package the world lives in. `navigator_gazebo` for `robotx_2024.world` |
+| `x` | `0.0` | Spawn position |
+| `y` | `0.0` | Spawn position |
+| `yaw` | `0.0` | Spawn heading, radians, ENU |
 | `control` | `false` | Run the mission, guidance and thruster manager |
 | `mission` | `square` | Mission file for the controller |
 | `control_delay` | `15.0` | Seconds to let localization settle before the controller starts |
 | `rviz` | `true` | |
-| `gz_args` | `--render-engine ogre2` | Extra Gazebo flags |
+| `gz_args` | `--render-engine ogre2` | Extra Gazebo flags. `-s --headless-rendering` runs without the window |
 
 ## What is in here
 
-- `models/prop` is the boat: a 25 kg hull, an IMU where the real one is bolted
-  (backwards, hence the yaw of pi), a GPS, a lidar, and hydrodynamic damping.
-  Its centre of mass is ballasted below the waterline, because Gazebo's
-  buoyancy pushes up through the middle of the hull and gives no righting
-  moment of its own - without that the boat capsizes at the first nudge.
+- `xacro/prop.sdf.xacro` is the boat: a 25 kg hull, an IMU where the real one
+  is bolted (backwards, hence the yaw of pi), a GPS, a lidar, and hydrodynamic
+  damping. Its centre of mass is ballasted below the waterline, because
+  Gazebo's buoyancy pushes up through the middle of the hull and gives no
+  righting moment of its own - without that the boat capsizes at the first
+  nudge. The build runs xacro to generate `models/prop/model.sdf` into the
+  build directory, so there is no checked-in copy to edit.
 - `worlds/prop_lake.world` is open water with a few buoys for the lidar.
 - `PropThrusters` applies the thrust. Gazebo ships a thruster system of its
   own, but it models a propeller and does not put out the newtons you ask it
@@ -40,8 +46,8 @@ listens on `/thrusters/left` and `/thrusters/right`.
 
 ## Gotchas
 
-- The GPS noise in `model.sdf` is in **degrees**, not metres: Gazebo applies it
-  to latitude and longitude directly. `1.8e-07` is 2 cm.
+- The GPS noise in `xacro/prop.sdf.xacro` is in **degrees**, not metres: Gazebo
+  applies it to latitude and longitude directly. `1.8e-07` is 2 cm.
 - The world name is part of the Gazebo topic names, so `config/prop_bridge.yaml`
   is tied to `prop_lake.world`.
 - The lidar scans flat, so it mostly misses the water, but a degree of pitch
