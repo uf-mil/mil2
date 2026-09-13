@@ -100,9 +100,17 @@ Rotation::Rotation()
 
 Eigen::Vector3d Rotation::rot_vec(Axis const& first, Axis const& second, Axis const& third) const
 {
-    return quat_.toRotationMatrix().eulerAngles(static_cast<int>(first), static_cast<int>(second),
-                                                static_cast<int>(third));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
+    auto result = quat_.toRotationMatrix().eulerAngles(static_cast<int>(first), static_cast<int>(second),
+                                                       static_cast<int>(third));
+
+#pragma GCC diagnostic pop
+
+    return result;
 }
+
 
 std::tuple<double, double, double> Rotation::rot_vec_tuple(Axis const& first, Axis const& second,
                                                            Axis const& third) const

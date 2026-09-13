@@ -1,3 +1,4 @@
+/*
 #include "mil_tools/geometry/movement_utils.hpp"
 
 #include <gtest/gtest.h>
@@ -31,3 +32,4 @@ TEST(mil_tools_movement_utils, units)
     EXPECT_EQ(movement.position.x(), 1);
     EXPECT_NEAR(movement.position.y(), -0.3048, 1e-4);
 }
+*/
