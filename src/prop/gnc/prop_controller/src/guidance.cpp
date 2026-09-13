@@ -26,6 +26,7 @@ Guidance::Guidance() : Node("guidance")
     kp_heading_ = declare_parameter("kp_heading", 1.2);
     max_yaw_rate_ = declare_parameter("max_yaw_rate", 0.6);
     hold_radius_ = declare_parameter("hold_radius", 1.0);
+    yaw_tolerance_ = declare_parameter("yaw_tolerance", 0.09);
     approach_gain_ = declare_parameter("approach_gain", 0.5);
     double const rate = declare_parameter("rate", 10.0);
 
@@ -57,7 +58,31 @@ void Guidance::plan_callback(nav_msgs::msg::Path const& path)
     }
     target_ = 0;
     leg_start_ = located_ ? position_ : Point{ 0.0, 0.0 };
-    RCLCPP_INFO(get_logger(), "following %zu waypoints", waypoints_.size());
+    holding_heading_ = false;
+
+    // Only the last pose's orientation means anything: the ones in between are
+    // driven through rather than stopped on. A quaternion of no length is not a
+    // rotation, so it reads as "finish on any heading".
+    has_goal_heading_ = false;
+    if (!path.poses.empty())
+    {
+        auto const& q = path.poses.back().pose.orientation;
+        if (std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w) > 1e-6)
+        {
+            has_goal_heading_ = true;
+            goal_heading_ = yaw_of(q);
+        }
+    }
+
+    if (has_goal_heading_)
+    {
+        RCLCPP_INFO(get_logger(), "following %zu waypoints, finishing on %.0f degrees", waypoints_.size(),
+                    goal_heading_ * 180.0 / M_PI);
+    }
+    else
+    {
+        RCLCPP_INFO(get_logger(), "following %zu waypoints, finishing on any heading", waypoints_.size());
+    }
 }
 
 void Guidance::step()
@@ -103,16 +128,52 @@ std::pair<double, double> Guidance::follow() const
     return { speed, error };
 }
 
-std::pair<double, double> Guidance::hold() const
+std::pair<double, double> Guidance::hold()
 {
     Point const& goal = waypoints_.back();
     double const remaining = std::hypot(position_.first - goal.first, position_.second - goal.second);
+
+    // Latched, and with room to drift before it lets go: turning on the spot
+    // pushes the hull around, and on a bare threshold that hands control
+    // straight back to the bearing law, which turns it back. The two then take
+    // turns and the boat sits there wagging.
     if (remaining < hold_radius_)
+    {
+        holding_heading_ = true;
+    }
+    else if (remaining > 2.0 * hold_radius_)
+    {
+        holding_heading_ = false;
+    }
+
+    if (!holding_heading_)
+    {
+        // The stern reaches the point as well as the bow does. Folding the
+        // error into a quarter turn either way aims whichever end is nearer,
+        // and the projection onto the bow is then signed: negative when the
+        // goal is behind, which the allocator spends as reverse thrust. That
+        // is what backs it out of an overshoot. Steering the bow round instead
+        // only works if the turning circle fits inside hold_radius, and at
+        // these speeds it does not, so the boat circles the point forever.
+        //
+        // The fold flips the yaw command sign as the goal crosses abeam. A
+        // dead band on the choice was measured and made no difference: hold
+        // only runs near the goal, where the speed this asks for is small
+        // enough that the flip costs nothing.
+        double const to_goal =
+            wrap(std::atan2(goal.second - position_.second, goal.first - position_.first) - heading_);
+        return { approach_gain_ * remaining * std::cos(to_goal), std::remainder(to_goal, M_PI) };
+    }
+
+    // On the point, where the bearing to it is noise. Turn to the heading the
+    // plan asked for, or sit still if it did not ask for one.
+    if (!has_goal_heading_)
     {
         return { 0.0, 0.0 };
     }
-    double const error = wrap(std::atan2(goal.second - position_.second, goal.first - position_.first) - heading_);
-    return { approach_gain_ * remaining * std::max(0.0, std::cos(error)), error };
+
+    double const error = wrap(goal_heading_ - heading_);
+    return { 0.0, std::abs(error) < yaw_tolerance_ ? 0.0 : error };
 }
 
 int main(int argc, char** argv)

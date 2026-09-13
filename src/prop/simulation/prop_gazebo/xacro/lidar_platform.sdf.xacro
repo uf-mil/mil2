@@ -12,10 +12,7 @@
 
     <xacro:vlp16_lidar parent="base_link" xyz="0 0 0" rpy="0 0 0"/>
 
-    <xacro:macro
-      name="buoy"
-      params="name xyz radius:=0.2 length:=2.0 rgba:='0.9 0.15 0.15 1.0'"
-    >
+    <xacro:macro name="buoy" params="name xyz radius:=0.2 length:=2.0 rgba:='0.9 0.15 0.15 1.0'">
       <joint name="${name}_joint" type="fixed">
         <parent>base_link</parent>
         <child>${name}</child>

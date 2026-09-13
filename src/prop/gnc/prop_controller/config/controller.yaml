@@ -1,8 +1,4 @@
 ---
-# Tuned against the Gazebo boat in prop_gazebo. max_thrust and thruster_y
-# describe the hull, so they have to match models/prop/model.sdf and the real
-# boat, not be tuned.
-
 guidance:
   ros__parameters:
     rate: 10.0
@@ -11,16 +7,18 @@ guidance:
     accept_radius: 1.0
     kp_heading: 1.2
     max_yaw_rate: 0.6 # rad/s
-    hold_radius: 1.0 # m, station keeping deadband
-    approach_gain: 0.5 # m/s per m remaining
+    hold_radius: 0.10 # m, station keeping deadband
+    yaw_tolerance: 0.09 # rad, ~5 deg, heading deadband once it is on the point
+    approach_gain: 0.1 # m/s per m remaining
 
 thruster_manager:
   ros__parameters:
-    rate: 20.0            # Hz
-    command_timeout: 1.0  # s of cmd_vel silence before thrust is dropped
-    max_thrust: 45.0      # N per thruster
-    thruster_y: 0.25      # m off the centreline
-    kp_surge: 60.0
-    ki_surge: 30.0
+    rate: 20.0
+    command_timeout: 1.0 # s of cmd_vel silence before thrust is dropped
+    max_force_pos: 55.21
+    max_force_neg: 27.56
+    thruster_y: 0.27305 # m off the centreline
+    kp_surge: 70.0
+    ki_surge: 15.0
     kp_yaw: 30.0
     ki_yaw: 15.0

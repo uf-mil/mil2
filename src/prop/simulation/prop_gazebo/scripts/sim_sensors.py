@@ -9,7 +9,7 @@ The Gazebo sensor messages have nowhere to carry covariance, so ros_gz_bridge
 hands over matrices of zeros and the EKFs then treat every measurement as
 perfect - which makes the estimate chase the sensor noise instead of filtering
 it. The values below are the noise the sensors are configured with in
-models/prop/model.sdf; keep the two in step.
+xacro/prop.sdf.xacro; keep the two in step.
 """
 
 import math

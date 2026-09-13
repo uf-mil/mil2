@@ -1,0 +1,9 @@
+[Unit]
+
+[Service]
+ExecStart=sh -c '. /opt/ros/jazzy/setup.sh; MIL_HOME/mil2/scripts/zenoh.sh start'
+User=MIL_USER
+Environment=ZENOH_FOREGROUND=1
+
+[Install]
+WantedBy=default.target

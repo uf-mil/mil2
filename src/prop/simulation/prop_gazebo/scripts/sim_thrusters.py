@@ -25,7 +25,8 @@ class SimThrusters(Node):
     def __init__(self):
         super().__init__("sim_thrusters")
 
-        self.max_thrust = self.declare_parameter("max_thrust", 45.0).value
+        self.max_pos = self.declare_parameter("max_force_pos", 55.21).value
+        self.max_neg = self.declare_parameter("max_force_neg", 27.56).value
         timeout = self.declare_parameter("heartbeat_timeout", 2.0).value
 
         self.dead = False
@@ -49,7 +50,10 @@ class SimThrusters(Node):
         if self.dead:
             return
         effort = max(-1.0, min(1.0, msg.data))
-        self.pubs[side].publish(Float64(data=effort * self.max_thrust))
+        # Full effort astern is worth much less thrust than full effort ahead,
+        # which is what the controller solved against.
+        limit = self.max_pos if effort >= 0.0 else self.max_neg
+        self.pubs[side].publish(Float64(data=effort * limit))
 
     def stop(self) -> None:
         for pub in self.pubs.values():

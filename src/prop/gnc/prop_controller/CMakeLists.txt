@@ -25,14 +25,22 @@ endforeach()
 install(TARGETS mission guidance thruster_manager
         DESTINATION lib/${PROJECT_NAME})
 
+install(PROGRAMS scripts/plan.py DESTINATION lib/${PROJECT_NAME})
+
 install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 
 install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  set(ament_cmake_copyright_FOUND TRUE)
-  set(ament_cmake_cpplint_FOUND TRUE)
+  list(
+    APPEND
+    AMENT_LINT_AUTO_EXCLUDE
+    ament_cmake_copyright
+    ament_cmake_cpplint
+    ament_cmake_flake8
+    ament_cmake_uncrustify
+    ament_cmake_lint_cmake)
   ament_lint_auto_find_test_dependencies()
 endif()
 

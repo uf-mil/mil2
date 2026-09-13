@@ -14,8 +14,12 @@
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
 
+  <!-- plan.py, the terminal side of the plan topic. -->
+  <exec_depend>ament_index_python</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>rclpy</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

@@ -15,8 +15,15 @@
 //        thrusters/heartbeat              std_msgs/Empty
 //
 // Saturation gives yaw priority: when the pair cannot deliver both, surge is
-// given up so the commanded turn survives. The heartbeat is only sent while
-// cmd_vel is fresh, so a stalled controller lets the boat's failsafe stop it.
+// given up so the commanded turn survives. Steering is the only authority the
+// hull has, so losing the turn costs more than losing the speed. The heartbeat
+// is only sent while cmd_vel is fresh, so a stalled controller lets the boat's
+// failsafe stop it.
+//
+// A propeller does not pull as hard astern as it pushes ahead, so the two
+// directions get their own limit and a thruster's newtons convert to effort
+// against whichever one applies. Ignoring that costs most where the boat
+// reverses, which is exactly where guidance uses it: backing onto a waypoint.
 class ThrusterManager : public rclcpp::Node
 {
   public:
@@ -25,17 +32,20 @@ class ThrusterManager : public rclcpp::Node
   private:
     void step();
     void publish(double left, double right);
+    double effort(double newtons) const;
 
     double rate_;
     double command_timeout_;  // s of cmd_vel silence before thrust is dropped
-    double max_thrust_;       // N per thruster, must match the boat
-    double thruster_y_;       // m off the centreline
+    double max_force_pos_;    // N per thruster ahead, must match the boat
+    double max_force_neg_;    // N per thruster astern
+    double thruster_y_;       // m off the centreline, half the thruster span
     double kp_surge_;
     double ki_surge_;
     double kp_yaw_;
     double ki_yaw_;
-    double surge_limit_;  // N, both thrusters at max
-    double yaw_limit_;    // N m, both thrusters opposed at max
+    double surge_limit_pos_;  // N, both thrusters at max ahead
+    double surge_limit_neg_;  // N, both thrusters at max astern
+    double yaw_limit_;        // N m, one thruster each way at max
 
     geometry_msgs::msg::Twist command_;
     double stamp_{ 0.0 };

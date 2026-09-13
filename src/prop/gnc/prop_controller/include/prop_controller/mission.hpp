@@ -11,7 +11,11 @@
 // Missions are flat lists of map frame x, y waypoints in
 // share/prop_controller/missions/<name>.yaml, selected with the "mission"
 // launch argument. A perception driven planner would publish this same topic
-// instead.
+// instead, as does plan.py.
+//
+// A mission can add "final_heading" in degrees to say which way to end up
+// pointing. Without one the last pose carries a zero quaternion, which is
+// guidance's "any heading will do".
 class Mission : public rclcpp::Node
 {
   public:

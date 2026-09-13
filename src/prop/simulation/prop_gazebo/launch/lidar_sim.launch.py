@@ -14,85 +14,85 @@ def pkg_share(pkg, *path):
 
 def generate_launch_description():
     world_arg = DeclareLaunchArgument(
-        'world',
-        default_value='robotx_2024.world',
-        description='World file to load in Gazebo.',
+        "world",
+        default_value="robotx_2024.world",
+        description="World file to load in Gazebo.",
     )
 
     model_name_arg = DeclareLaunchArgument(
-        'model_name',
-        default_value='lidar_platform',
-        description='Name of the spawned lidar platform model.',
+        "model_name",
+        default_value="lidar_platform",
+        description="Name of the spawned lidar platform model.",
     )
 
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            pkg_share('ros_gz_sim', 'launch', 'gz_sim.launch.py'),
+            pkg_share("ros_gz_sim", "launch", "gz_sim.launch.py"),
         ),
         launch_arguments={
-            'gz_args': [
+            "gz_args": [
                 PathJoinSubstitution(
                     [
-                        pkg_share('navigator_gazebo'),
-                        'worlds',
-                        LaunchConfiguration('world'),
+                        pkg_share("navigator_gazebo"),
+                        "worlds",
+                        LaunchConfiguration("world"),
                     ],
                 ),
-                ' --render-engine',
-                ' ogre2',
+                " --render-engine",
+                " ogre2",
             ],
         }.items(),
     )
 
     spawn_platform = Node(
-        package='ros_gz_sim',
-        executable='create',
+        package="ros_gz_sim",
+        executable="create",
         arguments=[
-            '-name',
-            LaunchConfiguration('model_name'),
-            '-file',
-            pkg_share('prop_gazebo', 'models', 'lidar_platform', 'lidar_platform.sdf'),
-            '-x',
-            '0.0',
-            '-y',
-            '0.0',
-            '-z',
-            '2.0',
+            "-name",
+            LaunchConfiguration("model_name"),
+            "-file",
+            pkg_share("prop_gazebo", "models", "lidar_platform", "model.sdf"),
+            "-x",
+            "0.0",
+            "-y",
+            "0.0",
+            "-z",
+            "2.0",
         ],
-        output='screen',
+        output="screen",
     )
 
     bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
         parameters=[
             {
-                'config_file': pkg_share('prop_gazebo', 'config', 'lidar_bridge.yaml'),
+                "config_file": pkg_share("prop_gazebo", "config", "lidar_bridge.yaml"),
             },
         ],
-        output='screen',
+        output="screen",
     )
 
     # The model is rigid and pinned, so the sensor frame never moves relative to
     # the hull: a static broadcaster covers what robot_state_publisher used to.
     laser_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='laser_frame_tf',
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="laser_frame_tf",
         arguments=[
-            '--frame-id',
-            'base_link',
-            '--child-frame-id',
-            'laser_frame',
+            "--frame-id",
+            "base_link",
+            "--child-frame-id",
+            "laser_frame",
         ],
-        output='screen',
+        output="screen",
     )
 
     return LaunchDescription(
         [
             world_arg,
             model_name_arg,
-            SetParameter('use_sim_time', True),
+            SetParameter("use_sim_time", True),
             gz_sim,
             spawn_platform,
             bridge,

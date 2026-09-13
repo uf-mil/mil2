@@ -23,10 +23,19 @@
   gz_type_name: "gz.msgs.NavSat"
   direction: GZ_TO_ROS
 
+# The gpu_lidar's <topic> is lidar/scan, and gz-sensors hangs the point cloud
+# off it as lidar/scan/points. The scan is one ring flattened; the cloud is all
+# sixteen, and is what the pcd package clusters on.
 - ros_topic_name: "/lidar/scan"
   gz_topic_name: "/lidar/scan"
   ros_type_name: "sensor_msgs/msg/LaserScan"
   gz_type_name: "gz.msgs.LaserScan"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/lidar/points"
+  gz_topic_name: "/lidar/scan/points"
+  ros_type_name: "sensor_msgs/msg/PointCloud2"
+  gz_type_name: "gz.msgs.PointCloudPacked"
   direction: GZ_TO_ROS
 
 # Noise free pose and velocity, for comparing against the estimate.

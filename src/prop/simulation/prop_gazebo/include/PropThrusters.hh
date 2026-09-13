@@ -20,8 +20,9 @@ namespace prop_gazebo
 ///
 ///     <plugin filename="PropThrusters" name="prop_gazebo::PropThrusters">
 ///       <link_name>base_link</link_name>   <!-- hull to push -->
-///       <thruster_y>0.25</thruster_y>      <!-- m off the centreline -->
-///       <max_thrust>45.0</max_thrust>      <!-- N, per thruster -->
+///       <thruster_y>0.27305</thruster_y>   <!-- m off the centreline -->
+///       <max_force_pos>55.21</max_force_pos>  <!-- N per thruster, ahead -->
+///       <max_force_neg>27.56</max_force_neg>  <!-- N per thruster, astern -->
 ///       <topic_left>/prop/thrust/left</topic_left>
 ///       <topic_right>/prop/thrust/right</topic_right>
 ///     </plugin>
@@ -44,8 +45,9 @@ class PropThrusters : public gz::sim::System, public gz::sim::ISystemConfigure, 
 
     gz::sim::Model model_{ gz::sim::kNullEntity };
     std::string link_name_{ "base_link" };
-    double thruster_y_{ 0.25 };
-    double max_thrust_{ 45.0 };
+    double thruster_y_{ 0.27305 };
+    double max_force_pos_{ 55.21 };
+    double max_force_neg_{ 27.56 };
 
     gz::transport::Node node_;
     std::mutex mutex_;
