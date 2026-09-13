@@ -12,6 +12,9 @@ find_package(sensor_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common filters search segmentation)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 include_directories(include ${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -30,8 +33,14 @@ target_link_libraries(pcl_clustering_node ${PCL_LIBRARIES})
 
 # ── pcl_tracker node ─────────────────────────────────────────────────────────
 add_executable(pcl_tracker_node src/pcl_tracker_node.cpp)
-ament_target_dependencies(pcl_tracker_node rclcpp visualization_msgs)
-
+ament_target_dependencies(
+  pcl_tracker_node
+  rclcpp
+  visualization_msgs
+  pcl_conversions
+  tf2_ros
+  tf2_geometry_msgs
+  geometry_msgs)
 # ── Install ───────────────────────────────────────────────────────────────────
 install(TARGETS pcl_filter_node pcl_clustering_node pcl_tracker_node
         DESTINATION lib/${PROJECT_NAME})

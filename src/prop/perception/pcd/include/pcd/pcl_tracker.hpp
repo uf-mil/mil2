@@ -17,7 +17,7 @@
  *        e. Spawn new tracks for unmatched detections.
  *        f. Delete tracks whose miss counter exceeds max_missed_frames.
  *   2. Publish all confirmed tracks (hits >= min_hits) as a MarkerArray with
- *      stable .id fields and per-track colours.
+ *      stable .id fields and per-track colours. - publishes on /tracked_markers
  *
  * EKF state:  x = [px, py, vx, vy]^T  (2-D constant-velocity model)
  * Measurement: z = [px, py]^T          (centroid of bounding-box marker)
@@ -36,6 +36,10 @@
 
 #include "pcd/pcd_constants.hpp"
 
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <tf2_ros/buffer.hpp>
+#include <tf2_ros/transform_listener.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
@@ -243,6 +247,9 @@ class PclTracker : public rclcpp::Node, public PcdConstants
   public:
     PclTracker() : rclcpp::Node("pcl_tracker"), PcdConstants(this)
     {
+        tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
         sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
             "cluster_markers", rclcpp::QoS(1), std::bind(&PclTracker::markers_cb, this, std::placeholders::_1));
 
@@ -363,15 +370,41 @@ class PclTracker : public rclcpp::Node, public PcdConstants
 
     void markers_cb(visualization_msgs::msg::MarkerArray::ConstSharedPtr const msg)
     {
-        // Collect only CUBE (bounding-box) markers; ignore the DELETEALL sentinel.
-        std::vector<visualization_msgs::msg::Marker const*> detections;
+        // Collect only CUBE (bounding-box) markers, transformed into target_frame_.
+        std::vector<visualization_msgs::msg::Marker> transformed_detections;
+        transformed_detections.reserve(msg->markers.size());
+
         for (auto const& m : msg->markers)
         {
-            if (m.type == visualization_msgs::msg::Marker::CUBE && m.action == visualization_msgs::msg::Marker::ADD)
+            if (!(m.type == visualization_msgs::msg::Marker::CUBE && m.action == visualization_msgs::msg::Marker::ADD))
             {
-                detections.push_back(&m);
+                continue;
             }
+
+            geometry_msgs::msg::PoseStamped in, out;
+            in.header = m.header;
+            in.pose = m.pose;
+
+            try
+            {
+                out = tf_buffer_->transform(in, target_frame_, tf2::durationFromSec(0.1));
+            }
+            catch (tf2::TransformException const& ex)
+            {
+                RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "TF transform failed for marker ID %d: %s", m.id,
+                                     ex.what());
+                continue;  // drop detection if the transform does not exist
+            }
+            visualization_msgs::msg::Marker mt = m;
+            mt.pose = out.pose;
+            mt.header.frame_id = target_frame_;
+            transformed_detections.push_back(mt);
         }
+
+        std::vector<visualization_msgs::msg::Marker const*> detections;
+        detections.reserve(transformed_detections.size());
+        for (auto const& m : transformed_detections)
+            detections.push_back(&m);
 
         // Compute dt from stamp
         rclcpp::Time now = msg->markers.empty() ? this->now() : rclcpp::Time(msg->markers.back().header.stamp);
@@ -384,6 +417,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         }
         last_stamp_ = now;
         std_msgs::msg::Header header = msg->markers.empty() ? std_msgs::msg::Header{} : msg->markers.back().header;
+        header.frame_id = target_frame_;
 
         // ── 1. Predict all tracks ─────────────────────────────────────────────
         for (auto& t : tracks_)
@@ -519,6 +553,10 @@ class PclTracker : public rclcpp::Node, public PcdConstants
     // ── Members ───────────────────────────────────────────────────────────────
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr sub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_;
+
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+    std::string target_frame_{ "map" };
 
     std::vector<Track> tracks_;
     int next_id_{ 0 };
