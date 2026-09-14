@@ -50,6 +50,10 @@ struct Boat
     /// maneuver asking "have I stopped?" and the controller trying to stop
     /// are talking about the same number.
     double surge{ 0.0 };
+    /// Turn rate in rad/s, left positive, straight off the position estimate.
+    /// The rotational twin of surge, and used for the same question: a turn is
+    /// not over when the command stops, it is over when the boat stops.
+    double yaw_rate{ 0.0 };
     bool valid{ false };
 };
 
@@ -117,6 +121,21 @@ class Maneuver
 };
 
 /// Hold position and turn until the front of the boat points at the lock.
+///
+/// Turning and then WAITING, in two phases, for the same reason the approach
+/// settles before reporting: the boat carries its turn past the point where
+/// the command stops. Spinner::step() stops commanding as soon as the error is
+/// inside point_tolerance, but measured 2026-09-13 against ground truth, that
+/// moment arrives with the boat still turning at 17 deg/s. It then coasted
+/// 11.7 degrees further and came to rest 6.84 degrees off -- OUTSIDE the 5
+/// degree tolerance it had just declared it was inside, and on the far side of
+/// the target. The estimate was not at fault; the EKF's yaw matched ground
+/// truth to 0.00 degrees.
+///
+/// So the turn now ends, the boat is allowed to stop, and the error is
+/// RE-MEASURED where it actually came to rest. If that still misses, it turns
+/// again -- from a standstill, so the second correction is much gentler than
+/// the first and the overshoot shrinks with it.
 class FaceObject : public Maneuver
 {
   public:
@@ -124,9 +143,24 @@ class FaceObject : public Maneuver
     Status step() override;
 
   private:
+    enum class Phase
+    {
+        Turning,
+        Settling,
+    };
+
+    /// How many times to re-aim after settling before reporting whatever was
+    /// achieved. Each correction starts from rest and is smaller than the last,
+    /// so this is a backstop against a boat that will not sit still, not a
+    /// budget anything is expected to spend.
+    static constexpr int kMaxCorrections{ 3 };
+
     Context &context_;
     Deadline deadline_;
     bool released_{ false };
+    Phase phase_{ Phase::Turning };
+    std::optional<Deadline> settle_deadline_;
+    int corrections_{ 0 };
 };
 
 /// Go all the way round the locked object along straight legs.

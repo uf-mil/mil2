@@ -25,6 +25,7 @@ Context::Context(rclcpp::Node *node_in, Constants const &settings_in)
             boat_.position = Point{ msg->pose.pose.position.x, msg->pose.pose.position.y };
             boat_.direction = tf2::getYaw(msg->pose.pose.orientation);
             boat_.surge = msg->twist.twist.linear.x;
+            boat_.yaw_rate = msg->twist.twist.angular.z;
             boat_.valid = true;
         });
 }
@@ -100,13 +101,69 @@ Status FaceObject::step()
     }
 
     double const target = bearing(boat.position, context_.lock.point());
-    if (context_.spinner.step(boat.direction, target))
+
+    if (phase_ == Phase::Turning)
     {
-        RCLCPP_INFO(context_.node->get_logger(), "face: pointing at (%.1f, %.1f)", context_.lock.point().x,
-                    context_.lock.point().y);
+        if (!context_.spinner.step(boat.direction, target))
+        {
+            return Status::Running;
+        }
+
+        // Inside the tolerance, which is NOT the same as finished. step() has
+        // already published the stop; give the boat somewhere to put its
+        // remaining turn before believing the number.
+        settle_deadline_.emplace(context_.node, context_.settings.stop_timeout_);
+        phase_ = Phase::Settling;
+        RCLCPP_INFO(context_.node->get_logger(), "face: inside the tolerance at %.1f deg/s, letting it settle",
+                    degrees(boat.yaw_rate));
+        return Status::Running;
+    }
+
+    // Phase::Settling.
+    bool const stopped = std::abs(boat.yaw_rate) <= context_.settings.stop_turn_rate_;
+    bool const gave_up = settle_deadline_ && settle_deadline_->expired();
+    if (!stopped && !gave_up)
+    {
+        RCLCPP_INFO_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 1000,
+                             "face: settling, %.1f deg/s", degrees(boat.yaw_rate));
+        return Status::Running;
+    }
+
+    // Re-measure where the boat actually came to rest. This is the whole point
+    // of waiting: the error at the moment of crossing describes a heading the
+    // boat was only sweeping through.
+    double const resting = wrap_angle(target - boat.direction);
+
+    if (std::abs(resting) <= context_.settings.point_tolerance_)
+    {
+        context_.spinner.stop();
+        RCLCPP_INFO(context_.node->get_logger(), "face: pointing at (%.1f, %.1f), %.1f deg off",
+                    context_.lock.point().x, context_.lock.point().y, degrees(resting));
         return Status::Succeeded;
     }
 
+    if (gave_up)
+    {
+        context_.spinner.stop();
+        RCLCPP_WARN(context_.node->get_logger(),
+                    "face: still turning at %.1f deg/s after %.0f s; reporting %.1f deg off", degrees(boat.yaw_rate),
+                    context_.settings.stop_timeout_, degrees(resting));
+        return Status::Succeeded;
+    }
+
+    if (++corrections_ > kMaxCorrections)
+    {
+        context_.spinner.stop();
+        RCLCPP_WARN(context_.node->get_logger(), "face: settled %.1f deg off after %d corrections; reporting that",
+                    degrees(resting), kMaxCorrections);
+        return Status::Succeeded;
+    }
+
+    // Overshot. Turn again, this time from a standstill.
+    RCLCPP_INFO(context_.node->get_logger(), "face: overshot to %.1f deg, correction %d of %d", degrees(resting),
+                corrections_, kMaxCorrections);
+    settle_deadline_.reset();
+    phase_ = Phase::Turning;
     return Status::Running;
 }
 

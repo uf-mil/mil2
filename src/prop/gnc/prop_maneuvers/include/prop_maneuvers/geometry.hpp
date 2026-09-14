@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <vector>
 
 namespace prop_maneuvers
@@ -56,6 +57,14 @@ struct Offset
 /// Wrap to [-pi, pi], both ends inclusive (std::remainder can return exactly
 /// -pi; that is not a bug to "round" the other way).
 double wrap_angle(double angle);
+
+/// Radians to degrees, for log lines only. Every angle in this package is
+/// radians; degrees exist so a human reading the output does not have to
+/// convert in their head.
+constexpr double degrees(double radians)
+{
+    return radians * 180.0 / M_PI;
+}
 
 /// Absolute direction from `from` to `to`.
 double bearing(Point const &from, Point const &to);

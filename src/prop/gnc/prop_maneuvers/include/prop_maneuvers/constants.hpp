@@ -110,6 +110,7 @@ class Constants
         arrive_tolerance_ = node->declare_parameter("arrive_tolerance", 1.5);
         standoff_tolerance_ = node->declare_parameter("standoff_tolerance", 0.3);
         stop_speed_ = node->declare_parameter("stop_speed", 0.1);
+        stop_turn_rate_ = deg(node->declare_parameter("stop_turn_rate_deg", 2.0));
         stop_timeout_ = node->declare_parameter("stop_timeout", 10.0);
         corner_tolerance_ = node->declare_parameter("corner_tolerance", 0.5);
         point_tolerance_ = deg(node->declare_parameter("point_tolerance_deg", 5.0));
@@ -153,6 +154,7 @@ class Constants
     double arrive_tolerance_{ 0.0 };
     double standoff_tolerance_{ 0.0 };
     double stop_speed_{ 0.0 };
+    double stop_turn_rate_{ 0.0 };
     double stop_timeout_{ 0.0 };
     double corner_tolerance_{ 0.0 };
     double point_tolerance_{ 0.0 };

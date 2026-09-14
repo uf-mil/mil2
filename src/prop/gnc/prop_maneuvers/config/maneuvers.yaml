@@ -237,6 +237,19 @@
     # So the approach now holds station where it crossed and waits for the boat
     # to settle before reporting. These two bound that wait.
     stop_speed: 0.1             # m/s, at or below this it counts as stopped
+    # The same idea for turning, and FaceObject needs it for the same reason.
+    # Spinner stops commanding the moment the heading error is inside
+    # point_tolerance_deg, but the boat carries the turn on past that.
+    #
+    # Measured 2026-09-13 against ground truth: the error crossed inside 5
+    # degrees with the boat still turning at 17 deg/s, it coasted 11.7 degrees
+    # further, and it came to rest 6.84 degrees off -- outside the tolerance it
+    # had just declared it was inside. That is 0.69 seconds of yaw coast
+    # (11.7 / 17), so a boat still turning at this 2 deg/s has about 1.4 degrees
+    # left in it, which fits inside the 5 degree tolerance with room to spare.
+    #
+    # Raising this makes the maneuver declare earlier and land further off.
+    stop_turn_rate_deg: 2.0     # deg/s, at or under this the turn is over
     # Simulated seconds. Generous: at the hull's surge drag the coast decays
     # with a time constant of mass/xU = 25/8 = 3.1 s, so settling takes a few
     # seconds even with nothing driving. Expiring is not a failure -- the
