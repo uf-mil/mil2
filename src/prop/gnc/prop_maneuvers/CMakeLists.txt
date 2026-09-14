@@ -25,7 +25,7 @@ add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp src/spinner.cpp)
 # call onto a hanging continuation that ament_lint_cmake then rejects as "weird
 # indentation". Both tools accept this form. Do not fold it back in.
 target_sources(prop_maneuvers_lib PRIVATE src/target_lock.cpp src/maneuvers.cpp
-                                          src/reverser.cpp)
+                                          src/reverser.cpp src/runner.cpp)
 ament_target_dependencies(
   prop_maneuvers_lib
   rclcpp

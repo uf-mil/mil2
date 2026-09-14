@@ -107,12 +107,21 @@ class Deadline
 /// way for the same reason.
 constexpr double kRefreshInterval{ 0.3 };
 
+/// What all three maneuvers are: something that can be stepped, which says how
+/// it went. Exists so one runner can drive any of them -- see ManeuverRunner.
+class Maneuver
+{
+  public:
+    virtual ~Maneuver() = default;
+    virtual Status step() = 0;
+};
+
 /// Hold position and turn until the front of the boat points at the lock.
-class FaceObject
+class FaceObject : public Maneuver
 {
   public:
     explicit FaceObject(Context &context);
-    Status step();
+    Status step() override;
 
   private:
     Context &context_;
@@ -142,11 +151,11 @@ class FaceObject
 /// one of them however many legs are used, and the buoy goes unseen for part
 /// of every leg. A failed refresh mid-leg is therefore expected rather than
 /// alarming; only a lock gone genuinely stale stops the maneuver.
-class CircleObject
+class CircleObject : public Maneuver
 {
   public:
     CircleObject(Context &context, double radius, int legs, bool counter_clockwise);
-    Status step();
+    Status step() override;
 
   private:
     enum class Phase
@@ -203,11 +212,11 @@ class CircleObject
 /// When the boat starts so close to a blocking blob that no swing wide enough
 /// to clear it exists, the approach backs straight up once to make room and
 /// then re-plans. Once, deliberately -- see has_reversed_ below.
-class ApproachObject
+class ApproachObject : public Maneuver
 {
   public:
     ApproachObject(Context &context, double standoff);
-    Status step();
+    Status step() override;
 
   private:
     enum class Phase

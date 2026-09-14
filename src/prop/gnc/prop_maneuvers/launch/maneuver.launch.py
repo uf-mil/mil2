@@ -54,6 +54,13 @@ def generate_launch_description():
             DeclareLaunchArgument("target_x", default_value="20.0"),
             DeclareLaunchArgument("target_y", default_value="-3.0"),
             DeclareLaunchArgument(
+                "headless",
+                default_value="false",
+                description="Drop the Gazebo window and RViz. Rendering is what "
+                "the simulation spends most of its time on, so this is the "
+                "difference between watching a maneuver and measuring one.",
+            ),
+            DeclareLaunchArgument(
                 "blind_spots",
                 default_value="false",
                 description="Fake the real boat's blind spots by masking the scan.",
@@ -74,6 +81,22 @@ def generate_launch_description():
                 PythonLaunchDescriptionSource(
                     os.path.join(gazebo_share, "launch", "prop_sim.launch.py"),
                 ),
+                launch_arguments={
+                    "rviz": PythonExpression(
+                        [
+                            '"false" if "',
+                            LaunchConfiguration("headless"),
+                            '" == "true" else "true"',
+                        ],
+                    ),
+                    "gz_args": PythonExpression(
+                        [
+                            '"-s --headless-rendering" if "',
+                            LaunchConfiguration("headless"),
+                            '" == "true" else "--render-engine ogre2"',
+                        ],
+                    ),
+                }.items(),
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
