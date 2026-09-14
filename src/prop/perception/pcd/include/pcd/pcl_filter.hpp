@@ -7,29 +7,45 @@
  * Filter pipeline (applied in order):
  *   1. Radial distance pass-through  — rejects points outside [min_distance, max_distance].
  *   2. Z-height pass-through         — rejects water returns below water_z_min and
- *                                      sky noise above water_z_max.
+ *                                      sky noise above water_z_max, measured LEVEL
+ *                                      rather than in the raw, possibly-tilted sensor
+ *                                      frame (see apply_z_filter).
  *   3. Voxel-grid down-sample        — reduces density before clustering (optional).
  */
 
 #pragma once
 
-#include <pcl/filters/passthrough.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 #include <cmath>
+#include <deque>
+#include <limits>
+#include <optional>
 #include <string>
 
 #include <rclcpp/rclcpp.hpp>
 
 #include "pcd/pcd_constants.hpp"
 
+#include <builtin_interfaces/msg/time.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 namespace pcd
 {
+
+/// Roll and pitch only — yaw does not change how high a point sits above the
+/// water, and translation does not enter a height cut at all.
+struct Attitude
+{
+    double roll;
+    double pitch;
+};
 
 /**
  * @class PclFilter
@@ -47,16 +63,36 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
             input_topic_, rclcpp::SensorDataQoS(), std::bind(&PclFilter::cloud_cb, this, std::placeholders::_1));
 
+        imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
+            imu_topic_, rclcpp::SensorDataQoS(), std::bind(&PclFilter::imu_cb, this, std::placeholders::_1));
+
         pub_ = create_publisher<sensor_msgs::msg::PointCloud2>("filtered_cloud", rclcpp::QoS(1));
 
         RCLCPP_INFO(get_logger(),
-                    "pcl_filter started — topic='%s'  dist=[%.2f, %.2f] m  "
-                    "z=[%.2f, %.2f] m  voxel=%.3f m",
-                    input_topic_.c_str(), min_distance_, max_distance_, water_z_min_, water_z_max_, voxel_leaf_size_);
+                    "pcl_filter started — topic='%s'  imu='%s'  dist=[%.2f, %.2f] m  "
+                    "z=[%.2f, %.2f] m (levelled by roll/pitch)  voxel=%.3f m",
+                    input_topic_.c_str(), imu_topic_.c_str(), min_distance_, max_distance_, water_z_min_, water_z_max_,
+                    voxel_leaf_size_);
     }
 
   private:
-    // ── Callback ─────────────────────────────────────────────────────────────
+    /// How long a window of IMU samples to keep buffered, independent of
+    /// attitude_max_age_: a generous, fixed bound so tuning that parameter up
+    /// cannot silently grow the buffer without limit.
+    static constexpr double kImuBufferWindowSec = 2.0;
+
+    // ── Callbacks ────────────────────────────────────────────────────────────
+
+    void imu_cb(sensor_msgs::msg::Imu::ConstSharedPtr const msg)
+    {
+        imu_buffer_.push_back(*msg);
+        rclcpp::Time const newest(imu_buffer_.back().header.stamp);
+        while (!imu_buffer_.empty() &&
+               (newest - rclcpp::Time(imu_buffer_.front().header.stamp)).seconds() > kImuBufferWindowSec)
+        {
+            imu_buffer_.pop_front();
+        }
+    }
 
     void cloud_cb(sensor_msgs::msg::PointCloud2::ConstSharedPtr const msg)
     {
@@ -71,7 +107,7 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         }
 
         auto filtered = apply_distance_filter(cloud);
-        filtered = apply_z_filter(filtered);
+        filtered = apply_z_filter(filtered, attitude_at(msg->header.stamp));
         filtered = apply_voxel(filtered);
 
         if (filtered->empty())
@@ -117,19 +153,107 @@ class PclFilter : public rclcpp::Node, public PcdConstants
     /**
      * @brief Z-height pass-through filter (rejects water returns and sky noise).
      *
-     * Keeps points with  water_z_min_ <= z <= water_z_max_.
-     * All points below water_z_min_ are treated as water-surface reflections
-     * and are discarded.
+     * Keeps points whose LEVELLED z lies in [water_z_min_, water_z_max_].
+     *
+     * A constant z cut taken directly in the sensor frame is only valid while
+     * the sensor is level. Circling pitches the boat 0.3-0.5 degrees, which
+     * tilts the water plane inside the lidar frame enough that a water point
+     * at 25 m rises 0.17 m -- clean over a -0.50 m cut. Measured 2026-09-13,
+     * replaying 12 captured mid-circle frames offline: that let 500-3400 water
+     * points a frame survive, which Euclidean clustering then shattered into
+     * 18-22 clusters, some over 11 m across. Levelling first (this function)
+     * collapsed that to a median of 2 clusters, matching a level boat.
+     *
+     * Rotating by roll then pitch and reading off the resulting z is
+     * equivalent to rotating the whole cloud and keeping only the z it
+     * produces -- yaw does not change a point's height and translation does
+     * not enter a height cut at all, so this needs nothing else. The point
+     * itself is returned UNCHANGED; only the test against water_z_min_ /
+     * water_z_max_ is levelled, so everything downstream keeps seeing the
+     * sensor frame the header claims.
+     *
+     * When `attitude` is absent -- no IMU sample young enough to trust, see
+     * attitude_at() -- this degrades to the old, unlevelled behaviour rather
+     * than guessing.
      */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_z_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in) const
+    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_z_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in,
+                                                       std::optional<Attitude> const &attitude) const
     {
+        double const roll = attitude ? attitude->roll : 0.0;
+        double const pitch = attitude ? attitude->pitch : 0.0;
+        double const cr = std::cos(roll);
+        double const sr = std::sin(roll);
+        double const cp = std::cos(pitch);
+        double const sp = std::sin(pitch);
+
         pcl::PointCloud<pcl::PointXYZ>::Ptr out(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PassThrough<pcl::PointXYZ> pass;
-        pass.setInputCloud(in);
-        pass.setFilterFieldName("z");
-        pass.setFilterLimits(static_cast<float>(water_z_min_), static_cast<float>(water_z_max_));
-        pass.filter(*out);
+        out->reserve(in->size());
+        for (auto const &pt : *in)
+        {
+            double const z_level = -sp * pt.x + cp * sr * pt.y + cp * cr * pt.z;
+            if (z_level >= water_z_min_ && z_level <= water_z_max_)
+            {
+                out->push_back(pt);
+            }
+        }
+        out->width = static_cast<uint32_t>(out->size());
+        out->height = 1;
+        out->is_dense = true;
         return out;
+    }
+
+    /**
+     * @brief Roll and pitch closest in time to `stamp`, within attitude_max_age_.
+     *
+     * Matched by nearest timestamp rather than "whatever arrived last": an
+     * offline replay of this exact frame set, keyed on the last-received
+     * attitude instead of the one at the cloud's own stamp, reproduced the
+     * same stale-sample failure this function exists to avoid -- one frame in
+     * twelve still shattered (14 clusters instead of 2) because the attitude
+     * it was paired with was not the one the boat actually had when the cloud
+     * was captured.
+     *
+     * Returns std::nullopt if the buffer is empty or every sample is older or
+     * newer than attitude_max_age_ from `stamp`, so callers fail safe to the
+     * unlevelled z cut instead of levelling by a stale or absent attitude.
+     */
+    std::optional<Attitude> attitude_at(builtin_interfaces::msg::Time const &stamp) const
+    {
+        if (imu_buffer_.empty())
+        {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                                 "no IMU samples on '%s' yet; using the unlevelled z cut", imu_topic_.c_str());
+            return std::nullopt;
+        }
+
+        rclcpp::Time const target(stamp);
+        sensor_msgs::msg::Imu const *best = nullptr;
+        double best_age = std::numeric_limits<double>::infinity();
+        for (auto const &sample : imu_buffer_)
+        {
+            double const age = std::abs((rclcpp::Time(sample.header.stamp) - target).seconds());
+            if (age < best_age)
+            {
+                best_age = age;
+                best = &sample;
+            }
+        }
+
+        if (best == nullptr || best_age > attitude_max_age_)
+        {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                                 "nearest IMU sample is %.3f s from the cloud (limit %.3f s); using the "
+                                 "unlevelled z cut",
+                                 best_age, attitude_max_age_);
+            return std::nullopt;
+        }
+
+        tf2::Quaternion q(best->orientation.x, best->orientation.y, best->orientation.z, best->orientation.w);
+        double roll = 0.0;
+        double pitch = 0.0;
+        double yaw = 0.0;
+        tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+        return Attitude{ roll, pitch };
     }
 
     /**
@@ -154,7 +278,10 @@ class PclFilter : public rclcpp::Node, public PcdConstants
 
     // ── Members ───────────────────────────────────────────────────────────────
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
+    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_;
+    /// Recent IMU samples, oldest first, trimmed to kImuBufferWindowSec.
+    std::deque<sensor_msgs::msg::Imu> imu_buffer_;
 };
 
 }  // namespace pcd

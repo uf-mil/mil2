@@ -13,13 +13,21 @@
     # ─────────────────────────────────────────────────
     # Water-surface rejection (Z / height filter)
     # ─────────────────────────────────────────────────
-    # Points whose Z coordinate is below this threshold are assumed
-    # to be water returns and are discarded.  Set relative to the
+    # Points whose LEVELLED Z (see below) is below this threshold are
+    # assumed to be water returns and are discarded.  Set relative to the
     # sensor frame (negative = below the lidar).
     water_z_min: -0.5      # [m]  lower bound — reject water below this Z
 
     # Upper Z bound (optional sky/mast crop).  Set very large to disable.
     water_z_max: 10.0        # [m]  upper bound — reject sky noise above this Z
+
+    # water_z_min/water_z_max are tested against a LEVELLED z (rotated by
+    # roll and pitch), not the raw sensor-frame z, so the cut stays valid
+    # while the hull is tilted. See pcl_filter.hpp's apply_z_filter.
+    imu_topic: "/imu"        # sensor_msgs/Imu supplying roll/pitch
+    attitude_max_age: 0.1    # [s]  IMU sample older than this vs. the cloud
+                              #      is treated as missing; falls back to the
+                              #      unlevelled cut rather than a stale one
 
     # ─────────────────────────────────────────────────
     # Voxel-grid down-sampling (pre-clustering)

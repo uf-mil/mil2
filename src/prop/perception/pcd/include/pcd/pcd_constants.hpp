@@ -63,6 +63,10 @@ class PcdConstants
         // ── I/O ──────────────────────────────────────────────────────────────
         node->declare_parameter<std::string>("input_topic", "/velodyne_points");
 
+        // ── Attitude, for levelling the water cut ───────────────────────────
+        node->declare_parameter<std::string>("imu_topic", "/imu");
+        node->declare_parameter("attitude_max_age", 0.1);
+
         // Read them all back into member variables.
         min_distance_ = node->get_parameter("min_distance").as_double();
         max_distance_ = node->get_parameter("max_distance").as_double();
@@ -73,6 +77,8 @@ class PcdConstants
         cluster_min_points_ = node->get_parameter("cluster_min_points").as_int();
         cluster_max_points_ = node->get_parameter("cluster_max_points").as_int();
         input_topic_ = node->get_parameter("input_topic").as_string();
+        imu_topic_ = node->get_parameter("imu_topic").as_string();
+        attitude_max_age_ = node->get_parameter("attitude_max_age").as_double();
     }
 
   protected:
@@ -103,6 +109,13 @@ class PcdConstants
     // ── Topics ───────────────────────────────────────────────────────────────
     /// Input PointCloud2 topic name.
     std::string input_topic_{ "/velodyne_points" };
+
+    // ── Attitude, for levelling the water cut ────────────────────────────────
+    /// sensor_msgs/Imu topic supplying roll and pitch for the z-cut levelling.
+    std::string imu_topic_{ "/imu" };
+    /// Max age [s] of an IMU sample matched to a cloud before it is treated as
+    /// missing and the z cut falls back to the raw, unlevelled sensor-frame z.
+    double attitude_max_age_{ 0.1 };
 };
 
 }  // namespace pcd

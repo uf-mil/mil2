@@ -63,19 +63,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "blind_spots",
                 default_value="false",
-                description="Fake the real boat's blind spots by masking the scan.",
-            ),
-            DeclareLaunchArgument(
-                "scan_topic",
-                default_value=PythonExpression(
-                    [
-                        '"/lidar/scan_masked" if "',
-                        LaunchConfiguration("blind_spots"),
-                        '" == "true" else "/lidar/scan"',
-                    ],
-                ),
-                description="Topic the perception chain reads. Defaults to the masked "
-                "scan when blind_spots is true, so blind_spots:=true alone is enough.",
+                description="Fake the real boat's blind spots by masking the cloud.",
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
@@ -104,7 +92,6 @@ def generate_launch_description():
                 ),
                 launch_arguments={
                     "blind_spots": LaunchConfiguration("blind_spots"),
-                    "scan_topic": LaunchConfiguration("scan_topic"),
                 }.items(),
             ),
             TimerAction(
