@@ -70,7 +70,9 @@ void ThrusterManager::step()
     double const force = kp_surge_ * surge_error + ki_surge_ * surge_integral_;
     double const moment = kp_yaw_ * yaw_error + ki_yaw_ * yaw_integral_;
 
-    double const differential = clamp(moment / thruster_y_ / 2.0, (max_force_pos_ + max_force_neg_) / 2.0);
+    double const differential_limit =
+        std::min((max_force_pos_ + max_force_neg_) / 2.0, max_force_neg_ + std::max(force / 2.0, 0.0));
+    double const differential = clamp(moment / thruster_y_ / 2.0, differential_limit);
     double const common =
         std::clamp(force / 2.0, std::abs(differential) - max_force_neg_, max_force_pos_ - std::abs(differential));
 
