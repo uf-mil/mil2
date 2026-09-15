@@ -1,0 +1,28 @@
+<!--
+    PingerSurveyMission
+    ===================
+    Ride the pinger until we pass it, then sweep the field ahead of the sub in
+    a lawnmower pattern. Tune the survey on the LawnmowerSurvey line:
+    step (m between sweeps), length (m ahead), width (m across, centred).
+
+    Body frame: +x forward, +y left, +z up.
+-->
+<root BTCPP_format="4" main_tree_to_execute="PingerSurveyMission">
+  <BehaviorTree ID="PingerSurveyMission">
+    <Sequence>
+
+      <Action ID="SendMove" name="dive" ctx="{ctx}" relative="false" z="-0.6"
+              hold_x="true" hold_y="true" hold_orientation="true"/>
+
+      <!-- <SonarFollower name="follow_pinger" ctx="{ctx}" required_passing_pings="3"
+                     sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_yaw_deg="{sonar_yaw_deg}">
+        <Action ID="SendMove" ctx="{ctx}" x="{sonar_x}" y="{sonar_y}" yaw_deg="{sonar_yaw_deg}"/>
+      </SonarFollower> -->
+
+      <LawnmowerSurvey name="survey" step="1.0" length="2.0" width="2.0" x="{leg_x}" y="{leg_y}">
+        <Action ID="SendMove" ctx="{ctx}" x="{leg_x}" y="{leg_y}"/>
+      </LawnmowerSurvey>
+
+    </Sequence>
+  </BehaviorTree>
+</root>
