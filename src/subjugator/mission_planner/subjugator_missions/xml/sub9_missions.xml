@@ -31,6 +31,7 @@
     <include path="BUST_mission.xml"/>
     <include path="bust_mission_mm.xml"/>
     <include path="octagon_pinger_mission.xml"/>
+    <include path="pinger_survey_mission.xml"/>
     <include path="yaw_style.xml"/>
     <include path="ETHAN.xml"/>
     <include path="servo_test_mission.xml"/>

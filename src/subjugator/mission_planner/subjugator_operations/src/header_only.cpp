@@ -1,6 +1,7 @@
 #include "context.hpp"
 #include "count_when_ticked.hpp"
 #include "go_to_pinger.hpp"
+#include "lawnmower_survey.hpp"
 #include "lookup_waypoint.hpp"
 #include "pitch_style.hpp"
 #include "remember_waypoint.hpp"
@@ -9,6 +10,7 @@
 #include "yaw_style.hpp"
 
 REGISTER(CountWhenTicked)
+REGISTER(LawnmowerSurvey)
 REGISTER(SonarFollower)
 REGISTER(LookupWaypoint)
 REGISTER(PitchStyle)
