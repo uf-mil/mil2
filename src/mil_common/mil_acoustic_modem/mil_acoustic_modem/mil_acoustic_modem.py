@@ -19,6 +19,12 @@ class AcousticModem(Node):
             "pipeline_survey_report_received",
             5,
         )
+        self.pipeline_survey_report_subscriber = self.create_subscription(
+            PipelineSurveyReport,
+            "topic",
+            self.send_pipeline_survey_report,
+            10,
+        )
 
         # 2 seconds (equal to the serial read timeout)
         self.timer = self.create_timer(2, self.read_latest_data)
@@ -57,6 +63,19 @@ class AcousticModem(Node):
                 ros_msg.segments.append(segment_status)
 
             self.pipeline_survey_report_publisher._publish(ros_msg)
+
+    def send_pipeline_survey_report(self, msg):
+        protobuf_message = protobuf.pipeline_survey_report_pb2.PipelineSurveyReport()
+        protobuf_message.active_buoy_position_x = msg.active_buoy_position.x
+        protobuf_message.active_buoy_position_y = msg.active_buoy_position.y
+        protobuf_message.segments = []
+
+        for segment in msg.segments:
+            protobuf_message.segments.append(segment.status)
+
+        protobuf_string = protobuf_message.SerializeToString()
+
+        self.modem.send_im(protobuf_string)
 
 
 def main(args=None):

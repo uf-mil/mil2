@@ -456,6 +456,9 @@ class acoustic_modem:
 
         return im_message
 
+    def send_im(self, data):
+        self.__send_data(f"AT*SENDIM,{len(data)},{self.get_remote_addr()},ack,#{data}")
+
     ########## <Nonvolatile operations> ##########
     # Saves currently-saved settings to non-volatile memory
     def save_settings(self):
