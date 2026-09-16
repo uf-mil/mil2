@@ -254,8 +254,9 @@ class PclTracker : public rclcpp::Node, public PcdConstants
 
         pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("tracked_markers", rclcpp::QoS(1));
 
-        RCLCPP_INFO(get_logger(), "pcl_tracker started — assoc_dist=%.1f m  max_miss=%d  min_hits=%d",
-                    max_association_dist_, max_missed_frames_, min_hits_);
+        RCLCPP_INFO(get_logger(),
+                    "pcl_tracker started — target_frame='%s'  assoc_dist=%.1f m  max_miss=%d  min_hits=%d",
+                    target_frame_.c_str(), max_association_dist_, max_missed_frames_, min_hits_);
     }
 
   private:
@@ -387,7 +388,8 @@ class PclTracker : public rclcpp::Node, public PcdConstants
             try
             {
                 out = tf_buffer_->transform(in, target_frame_, tf2::durationFromSec(0.1));
-                RCLCPP_INFO(get_logger(), "Transform from:", in.header.frame_id.c_str(), "to:", target_frame_.c_str());
+                RCLCPP_DEBUG(get_logger(), "Transformed marker ID %d from '%s' to '%s'", m.id,
+                             in.header.frame_id.c_str(), target_frame_.c_str());
             }
             catch (tf2::TransformException const& ex)
             {
@@ -406,8 +408,8 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         for (auto const& m : transformed_detections)
             detections.push_back(&m);
 
-        // Compute dt from stamp
-        rclcpp::Time now = msg->markers.empty() ? this->now() : rclcpp::Time(msg->markers.back().header.stamp);
+        // Compute dt
+        rclcpp::Time now = this->now();
         double dt = 0.1;  // default fallback
         if (last_stamp_.nanoseconds() > 0)
         {

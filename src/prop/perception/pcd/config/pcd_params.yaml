@@ -34,6 +34,14 @@
     cluster_max_points: 25000 # maximum points allowed in a single cluster
 
     # ─────────────────────────────────────────────────
+    # EKF tracker
+    # ─────────────────────────────────────────────────
+    # Frame in which cluster centroids are tracked (global coordinate frame).
+    # Only extracted cluster centroids/bounding boxes are transformed into
+    # this frame, leaving the full raw/filtered point cloud in the sensor frame.
+    target_frame: "odom"
+
+    # ─────────────────────────────────────────────────
     # I/O topics
     # ─────────────────────────────────────────────────
     input_topic: "/velodyne_points"

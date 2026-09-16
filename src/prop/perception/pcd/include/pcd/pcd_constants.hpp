@@ -70,6 +70,8 @@ class PcdConstants
         /// Minimum number of consecutive hits before a track is published.
         /// Suppresses single-frame phantom detections.
         node->declare_parameter("min_hits", 2);
+        /// Target frame for tracking (e.g. "odom" or "map").
+        node->declare_parameter<std::string>("target_frame", "odom");
 
         // ── I/O ──────────────────────────────────────────────────────────────
         node->declare_parameter<std::string>("input_topic", "/velodyne_points");
@@ -86,6 +88,7 @@ class PcdConstants
         max_association_dist_ = node->get_parameter("max_association_dist").as_double();
         max_missed_frames_ = node->get_parameter("max_missed_frames").as_int();
         min_hits_ = node->get_parameter("min_hits").as_int();
+        target_frame_ = node->get_parameter("target_frame").as_string();
         input_topic_ = node->get_parameter("input_topic").as_string();
     }
 
@@ -108,9 +111,9 @@ class PcdConstants
 
     // ── Euclidean cluster extraction ─────────────────────────────────────────
     /// Max distance [m] between two points to be considered neighbours.
-    double cluster_tolerance_{ 0.5 };
+    double cluster_tolerance_{ 0.1 };
     /// Minimum number of points for a cluster to be kept.
-    int cluster_min_points_{ 20 };
+    int cluster_min_points_{ 100 };
     /// Maximum number of points allowed in a single cluster.
     int cluster_max_points_{ 25000 };
 
@@ -121,6 +124,8 @@ class PcdConstants
     int max_missed_frames_{ 5 };
     /// Consecutive hits before a track is published (anti-spurious filter).
     int min_hits_{ 2 };
+    /// Target frame to transform cluster centroids into for tracking (e.g. "odom" or "map").
+    std::string target_frame_{ "odom" };
 
     // ── Topics ───────────────────────────────────────────────────────────────
     /// Input PointCloud2 topic name.
