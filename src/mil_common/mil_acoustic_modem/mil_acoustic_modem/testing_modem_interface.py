@@ -22,4 +22,5 @@ class TestingModemInterface(ModemInterface):
         return str.encode("RECVIM,1,1,1,ack,1,1,1,1,") + protobuf_string
 
     def send_im(self, message):
+        print(f"TestingModemInterface: Sending message '{message}'")
         pass
