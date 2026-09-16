@@ -18,6 +18,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <subjugator_msgs/msg/absolute_move.hpp>
+#include <subjugator_msgs/msg/light_detections.hpp>
 #include <subjugator_msgs/msg/move_status.hpp>
 #include <subjugator_msgs/msg/relative_move.hpp>
 #include <subjugator_msgs/srv/servo.hpp>
@@ -41,6 +42,9 @@ struct Context
     rclcpp::Publisher<subjugator_msgs::msg::RelativeMove>::SharedPtr relative_move_pub;
     rclcpp::Subscription<subjugator_msgs::msg::MoveStatus>::SharedPtr move_status_sub;
 
+    rclcpp::Subscription<subjugator_msgs::msg::LightDetections>::SharedPtr front_lights_sub;
+    rclcpp::Subscription<subjugator_msgs::msg::LightDetections>::SharedPtr down_lights_sub;
+
     // Service clients to actuate servos (driver.py services)
     rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr dropper_client;
     rclcpp::Client<subjugator_msgs::srv::Servo>::SharedPtr gripper_client;
@@ -54,6 +58,13 @@ struct Context
 
     std::mutex last_goal_mx;
     std::optional<geometry_msgs::msg::Pose> last_goal;
+
+    // Where the sub was last sent, falling back to where it is.
+    geometry_msgs::msg::Pose lastGoalOrOdom()
+    {
+        std::scoped_lock lk(last_goal_mx, odom_mx);
+        return last_goal ? *last_goal : latest_odom->pose.pose;
+    }
 
     // The move_status callback boils the manager's telemetry down to one verdict for
     // the command that just settled: did it reach the goal or not. Keyed by id, so a
@@ -106,6 +117,11 @@ struct Context
     uint32_t img_width{ 0 };
     uint32_t img_height{ 0 };
 
+    // Red/green lights from light_detector.py, per camera.
+    std::mutex lights_mx;
+    std::optional<subjugator_msgs::msg::LightDetections> latest_front_lights;
+    std::optional<subjugator_msgs::msg::LightDetections> latest_down_lights;
+
     // Named absolute waypoints captured during a mission (or preloaded).
     // Mission BT nodes (RememberWaypoint / LookupWaypoint) read and write this.
     std::mutex waypoints_mx;
@@ -116,6 +132,17 @@ struct Context
         return node->get_logger();
     }
 };
+
+// Fetch a node's Context at construction so a missing one fails at tree creation.
+inline std::shared_ptr<Context> requireContext(BT::TreeNode const& node)
+{
+    auto ctx = node.getInput<std::shared_ptr<Context>>("ctx");
+    if (!ctx || !*ctx)
+    {
+        throw BT::RuntimeError(node.registrationName() + ": missing ctx");
+    }
+    return *ctx;
+}
 
 #define REGISTER(name)                                                                                                 \
     extern BT::BehaviorTreeFactory factory;                                                                            \

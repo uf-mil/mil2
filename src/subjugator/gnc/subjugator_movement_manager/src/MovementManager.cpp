@@ -51,7 +51,12 @@ geometry_msgs::msg::Pose MovementManager::base_pose_(MoveRequest const &req) con
     }
     if (latest_odom_)
     {
-        return latest_odom_->pose.pose;
+        // Measured roll/pitch never becomes a commanded one: the controller would
+        // hold it, and every move chaining off this goal would inherit it.
+        geometry_msgs::msg::Pose base = latest_odom_->pose.pose;
+        Eigen::Vector3d const yaw_only{ 0.0, 0.0, mil::geometry::Rotation{ base.orientation }.yaw() };
+        base.orientation = mil::geometry::Rotation{ yaw_only }.quat_msg();
+        return base;
     }
 
     RCLCPP_WARN(get_logger(), "MovementManager: no base pose available; assuming world origin.");
@@ -198,6 +203,7 @@ void MovementManager::drive_to_(MoveRequest const &req)
         active_state_ = MoveStatus::PREEMPTED;
         emit_status_(MoveStatus::PREEMPTED, "preempted by move #" + std::to_string(req.command_id), dist, ang);
         RCLCPP_WARN(get_logger(), "Move #%u PREEMPTED by #%u", active_command_id_, req.command_id);
+        last_goal_.reset();  // the abandoned goal was never reached: measure the next relative move from odom
     }
 
     geometry_msgs::msg::Pose const goal = resolve_goal_(req);
