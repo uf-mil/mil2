@@ -301,8 +301,8 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         t.x = mat44_mul_vec4(F, t.x);
 
         // P = F * P * F^T + Q
-        double const q_pos = 0.5;  // process noise — position
-        double const q_vel = 2.0;  // process noise — velocity
+        double const q_pos = 0.25;  // process noise — position (reduced 2x)
+        double const q_vel = 1.0;   // process noise — velocity (reduced 2x)
 
         Mat44 Q{};
         Q[0][0] = q_pos * dt * dt;
