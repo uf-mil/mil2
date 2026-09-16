@@ -330,8 +330,8 @@ class PclTracker : public rclcpp::Node, public PcdConstants
 
         // Measurement noise R
         Mat22 R{};
-        R[0][0] = 0.5;
-        R[1][1] = 0.5;
+        R[0][0] = 1.0;  // doubled from 0.5
+        R[1][1] = 1.0;  // doubled from 0.5
 
         // Innovation covariance S = H * P * H^T + R
         Mat24 HP = mat24_mul_44(H, t.P);
