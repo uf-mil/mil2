@@ -21,7 +21,7 @@ class AcousticModem(Node):
         )
         self.pipeline_survey_report_subscriber = self.create_subscription(
             PipelineSurveyReport,
-            "topic",
+            "pipeline_survey_report_sending",
             self.send_pipeline_survey_report,
             10,
         )
