@@ -1,11 +1,19 @@
 <!--
     PingerSurveyMission
     ===================
-    Ride the pinger until we pass it, then sweep the field ahead of the sub in
-    a lawnmower pattern. Tune the survey on the LawnmowerSurvey line:
-    step (m between sweeps), length (m ahead), width (m across, centred).
+    Ride the pinger until we pass it, then sweep the field ahead in a lawnmower
+    pattern, logging every red/green light found along the way. Ends with
+    {lights} sorted nearest-first from where the survey began. Needs
+    light_detector.py running.
 
-    Body frame: +x forward, +y left, +z up.
+    Each leg is flown to the end before the cameras are consulted, so every move
+    of a detour is measured from a pose the sub actually reached. Once the light
+    is centred under the down camera the sub flies back to the leg it left and
+    carries on. Lights keep being visited until none are left unexplained, so a
+    stop that sees three lights clears all three.
+
+    Tune the survey on the LawnmowerSurvey line: step (m between sweeps),
+    length (m ahead), width (m across, centred). Body frame: +x forward, +y left, +z up.
 -->
 <root BTCPP_format="4" main_tree_to_execute="PingerSurveyMission">
   <BehaviorTree ID="PingerSurveyMission">
@@ -14,14 +22,37 @@
       <Action ID="SendMove" name="dive" ctx="{ctx}" relative="false" z="-0.6"
               hold_x="true" hold_y="true" hold_orientation="true"/>
 
-      <!-- <SonarFollower name="follow_pinger" ctx="{ctx}" required_passing_pings="3"
+      <SonarFollower name="follow_pinger" ctx="{ctx}" required_passing_pings="3"
                      sonar_x="{sonar_x}" sonar_y="{sonar_y}" sonar_yaw_deg="{sonar_yaw_deg}">
         <Action ID="SendMove" ctx="{ctx}" x="{sonar_x}" y="{sonar_y}" yaw_deg="{sonar_yaw_deg}"/>
-      </SonarFollower> -->
+      </SonarFollower>
 
-      <LawnmowerSurvey name="survey" step="1.0" length="2.0" width="2.0" x="{leg_x}" y="{leg_y}">
-        <Action ID="SendMove" ctx="{ctx}" x="{leg_x}" y="{leg_y}"/>
+      <LawnmowerSurvey name="survey" ctx="{ctx}" step="1.0" length="4.0" width="3.0"
+                       x="{leg_x}" y="{leg_y}" yaw_deg="{leg_yaw}"
+                       start_x="{start_x}" start_y="{start_y}">
+        <Sequence>
+          <Action ID="SendMove" name="leg" ctx="{ctx}" relative="false" hold_z="true"
+                  x="{leg_x}" y="{leg_y}" yaw_deg="{leg_yaw}"/>
+
+          <ForceSuccess>
+            <KeepRunningUntilFailure>
+              <Sequence name="visit_light">
+                <Condition ID="NewLight" ctx="{ctx}" lights="{lights}"
+                           color="{color}" yaw_deg="{to_light}"/>
+                <Action ID="SendMove" name="face_light" ctx="{ctx}" precise="true" yaw_deg="{to_light}"/>
+                <LightFollower ctx="{ctx}" color="{color}" x="{fx}" y="{fy}" yaw_deg="{fyaw}">
+                  <Action ID="SendMove" ctx="{ctx}" precise="true" x="{fx}" y="{fy}" yaw_deg="{fyaw}"/>
+                </LightFollower>
+                <Action ID="LogLight" ctx="{ctx}" color="{color}" lights="{lights}"/>
+                <Action ID="SendMove" name="back_to_leg" ctx="{ctx}" relative="false" hold_z="true"
+                        x="{leg_x}" y="{leg_y}" yaw_deg="{leg_yaw}"/>
+              </Sequence>
+            </KeepRunningUntilFailure>
+          </ForceSuccess>
+        </Sequence>
       </LawnmowerSurvey>
+
+      <Action ID="SortLights" lights="{lights}" x="{start_x}" y="{start_y}"/>
 
     </Sequence>
   </BehaviorTree>

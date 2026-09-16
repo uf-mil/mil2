@@ -26,6 +26,8 @@ rosidl_generate_interfaces(
   "msg/AbsoluteMove.msg"
   "msg/MoveStatus.msg"
   "msg/RelativeMove.msg"
+  "msg/LightDetection.msg"
+  "msg/LightDetections.msg"
   "srv/BMatrix.srv"
   "srv/OcrRequest.srv"
   "srv/TBDetectionSwitch.srv"

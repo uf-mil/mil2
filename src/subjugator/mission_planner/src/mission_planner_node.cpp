@@ -48,6 +48,11 @@ int main(int argc, char** argv)
         [ctx](subjugator_msgs::msg::MoveStatus::SharedPtr msg)
         {
             using subjugator_msgs::msg::MoveStatus;
+            if (msg->state != MoveStatus::PREEMPTED)  // preempted statuses echo a stale goal
+            {
+                std::scoped_lock lk(ctx->last_goal_mx);
+                ctx->last_goal = msg->goal;
+            }
             if (msg->state == MoveStatus::ACTIVE)
             {
                 return;  // still in flight
@@ -81,6 +86,22 @@ int main(int argc, char** argv)
                                                              std::scoped_lock lk(ctx->wall_direction_mx);
                                                              ctx->latest_wall_direction = msg->data;
                                                          });
+
+    // Red/green lights from light_detector.py
+    ctx->front_lights_sub = node->create_subscription<subjugator_msgs::msg::LightDetections>(
+        "/light_detector/front", 10,
+        [ctx](subjugator_msgs::msg::LightDetections::SharedPtr msg)
+        {
+            std::scoped_lock lk(ctx->lights_mx);
+            ctx->latest_front_lights = *msg;
+        });
+    ctx->down_lights_sub = node->create_subscription<subjugator_msgs::msg::LightDetections>(
+        "/light_detector/down", 10,
+        [ctx](subjugator_msgs::msg::LightDetections::SharedPtr msg)
+        {
+            std::scoped_lock lk(ctx->lights_mx);
+            ctx->latest_down_lights = *msg;
+        });
 
     // Image size (for pixel->angle mapping). Probably do not need
     ctx->image_sub = node->create_subscription<sensor_msgs::msg::Image>("/front_cam/image_raw", 10,
