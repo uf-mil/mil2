@@ -1,25 +1,29 @@
 #! /usr/bin/env bash
 MIL_REPO="$HOME/mil2"
 
-if [ -n "$ZSH_VERSION" ]; then
-	source /opt/ros/jazzy/setup.zsh
+if [ "$1" = "pixi" ]; then
+	eval "$(pixi shell-hook -m $MIL_REPO)"
 else
-	source /opt/ros/jazzy/setup.bash
+	if [ -n "$ZSH_VERSION" ]; then
+		source /opt/ros/jazzy/setup.zsh
+	else
+		source /opt/ros/jazzy/setup.bash
+	fi
+
+	# Setup colcon_cd
+	source "/usr/share/colcon_cd/function/colcon_cd.sh"
+	export _colcon_cd_root=$MIL_REPO
+	alias ccd="colcon_cd"
+
+	# Setup colcon autocomplete
+	source "/usr/share/colcon_cd/function/colcon_cd-argcomplete.bash"
 fi
 
 # Use Zenoh by default
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
-# Setup colcon_cd
-source "/usr/share/colcon_cd/function/colcon_cd.sh"
-export _colcon_cd_root=$MIL_REPO
-alias ccd="colcon_cd"
-
 # Setup up Gazebo
 export GZ_VERSION=harmonic
-
-# Setup colcon autocomplete
-source "/usr/share/colcon_cd/function/colcon_cd-argcomplete.bash"
 
 # keith utils
 alias srcbrc="source ~/.bashrc"

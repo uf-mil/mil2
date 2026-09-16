@@ -192,3 +192,6 @@ cython_debug/
 
 bag_files
 src/subjugator/mission_planner/logs/mission_debug.txt
+# pixi environments
+.pixi/*
+!.pixi/config.toml
