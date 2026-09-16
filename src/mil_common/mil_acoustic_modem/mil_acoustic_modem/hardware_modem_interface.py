@@ -7,9 +7,11 @@ import time
 
 import serial
 
+from mil_acoustic_modem.modem_interface import ModemInterface
+
 
 # Acoustic modem class
-class acoustic_modem:
+class HardwareModemInterface(ModemInterface):
 
     ########## <Variables> ##########
     # Identifier
