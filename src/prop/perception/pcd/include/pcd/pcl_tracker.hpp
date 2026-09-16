@@ -1,12 +1,12 @@
 /**
- * @file pcl_tracker.hpp
- * @brief PclTracker — EKF-based multi-object tracker for lidar clusters.
- *
  * Subscribes to the "cluster_markers" topic published by PclClustering and
  * performs frame-to-frame data association so that each physical object
  * keeps the same integer track ID across frames.
  *
- * Algorithm (mirrors multi_object_tracking_lidar by Praveen Palanisamy,
+ * Now listens to TF transforms to convert incoming detections into /odom (global) frame.
+ * Makes a global map of all detected objects in the global frame.
+ *
+ * Algorithm (similar to the multi_object_tracking_lidar by Praveen Palanisamy,
  * ported to ROS 2 with a native C++ implementation):
  *
  *   1. For each incoming detection frame:
@@ -232,8 +232,7 @@ struct Track
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * @class PclTracker
- * @brief ROS 2 node that subscribes to "cluster_markers" (MarkerArray) and
+ * PclTracker - ROS 2 node that subscribes to "cluster_markers" (MarkerArray) and
  *        publishes "tracked_markers" (MarkerArray) with stable track IDs.
  *
  * Subscribes:
@@ -287,7 +286,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         return t;
     }
 
-    /// EKF predict step.
+    /// predict step.
     void ekf_predict(Track& t, double dt)
     {
         using namespace ekf_math;
@@ -313,7 +312,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         t.P = mat44_add(mat44_mul_transpose(mat44_mul(F, t.P), F), Q);
     }
 
-    /// EKF update step with measurement z = [px, py].
+    ///  update step with measurement z = [px, py].
     void ekf_update(Track& t, double meas_x, double meas_y)
     {
         using namespace ekf_math;
@@ -388,6 +387,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
             try
             {
                 out = tf_buffer_->transform(in, target_frame_, tf2::durationFromSec(0.1));
+                RCLCPP_INFO(get_logger(), "Transform from:", in.header.frame_id.c_str(), "to:", target_frame_.c_str());
             }
             catch (tf2::TransformException const& ex)
             {
@@ -556,7 +556,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
 
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-    std::string target_frame_{ "map" };
+    std::string target_frame_{ "odom" };
 
     std::vector<Track> tracks_;
     int next_id_{ 0 };
