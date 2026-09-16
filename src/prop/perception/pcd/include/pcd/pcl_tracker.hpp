@@ -558,7 +558,6 @@ class PclTracker : public rclcpp::Node, public PcdConstants
 
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-    std::string target_frame_{ "odom" };
 
     std::vector<Track> tracks_;
     int next_id_{ 0 };

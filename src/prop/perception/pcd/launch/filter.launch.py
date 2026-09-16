@@ -10,8 +10,11 @@ def generate_launch_description():
     params_file = os.path.join(pcd_pkg_dir, "config", "pcd_params.yaml")
 
     # Publish the static transform base_link → velodyne.
-    # This matches the base_to_lidar joint in prop_localization/urdf/prop.urdf
-    # Hardware driver published the lidar data in the velodyne frame, so we need to transform it to the base_link frame for processing.
+    # This matches the base_to_lidar joint in prop_localization/urdf/prop.urdf.
+    # The full point cloud stays in the velodyne sensor frame for filtering and
+    # clustering; this transform enables downstream tracker nodes to transform
+    # extracted cluster centroids to the global (odom) frame without transforming
+    # the entire point cloud.
     velodyne_tf = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
