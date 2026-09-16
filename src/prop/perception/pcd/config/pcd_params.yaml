@@ -8,7 +8,7 @@
     # reflections off the hull; points beyond max_distance are too
     # sparse to be reliable.
     min_distance: 0.5        # [m]  reject points closer than this
-    max_distance: 30.0       # [m]  reject points farther than this
+    max_distance: 50.0       # [m]  reject points farther than this
 
     # ─────────────────────────────────────────────────
     # Water-surface rejection (Z / height filter)
@@ -29,8 +29,8 @@
     # ─────────────────────────────────────────────────
     # Euclidean cluster extraction
     # ─────────────────────────────────────────────────
-    cluster_tolerance: 0.5    # [m]  max neighbour distance for the same cluster
-    cluster_min_points: 20    # minimum points to keep a cluster
+    cluster_tolerance: 0.1    # [m]  max neighbour distance for the same cluster
+    cluster_min_points: 50    # minimum points to keep a cluster
     cluster_max_points: 25000 # maximum points allowed in a single cluster
 
     # ─────────────────────────────────────────────────
