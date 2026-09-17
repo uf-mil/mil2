@@ -199,7 +199,7 @@
     <!-- The lidar, on top of the mast and clear of the hull, looking out over
          the water. lidar_link and this height are also in
          prop_localization/urdf/prop.urdf; keep the two in step. -->
-    <xacro:vlp16_lidar parent="base_link" name="lidar" frame="lidar_link" xyz="0 0 0.45" rpy="0 0 0" topic="lidar/scan" collision="false"/>
+    <xacro:vlp16_lidar parent="base_link" name="lidar" frame="lidar_link" xyz="0 0 0.67" rpy="0 0 0" topic="lidar/scan" collision="false"/>
 
     <plugin filename="PropThrusters" name="prop_gazebo::PropThrusters">
       <link_name>base_link</link_name>
