@@ -422,6 +422,52 @@ class HardwareModemInterface(ModemInterface):
             print(f"\t> [ERROR]: failed to change new max address to {new_max_addr}")
             return False
 
+    def set_carrier_waveform_id(self, new_carrier_waveform_id):
+        # Print debug message
+        print(f"[{self.name}] Changing carrier waveform ID...")
+
+        # Ensure modem has initialized before continuing
+        if not self.check_if_init():
+            return False
+
+        # Ensure modem is in command mode
+        if self.__mode != "COMMAND":
+            print("]\t> Modem must be in COMMAND mode for this operation!")
+            return False
+
+        # Validate max addr
+        try:
+            waveform_id_int = int(new_carrier_waveform_id)
+        except ValueError:
+            print("\t> Invalid input, carrier waveform id must be an integer value")
+            return False
+
+        allowed_values = {0, 1, 2, 3}
+        if waveform_id_int not in allowed_values:
+            print("\t> Invalid carrier waveform ID! Must be 0, 1, 2, or 3.")
+            return False
+
+        # Send new carrier waveform ID
+        self.__send_data(
+            f"AT!Cn{new_carrier_waveform_id}\r",
+        )  # send new carrier waveform id
+        time.sleep(self.__AT_delay_time)  # brief delay
+
+        # Check for 'OK'
+        response = self.__read_data()
+
+        if response == "OK":
+            print(
+                f"\t> Successfully changed new carrier waveform ID to {new_carrier_waveform_id}",
+            )
+            self.__acting_settings["Carrier Waveform ID"] = new_carrier_waveform_id
+            return True
+        else:
+            print(
+                f"\t> [ERROR]: failed to change new carrier waveform ID to {new_carrier_waveform_id}",
+            )
+            return False
+
     ########## </Functions for accessing / changing settings> ##########
 
     ########## <Receiving and transmitting data> ##########

@@ -17,6 +17,7 @@ class AcousticModem(Node):
         self.declare_parameter("modem_serial_port", "COM9")
         self.declare_parameter("local_address", 0)
         self.declare_parameter("remote_address", 0)
+        self.declare_parameter("carrier_waveform_id", 0)
 
         self.pipeline_survey_report_publisher = self.create_publisher(
             PipelineSurveyReport,
@@ -46,8 +47,17 @@ class AcousticModem(Node):
                 .string_value,
             )
             self.modem.init_modem()
-            self.modem.set_local_addr(self.get_param("local_address"))
-            self.modem.set_remote_addr(self.get_param("remote_address"))
+            self.modem.set_local_addr(
+                self.get_param("local_address").get_parameter_value().integer_value,
+            )
+            self.modem.set_remote_addr(
+                self.get_param("remote_address").get_parameter_value().integer_value,
+            )
+            self.modem.set_carrier_waveform_id(
+                self.get_param("carrier_waveform_id")
+                .get_parameter_value()
+                .integer_value,
+            )
 
     def read_latest_data(self):
         message_bytes = self.modem.read_im()
