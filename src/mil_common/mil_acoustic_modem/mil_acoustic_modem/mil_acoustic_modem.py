@@ -15,6 +15,8 @@ class AcousticModem(Node):
         super().__init__("acoustic_modem")
 
         self.declare_parameter("modem_serial_port", "COM9")
+        self.declare_parameter("local_address", 0)
+        self.declare_parameter("remote_address", 0)
 
         self.pipeline_survey_report_publisher = self.create_publisher(
             PipelineSurveyReport,
@@ -44,6 +46,8 @@ class AcousticModem(Node):
                 .string_value,
             )
             self.modem.init_modem()
+            self.modem.set_local_addr(self.get_param("local_address"))
+            self.modem.set_remote_addr(self.get_param("remote_address"))
 
     def read_latest_data(self):
         message_bytes = self.modem.read_im()
