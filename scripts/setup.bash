@@ -2,7 +2,9 @@
 MIL_REPO="$HOME/mil2"
 
 if [ "$1" = "pixi" ]; then
-	eval "$(pixi shell-hook -m $MIL_REPO)"
+	export PATH="$MIL_REPO/.pixi/envs/$MIL_COMPONENT/bin:/root/mil2/.pixi/envs/$MIL_COMPONENT/:$PATH"
+	export PS1="(mil2) ${PS1:-}"
+	source "$MIL_REPO/.pixi/envs/$MIL_COMPONENT/setup.bash"
 else
 	if [ -n "$ZSH_VERSION" ]; then
 		source /opt/ros/jazzy/setup.zsh
@@ -95,8 +97,8 @@ cb() {
 
 	if [ "${#packages[@]}" -eq 0 ]; then
 		rm_symlink_dirs # remove symlink directories
-		if [ -n "$CB_META" ]; then
-			colcon_flags+=("--packages-up-to" "$CB_META")
+		if [ -n "$MIL_COMPONENT" ]; then
+			colcon_flags+=("--packages-up-to" "$MIL_COMPONENT")
 		fi
 		colcon build --symlink-install "${colcon_flags[@]}" # Build the workspace
 	else
