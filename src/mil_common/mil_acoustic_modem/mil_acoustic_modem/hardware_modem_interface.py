@@ -1,5 +1,6 @@
 """
-This document contains the acoustic_modem class which provides functions for controlling an acoustic modem
+This document contains the acoustic_modem class which provides functions
+for controlling an acoustic modem.
 """
 
 # Dependencies
