@@ -46,7 +46,7 @@ repos:
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
-        exclude: ^NaviGator/simulation/VRX|subjugator/gnc/yolo_ros
+        exclude: (^NaviGator/simulation/VRX|subjugator/gnc/yolo_ros)|.*pb2\.py
   - repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.10
     hooks:
