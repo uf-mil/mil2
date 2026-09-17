@@ -28,6 +28,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
 # ---- Operations library (leaf nodes)
 add_library(
   operations
+  subjugator_operations/src/admission.cpp
   subjugator_operations/src/header_only.cpp
   subjugator_operations/src/publish_goal.cpp
   subjugator_operations/src/at_goal_pose.cpp
