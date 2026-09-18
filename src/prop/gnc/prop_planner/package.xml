@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>prop_planner</name>
+  <version>0.0.0</version>
+  <description>Initial prop planner node reporting the boat's estimated position.</description>
+  <maintainer email="zhuen.zhong@ufl.edu">Zhuen Zhong</maintainer>
+  <license>TODO: License declaration</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>nav_msgs</depend>
+  <depend>rclcpp</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
