@@ -1,13 +1,29 @@
+"""
+Lidar perception: filter the cloud, cluster it, track the clusters.
+
+    ros2 launch pcd filter.launch.py
+    ros2 launch pcd filter.launch.py use_sim_time:=true input_topic:=/lidar/points
+
+The defaults are the boat: wall clock, and the Velodyne driver's own topic.
+Gazebo needs both arguments overridden - it runs on sim time, and the bridge in
+prop_gazebo/config/prop_bridge.yaml lands the cloud on /lidar/points.
+"""
+
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch_ros.actions import Node
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node, SetParameter
 
 
 def generate_launch_description():
     pcd_pkg_dir = get_package_share_directory("pcd")
     params_file = os.path.join(pcd_pkg_dir, "config", "pcd_params.yaml")
+
+    # Overrides the yaml, which is written for the boat.
+    input_topic = {"input_topic": LaunchConfiguration("input_topic")}
 
     # Publish the static transform base_link → velodyne.
     # This matches the base_to_lidar joint in prop_localization/urdf/prop.urdf
@@ -41,7 +57,7 @@ def generate_launch_description():
         package="pcd",
         executable="pcl_filter_node",
         name="pcl_filter",
-        parameters=[params_file],
+        parameters=[params_file, input_topic],
         output="screen",
     )
 
@@ -61,4 +77,25 @@ def generate_launch_description():
         output="screen",
     )
 
-    return LaunchDescription([velodyne_tf, filter_node, clustering_node, tracker_node])
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument(
+                "use_sim_time",
+                default_value="false",
+                description="True under Gazebo. TF lookups are made at the "
+                "stamp on the incoming cloud, so a node on the wrong clock "
+                "drops every detection it is handed.",
+            ),
+            DeclareLaunchArgument(
+                "input_topic",
+                default_value="/velodyne_points",
+                description="Raw PointCloud2 to filter. /lidar/points in "
+                "simulation.",
+            ),
+            SetParameter("use_sim_time", LaunchConfiguration("use_sim_time")),
+            velodyne_tf,
+            filter_node,
+            clustering_node,
+            tracker_node,
+        ],
+    )

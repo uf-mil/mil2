@@ -1,0 +1,51 @@
+---
+planner:
+  ros__parameters:
+    # ─────────────────────────────────────────────────
+    # Obstacle map
+    # ─────────────────────────────────────────────────
+    # Two detections closer together than this are taken to be the same object.
+    # Larger than the localization error, smaller than the gap between buoys:
+    # too small and a GPS correction spawns a duplicate buoy beside the real
+    # one, too large and a gate's two buoys merge into a wall across it.
+    merge_distance: 2.0 # m
+
+    # How much of a new detection is folded into an entry that already exists.
+    # Low, because a cluster centroid walks toward whichever face of the buoy
+    # the lidar can see, and the average of many views beats any one of them.
+    position_gain: 0.2
+
+    # Detections before an entry is worth routing around. This is what keeps
+    # wave crests out of the map: a crest is not seen three times in one place.
+    min_hits: 3
+
+    # Ceiling on any single entry's radius, so a frame that merges two buoys
+    # into one blob cannot wall off the course.
+    max_radius: 5.0 # m
+
+    # Hard cap on remembered obstacles; past it the least-seen entry is dropped.
+    capacity: 256
+
+    # ─────────────────────────────────────────────────
+    # Route planning
+    # ─────────────────────────────────────────────────
+    # Added to every obstacle's radius: half the hull's beam plus however close
+    # you are willing to pass. This is the number to raise after a near miss.
+    inflation: 2.0 # m
+
+    # Candidate corners sampled around each obstacle. Eight is enough to round
+    # a buoy without visible faceting; the search cost grows quadratically.
+    corners_per_obstacle: 8
+
+    # ─────────────────────────────────────────────────
+    # Output
+    # ─────────────────────────────────────────────────
+    map_frame: "map"
+
+    # How often a new route is worked out. Well under perception rate on
+    # purpose: guidance restarts its leg tracking on every plan it receives.
+    rate: 1.0 # Hz
+
+    # A waypoint has to move at least this far before the new route is worth
+    # publishing over the old one.
+    replan_threshold: 0.5 # m
