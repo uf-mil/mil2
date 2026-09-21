@@ -35,6 +35,16 @@ ros2-ros-gz = ">=1.0.23,<2"
 ros2-control-toolbox = ">=4.11.1,<5"
 pre-commit = ">=4.6.2,<5"
 
+[environments.prop-jetson.dependencies]
+ros2-ros-gz = ">=1.0.23,<2"
+ros2-control-toolbox = ">=4.11.1,<5"
+ros2-nav-msgs = ">=5.3.8,<6"
+ros2-velodyne-driver = ">=2.5.1,<3"
+ros2-velodyne-pointcloud = ">=2.5.1,<3"
+ros2-robot-localization = ">=3.8.3,<4"
+ros2-imu-filter-madgwick = ">=2.1.5,<3"
+ros2-pcl-ros = ">=2.6.5,<3"
+
 [activation.env]
 LIBRARY_PATH = "$CONDA_PREFIX/lib"
 LD_LIBRARY_PATH = "$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"

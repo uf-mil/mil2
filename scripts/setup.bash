@@ -2,9 +2,11 @@
 MIL_REPO="$HOME/mil2"
 
 if [ "$1" = "pixi" ]; then
-	export PATH="$MIL_REPO/.pixi/envs/$MIL_COMPONENT/bin:/root/mil2/.pixi/envs/$MIL_COMPONENT/:$PATH"
+	export PATH="$CONDA_PREFIX/bin:$CONDA_PREFIX:$PATH"
 	export PS1="(mil2) ${PS1:-}"
-	source "$MIL_REPO/.pixi/envs/$MIL_COMPONENT/setup.bash"
+
+	source "$CONDA_PREFIX/setup.bash"
+	source "$CONDA_PREFIX/share/colcon_cd/function/colcon_cd.sh"
 else
 	if [ -n "$ZSH_VERSION" ]; then
 		source /opt/ros/jazzy/setup.zsh
@@ -14,12 +16,13 @@ else
 
 	# Setup colcon_cd
 	source "/usr/share/colcon_cd/function/colcon_cd.sh"
-	export _colcon_cd_root=$MIL_REPO
-	alias ccd="colcon_cd"
 
 	# Setup colcon autocomplete
 	source "/usr/share/colcon_cd/function/colcon_cd-argcomplete.bash"
 fi
+
+export _colcon_cd_root=$MIL_REPO
+alias ccd="colcon_cd"
 
 # Use Zenoh by default
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
