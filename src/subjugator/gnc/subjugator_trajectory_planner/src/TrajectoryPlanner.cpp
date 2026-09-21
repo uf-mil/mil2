@@ -2,7 +2,20 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <nav2_util/geometry_utils.hpp>
+inline double euclidean_distance(geometry_msgs::msg::Pose const &pos1, geometry_msgs::msg::Pose const &pos2,
+                                 bool const is_3d = false)
+{
+    double dx = pos1.position.x - pos2.position.x;
+    double dy = pos1.position.y - pos2.position.y;
+
+    if (is_3d)
+    {
+        double dz = pos1.position.z - pos2.position.z;
+        return std::hypot(dx, dy, dz);
+    }
+
+    return std::hypot(dx, dy);
+}
 
 TrajectoryPlanner::TrajectoryPlanner() : Node("trajectory_planner")
 {
@@ -46,8 +59,7 @@ void TrajectoryPlanner::handle_paths()
             double last_dist = std::numeric_limits<double>::max(), curr_dist = 0.0;
             for (size_t i = 0; i < path_->poses.size(); i++)
             {
-                curr_dist = nav2_util::geometry_utils::euclidean_distance(this->odom_->pose.pose,
-                                                                          this->path_->poses[i].pose, true);
+                curr_dist = euclidean_distance(this->odom_->pose.pose, this->path_->poses[i].pose, true);
                 if (curr_dist > last_dist)
                 {
                     first_goal_index = i;
@@ -75,14 +87,12 @@ void TrajectoryPlanner::handle_paths()
                             goal_msg.orientation.z, goal_msg.orientation.w);
 
                 // spin and check for odom to be in range of goal to move on
-                double dist_to_goal =
-                    nav2_util::geometry_utils::euclidean_distance(this->odom_->pose.pose, goal_msg, true);
+                double dist_to_goal = euclidean_distance(this->odom_->pose.pose, goal_msg, true);
                 this->goal_tolerance_ = this->get_parameter("goal_tolerance").as_double();
                 while (dist_to_goal > this->goal_tolerance_ && !heard_newer_path_)
                 {
                     rclcpp::spin_some(this->get_node_base_interface());
-                    dist_to_goal =
-                        nav2_util::geometry_utils::euclidean_distance(this->odom_->pose.pose, goal_msg, true);
+                    dist_to_goal = euclidean_distance(this->odom_->pose.pose, goal_msg, true);
                 }
                 if (heard_newer_path_)
                 {
