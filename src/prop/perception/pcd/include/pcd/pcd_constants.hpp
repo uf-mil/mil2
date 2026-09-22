@@ -73,6 +73,10 @@ class PcdConstants
         /// Target frame for tracking (e.g. "odom" or "map").
         node->declare_parameter<std::string>("target_frame", "odom");
 
+        node->declare_parameter("max_tracks", 50);
+        /// Hard cap on detections consumed per frame
+        node->declare_parameter("max_detections", 50);
+
         // ── I/O ──────────────────────────────────────────────────────────────
         node->declare_parameter<std::string>("input_topic", "/velodyne_points");
 
@@ -90,6 +94,8 @@ class PcdConstants
         min_hits_ = node->get_parameter("min_hits").as_int();
         target_frame_ = node->get_parameter("target_frame").as_string();
         input_topic_ = node->get_parameter("input_topic").as_string();
+        max_tracks_ = node->get_parameter("max_tracks").as_int();
+        max_detections_ = node->get_parameter("max_detections").as_int();
     }
 
   protected:
