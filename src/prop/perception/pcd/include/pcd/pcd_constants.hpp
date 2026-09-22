@@ -133,6 +133,9 @@ class PcdConstants
     /// Target frame to transform cluster centroids into for tracking (e.g. "odom" or "map").
     std::string target_frame_{ "odom" };
 
+    int max_tracks_{ 50 };      ///< Hard cap on number of tracks maintained
+    int max_detections_{ 50 };  ///< Hard cap on number of detections consumed per frame
+
     // ── Topics ───────────────────────────────────────────────────────────────
     /// Input PointCloud2 topic name.
     std::string input_topic_{ "/velodyne_points" };
