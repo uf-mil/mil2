@@ -62,6 +62,11 @@ PIDController::PIDController() : Node("pid_controller")
         param_map_[param].second = this->param_subscriber_->add_parameter_callback(param, param_cb);
     }
 
+    // buoyancy feedforward params (leaving these at 0 disables the feedforward)
+    this->declare_parameter("net_buoyancy", 0.0);
+    this->declare_parameter("buoyancy_moment", std::vector<double>(3, 0.0));
+    load_buoyancy_params();
+
     // TODO: log starting gains to screen
 
     for (size_t i = 0; i < pid_vec_.size(); i++)
@@ -146,8 +151,7 @@ void PIDController::control_loop()
         Eigen::Vector3d goal_euler = goal_quat.toRotationMatrix().eulerAngles(0, 1, 2);
         Eigen::Vector3d odom_euler = odom_quat.toRotationMatrix().eulerAngles(0, 1, 2);
 
-        // publish as cmd_wrench
-        publish_commands(commands);
+        publish_commands(commands, buoyancy_feedforward());
         // log goal and odom
         /*
         RCLCPP_INFO(this->get_logger(), "goal: '%s' '%s' '%s' '%s' '%s' '%s'",
@@ -174,7 +178,39 @@ void PIDController::control_loop()
     }
 }
 
-void PIDController::publish_commands(std::array<double, 6> const &commands)
+void PIDController::load_buoyancy_params()
+{
+    auto const moment = this->get_parameter("buoyancy_moment").as_double_array();
+    if (moment.size() != 3)
+    {
+        RCLCPP_ERROR(this->get_logger(), "buoyancy_moment must have 3 elements. Disabling buoyancy feedforward.");
+        net_buoyancy_ = 0.0;
+        buoyancy_moment_ = Eigen::Vector3d::Zero();
+        return;
+    }
+
+    net_buoyancy_ = this->get_parameter("net_buoyancy").as_double();
+    buoyancy_moment_ = Eigen::Vector3d(moment[0], moment[1], moment[2]);
+
+    RCLCPP_INFO(this->get_logger(), "Buoyancy feedforward: %.2f N up, moment [%.2f %.2f %.2f] Nm", net_buoyancy_,
+                buoyancy_moment_.x(), buoyancy_moment_.y(), buoyancy_moment_.z());
+}
+
+// Wrench (in base_link) that cancels buoyancy at the current orientation. The two forces are
+// fixed in the odom frame, so the whole thing is set by where "up" points in base_link
+Eigen::Matrix<double, 6, 1> PIDController::buoyancy_feedforward() const
+{
+    Eigen::Quaterniond const odom_quat(last_odom_[6], last_odom_[3], last_odom_[4], last_odom_[5]);
+    Eigen::Vector3d const up = odom_quat.toRotationMatrix().transpose() * Eigen::Vector3d::UnitZ();
+
+    Eigen::Matrix<double, 6, 1> feedforward;
+    feedforward(Eigen::seq(0, 2)) = -net_buoyancy_ * up;
+    feedforward(Eigen::seq(3, 5)) = -buoyancy_moment_.cross(up);
+    return feedforward;
+}
+
+void PIDController::publish_commands(std::array<double, 6> const &commands,
+                                     Eigen::Matrix<double, 6, 1> const &feedforward)
 {
     // Get the current orientation from odometry (should be w, x, y, z)
     Eigen::Quaterniond odom_quat(last_odom_[6], last_odom_[3], last_odom_[4], last_odom_[5]);
@@ -189,6 +225,10 @@ void PIDController::publish_commands(std::array<double, 6> const &commands)
         rotation_matrix.transpose() * force_odom;  // use transpose to inverse the rotation
     Eigen::Vector3d torque_base_link =
         rotation_matrix.transpose() * torque_odom;  // TODO the transpose might be bad... not sure yet
+
+    // the feedforward is already in base_link, so it is added after the rotation
+    force_base_link += feedforward(Eigen::seq(0, 2));
+    torque_base_link += feedforward(Eigen::seq(3, 5));
 
     auto msg = geometry_msgs::msg::Wrench();
     msg.force.x = force_base_link.x();
@@ -265,6 +305,8 @@ void PIDController::reset(std::shared_ptr<std_srvs::srv::Empty::Request> const,
                               param_map_["imax"].first[i], param_map_["imin"].first[i],
                               param_map_["antiwindup"].first[i]);
     }
+
+    load_buoyancy_params();
 
     // set starting command to current odom msg (stationkeep)
     this->last_goal_trajectory_ = this->last_odom_;

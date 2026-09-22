@@ -24,7 +24,8 @@ class PIDController : public rclcpp::Node
     void odom_cb(nav_msgs::msg::Odometry::UniquePtr const msg);
     void goal_trajectory_cb(geometry_msgs::msg::Pose::UniquePtr const msg);
     void relative_goal_trajectory_cb(geometry_msgs::msg::Pose::UniquePtr const msg);
-    void publish_commands(std::array<double, 6> const &commands);
+    void publish_commands(std::array<double, 6> const &commands,
+                          Eigen::Matrix<double, 6, 1> const &feedforward = Eigen::Matrix<double, 6, 1>::Zero());
     void publish_zero_command();
     void reset(std::shared_ptr<std_srvs::srv::Empty::Request> const request,
                std::shared_ptr<std_srvs::srv::Empty::Response> response);
@@ -47,6 +48,12 @@ class PIDController : public rclcpp::Node
     std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
     std::unordered_map<std::string, std::pair<std::vector<double>, std::shared_ptr<rclcpp::ParameterCallbackHandle>>>
         param_map_;
+
+    // gravity / buoyancy feedforward
+    void load_buoyancy_params();
+    Eigen::Matrix<double, 6, 1> buoyancy_feedforward() const;
+    double net_buoyancy_;              // N, net upward force (positive = the sub floats)
+    Eigen::Vector3d buoyancy_moment_;  // Nm, moment of that force, in the frame cmd_wrench uses
 
     Eigen::Matrix<double, 7, 1> last_odom_;
     // linear then angular velocity, in the body frame odom reports it in
