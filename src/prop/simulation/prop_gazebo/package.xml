@@ -13,7 +13,12 @@
   <depend>gz_plugin_vendor</depend>
   <depend>gz_sim_vendor</depend>
 
+  <!-- Everything prop_sim.launch.py includes. -->
   <exec_depend>navigator_gazebo</exec_depend>
+  <exec_depend>pcd</exec_depend>
+  <exec_depend>prop_controller</exec_depend>
+  <exec_depend>prop_localization</exec_depend>
+  <exec_depend>prop_planner</exec_depend>
   <exec_depend>ros2launch</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>

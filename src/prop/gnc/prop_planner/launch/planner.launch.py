@@ -20,6 +20,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, SetParameter
 
@@ -38,7 +39,14 @@ def generate_launch_description():
                 "the stamp they carry, so the clock has to match the one they "
                 "were stamped on.",
             ),
-            SetParameter("use_sim_time", LaunchConfiguration("use_sim_time")),
+            # Only set when asked. Left alone, the clock is whatever the bringup
+            # that included this file chose, and an unconditional false here
+            # would override it for every node launched after this one.
+            SetParameter(
+                "use_sim_time",
+                True,
+                condition=IfCondition(LaunchConfiguration("use_sim_time")),
+            ),
             Node(
                 package="prop_planner",
                 executable="planner",

@@ -2,16 +2,21 @@
 The simulated boat, its sensors and localization, optionally under control.
 
     ros2 launch prop_gazebo prop_sim.launch.py
+    ros2 launch prop_gazebo prop_sim.launch.py control:=true
     ros2 launch prop_gazebo prop_sim.launch.py control:=true mission:=square
     ros2 launch prop_gazebo prop_sim.launch.py \
         world_pkg:=navigator_gazebo world:=robotx_2024.world
     ros2 launch prop_gazebo prop_sim.launch.py rviz:=false \
         gz_args:="-s --headless-rendering"
 
-Gazebo supplies the hull and the sensors and nothing else: localization and
-control are the same nodes the boat runs, and all that differs is what is
-publishing /imu, /gps_raw and /lidar/scan, and what is listening on
-/thrusters/left and /thrusters/right.
+Gazebo supplies the hull and the sensors and nothing else: localization,
+perception, planning and control are the same nodes the boat runs, and all
+that differs is what is publishing /imu, /gps_raw and /lidar/points, and what
+is listening on /thrusters/left and /thrusters/right.
+
+Perception and the planner come up with the rest, and with control:=true
+guidance follows whatever the planner publishes. Send it somewhere to go with
+RViz's "2D Goal Pose". A mission file drives a fixed route instead.
 """
 
 import os
@@ -110,10 +115,10 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "mission",
-                default_value="square",
-                description="Mission the controller starts on. Pass none to "
-                "come up idle and send a plan with "
-                "'ros2 run prop_controller plan.py' instead.",
+                default_value="none",
+                description="Mission file for the controller to start on. "
+                "The default follows the planner instead; a plan can also be "
+                "sent by hand with 'ros2 run prop_controller plan.py'.",
             ),
             DeclareLaunchArgument(
                 "control_delay",
@@ -143,6 +148,23 @@ def generate_launch_description():
                 PythonLaunchDescriptionSource(
                     pkg_share("prop_localization", "launch", "localization.launch.py"),
                 ),
+            ),
+            # Both are written for the boat by default; here the cloud comes off
+            # the bridge and everything is on the simulator's clock.
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    pkg_share("pcd", "launch", "filter.launch.py"),
+                ),
+                launch_arguments={
+                    "use_sim_time": "true",
+                    "input_topic": "/lidar/points",
+                }.items(),
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    pkg_share("prop_planner", "launch", "planner.launch.py"),
+                ),
+                launch_arguments={"use_sim_time": "true"}.items(),
             ),
             # navsat_transform takes its datum from the first fix, so the map
             # frame ends up wherever the boat was when localization came up.
