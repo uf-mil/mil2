@@ -14,4 +14,11 @@ ament_target_dependencies(prop_planner_node nav_msgs rclcpp)
 
 install(TARGETS prop_planner_node DESTINATION lib/${PROJECT_NAME})
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(test_prop_planner test/test_prop_planner.py
+    TIMEOUT 90
+    ENV PROP_PLANNER_EXECUTABLE=$<TARGET_FILE:prop_planner_node>)
+endif()
+
 ament_package()

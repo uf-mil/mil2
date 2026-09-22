@@ -6,6 +6,13 @@ Output is throttled to at most once per second and only occurs when a message
 arrives. Coordinates are relative to the incoming `header.frame_id`, not
 latitude/longitude. This node does not yet generate paths or command movement.
 
+Each callback stores the complete latest odometry message in `last_odom_` and
+sets `has_odom_` to true. Future planning must check this flag before using the
+stored message, since a valid position of (0, 0, 0) must not be confused with
+having received no odometry. The flag indicates receipt, not data freshness.
+A TODO marks the future global-map subscription; its topic and message type
+are still to be defined.
+
 The default topic is `/odometry/filtered/global`, published by
 `prop_localization/launch/localization.launch.py` in the `map` frame.
 
@@ -46,3 +53,19 @@ The node should print:
 ```text
 Boat position in frame 'map': x=4.50 m, y=2.00 m, z=0.00 m
 ```
+
+## Automated tests
+
+After building, run in a terminal with ROS sourced:
+
+```bash
+ROS_DOMAIN_ID=87 colcon test --packages-select prop_planner --event-handlers console_direct+
+colcon test-result --test-result-base build/prop_planner --verbose
+```
+
+Use an unused ROS domain to keep tests separate from running boat software.
+The tests in `test/test_prop_planner.py` start the actual C++ executable and
+publish sample odometry using Python. They check the default topic, a custom
+topic with a best-effort publisher, no position output before a message,
+acceptance of zero coordinates, and updated position/frame output after a
+later message. They test observable behavior, not private state directly.
