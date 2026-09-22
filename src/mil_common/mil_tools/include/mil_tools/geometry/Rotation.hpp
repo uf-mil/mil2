@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <initializer_list>
@@ -88,17 +89,28 @@ class Rotation
     ////////////////////////////////////////
     // Euler accessors
     ////////////////////////////////////////
+    // Standard ZYX (yaw-pitch-roll) Tait-Bryan angles, the inverse of the rot_vec
+    // constructors above and the same convention as tf2::getYaw.
+    //
+    // These deliberately do NOT go through rot_vec(): Eigen's eulerAngles() is an
+    // intrinsic X-Y-Z decomposition and constrains its first angle to [0, pi], so a
+    // level vehicle with a hair of negative roll comes back as (roll+pi, pi-pitch,
+    // yaw+pi) -- the same rotation, but with yaw reported 180 degrees off. Reading
+    // heading that way flips on sensor noise about zero roll.
     [[nodiscard]] inline double roll() const
     {
-        return rot_vec(Axis::X, Axis::Y, Axis::Z)[0];
+        return std::atan2(2.0 * (quat_.w() * quat_.x() + quat_.y() * quat_.z()),
+                          1.0 - 2.0 * (quat_.x() * quat_.x() + quat_.y() * quat_.y()));
     };
     [[nodiscard]] inline double pitch() const
     {
-        return rot_vec(Axis::X, Axis::Y, Axis::Z)[1];
+        double const sp = 2.0 * (quat_.w() * quat_.y() - quat_.z() * quat_.x());
+        return std::asin(std::clamp(sp, -1.0, 1.0));
     };
     [[nodiscard]] inline double yaw() const
     {
-        return rot_vec(Axis::X, Axis::Y, Axis::Z)[2];
+        return std::atan2(2.0 * (quat_.w() * quat_.z() + quat_.x() * quat_.y()),
+                          1.0 - 2.0 * (quat_.y() * quat_.y() + quat_.z() * quat_.z()));
     };
     [[nodiscard]] inline double roll_deg() const
     {

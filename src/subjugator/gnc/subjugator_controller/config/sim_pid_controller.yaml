@@ -9,3 +9,10 @@
     imax: [0.0, 0.0, 5.0, 10.0, 0.0, 6.0]
     imin: [0.0, 0.0, -5.0, -10.0, 0.0, -6.0]
     antiwindup: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+    # Buoyancy feedforward, see pid_controller.yaml. Sim is very nearly
+    # neutral (20.4 kg displaced vs 20.5 kg mass), so a realistic value
+    # here is under 1 N; measure it like the real sub if you want to
+    # exercise this path.
+    net_buoyancy: -100.03
+    buoyancy_moment: [0.04, 0.0, 0.0]

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <iostream>
+#include <vector>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
@@ -96,4 +97,38 @@ int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
+}
+
+// The euler accessors must invert the rot_vec constructor. They used to read back
+// through Eigen's eulerAngles(), an intrinsic X-Y-Z decomposition with its first
+// angle pinned to [0, pi], which does not invert the ZYX constructor at all.
+TEST(mil_tools_geometry_rotation, euler_round_trip)
+{
+    double const deg = M_PI / 180.0;
+    for (auto const &rpy : std::vector<Eigen::Vector3d>{ { 5 * deg, 10 * deg, 30 * deg },
+                                                         { -5 * deg, -10 * deg, -30 * deg },
+                                                         { 0.0, 0.0, 150 * deg },
+                                                         { 0.0, 0.0, -150 * deg } })
+    {
+        Rotation const r{ rpy };
+        EXPECT_NEAR(r.roll(), rpy[0], 1e-9);
+        EXPECT_NEAR(r.pitch(), rpy[1], 1e-9);
+        EXPECT_NEAR(r.yaw(), rpy[2], 1e-9);
+    }
+}
+
+// A level vehicle with a hair of roll noise either side of zero must report the same
+// heading. The old accessor flipped yaw by 180 degrees when the roll went negative,
+// which made movement_manager compose an unwanted about-face into the first move.
+TEST(mil_tools_geometry_rotation, yaw_stable_across_zero_roll)
+{
+    double const deg = M_PI / 180.0;
+    for (double yaw : { 0.0, 45 * deg, 90 * deg, -120 * deg })
+    {
+        for (double roll : { 0.3 * deg, -0.3 * deg, 0.01 * deg, -0.01 * deg })
+        {
+            Rotation const r{ Eigen::Vector3d{ roll, 0.0, yaw } };
+            EXPECT_NEAR(r.yaw(), yaw, 1e-6) << "roll noise " << roll / deg << " deg flipped the heading";
+        }
+    }
 }
