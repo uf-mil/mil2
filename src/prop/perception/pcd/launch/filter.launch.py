@@ -36,6 +36,9 @@ def generate_launch_description():
             "base_link",
             "--child-frame-id",
             "velodyne",
+            "-ros-args",
+            "--log-level",
+            "debug",
         ],
         output="screen",
     )

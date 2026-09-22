@@ -11,8 +11,11 @@
  *
  *   1. For each incoming detection frame:
  *        a. Predict all existing tracks forward (constant-velocity EKF).
- *        b. Build a cost matrix: distance(predicted_centroid, detection).
- *        c. Greedy nearest-neighbour assignment (gated by max_association_dist).
+ *        b. Build a cost matrix: distance(predicted_centroid, detection),
+ *           gated by max_association_dist (out-of-range pairs get a huge
+ *           sentinel cost so they are effectively excluded).
+ *        c. Hungarian (Kuhn–Munkres) assignment — globally-optimal, unlike
+ *           a greedy nearest-neighbour match. See hungarian.hpp.
  *        d. Update matched tracks; increment miss counter for unmatched tracks.
  *        e. Spawn new tracks for unmatched detections.
  *        f. Delete tracks whose miss counter exceeds max_missed_frames.
@@ -34,6 +37,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "pcd/hungarian.hpp"
 #include "pcd/pcd_constants.hpp"
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -429,7 +433,9 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         std::size_t const nT = tracks_.size();
         std::size_t const nD = detections.size();
 
-        // cost[i][j] = Euclidean distance between track i prediction and detection j
+        // cost[i][j] = Euclidean distance between track i prediction and detection j.
+        // Pairs beyond the gate are set to a huge sentinel so the solver always
+        // prefers leaving them unmatched (see hungarian.hpp for why that works).
         std::vector<std::vector<double>> cost(nT, std::vector<double>(nD, 0.0));
         for (std::size_t i = 0; i < nT; ++i)
         {
@@ -437,30 +443,40 @@ class PclTracker : public rclcpp::Node, public PcdConstants
             {
                 double dx = tracks_[i].x[0] - detections[j]->pose.position.x;
                 double dy = tracks_[i].x[1] - detections[j]->pose.position.y;
-                cost[i][j] = std::sqrt(dx * dx + dy * dy);
+                double const dist = std::sqrt(dx * dx + dy * dy);
+                cost[i][j] = (dist <= max_association_dist_) ? dist : Hungarian::kGateRejectCost;
             }
         }
 
-        // Greedy nearest-neighbour assignment (sufficient for low-density marine scene)
+        // Globally-optimal assignment (replaces the old greedy nearest-neighbour
+        // match, which was order-dependent and prone to ID switches whenever two
+        // tracks' gating windows overlapped).
         std::vector<int> track_to_det(nT, -1);  // which detection matched each track
         std::vector<bool> det_used(nD, false);
 
-        for (std::size_t i = 0; i < nT; ++i)
+        if (nT > 0 && nD > 0)
         {
-            double best_cost = max_association_dist_;
-            int best_j = -1;
-            for (std::size_t j = 0; j < nD; ++j)
+            Hungarian::solve(cost, track_to_det);
+
+            // A match against a gate-rejected pair is still a valid *assignment*
+            // as far as the solver is concerned (it only avoided it when a cheaper
+            // dummy alternative existed) — so re-check the gate explicitly and
+            // undo any pair that slipped through, e.g. when every real option for
+            // a row was above the gate too.
+            for (std::size_t i = 0; i < nT; ++i)
             {
-                if (!det_used[j] && cost[i][j] < best_cost)
+                int const j = track_to_det[i];
+                if (j >= 0 && cost[i][static_cast<std::size_t>(j)] >= Hungarian::kGateRejectCost)
                 {
-                    best_cost = cost[i][j];
-                    best_j = static_cast<int>(j);
+                    track_to_det[i] = -1;
                 }
             }
-            if (best_j >= 0)
+            for (std::size_t i = 0; i < nT; ++i)
             {
-                track_to_det[i] = best_j;
-                det_used[best_j] = true;
+                if (track_to_det[i] >= 0)
+                {
+                    det_used[static_cast<std::size_t>(track_to_det[i])] = true;
+                }
             }
         }
 
