@@ -10,8 +10,11 @@ Each callback stores the complete latest odometry message in `last_odom_` and
 sets `has_odom_` to true. Future planning must check this flag before using the
 stored message, since a valid position of (0, 0, 0) must not be confused with
 having received no odometry. The flag indicates receipt, not data freshness.
-A TODO marks the future global-map subscription; its topic and message type
-are still to be defined.
+The global-map subscription receives `nav_msgs/msg/OccupancyGrid` on `/map`
+(configurable with `global_map_topic`). It uses reliable, transient-local QoS
+to receive the retained map from a compatible publisher. The callback retains
+the latest message in `last_global_map_` without copying the grid; the pointer
+is null until the first map arrives.
 
 The default topic is `/odometry/filtered/global`, published by
 `prop_localization/launch/localization.launch.py` in the `map` frame.

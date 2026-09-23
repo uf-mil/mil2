@@ -4,6 +4,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
 
 class PropPlanner : public rclcpp::Node
 {
@@ -17,13 +18,20 @@ class PropPlanner : public rclcpp::Node
             topic, rclcpp::SensorDataQoS(),
             [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) { odom_cb(msg); });
 
-        // TODO: Add a global-map subscription and callback once the topic and
-        // message type are defined. Store map updates for future path planning.
+        auto const map_topic = declare_parameter<std::string>("global_map_topic", "/map");
+        global_map_sub_ = create_subscription<nav_msgs::msg::OccupancyGrid>(
+            map_topic, rclcpp::QoS(1).reliable().transient_local(),
+            [this](nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg) { global_map_cb(msg); });
 
         RCLCPP_INFO(get_logger(), "Waiting for odometry on %s", odom_sub_->get_topic_name());
     }
 
   private:
+    void global_map_cb(nav_msgs::msg::OccupancyGrid::ConstSharedPtr const &msg)
+    {
+        last_global_map_ = msg;
+    }
+
     void odom_cb(nav_msgs::msg::Odometry::ConstSharedPtr const &msg)
     {
         last_odom_ = *msg;
@@ -38,6 +46,9 @@ class PropPlanner : public rclcpp::Node
 
     rclcpp::Clock log_clock_{ RCL_STEADY_TIME };
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr global_map_sub_;
+    // Null until the first map arrives; retain the message without copying the grid.
+    nav_msgs::msg::OccupancyGrid::ConstSharedPtr last_global_map_;
     nav_msgs::msg::Odometry last_odom_;
     // Future planning must check this flag before using last_odom_.
     // Receiving (0, 0, 0) is valid; it is different from receiving no message.
