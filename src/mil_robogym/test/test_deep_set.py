@@ -71,12 +71,12 @@ def test_deep_set_handles_boolean_values():
     assert y.shape == (4,)
 
 
-def test_deep_set_rejects_string_in_object():
-    """Rejects string values during object flattening."""
+def test_deep_set_ignores_string_values_in_object():
+    """Ignores string metadata fields during object flattening."""
     model = DeepSet(obj={"x": 1.0}, output_shape=2)
+    tensor = model.convert_object_to_tensor({"good": 1.0, "bad": "text"})
 
-    with pytest.raises(TypeError, match="String values are not supported"):
-        model.convert_object_to_tensor({"bad": "text"})
+    assert torch.equal(tensor, torch.tensor([1.0]))
 
 
 def test_deep_set_set_order_is_stable():
@@ -97,3 +97,27 @@ def test_deep_set_deterministic_in_eval_mode():
     y2 = model(x)
 
     assert torch.allclose(y1, y2)
+
+
+def test_deep_set_moves_raw_object_batches_to_cuda():
+    """Encodes raw Python object batches on the model device."""
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is required for this regression test.")
+
+    model = DeepSet(
+        obj={"x": 1.0, "y": 2.0, "label": ""},
+        output_shape=3,
+    ).to("cuda")
+    batch = [
+        [{"x": 1.0, "y": 2.0, "label": "first"}],
+        [
+            {"x": 3.0, "y": 4.0, "label": "second"},
+            {"x": 5.0, "y": 6.0, "label": "third"},
+        ],
+    ]
+
+    y = model(batch)
+
+    assert y.shape == (2, 3)
+    assert y.device.type == "cuda"
+    assert torch.isfinite(y).all()

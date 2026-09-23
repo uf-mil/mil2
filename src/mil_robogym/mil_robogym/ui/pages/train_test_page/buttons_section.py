@@ -23,7 +23,7 @@ class ButtonsSection:
         self.container = tk.Frame(parent, bg="#DADADA")
         self.container.grid(
             row=3,
-            column=2,
+            column=3,
             columnspan=4,
             sticky="ew",
             padx=(8, 14),
@@ -64,6 +64,22 @@ class ButtonsSection:
         )
         self.test_button.grid(row=0, column=1, sticky="e", padx=(8, 0))
 
+        self.validate_button = tk.Button(
+            self.container,
+            text="Validate Selected Agent",
+            command=lambda: on_test_click(validate=True),
+            bg="#ECECEC",
+            activebackground="#DFDFDF",
+            fg="black",
+            relief="solid",
+            bd=1,
+            font=("Arial", 10),
+            padx=10,
+            pady=4,
+            cursor="hand2",
+        )
+        self.validate_button.grid(row=0, column=2, sticky="e", padx=(8, 0))
+
         self.abort_button = tk.Button(
             self.container,
             text="Abort",
@@ -87,6 +103,7 @@ class ButtonsSection:
 
         if self._training_running:
             self.test_button.grid_remove()
+            self.validate_button.grid_remove()
             self.abort_button.grid()
             self.abort_button.configure(state="normal")
             self.train_button.configure(
@@ -97,6 +114,7 @@ class ButtonsSection:
                 activebackground="#EBC3BF",
             )
             self.test_button.configure(state="disabled")
+            self.validate_button.configure(state="disabled")
             return
 
         self.train_button.configure(
@@ -110,6 +128,8 @@ class ButtonsSection:
         self.abort_button.grid_remove()
         self.test_button.grid()
         self.test_button.configure(state="normal")
+        self.validate_button.grid()
+        self.validate_button.configure(state="normal")
 
     def _handle_train_button_click(self) -> None:
         if self._training_running:

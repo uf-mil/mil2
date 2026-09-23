@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from contextlib import suppress
+from dataclasses import dataclass
 
 from .utils import canonical_topic_name
 
@@ -138,25 +139,42 @@ def get_topic_names(
     ]
 
 
-def resolve_topics_in_graph(
+@dataclass(frozen=True)
+class TopicGraphResolution:
+    requested_topics: list[str]
+    resolved_topics: dict[str, tuple[str, list[str]]]
+    missing_topics: list[str]
+    type_unresolved_topics: list[str]
+
+    @property
+    def all_resolved(self) -> bool:
+        return not self.missing_topics and not self.type_unresolved_topics
+
+
+def query_topics_in_graph(
     topics: list[str],
     *,
     timeout_s: float = 2.0,
-    operation: str,
-) -> dict[str, tuple[str, list[str]]]:
+) -> TopicGraphResolution:
     """
-    Resolve requested topic names against the active ROS 2 graph.
+    Query requested topics against the active ROS 2 graph.
 
-    Returns a mapping from each original requested topic string to:
-      - the graph-resolved topic name
-      - the list of message types currently reported for that topic
+    Returns a structured result containing:
+      - graph-resolved topic names and their advertised message types
+      - topics still missing from the graph after the timeout
+      - topics found in the graph but still missing type information
     """
     if timeout_s <= 0:
         raise ValueError("timeout_s must be positive.")
 
     requested_topics = list(topics)
     if not requested_topics:
-        return {}
+        return TopicGraphResolution(
+            requested_topics=[],
+            resolved_topics={},
+            missing_topics=[],
+            type_unresolved_topics=[],
+        )
 
     with _open_graph_query() as query:
         deadline = time.monotonic() + timeout_s
@@ -193,7 +211,7 @@ def resolve_topics_in_graph(
                 resolved_topics[topic] = (resolved_topic, topic_types)
 
             if len(resolved_topics) == len(requested_topics):
-                return resolved_topics
+                break
 
             remaining = deadline - time.monotonic()
             if remaining <= 0:
@@ -201,12 +219,37 @@ def resolve_topics_in_graph(
 
             query.spin_once(min(0.1, remaining))
 
-    if missing_topics:
+    return TopicGraphResolution(
+        requested_topics=requested_topics,
+        resolved_topics=resolved_topics,
+        missing_topics=missing_topics,
+        type_unresolved_topics=type_unresolved_topics,
+    )
+
+
+def resolve_topics_in_graph(
+    topics: list[str],
+    *,
+    timeout_s: float = 2.0,
+    operation: str,
+) -> dict[str, tuple[str, list[str]]]:
+    """
+    Resolve requested topic names against the active ROS 2 graph.
+
+    Returns a mapping from each original requested topic string to:
+      - the graph-resolved topic name
+      - the list of message types currently reported for that topic
+    """
+    resolution = query_topics_in_graph(topics, timeout_s=timeout_s)
+    if resolution.all_resolved:
+        return resolution.resolved_topics
+    if resolution.missing_topics:
         raise RuntimeError(
             f"Could not {operation} because these topics were not found "
-            f"in the ROS 2 graph: {missing_topics}",
+            f"in the ROS 2 graph: {resolution.missing_topics}",
         )
 
     raise RuntimeError(
-        "Failed to resolve ROS 2 topic types for: " f"{type_unresolved_topics}.",
+        "Failed to resolve ROS 2 topic types for: "
+        f"{resolution.type_unresolved_topics}.",
     )

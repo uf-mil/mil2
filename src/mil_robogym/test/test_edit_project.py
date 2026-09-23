@@ -8,9 +8,40 @@ import yaml
 from mil_robogym.data_collection.filesystem import edit_project
 
 
-def _project_payload(name: str) -> dict:
-    """Builds a minimal project payload for edit tests."""
+def _tensor_spec(
+    *,
+    input_topics: dict[str, list[str]],
+    output_topics: dict[str, list[str]],
+) -> dict[str, object]:
+    input_features = [
+        f"{topic}:{field}" for topic, fields in input_topics.items() for field in fields
+    ]
+    output_features = [
+        f"{topic}:{field}"
+        for topic, fields in output_topics.items()
+        for field in fields
+    ]
     return {
+        "input_features": input_features,
+        "output_features": output_features,
+        "input_dim": len(input_features),
+        "output_dim": len(output_features),
+    }
+
+
+def _project_payload(
+    name: str,
+    *,
+    input_topics: dict[str, list[str]] | None = None,
+    output_topics: dict[str, list[str]] | None = None,
+    input_non_numeric_topics: dict[str, list[dict[str, str]]] | None = None,
+    output_non_numeric_topics: dict[str, list[dict[str, str]]] | None = None,
+) -> dict:
+    """Builds a valid project payload for edit tests."""
+    resolved_input_topics = input_topics or {"imu/processed": ["orientation.x"]}
+    resolved_output_topics = output_topics or {"trajectory/4_deg": ["yaw"]}
+
+    payload = {
         "name": name,
         "world_file": "src/default/world/file",
         "model_name": "weights.pt",
@@ -19,9 +50,33 @@ def _project_payload(name: str) -> dict:
             "coord1_4d": [0.0, 0.0, 0.0, 0.0],
             "coord2_4d": [1.0, 2.0, 3.0, 4.0],
         },
-        "input_topics": {"imu/processed": ["orientation.x"]},
-        "output_topics": {"trajectory/4_deg": ["yaw"]},
+        "input_topics": resolved_input_topics,
+        "output_topics": resolved_output_topics,
+        "tensor_spec": _tensor_spec(
+            input_topics=resolved_input_topics,
+            output_topics=resolved_output_topics,
+        ),
     }
+    if input_non_numeric_topics is not None:
+        payload["input_non_numeric_topics"] = input_non_numeric_topics
+    if output_non_numeric_topics is not None:
+        payload["output_non_numeric_topics"] = output_non_numeric_topics
+    return payload
+
+
+def _write_project_config(
+    project_dir: Path,
+    *,
+    project: dict,
+    training_settings: dict[str, int] | None = None,
+) -> None:
+    config = {"robogym_project": project}
+    if training_settings is not None:
+        config["robogym_training"] = training_settings
+    (project_dir / "config.yaml").write_text(
+        yaml.safe_dump(config, sort_keys=False),
+        encoding="utf-8",
+    )
 
 
 def test_edit_project_updates_source(tmp_path: Path, monkeypatch):
@@ -35,21 +90,10 @@ def test_edit_project_updates_source(tmp_path: Path, monkeypatch):
     source_old = source_projects / "old_name"
     source_old.mkdir(parents=True)
     (source_old / "demos").mkdir()
-    (source_old / "config.yaml").write_text(
-        "robogym_project:\n"
-        "  name: Old Name\n"
-        "  world_file: src/default/world/file\n"
-        "  model_name: weights.pt\n"
-        "  random_spawn_space:\n"
-        "    enabled: false\n"
-        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
-        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
-        "  input_topics: {}\n"
-        "  output_topics: {}\n"
-        "robogym_training:\n"
-        "  num_episodes: 77\n"
-        "  rollout_steps: 333\n",
-        encoding="utf-8",
+    _write_project_config(
+        source_old,
+        project=_project_payload("Old Name", input_topics={}, output_topics={}),
+        training_settings={"num_episodes": 77, "rollout_steps": 333},
     )
 
     updated = _project_payload("New Name")
@@ -99,43 +143,38 @@ def test_edit_project_preserves_non_numeric_topic_selections(
     source_project = source_projects / "typed_topics_project"
     source_project.mkdir(parents=True)
     (source_project / "demos").mkdir()
-    (source_project / "config.yaml").write_text(
-        "robogym_project:\n"
-        "  name: Typed Topics Project\n"
-        "  world_file: src/default/world/file\n"
-        "  model_name: weights.pt\n"
-        "  random_spawn_space:\n"
-        "    enabled: false\n"
-        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
-        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
-        "  input_topics:\n"
-        "    camera/image_raw: []\n"
-        "  output_topics:\n"
-        "    detections: []\n",
-        encoding="utf-8",
+    _write_project_config(
+        source_project,
+        project=_project_payload(
+            "Typed Topics Project",
+            input_topics={"camera/image_raw": []},
+            output_topics={"detections": []},
+        ),
     )
 
-    updated = _project_payload("Typed Topics Project")
-    updated["input_topics"] = {"camera/image_raw": []}
-    updated["output_topics"] = {"detections": []}
-    updated["input_non_numeric_topics"] = {
-        "camera/image_raw": [
-            {
-                "field_path": "data",
-                "data_type": "image",
-                "ros_type": "sensor_msgs/msg/Image",
-            },
-        ],
-    }
-    updated["output_non_numeric_topics"] = {
-        "detections": [
-            {
-                "field_path": "detections",
-                "data_type": "unordered_set",
-                "ros_type": "sequence<vision_msgs/msg/Detection2D>",
-            },
-        ],
-    }
+    updated = _project_payload(
+        "Typed Topics Project",
+        input_topics={"camera/image_raw": []},
+        output_topics={"detections": []},
+        input_non_numeric_topics={
+            "camera/image_raw": [
+                {
+                    "field_path": "data",
+                    "data_type": "image",
+                    "ros_type": "sensor_msgs/msg/Image",
+                },
+            ],
+        },
+        output_non_numeric_topics={
+            "detections": [
+                {
+                    "field_path": "detections",
+                    "data_type": "unordered_set",
+                    "ros_type": "sequence<vision_msgs/msg/Detection2D>",
+                },
+            ],
+        },
+    )
 
     edited_dir = edit_project(updated, original_project_name="Typed Topics Project")
     source_cfg = yaml.safe_load(
@@ -175,24 +214,15 @@ def test_edit_project_rejects_topic_changes_when_demos_exist(
 
     source_project = source_projects / "locked_project"
     (source_project / "demos" / "demo_1").mkdir(parents=True)
-    (source_project / "config.yaml").write_text(
-        "robogym_project:\n"
-        "  name: Locked Project\n"
-        "  world_file: src/default/world/file\n"
-        "  model_name: weights.pt\n"
-        "  random_spawn_space:\n"
-        "    enabled: false\n"
-        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
-        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
-        "  input_topics:\n"
-        "    imu/processed: [orientation.x]\n"
-        "  output_topics:\n"
-        "    trajectory/4_deg: [yaw]\n",
-        encoding="utf-8",
+    _write_project_config(
+        source_project,
+        project=_project_payload("Locked Project"),
     )
 
-    updated = _project_payload("Locked Project")
-    updated["input_topics"] = {"imu/processed": ["orientation.y"]}
+    updated = _project_payload(
+        "Locked Project",
+        input_topics={"imu/processed": ["orientation.y"]},
+    )
 
     with pytest.raises(
         ValueError,
@@ -214,20 +244,9 @@ def test_edit_project_allows_non_topic_changes_when_demos_exist(
 
     source_project = source_projects / "stable_project"
     (source_project / "demos" / "demo_1").mkdir(parents=True)
-    (source_project / "config.yaml").write_text(
-        "robogym_project:\n"
-        "  name: Stable Project\n"
-        "  world_file: src/default/world/file\n"
-        "  model_name: weights.pt\n"
-        "  random_spawn_space:\n"
-        "    enabled: false\n"
-        "    coord1_4d: [0.0, 0.0, 0.0, 0.0]\n"
-        "    coord2_4d: [0.0, 0.0, 0.0, 0.0]\n"
-        "  input_topics:\n"
-        "    imu/processed: [orientation.x]\n"
-        "  output_topics:\n"
-        "    trajectory/4_deg: [yaw]\n",
-        encoding="utf-8",
+    _write_project_config(
+        source_project,
+        project=_project_payload("Stable Project"),
     )
 
     updated = _project_payload("Stable Project Renamed")
