@@ -47,6 +47,7 @@ class AcousticModem(Node):
                 .string_value,
             )
             self.modem.init_modem()
+            self.modem.set_max_addr(2)
             self.modem.set_local_addr(
                 self.get_param("local_address").get_parameter_value().integer_value,
             )
