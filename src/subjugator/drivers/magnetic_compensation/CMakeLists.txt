@@ -12,6 +12,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -24,6 +25,10 @@ install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 
 # Install project configuration files
 install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
+
+# Install the pure-Python calibration module (importable as
+# magnetic_compensation.ellipsoid by the config generator and the tests)
+ament_python_install_package(${PROJECT_NAME})
 
 # create the component library
 add_library(
@@ -59,20 +64,22 @@ ament_export_dependencies(rclcpp rclcpp_components sensor_msgs tf2 tf2_eigen
                           Eigen3)
 
 if(BUILD_TESTING)
+  # C++ unit tests: correction math + parameter validation (compensator.hpp)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_compensator test/test_compensator.cpp)
+  target_include_directories(test_compensator
+                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(test_compensator Eigen3::Eigen)
+
+  # Pure-math Python tests for the ellipsoid fit (numpy/scipy only)
   find_package(ament_cmake_pytest REQUIRED)
-  set(_pytest_tests) # test/test_basic_shift.py)
-  foreach(_test_path ${_pytest_tests})
-    get_filename_component(_test_name ${_test_path} NAME_WE)
-    ament_add_pytest_test(
-      ${_test_name}
-      ${_test_path}
-      APPEND_ENV
-      PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}
-      TIMEOUT
-      60
-      WORKING_DIRECTORY
-      ${CMAKE_SOURCE_DIR})
-  endforeach()
+  ament_add_pytest_test(test_ellipsoid test/test_ellipsoid.py TIMEOUT 60
+                        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  # End-to-end launch tests: live correction path + constructor param validation
+  find_package(launch_testing_ament_cmake REQUIRED)
+  add_launch_test(test/test_basic_shift.py TIMEOUT 60)
+  add_launch_test(test/test_param_validation.py TIMEOUT 60)
 endif()
 
 ament_package()
