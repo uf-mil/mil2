@@ -19,7 +19,7 @@ class TestingModemInterface(ModemInterface):
 
         protobuf_string = any_message.SerializeToString()
 
-        return str.encode("RECVIM,1,1,1,ack,1,1,1,1,") + protobuf_string
+        return protobuf_string
 
     def send_im(self, message):
         print(f"TestingModemInterface: Sending message '{message}'")

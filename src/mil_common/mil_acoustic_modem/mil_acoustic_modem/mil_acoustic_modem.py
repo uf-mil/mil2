@@ -61,9 +61,8 @@ class AcousticModem(Node):
             )
 
     def read_latest_data(self):
-        message_bytes = self.modem.read_im()
+        protobuf_bytes = self.modem.read_im()
         parsed_message = any_pb2.Any()
-        protobuf_bytes = message_bytes.split(b",")[-1]
         parsed_message.ParseFromString(protobuf_bytes)
 
         if parsed_message.Is(
