@@ -15,11 +15,12 @@
 #include <yolo_msgs/msg/detection_array.hpp>
 
 BT::BehaviorTreeFactory factory;
+std::shared_ptr<rclcpp::Node> node;
 
 int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    auto node = rclcpp::Node::make_shared("mission_planner");
+    node = rclcpp::Node::make_shared("mission_planner");
     auto ctx = std::make_shared<Context>();
     ctx->node = node;
 
