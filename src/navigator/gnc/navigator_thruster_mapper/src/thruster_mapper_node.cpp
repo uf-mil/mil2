@@ -122,7 +122,7 @@ class ThrusterMapperNode : public rclcpp::Node
 
         // Subscribe to the wrench
         wrench_sub_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
-            "/wrench/cmd", 1, std::bind(&ThrusterMapperNode::wrench_cb, this, std::placeholders::_1));
+            "/wrench_combined", 1, std::bind(&ThrusterMapperNode::wrench_cb, this, std::placeholders::_1));
 
         // Subscribe to kill alarm
         kill_sub_ = this->create_subscription<std_msgs::msg::Bool>(
