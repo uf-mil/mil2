@@ -1,4 +1,4 @@
-#include "prop_path_planner/safe_passage_planner.hpp"
+#include "safe_passage_planner.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -182,9 +182,9 @@ int main(int argc, char** argv)
     rclcpp::init(argc, argv);
     auto node = std::make_shared<rclcpp::Node>("safe_passage_planner");
 
-    auto const x = node->declare_parameter<std::vector<double>>("buoy_x", {});
-    auto const y = node->declare_parameter<std::vector<double>>("buoy_y", {});
-    auto const colors = node->declare_parameter<std::vector<std::string>>("buoy_colors", {});
+    auto const x = node->declare_parameter<std::vector<double>>("buoy_x", std::vector<double>{});
+    auto const y = node->declare_parameter<std::vector<double>>("buoy_y", std::vector<double>{});
+    auto const colors = node->declare_parameter<std::vector<std::string>>("buoy_colors", std::vector<std::string>{});
     auto const boat_x = node->declare_parameter<double>("boat_start_x", 0.0);
     auto const boat_y = node->declare_parameter<double>("boat_start_y", 0.0);
     auto const frame = node->declare_parameter<std::string>("frame_id", "map");

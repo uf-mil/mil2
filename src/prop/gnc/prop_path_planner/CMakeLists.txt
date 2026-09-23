@@ -17,17 +17,18 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 
-file(GLOB_RECURSE PROP_PATH_PLANNER_SOURCES CONFIGURE_DEPENDS
+file(GLOB_RECURSE PROP_PATH_PLANNER_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 add_executable(prop_path_planner ${PROP_PATH_PLANNER_SOURCES})
 
 ament_target_dependencies(prop_path_planner rclcpp nav_msgs)
 
-target_include_directories(prop_path_planner
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(
+  prop_path_planner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
+                            ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 install(TARGETS prop_path_planner DESTINATION lib/${PROJECT_NAME})
-install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
+ament_package()
 ament_package()
