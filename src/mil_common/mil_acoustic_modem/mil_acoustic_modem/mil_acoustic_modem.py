@@ -3,6 +3,8 @@
 import rclpy
 from google.protobuf import any_pb2
 from mil_msgs.msg import PipelineSegmentStatus, PipelineSurveyReport, Point2D
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
 from mil_acoustic_modem.hardware_modem_interface import HardwareModemInterface
@@ -14,10 +16,13 @@ class AcousticModem(Node):
     def __init__(self):
         super().__init__("acoustic_modem")
 
-        self.declare_parameter("modem_serial_port", "COM9")
+        self.declare_parameter("modem_serial_port", "/dev/ttyACM1")
         self.declare_parameter("local_address", 0)
         self.declare_parameter("remote_address", 0)
         self.declare_parameter("carrier_waveform_id", 0)
+
+        self.sub_group = MutuallyExclusiveCallbackGroup()
+        self.timer_group = MutuallyExclusiveCallbackGroup()
 
         self.pipeline_survey_report_publisher = self.create_publisher(
             PipelineSurveyReport,
@@ -29,10 +34,15 @@ class AcousticModem(Node):
             "pipeline_survey_report_sending",
             self.send_pipeline_survey_report,
             10,
+            callback_group=self.sub_group,
         )
 
         # 2 seconds (equal to the serial read timeout)
-        self.timer = self.create_timer(2, self.read_latest_data)
+        self.timer = self.create_timer(
+            2,
+            self.read_latest_data,
+            callback_group=self.timer_group,
+        )
 
         if (
             self.get_parameter("modem_serial_port").get_parameter_value().string_value
@@ -49,16 +59,20 @@ class AcousticModem(Node):
             self.modem.init_modem()
             self.modem.set_max_addr(2)
             self.modem.set_local_addr(
-                self.get_param("local_address").get_parameter_value().integer_value,
+                self.get_parameter("local_address").get_parameter_value().integer_value,
             )
             self.modem.set_remote_addr(
-                self.get_param("remote_address").get_parameter_value().integer_value,
-            )
-            self.modem.set_carrier_waveform_id(
-                self.get_param("carrier_waveform_id")
+                self.get_parameter("remote_address")
                 .get_parameter_value()
                 .integer_value,
             )
+            self.modem.set_carrier_waveform_id(
+                self.get_parameter("carrier_waveform_id")
+                .get_parameter_value()
+                .integer_value,
+            )
+
+            print("modem setup!")
 
     def read_latest_data(self):
         protobuf_bytes = self.modem.read_im()
@@ -89,6 +103,7 @@ class AcousticModem(Node):
             self.pipeline_survey_report_publisher.publish(ros_msg)
 
     def send_pipeline_survey_report(self, msg):
+        self.get_logger().info("got message!")
         protobuf_message = pipeline_survey_report_pb2.PipelineSurveyReport()
         protobuf_message.active_buoy_position_x = msg.active_buoy_position.x
         protobuf_message.active_buoy_position_y = msg.active_buoy_position.y
@@ -105,7 +120,9 @@ def main(args=None):
 
     acoustic_modem = AcousticModem()
 
-    rclpy.spin(acoustic_modem)
+    executor = MultiThreadedExecutor()
+    executor.add_node(acoustic_modem)
+    executor.spin()
 
     acoustic_modem.destroy_node()
     rclpy.shutdown()

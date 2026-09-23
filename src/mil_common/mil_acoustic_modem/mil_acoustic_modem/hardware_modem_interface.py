@@ -506,6 +506,8 @@ class HardwareModemInterface(ModemInterface):
         return im_message
 
     def send_im(self, data):
+        print("Sending IM...")
+        print(f"data: {data}")
         self.__send_data(f"AT*SENDIM,{len(data)},{self.get_remote_addr()},ack,#{data}")
 
     ########## <Nonvolatile operations> ##########
