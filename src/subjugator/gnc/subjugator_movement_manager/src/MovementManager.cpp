@@ -45,9 +45,21 @@ void MovementManager::odom_cb(nav_msgs::msg::Odometry::SharedPtr const &msg)
 
 geometry_msgs::msg::Pose MovementManager::base_pose_(MoveRequest const &req) const
 {
+    // Chaining off the previous goal keeps a run of relative moves from accumulating
+    // tracking error, but that only holds while the sub is actually there. A goal left
+    // over from a finished mission, a timed-out move, or a sub that drifted or was
+    // repositioned is not a base: measuring from it replays the stale pose's offset
+    // into the new move. drive_to_() clears it on preemption for the same reason, but
+    // it cannot see the other ways a goal goes stale, so check against odom here.
     if (req.relative && last_goal_)
     {
-        return *last_goal_;
+        double dist = 0.0, ang = 0.0;
+        if (current_errors_(*last_goal_, dist, ang) && dist <= loose_pos_tol && ang <= loose_ori_tol)
+        {
+            return *last_goal_;
+        }
+        RCLCPP_WARN(get_logger(), "MovementManager: last goal is stale (%.2f m, %.1f deg off); measuring from odom.",
+                    dist, ang);
     }
     if (latest_odom_)
     {
