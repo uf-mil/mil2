@@ -32,14 +32,11 @@ repos:
     rev: v0.10.0.1
     hooks:
       - id: shellcheck
-        # TODO fix this path (and other references)
-        exclude: ^NaviGator/simulation/VRX
         args: [--severity=warning, --exclude=SC1090]
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.10.0-1
     hooks:
       - id: shfmt
-        exclude: ^NaviGator/simulation/VRX
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: 'v0.8.1'
@@ -57,11 +54,9 @@ repos:
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=fpr,ser,wan,te,wan,ba,ned,ans,hist,nd,wronly,Voight,assertIn,flor
-          - --skip="./.*,*.csv,*.json"
+          - --ignore-words-list=ned,Voight
+          - --skip=pixi.lock
           - --quiet-level=2
-        exclude_types: [csv, json]
-        exclude: ^NaviGator/simulation/VRX
         #   - repo: https://github.com/lsst-ts/pre-commit-xmllint
         #     rev: v1.0.0
         #     hooks:
