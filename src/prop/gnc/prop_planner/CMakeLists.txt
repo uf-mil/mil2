@@ -52,6 +52,15 @@ install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
 
 if(BUILD_TESTING)
+  # The map and the search hold no ROS, so they test as plain C++.
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(test_obstacle_map test/obstacle_map.cpp)
+  target_link_libraries(test_obstacle_map prop_planner_core)
+
+  ament_add_gtest(test_visibility_planner test/visibility_planner.cpp)
+  target_link_libraries(test_visibility_planner prop_planner_core)
+
   find_package(ament_lint_auto REQUIRED)
   list(
     APPEND

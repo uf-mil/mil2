@@ -83,7 +83,7 @@ class Inspector(Node):
 
 
 def counters(node):
-    """One line a second: what is visible now against what has been kept."""
+    """Print one line a second: what is visible now against what has been kept."""
     print(f"{'time':>8}  {'in view':>8}  {'known':>6}  {'confirmed':>10}")
     while True:
         spin_once(node, timeout_sec=0.1)
@@ -104,7 +104,7 @@ def counters(node):
 
 
 def listing(node):
-    """The remembered obstacles themselves, once the map has arrived."""
+    """Print the remembered obstacles themselves, once the map has arrived."""
     deadline = time.monotonic() + 10.0
     while not node.map_seen and time.monotonic() < deadline:
         spin_once(node, timeout_sec=0.1)
