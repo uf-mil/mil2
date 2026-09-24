@@ -1,7 +1,6 @@
 # This node will run on the boat and sub
 
 import rclpy
-from google.protobuf import any_pb2
 from mil_msgs.msg import PipelineSegmentStatus, PipelineSurveyReport, Point2D
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
@@ -20,6 +19,7 @@ class AcousticModem(Node):
         self.declare_parameter("local_address", 0)
         self.declare_parameter("remote_address", 0)
         self.declare_parameter("carrier_waveform_id", 0)
+        self.declare_parameter("gain", 0)
 
         self.sub_group = MutuallyExclusiveCallbackGroup()
         self.timer_group = MutuallyExclusiveCallbackGroup()
@@ -31,7 +31,7 @@ class AcousticModem(Node):
         )
         self.pipeline_survey_report_subscriber = self.create_subscription(
             PipelineSurveyReport,
-            "pipeline_survey_report_sending",
+            f"pipeline_survey_report_sending_{self.get_parameter("modem_serial_port").get_parameter_value().string_value[-1]}",
             self.send_pipeline_survey_report,
             10,
             callback_group=self.sub_group,
@@ -57,50 +57,60 @@ class AcousticModem(Node):
                 .string_value,
             )
             self.modem.init_modem()
-            self.modem.set_max_addr(2)
-            self.modem.set_local_addr(
+            self.modem.set_setting("Highest Address", 2)
+            self.modem.set_setting(
+                "Local Address",
                 self.get_parameter("local_address").get_parameter_value().integer_value,
             )
-            self.modem.set_remote_addr(
+            self.modem.set_setting(
+                "Remote Address",
                 self.get_parameter("remote_address")
                 .get_parameter_value()
                 .integer_value,
             )
-            self.modem.set_carrier_waveform_id(
+            self.modem.set_setting(
+                "Carrier Waveform ID",
                 self.get_parameter("carrier_waveform_id")
                 .get_parameter_value()
                 .integer_value,
+            )
+            self.modem.set_setting(
+                "Gain",
+                self.get_parameter("gain").get_parameter_value().integer_value,
             )
 
             print("modem setup!")
 
     def read_latest_data(self):
+        print("running read...")
         protobuf_bytes = self.modem.read_im()
-        parsed_message = any_pb2.Any()
+
+        if protobuf_bytes is None:
+            return
+
+        parsed_message = pipeline_survey_report_pb2.PipelineSurveyReport()
         parsed_message.ParseFromString(protobuf_bytes)
 
-        if parsed_message.Is(
-            pipeline_survey_report_pb2.PipelineSurveyReport.DESCRIPTOR,
-        ):
-            unpacked_message = pipeline_survey_report_pb2.PipelineSurveyReport()
-            parsed_message.Unpack(unpacked_message)
+        print("received msg")
+        print(protobuf_bytes)
+        print(parsed_message)
 
-            ros_msg = PipelineSurveyReport()
+        ros_msg = PipelineSurveyReport()
 
-            point_2d = Point2D()
-            point_2d.x = unpacked_message.active_buoy_position_x
-            point_2d.y = unpacked_message.active_buoy_position_y
+        point_2d = Point2D()
+        point_2d.x = parsed_message.active_buoy_position_x
+        point_2d.y = parsed_message.active_buoy_position_y
 
-            ros_msg.active_buoy_position = point_2d
-            ros_msg.segments = []
+        ros_msg.active_buoy_position = point_2d
+        ros_msg.segments = []
 
-            for status in unpacked_message.segments:
-                segment_status = PipelineSegmentStatus()
-                segment_status.status = status
+        for status in parsed_message.segments:
+            segment_status = PipelineSegmentStatus()
+            segment_status.status = status
 
-                ros_msg.segments.append(segment_status)
+            ros_msg.segments.append(segment_status)
 
-            self.pipeline_survey_report_publisher.publish(ros_msg)
+        self.pipeline_survey_report_publisher.publish(ros_msg)
 
     def send_pipeline_survey_report(self, msg):
         self.get_logger().info("got message!")

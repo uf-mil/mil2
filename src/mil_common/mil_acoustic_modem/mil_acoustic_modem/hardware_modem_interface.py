@@ -4,6 +4,7 @@ for controlling an acoustic modem.
 """
 
 # Dependencies
+import base64
 import time
 
 import serial
@@ -59,6 +60,14 @@ class HardwareModemInterface(ModemInterface):
         "Hold Timeout": "",
         "Idle Timeout": "",
         "Remote Address": "",  # remote address is not read by AT&V, must be read separately
+    }
+
+    _setting_to_command = {
+        "Carrier Waveform ID": "AT!C",
+        "Highest Address": "AT!AM",
+        "Remote Address": "AT!AR",
+        "Local Address": "AT!AL",
+        "Gain": "AT!G",
     }
 
     # Acoustic modem settings (private)
@@ -117,14 +126,11 @@ class HardwareModemInterface(ModemInterface):
         # Enter command mode
         if not self.enter_command_mode():
             raise RuntimeError("Unable to enter command mode on modem init")
+        # self.__mode = "COMMAND"
 
         # Get settings
         if not self.get_settings():
             raise RuntimeError("Unable to read modem settings on modem init")
-
-        # Enter data mode
-        if not self.enter_data_mode():
-            raise RuntimeError("Unable to switch modem back to data mode on modem init")
 
         # Print success message
         print(f"{self.name} initialized!")
@@ -170,6 +176,7 @@ class HardwareModemInterface(ModemInterface):
             self.__mode = "COMMAND"
             return True  # return true if init was successful
         else:
+            print(response)
             print("\t> [ERROR]: failed to enter command mode")
             return False  # return false if init was unsuccessful
 
@@ -253,139 +260,20 @@ class HardwareModemInterface(ModemInterface):
 
         return True
 
-    def get_local_addr(self):  # AT?AL
-
+    def get_setting(self, key):
         # Ensure modem has initialized before continuing
         if not self.check_if_init():
             return None
 
-        # Return local address
-        return self.__acting_settings["Local Address"]
+        return self.__acting_settings[key]
 
-    def set_local_addr(self, new_addr):  # AT!AL<#>
+    def set_setting(self, key, value):
+        if key not in self._setting_to_command:
+            print("\t> Invalid setting key")
+            return False
+
         # Print debug message
-        print(f"[{self.name}] Changing local address...")
-
-        # Ensure modem has initialized before continuing
-        if not self.check_if_init():
-            return False
-
-        # Ensure modem is in command mode
-        if self.__mode != "COMMAND":
-            print("Modem must be in COMMAND mode for this operation!")
-            return False
-
-        # [Validate] ensure address is an integer value
-        try:
-            addr_int = int(new_addr)
-        except ValueError:
-            print("\t> Invalid input, local addr must be an integer value")
-            return False
-
-        # [Validate] ensure new address is [1, max address]
-        max_addr = self.__acting_settings["Highest Address"]
-        max_addr = int(max_addr)
-
-        if addr_int < 1 or addr_int > max_addr:
-            print("\t> [ERROR]: new local address must be less than max address!")
-            return False
-
-        # [Validate] ensure new address is different than remote address
-        remote_addr = self.__acting_settings["Remote Address"]
-
-        if new_addr == remote_addr:
-            print(
-                "\t> [ERROR]: new local address must be different than remote address!",
-            )
-            return False
-
-        # Set new local address
-        self.__send_data(f"AT!AL{addr_int}\r")  # send new local addr
-        time.sleep(self.__AT_delay_time)  # brief delay
-
-        # Check for 'OK'
-        response = self.__read_data()
-
-        if response == "OK":
-            print(f"\t> Successfully changed local address to {addr_int}")
-            self.__acting_settings["Local Address"] = addr_int
-            return True
-        else:
-            print(f"\t> [ERROR]: failed to change local address to {addr_int}")
-            return False
-
-    def get_remote_addr(self):
-        # Ensure modem has initialized before continuing
-        if not self.check_if_init():
-            return None
-
-        # Return remote address
-        return self.__acting_settings["Remote Address"]
-
-    def set_remote_addr(self, new_addr):  # AT!AR<#>
-        # Print debug message
-        print(f"[{self.name}] Changing remote address...")
-
-        # Ensure modem has initialized before continuing
-        if not self.check_if_init():
-            print("\t> [ERROR]: modem not yet initialized!")
-            return False
-
-        # Ensure modem is in command mode
-        if self.__mode != "COMMAND":
-            print("Modem must be in COMMAND mode for this operation!")
-            return False
-
-        # [Validate] ensure address is an integer value
-        try:
-            addr_int = int(new_addr)
-        except ValueError:
-            print("\t> Invalid input, remote addr must be an integer value")
-            return False
-
-        # [Validate] ensure new address is [1, max address]
-        max_addr = self.__acting_settings["Highest Address"]
-        max_addr = int(max_addr)
-
-        if addr_int < 1 or addr_int > max_addr:
-            print("\t> [ERROR]: new remote address must be less than max address!")
-            return False
-
-        # [Validate] ensure new address is different than local address
-        local_addr = self.__acting_settings["Local Address"]
-
-        if new_addr == local_addr:
-            print(
-                "\t> [ERROR]: new remote address must be different than local address!",
-            )
-            return False
-
-        # Set new remote address
-        self.__send_data(f"AT!AR{addr_int}\r")  # send new remote addr
-        time.sleep(self.__AT_delay_time)  # brief delay
-
-        # Check for 'OK'
-        response = self.__read_data()
-
-        if response == "OK":
-            print(f"\t> Successfully changed remote address to {addr_int}")
-            self.__acting_settings["Remote Address"] = addr_int
-            return True
-        else:
-            print(f"\t> [ERROR]: failed to change remote address to {addr_int}")
-            return False
-
-    def get_max_addr(self):  # AT?AM
-        # Ensure modem has initialized before continuing
-        if not self.check_if_init():
-            return 0
-
-        # Return max address
-        return self.__acting_settings["Highest Address"]
-
-    def set_max_addr(self, new_max_addr):  # AT!AM<#>
-        # Print debug message
-        print(f"[{self.name}] Changing max address...")
+        print(f"[{self.name}] Changing '{key}' to '{value}'...")
 
         # Ensure modem has initialized before continuing
         if not self.check_if_init():
@@ -396,76 +284,97 @@ class HardwareModemInterface(ModemInterface):
             print("]\t> Modem must be in COMMAND mode for this operation!")
             return False
 
-        # Validate max addr
-        try:
-            addr_int = int(new_max_addr)
-        except ValueError:
-            print("\t> Invalid input, max addr must be an integer value")
-            return False
+        # Validate setting
+        if key == "Carrier Waveform ID":
+            try:
+                waveform_id_int = int(value)
+            except ValueError:
+                print("\t> Invalid input, carrier waveform id must be an integer value")
+                return False
 
-        allowed_values = {2, 6, 14, 30, 62, 126, 254}
-        if addr_int not in allowed_values:
-            print("\t> Invalid max address! Must be 2, 6, 14, 30, 62, 126, or 254.")
-            return False
+            allowed_values = {0, 1, 2, 3}
+            if waveform_id_int not in allowed_values:
+                print("\t> Invalid carrier waveform ID! Must be 0, 1, 2, or 3.")
+                return False
+        elif key == "Highest Address":
+            try:
+                addr_int = int(value)
+            except ValueError:
+                print("\t> Invalid input, max addr must be an integer value")
+                return False
 
-        # Send new max address
-        self.__send_data(f"AT!AM{new_max_addr}\r")  # send new max addr
-        time.sleep(self.__AT_delay_time)  # brief delay
+            allowed_values = {2, 6, 14, 30, 62, 126, 254}
+            if addr_int not in allowed_values:
+                print("\t> Invalid max address! Must be 2, 6, 14, 30, 62, 126, or 254.")
+                return False
+        elif key == "Remote Address":
+            # [Validate] ensure address is an integer value
+            try:
+                addr_int = int(value)
+            except ValueError:
+                print("\t> Invalid input, remote addr must be an integer value")
+                return False
 
-        # Check for 'OK'
-        response = self.__read_data()
+            # [Validate] ensure new address is [1, max address]
+            max_addr = self.__acting_settings["Highest Address"]
+            max_addr = int(max_addr)
 
-        if response == "OK":
-            print(f"\t> Successfully changed new max address to {new_max_addr}")
-            self.__acting_settings["Highest Address"] = new_max_addr
-            return True
-        else:
-            print(f"\t> [ERROR]: failed to change new max address to {new_max_addr}")
-            return False
+            if addr_int < 1 or addr_int > max_addr:
+                print("\t> [ERROR]: new remote address must be less than max address!")
+                return False
 
-    def set_carrier_waveform_id(self, new_carrier_waveform_id):
-        # Print debug message
-        print(f"[{self.name}] Changing carrier waveform ID...")
+            # [Validate] ensure new address is different than local address
+            local_addr = self.__acting_settings["Local Address"]
 
-        # Ensure modem has initialized before continuing
-        if not self.check_if_init():
-            return False
+            if value == local_addr:
+                print(
+                    "\t> [ERROR]: new remote address must be different than local address!",
+                )
+                return False
+        elif key == "Local Address":
+            # [Validate] ensure address is an integer value
+            try:
+                addr_int = int(value)
+            except ValueError:
+                print("\t> Invalid input, local addr must be an integer value")
+                return False
 
-        # Ensure modem is in command mode
-        if self.__mode != "COMMAND":
-            print("]\t> Modem must be in COMMAND mode for this operation!")
-            return False
+            # [Validate] ensure new address is [1, max address]
+            max_addr = self.__acting_settings["Highest Address"]
+            max_addr = int(max_addr)
 
-        # Validate max addr
-        try:
-            waveform_id_int = int(new_carrier_waveform_id)
-        except ValueError:
-            print("\t> Invalid input, carrier waveform id must be an integer value")
-            return False
+            if addr_int < 1 or addr_int > max_addr:
+                print("\t> [ERROR]: new local address must be less than max address!")
+                return False
 
-        allowed_values = {0, 1, 2, 3}
-        if waveform_id_int not in allowed_values:
-            print("\t> Invalid carrier waveform ID! Must be 0, 1, 2, or 3.")
-            return False
+            # [Validate] ensure new address is different than remote address
+            remote_addr = self.__acting_settings["Remote Address"]
 
-        # Send new carrier waveform ID
+            if value == remote_addr:
+                print(
+                    "\t> [ERROR]: new local address must be different than remote address!",
+                )
+                return False
+
+        # Send new setting
         self.__send_data(
-            f"AT!Cn{new_carrier_waveform_id}\r",
+            f"{self._setting_to_command[key]}{value}\r",
         )  # send new carrier waveform id
         time.sleep(self.__AT_delay_time)  # brief delay
 
         # Check for 'OK'
         response = self.__read_data()
 
-        if response == "OK":
+        if "OK" in response:
             print(
-                f"\t> Successfully changed new carrier waveform ID to {new_carrier_waveform_id}",
+                f"\t> Successfully changed '{key}' to '{value}'",
             )
-            self.__acting_settings["Carrier Waveform ID"] = new_carrier_waveform_id
+            self.__acting_settings[key] = value
             return True
         else:
+            print(response)
             print(
-                f"\t> [ERROR]: failed to change new carrier waveform ID to {new_carrier_waveform_id}",
+                f"\t> [ERROR]: failed to change '{key}' to '{value}'",
             )
             return False
 
@@ -498,17 +407,27 @@ class HardwareModemInterface(ModemInterface):
     def read_im(self):
         im_message = None
 
-        while im_message is None:
-            data = self.__read_data()
-            if data.startswith("RECVIM"):
-                im_message = data.split(",")[-1]
-
-        return im_message
+        data = self.__read_data()
+        if data.startswith("RECVIM"):
+            print(data)
+            im_message = data.split(",")[-1]
+            return base64.b64decode(im_message)
 
     def send_im(self, data):
         print("Sending IM...")
-        print(f"data: {data}")
-        self.__send_data(f"AT*SENDIM,{len(data)},{self.get_remote_addr()},ack,#{data}")
+        print(f"raw bytes: {data}")
+        base64_bytes = base64.b64encode(data)
+        data_str = base64_bytes.decode("utf-8")
+        print(f"data: {data_str}")
+        input = f"AT*SENDIM,{len(data_str)},{self.get_setting("Remote Address")},ack,{data_str}\r"
+        print(input)
+        self.__send_data(input)
+        time.sleep(3)  # brief delay
+
+        # Check for 'OK'
+        response = self.__read_data()
+        print(response)
+        print("sent!")
 
     ########## <Nonvolatile operations> ##########
     # Saves currently-saved settings to non-volatile memory
