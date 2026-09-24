@@ -391,7 +391,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
 
             try
             {
-                out = tf_buffer_->transform(in, target_frame_, tf2::durationFromSec(0.1));
+                out = tf_buffer_->transform(in, target_frame_, tf2::durationFromSec(0.5));
                 RCLCPP_DEBUG(get_logger(), "Transformed marker ID %d from '%s' to '%s'", m.id,
                              in.header.frame_id.c_str(), target_frame_.c_str());
             }
@@ -444,7 +444,11 @@ class PclTracker : public rclcpp::Node, public PcdConstants
                 double dx = tracks_[i].x[0] - detections[j]->pose.position.x;
                 double dy = tracks_[i].x[1] - detections[j]->pose.position.y;
                 double const dist = std::sqrt(dx * dx + dy * dy);
+
+                RCLCPP_INFO(get_logger(), "Before the accessing the hungarian");
                 cost[i][j] = (dist <= max_association_dist_) ? dist : Hungarian::kGateRejectCost;
+
+                RCLCPP_INFO(get_logger(), "after the accessing the hungarian");
             }
         }
 
@@ -456,7 +460,9 @@ class PclTracker : public rclcpp::Node, public PcdConstants
 
         if (nT > 0 && nD > 0)
         {
+            RCLCPP_INFO(get_logger(), "Before the solving the hungarian");
             Hungarian::solve(cost, track_to_det);
+            RCLCPP_INFO(get_logger(), "after the accessing the hungarian");
 
             // A match against a gate-rejected pair is still a valid *assignment*
             // as far as the solver is concerned (it only avoided it when a cheaper

@@ -19,10 +19,12 @@ Solve().
 #include <limits>
 #include <vector>
 
+#include <rclcpp/rclcpp.hpp>
+
 namespace pcd
 {
 
-class Hungarian
+class Hungarian : public rclcpp::Node
 {
   public:
     Hungarian();
@@ -83,7 +85,7 @@ class Hungarian
         {
             double colMin = std::numeric_limits<double>::max();
 
-            for (std::size_t i = 0; i < N; ++j)
+            for (std::size_t i = 0; i < N; ++i)
             {
                 if (a[i][j] < colMin)
                 {
@@ -91,11 +93,14 @@ class Hungarian
                 }
             }
 
-            for (std::size_t i = 0; i < N; ++j)
+            for (std::size_t i = 0; i < N; ++i)
             {
                 a[i][j] -= colMin;
             }
         }
+
+        RCLCPP_INFO(rclcpp::get_logger("hungarian"),
+                    "Hungarian::solve() — cost matrix size: %zu×%zu (expanded to %zu×%zu)", nRows, nCols, N, N);
 
         // star-prime submarking
 

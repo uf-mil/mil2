@@ -15,31 +15,13 @@ def generate_launch_description():
     # clustering; this transform enables downstream tracker nodes to transform
     # extracted cluster centroids to the global (odom) frame without transforming
     # the entire point cloud.
+
     velodyne_tf = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         name="velodyne_to_base_link_tf",
-        arguments=[
-            "--x",
-            "0.0",
-            "--y",
-            "0.0",
-            "--z",
-            "0.45",
-            "--roll",
-            "0.0",
-            "--pitch",
-            "0.0",
-            "--yaw",
-            "0.0",
-            "--frame-id",
-            "base_link",
-            "--child-frame-id",
-            "velodyne",
-            "-ros-args",
-            "--log-level",
-            "debug",
-        ],
+        # Positional order: x y z roll pitch yaw frame_id child_frame_id
+        arguments=["0.0", "0.0", "0.45", "0.0", "0.0", "0.0", "base_link", "velodyne"],
         output="screen",
     )
 
