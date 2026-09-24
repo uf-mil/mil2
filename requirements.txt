@@ -50,6 +50,7 @@ pygments>=2.17.2
 
 # External Devices
 pyserial>=3.5
+protobuf==7.36.1
 
 # Drivers
 psutil>=5.6.6
