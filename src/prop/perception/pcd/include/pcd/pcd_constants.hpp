@@ -59,6 +59,7 @@ class PcdConstants
         node->declare_parameter("cluster_tolerance", 0.5);
         node->declare_parameter("cluster_min_points", 20);
         node->declare_parameter("cluster_max_points", 25000);
+        node->declare_parameter("cluster_flatness_threshold", 0.1);
 
         // ── EKF tracker ──────────────────────────────────────────────────────
         /// Max centroid-to-centroid distance [m] for a detection to be
@@ -89,6 +90,8 @@ class PcdConstants
         cluster_tolerance_ = node->get_parameter("cluster_tolerance").as_double();
         cluster_min_points_ = node->get_parameter("cluster_min_points").as_int();
         cluster_max_points_ = node->get_parameter("cluster_max_points").as_int();
+        cluster_flatness_threshold_ = node->get_parameter("cluster_flatness_threshold").as_double();
+
         max_association_dist_ = node->get_parameter("max_association_dist").as_double();
         max_missed_frames_ = node->get_parameter("max_missed_frames").as_int();
         min_hits_ = node->get_parameter("min_hits").as_int();
@@ -122,6 +125,8 @@ class PcdConstants
     int cluster_min_points_{ 100 };
     /// Maximum number of points allowed in a single cluster.
     int cluster_max_points_{ 25000 };
+
+    float cluster_flatness_threshold_{ 3.0 };  ///< Max Z extent / XY extent ratio to consider a cluster "flat"
 
     // ── EKF tracker ──────────────────────────────────────────────────────────
     /// Max centroid-to-centroid distance [m] for nearest-neighbour association.

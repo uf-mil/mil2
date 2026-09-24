@@ -147,6 +147,9 @@ class PclClustering : public rclcpp::Node, public PcdConstants
         clear.header = header;
         clear.ns = "pcd_clusters";
         clear.action = visualization_msgs::msg::Marker::DELETEALL;
+
+        // Change to only publishing clusters when the cluster is not flat
+
         markers.markers.push_back(clear);
 
         int id = 0;
@@ -163,6 +166,9 @@ class PclClustering : public rclcpp::Node, public PcdConstants
             float max_z = std::numeric_limits<float>::lowest();
             double cx = 0.0, cy = 0.0, cz = 0.0;
 
+            std::vector<pcl::PointXYZRGB> cluster_points;
+            cluster_points.reserve(cluster.indices.size());
+
             for (int const idx : cluster.indices)
             {
                 auto const &pt = (*cloud)[static_cast<std::size_t>(idx)];
@@ -174,7 +180,7 @@ class PclClustering : public rclcpp::Node, public PcdConstants
                 rgb_pt.r = color.r;
                 rgb_pt.g = color.g;
                 rgb_pt.b = color.b;
-                colored.push_back(rgb_pt);
+                cluster_points.push_back(rgb_pt);  // buffered, not `colored` yet
 
                 min_x = std::min(min_x, pt.x);
                 max_x = std::max(max_x, pt.x);
@@ -191,6 +197,16 @@ class PclClustering : public rclcpp::Node, public PcdConstants
             cx /= n;
             cy /= n;
             cz /= n;
+
+            double const height = static_cast<double>(max_z - min_z);
+            double const footprint = std::max(static_cast<double>(max_x - min_x), static_cast<double>(max_y - min_y));
+
+            if ((height > 0.0 && footprint / height > cluster_flatness_threshold_))
+            {
+                continue;  // skip: neither points nor marker get published for this cluster
+            }
+
+            colored.insert(colored.end(), cluster_points.begin(), cluster_points.end());
 
             // Bounding-box marker.
             visualization_msgs::msg::Marker box;
@@ -211,6 +227,7 @@ class PclClustering : public rclcpp::Node, public PcdConstants
             box.color.b = color.b / 255.0f;
             box.color.a = 0.35f;
             box.lifetime = rclcpp::Duration(0, 0);
+
             markers.markers.push_back(box);
             ++id;
         }
