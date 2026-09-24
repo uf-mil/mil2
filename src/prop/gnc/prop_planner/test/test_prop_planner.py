@@ -104,3 +104,125 @@ def test_later_message_updates_position_and_frame(planner):
         lambda text: "frame 'test_frame': x=-3.00 m, y=8.25 m, z=1.50 m" in text,
         publisher, message,
     )
+
+
+def test_planning_service(tmp_path):
+    """Exercise missing inputs, obstacle avoidance, and invalid/unreachable goals."""
+    from nav_msgs.msg import OccupancyGrid
+    from nav_msgs.srv import GetPlan
+    from rclpy.executors import SingleThreadedExecutor
+    from rclpy.qos import QoSProfile, DurabilityPolicy
+
+    context = Context()
+    rclpy.init(context=context)
+    suffix = uuid.uuid4().hex
+    ns = f"/planning_{suffix}"
+    node = rclpy.create_node(f"service_test_{suffix}", context=context)
+    executor = SingleThreadedExecutor(context=context)
+    executor.add_node(node)
+    qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+    maps = node.create_publisher(OccupancyGrid, ns + "/map", qos)
+    odom = node.create_publisher(Odometry, ns + "/odom", qos_profile_sensor_data)
+    client = node.create_client(GetPlan, ns + "/prop_planner/plan")
+    with (tmp_path / "service.log").open("w") as log:
+        process = subprocess.Popen([
+            os.environ["PROP_PLANNER_EXECUTABLE"], "--ros-args",
+            "-r", f"__ns:={ns}", "-p", f"global_map_topic:={ns}/map",
+            "-p", f"odom_topic:={ns}/odom",
+        ], stdout=log, stderr=subprocess.STDOUT)
+        try:
+            assert client.wait_for_service(timeout_sec=10)
+            request = GetPlan.Request()
+            request.start.header.frame_id = "map"
+            request.start.pose.position.x = 0.5
+            request.start.pose.position.y = 0.5
+            request.start.pose.orientation.w = 1.0
+            request.goal.header.frame_id = "map"
+            request.goal.pose.position.x = 4.5
+            request.goal.pose.position.y = 0.5
+            request.goal.pose.orientation.z = 1.0
+
+            def call():
+                future = client.call_async(request)
+                executor.spin_until_future_complete(future, timeout_sec=5)
+                assert future.done()
+                return future.result().plan
+
+            def publish_map(grid):
+                maps.publish(grid)
+                # Allow subscription callbacks to run before the independent service request.
+                time.sleep(0.2)
+
+            assert not call().poses  # No map.
+            grid = OccupancyGrid()
+            grid.header.frame_id = "map"
+            grid.info.width = 5
+            grid.info.height = 5
+            grid.info.resolution = 1.0
+            grid.info.origin.orientation.w = 1.0
+            grid.data = [0] * 25
+            for y in range(4):
+                grid.data[y * 5 + 2] = 100
+            deadline = time.monotonic() + 10
+            while maps.get_subscription_count() == 0:
+                assert time.monotonic() < deadline
+                time.sleep(0.05)
+            publish_map(grid)
+            path = call()
+            assert path.header.frame_id == "map"
+            assert path.poses[0].pose.position == request.start.pose.position
+            assert path.poses[-1].pose == request.goal.pose
+            assert max(p.pose.position.y for p in path.poses) == 4.5
+            for pose in path.poses:
+                assert pose.header == path.header
+                index = int(pose.pose.position.y) * 5 + int(pose.pose.position.x)
+                assert grid.data[index] == 0
+            for a, b in zip(path.poses, path.poses[1:]):
+                assert abs(a.pose.position.x - b.pose.position.x) + abs(
+                    a.pose.position.y - b.pose.position.y) <= 1.0
+
+            request.start.header.frame_id = ""
+            assert not call().poses  # Implicit start requires odometry.
+            msg = Odometry()
+            msg.header.frame_id = "map"
+            msg.pose.pose.position.x = 0.5
+            msg.pose.pose.position.y = 0.5
+            msg.pose.pose.orientation.w = 1.0
+            deadline = time.monotonic() + 5
+            while True:
+                odom.publish(msg)
+                time.sleep(0.05)
+                if call().poses:
+                    break
+                assert time.monotonic() < deadline
+            request.goal.header.frame_id = "odom"
+            assert not call().poses
+            request.goal.header.frame_id = "map"
+            request.tolerance = 1.0
+            assert not call().poses
+            request.tolerance = 0.0
+            request.goal.pose.position.x = float("nan")
+            assert not call().poses
+            request.goal.pose.position.x = 9.0
+            assert not call().poses
+            request.goal.pose.position.x = 4.5
+            grid.data[4] = -1
+            publish_map(grid)
+            assert not call().poses  # Unknown goal.
+            grid.data[4] = 0
+            grid.data[22] = 100
+            publish_map(grid)
+            assert not call().poses  # Complete wall.
+            grid.data = [0] * 24
+            publish_map(grid)
+            assert not call().poses  # Malformed grid.
+        finally:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+            executor.shutdown()
+            node.destroy_node()
+            context.shutdown()
