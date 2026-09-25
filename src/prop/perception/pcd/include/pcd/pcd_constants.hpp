@@ -59,7 +59,7 @@ class PcdConstants
         node->declare_parameter("cluster_tolerance", 0.5);
         node->declare_parameter("cluster_min_points", 20);
         node->declare_parameter("cluster_max_points", 25000);
-        node->declare_parameter("cluster_flatness_threshold", 0.1);
+        node->declare_parameter("cluster_flatness_threshold", 3.0);
 
         // ── EKF tracker ──────────────────────────────────────────────────────
         /// Max centroid-to-centroid distance [m] for a detection to be
