@@ -9,6 +9,22 @@ def generate_launch_description():
     pcd_pkg_dir = get_package_share_directory("pcd")
     params_file = os.path.join(pcd_pkg_dir, "config", "pcd_params.yaml")
 
+    # Publish the static transform base_link → velodyne.
+    # This matches the base_to_lidar joint in prop_localization/urdf/prop.urdf.
+    # The full point cloud stays in the velodyne sensor frame for filtering and
+    # clustering; this transform enables downstream tracker nodes to transform
+    # extracted cluster centroids to the global (odom) frame without transforming
+    # the entire point cloud.
+
+    velodyne_tf = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="velodyne_to_base_link_tf",
+        # Positional order: x y z roll pitch yaw frame_id child_frame_id
+        arguments=["0.0", "0.0", "0.45", "0.0", "0.0", "0.0", "base_link", "velodyne"],
+        output="screen",
+    )
+
     filter_node = Node(
         package="pcd",
         executable="pcl_filter_node",
@@ -17,4 +33,20 @@ def generate_launch_description():
         output="screen",
     )
 
-    return LaunchDescription([filter_node])
+    clustering_node = Node(
+        package="pcd",
+        executable="pcl_clustering_node",
+        name="pcl_clustering",
+        parameters=[params_file],
+        output="screen",
+    )
+
+    tracker_node = Node(
+        package="pcd",
+        executable="pcl_tracker_node",
+        name="pcl_tracker",
+        parameters=[params_file],
+        output="screen",
+    )
+
+    return LaunchDescription([velodyne_tf, filter_node, clustering_node, tracker_node])
