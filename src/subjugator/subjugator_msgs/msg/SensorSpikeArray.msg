@@ -2,4 +2,4 @@
 
 std_msgs/Header header
 
-SensorSpike[] sensorsStatus
+SensorSpike[] sensors_status
