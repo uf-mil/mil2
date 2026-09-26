@@ -733,8 +733,45 @@ Status ApproachObject::step()
             // own; the maneuver simply has to stop declaring victory early.
             double const wanted = context_.lock.radius() + standoff_ + context_.settings.hull_front_;
             double const actual = distance(boat.position, context_.lock.point());
-            if (actual <= wanted + context_.settings.standoff_tolerance_)
+
+            // AIM AT THE STANDOFF, and use standoff_tolerance only to judge the
+            // result. This used to declare at `wanted + standoff_tolerance`,
+            // which put the stopping point 0.30 m BEYOND the target by
+            // construction -- the tolerance was doing duty as a target band
+            // rather than as a pass mark.
+            //
+            // It is worth less than it looks. Measured 2026-09-13 against
+            // ground truth, asked to leave 1.00 m: 1.55 m off before, 1.50 m
+            // after. Only about 0.06 m, not the 0.30 m the arithmetic above
+            // suggests, because `wanted` is measured from the LOCK, and the
+            // lock is not the buoy -- see the note in the settling phase. Do
+            // it anyway: aiming at the target rather than at the edge of the
+            // tolerance is right on its own terms, and it stops the tolerance
+            // from being spent before the maneuver has begun.
+            //
+            // Reachable because aim_goal() already aims guidance_hold_radius
+            // INSIDE the standoff, so guidance parks around `wanted` rather
+            // than short of it. The fallback below is what keeps a tighter
+            // test from hanging when it does not.
+            bool const on_the_standoff = actual <= wanted;
+
+            // Guidance has stopped, the boat has stopped, and nothing further
+            // is coming. Take it if it is inside the tolerance, rather than
+            // waiting out maneuver_timeout to fail at a distance that was
+            // acceptable all along.
+            bool const parked_close_enough = context_.driver.arrived(boat.position) &&
+                                             std::abs(boat.surge) <= context_.settings.stop_speed_ &&
+                                             actual <= wanted + context_.settings.standoff_tolerance_;
+
+            if (on_the_standoff || parked_close_enough)
             {
+                if (!on_the_standoff)
+                {
+                    RCLCPP_WARN(context_.node->get_logger(),
+                                "approach: guidance stopped %.2f m short of the standoff and will not close it; "
+                                "taking it, inside the %.2f m tolerance",
+                                actual - wanted, context_.settings.standoff_tolerance_);
+                }
                 // Crossing the standoff is not arriving on it. Measured
                 // 2026-09-13, the boat crossed at 1.58 m/s and carried on for
                 // another 0.85 m before stopping, so the distance reported
@@ -886,6 +923,34 @@ Status ApproachObject::step()
                             "approach: still making %.2f m/s after %.0f s; reporting anyway", boat.surge,
                             context_.settings.stop_timeout_);
             }
+            // WHY THIS STILL READS LOW, and it is not the maneuver's fault.
+            // The lidar only paints the NEAR FACE of a buoy, so the cluster's
+            // centre sits roughly half a radius closer than the real one and
+            // its width reads narrow. Measured 2026-09-13: a buoy truly at
+            // (-4.0, -4.0) locked at (-3.9, -3.9) -- 0.14 m nearer along the
+            // line of approach, against the 0.125 m that half of a 0.25 m
+            // radius predicts -- and its radius reported 0.19 m rather than
+            // 0.25. Both errors push the same way, so the boat stops about
+            // 0.2 m further out than asked and then reports the shortfall
+            // against the same optimistic point, printing 1.26 m where ground
+            // truth said 1.50 m.
+            //
+            // That is the bulk of what is left, and it belongs in the lock or
+            // the clustering, not here. Fixing it means estimating a centre
+            // from an arc rather than taking the bounding box of what came
+            // back.
+            //
+            // standoff_tolerance's real job: judging the result, now that it
+            // is no longer built into the target.
+            if (std::abs(bow - standoff_) > context_.settings.standoff_tolerance_)
+            {
+                RCLCPP_WARN(context_.node->get_logger(),
+                            "approach: stopped, bow %.2f m from the object's surface (asked for %.2f) -- outside "
+                            "the %.2f m tolerance",
+                            bow, standoff_, context_.settings.standoff_tolerance_);
+                return Status::Succeeded;
+            }
+
             RCLCPP_INFO(context_.node->get_logger(),
                         "approach: stopped, bow %.2f m from the object's surface (asked for %.2f)", bow, standoff_);
             return Status::Succeeded;

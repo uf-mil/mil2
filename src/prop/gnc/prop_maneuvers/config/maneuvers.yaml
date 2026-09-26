@@ -236,7 +236,41 @@
     #
     # So the approach now holds station where it crossed and waits for the boat
     # to settle before reporting. These two bound that wait.
-    stop_speed: 0.1             # m/s, at or below this it counts as stopped
+    #
+    # 0.1 was too loose, and the arithmetic says so. The hull is 25 kg against a
+    # linear surge drag xU of -8.0 N per m/s, so a coast decays with a time
+    # constant of 25/8 = 3.1 s and a boat at speed v still has about v * 3.1
+    # metres to run. At 0.1 m/s that is 0.31 m -- MORE than the 0.30 m
+    # standoff_tolerance the approach is judged against, so it could declare
+    # itself settled while carrying enough way to miss by more than the whole
+    # tolerance. A threshold that permits a bigger error than the spec it
+    # serves is not a guard.
+    #
+    # 0.03 m/s leaves about 0.09 m, roughly a third of the tolerance, so the
+    # distance the approach prints means something.
+    #
+    # Watch it in the logs: on 2026-09-13 a run crossed the standoff at
+    # 0.06 m/s, already under the old 0.1, so the settle phase declared on its
+    # first tick and did nothing at all. It got away with it because 0.06 m/s
+    # is slow, but that was luck about the speed it happened to carry, not the
+    # guard working.
+    #
+    # The 3.1 s ignores the quadratic term (xUabsU -15.0), which adds drag at
+    # speed, so these distances are slight over-estimates. The linear term
+    # dominates down here, which is the regime that matters.
+    #
+    # WHAT THIS DOES NOT FIX, measured against ground truth on 2026-09-13.
+    # Drift after the boat is under this threshold is 0.08 m at 0.1 and 0.09 m
+    # at 0.03 -- the model is right, and it was already small. The approach
+    # still rests 0.55-0.60 m wide of its ask either way, because drift was
+    # never the main error. That comes from ApproachObject declaring as soon as
+    # `actual <= wanted + standoff_tolerance`, which is 0.30 m BEYOND the
+    # target rather than at it, plus about 0.26 m of the lock under-reporting
+    # the buoy (radius 0.19-0.20 against a true 0.25, and a centre slightly
+    # off), which is why the maneuver prints 1.34 m where ground truth says
+    # 1.60 m. Tighten those two if you want the standoff itself to land; this
+    # setting only stops a fast crossing from coasting 0.31 m after declaring.
+    stop_speed: 0.03            # m/s, at or below this it counts as stopped
     # The same idea for turning, and FaceObject needs it for the same reason.
     # Spinner stops commanding the moment the heading error is inside
     # point_tolerance_deg, but the boat carries the turn on past that.
