@@ -20,10 +20,10 @@ find_package(control_toolbox REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 add_executable(subjugator_controller src/node.cpp src/controller.cpp)
-ament_target_dependencies(subjugator_controller rclcpp nav_msgs control_toolbox
-                          Eigen3 std_srvs)
-target_include_directories(subjugator_controller PRIVATE ${EIGEN3_INCLUDE_DIR}
-                                                         include)
+target_link_libraries(
+  subjugator_controller rclcpp::rclcpp Eigen3::Eigen
+  control_toolbox::control_toolbox ${nav_msgs_TARGETS} ${std_srvs_TARGETS})
+target_include_directories(subjugator_controller PRIVATE include)
 
 install(TARGETS subjugator_controller DESTINATION lib/${PROJECT_NAME})
 
