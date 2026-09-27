@@ -26,10 +26,15 @@ add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp src/spinner.cpp)
 # indentation". Both tools accept this form. Do not fold it back in.
 target_sources(prop_maneuvers_lib PRIVATE src/target_lock.cpp src/maneuvers.cpp
                                           src/reverser.cpp src/runner.cpp)
+# cmake-format keeps re-wrapping this call onto a hanging continuation with an
+# odd (9-space) indent, which ament_lint_cmake then rejects as "weird
+# indentation"; disable formatting for it so the lint-clean, even-indented form
+# sticks.
+# cmake-format: off
 target_include_directories(
-  prop_maneuvers_lib
-  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-         $<INSTALL_INTERFACE:include>)
+  prop_maneuvers_lib PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                            $<INSTALL_INTERFACE:include>)
+# cmake-format: on
 ament_target_dependencies(
   prop_maneuvers_lib
   rclcpp
