@@ -393,6 +393,11 @@ bmp() {
 		echo "Known missions: $(_bmp_missions | tr '\n' ' ')"
 		return 2
 	fi
+	if [[ $1 == -* ]]; then
+		echo "Usage: bmp <mission_name> [--sim]"
+		echo "Known missions: $(_bmp_missions | tr '\n' ' ')"
+		return 2
+	fi
 
 	local mission="$1"
 	local -a sim_args=()
