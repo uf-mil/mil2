@@ -37,9 +37,14 @@ class TreeFixture : public ::testing::Test
     }
     static void TearDownTestSuite()
     {
+        // Shut the context down FIRST. Context owns a TargetLock, whose
+        // tf2_ros::TransformListener runs its own executor thread; under
+        // rmw_zenoh_cpp that thread's spin can block until context shutdown
+        // wakes it, so destroying ctx_ before shutdown risks the reset()
+        // itself hanging while joining that thread.
+        rclcpp::shutdown();
         ctx_.reset();
         node_.reset();
-        rclcpp::shutdown();
     }
 
     void SetUp() override

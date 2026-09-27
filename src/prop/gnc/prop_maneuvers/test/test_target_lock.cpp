@@ -51,11 +51,15 @@ class TargetLockTest : public ::testing::Test
     }
     static void TearDownTestSuite()
     {
+        // Shut the context down FIRST. lock_ owns a tf2_ros::TransformListener
+        // with its own executor thread; under rmw_zenoh_cpp that thread's spin
+        // can block until context shutdown wakes it, so destroying lock_ before
+        // shutdown risks the reset() itself hanging while joining that thread.
+        rclcpp::shutdown();
         lock_.reset();
         settings_.reset();
         publisher_.reset();
         node_.reset();
-        rclcpp::shutdown();
     }
 
     void SetUp() override
