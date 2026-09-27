@@ -26,6 +26,10 @@ add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp src/spinner.cpp)
 # indentation". Both tools accept this form. Do not fold it back in.
 target_sources(prop_maneuvers_lib PRIVATE src/target_lock.cpp src/maneuvers.cpp
                                           src/reverser.cpp src/runner.cpp)
+target_include_directories(
+  prop_maneuvers_lib
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(
   prop_maneuvers_lib
   rclcpp
@@ -36,7 +40,12 @@ ament_target_dependencies(
   tf2_ros
   tf2_geometry_msgs)
 
-install(TARGETS prop_maneuvers_lib DESTINATION lib)
+install(
+  TARGETS prop_maneuvers_lib
+  EXPORT prop_maneuversTargets
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
 
 # ── Maneuver programs ────────────────────────────────────────────────────────
 add_executable(face_object src/face_object_node.cpp)
@@ -130,5 +139,17 @@ if(BUILD_TESTING)
 
   ament_lint_auto_find_test_dependencies()
 endif()
+
+# prop_mission_planner links the maneuvers in-process. Export the library as
+# prop_maneuvers::prop_maneuvers_lib, with the dependencies its headers need.
+ament_export_targets(prop_maneuversTargets HAS_LIBRARY_TARGET)
+ament_export_dependencies(
+  rclcpp
+  nav_msgs
+  geometry_msgs
+  visualization_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs)
 
 ament_package()
