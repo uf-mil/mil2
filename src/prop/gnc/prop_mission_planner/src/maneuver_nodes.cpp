@@ -191,6 +191,11 @@ std::unique_ptr<prop_maneuvers::Maneuver> CircleObject::make(prop_maneuvers::Con
     // same amount the approach's obstacle check demands before it leaves an
     // object alone (plan_detour's trigger radius in prop_maneuvers
     // geometry.cpp: obstacle radius + hull_half_width + min_gap).
+    //
+    // This checks the IDEAL straight-leg path only. The path actually driven
+    // bulges inward (measured ~1.4 m on a 6 m, 4-leg ring, 2026-09-12), and
+    // guidance may cut corners within guidance_hold_radius. Passing this check
+    // is necessary, not sufficient: it only refuses rings that cannot work.
     double const closest = radius * std::cos(M_PI / legs);
     double const needed = maneuvers.lock.radius() + settings.hull_half_width_ + settings.min_gap_;
     if (closest < needed)

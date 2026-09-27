@@ -189,25 +189,29 @@ BT::NodeStatus ManeuverNode::try_lock()
 
     lock_budget_.disarm();
     ctx_->active_maneuver = this;
+    // Everything between taking the claim and the first step is guarded:
+    // make() may throw, and so may setOutput (BT's Blackboard::set throws on
+    // a type clash with an existing entry). Either way the claim must not be
+    // left set, so stop_all() drops it.
     try
     {
         maneuver_ = make(maneuvers);
+        if (!maneuver_)
+        {
+            RCLCPP_ERROR(ctx_->logger(), "%s: could not start the maneuver (see above)", name().c_str());
+            stop_all();
+            return BT::NodeStatus::FAILURE;
+        }
+        if (config().output_ports.count("ref") > 0)
+        {
+            (void)setOutput("ref", ObjectRef{ lock.point() });
+        }
     }
     catch (std::exception const &e)
     {
         RCLCPP_ERROR(ctx_->logger(), "%s: could not start the maneuver: %s", name().c_str(), e.what());
         stop_all();
         return BT::NodeStatus::FAILURE;
-    }
-    if (!maneuver_)
-    {
-        RCLCPP_ERROR(ctx_->logger(), "%s: could not start the maneuver (see above)", name().c_str());
-        stop_all();
-        return BT::NodeStatus::FAILURE;
-    }
-    if (config().output_ports.count("ref") > 0)
-    {
-        (void)setOutput("ref", ObjectRef{ lock.point() });
     }
     return step();
 }
