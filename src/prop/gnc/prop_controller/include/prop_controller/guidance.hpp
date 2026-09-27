@@ -31,9 +31,8 @@ class Guidance : public rclcpp::Node
     void plan_callback(nav_msgs::msg::Path const& path);
     void step();
 
-    // Each returns the speed and heading error to command. hold latches, so
-    // unlike follow it is not const.
-    std::pair<double, double> follow() const;
+    // Each returns the speed and heading error to command.
+    std::pair<double, double> follow();
     std::pair<double, double> hold();
 
     double speed_;
@@ -44,13 +43,16 @@ class Guidance : public rclcpp::Node
     double hold_radius_;    // station keeping deadband
     double yaw_tolerance_;  // heading deadband once it is on the point
     double approach_gain_;  // m/s per m remaining
+    double ki_cross_;       // 1/s, how fast drift correction builds
+    double dt_;
 
     std::vector<Point> waypoints_;
     Point leg_start_{ 0.0, 0.0 };
     Point position_{ 0.0, 0.0 };
     double heading_{ 0.0 };
     bool located_{ false };
-    std::size_t target_{ 0 };  // Keeps track of whether or not we arrived at the end of goal
+    std::size_t target_{ 0 };       // Keeps track of whether or not we arrived at the end of goal
+    double cross_integral_{ 0.0 };  // m, extra cross track error aimed against
 
     double goal_heading_{ 0.0 };  // only meaningful with has_goal_heading_
     bool has_goal_heading_{ false };

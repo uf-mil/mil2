@@ -28,7 +28,9 @@ Guidance::Guidance() : Node("guidance")
     hold_radius_ = declare_parameter("hold_radius", 1.0);
     yaw_tolerance_ = declare_parameter("yaw_tolerance", 0.09);
     approach_gain_ = declare_parameter("approach_gain", 0.5);
+    ki_cross_ = declare_parameter("ki_cross", 0.1);
     double const rate = declare_parameter("rate", 10.0);
+    dt_ = 1.0 / rate;
 
     rclcpp::QoS latched(1);
     latched.transient_local();
@@ -59,6 +61,7 @@ void Guidance::plan_callback(nav_msgs::msg::Path const& path)
     target_ = 0;
     leg_start_ = located_ ? position_ : Point{ 0.0, 0.0 };
     holding_heading_ = false;
+    cross_integral_ = 0.0;
 
     // Only the last pose's orientation means anything: the ones in between are
     // driven through rather than stopped on. A quaternion of no length is not a
@@ -96,6 +99,7 @@ void Guidance::step()
                                                   position_.second - waypoints_[target_].second) < accept_radius_)
     {
         leg_start_ = waypoints_[target_];
+        cross_integral_ = 0.0;
         if (++target_ == waypoints_.size())
         {
             RCLCPP_INFO(get_logger(), "holding station on the final waypoint");
@@ -110,22 +114,31 @@ void Guidance::step()
     command_pub_->publish(command);
 }
 
-std::pair<double, double> Guidance::follow() const
+std::pair<double, double> Guidance::follow()
 {
     // Touch up on trig
     Point const& goal = waypoints_[target_];
     double const bearing = std::atan2(goal.second - leg_start_.second, goal.first - leg_start_.first);
     double const cross = std::cos(bearing) * (position_.second - leg_start_.second) -
                          std::sin(bearing) * (position_.first - leg_start_.first);
-    double const error = wrap(bearing + std::atan2(-cross, lookahead_) - heading_);
 
-    double speed = speed_ * std::max(0.0, std::cos(error));
-    if (target_ + 1 == waypoints_.size())
+    // A current holds the boat at whatever offset balances it against the
+    // steering. The integral keeps growing until it aims upstream enough to
+    // cancel that, capped at a 45 degree extra correction.
+    cross_integral_ = std::clamp(cross_integral_ + ki_cross_ * cross * dt_, -lookahead_, lookahead_);
+    double const error = wrap(bearing + std::atan2(-(cross + cross_integral_), lookahead_) - heading_);
+
+    // Speed to arrive at: full for straight on, half for a right angle, none
+    // for a reversal or the last waypoint. approach_gain sets how early to brake.
+    double arrive = 0.0;
+    if (target_ + 1 < waypoints_.size())
     {
-        double const remaining = std::hypot(position_.first - goal.first, position_.second - goal.second);
-        speed = std::min(speed, approach_gain_ * remaining);
+        Point const& next = waypoints_[target_ + 1];
+        double const turn = std::atan2(next.second - goal.second, next.first - goal.first) - bearing;
+        arrive = speed_ * (1.0 + std::cos(turn)) / 2.0;
     }
-    return { speed, error };
+    double const remaining = std::hypot(position_.first - goal.first, position_.second - goal.second);
+    return { std::min(speed_ * std::max(0.0, std::cos(error)), arrive + approach_gain_ * remaining), error };
 }
 
 std::pair<double, double> Guidance::hold()

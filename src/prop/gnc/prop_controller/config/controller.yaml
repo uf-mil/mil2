@@ -7,9 +7,10 @@ guidance:
     accept_radius: 1.0
     kp_heading: 1.2
     max_yaw_rate: 0.6 # rad/s
-    hold_radius: 0.10 # m, station keeping deadband
+    hold_radius: 0.3 # m, station keeping deadband
     yaw_tolerance: 0.09 # rad, ~5 deg, heading deadband once it is on the point
     approach_gain: 0.1 # m/s per m remaining
+    ki_cross: 0.1 # 1/s, how fast drift correction builds, 0 to disable
 
 thruster_manager:
   ros__parameters:
