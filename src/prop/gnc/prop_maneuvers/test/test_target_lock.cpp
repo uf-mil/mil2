@@ -24,20 +24,22 @@ using prop_maneuvers::Point;
 //
 // The test publishes and subscribes over the real DDS graph, so under
 // rmw_zenoh_cpp it needs `rmw_zenohd` running (see the plan's Conventions).
+//
+// The node, settings, lock and publisher are built ONCE for the whole suite,
+// not per test: rmw_zenoh_cpp on this box stalls after several node
+// create/destroy cycles in one process (see
+// prop_mission_planner/test/tree_fixture.hpp for the same fix and a longer
+// explanation), and TargetLock's tf2_ros::TransformListener spins up its own
+// internal node and spin thread on top of the one passed in -- so a fresh
+// node per test here would churn through two nodes per test, eight across
+// this suite's four tests. Each test instead starts from a clean slate via
+// lock_->release() in SetUp().
 class TargetLockTest : public ::testing::Test
 {
   protected:
     static void SetUpTestSuite()
     {
         rclcpp::init(0, nullptr);
-    }
-    static void TearDownTestSuite()
-    {
-        rclcpp::shutdown();
-    }
-
-    void SetUp() override
-    {
         // A private namespace per process, not just per test: "cluster_markers"
         // is the same relative topic name pcd publishes on in a live sim, so
         // without this the test's fake buoy would leak onto a running sim (or
@@ -46,6 +48,22 @@ class TargetLockTest : public ::testing::Test
         settings_ = std::make_unique<prop_maneuvers::Constants>(node_.get());
         lock_ = std::make_unique<prop_maneuvers::TargetLock>(node_.get(), *settings_);
         publisher_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>("cluster_markers", rclcpp::QoS(1));
+    }
+    static void TearDownTestSuite()
+    {
+        lock_.reset();
+        settings_.reset();
+        publisher_.reset();
+        node_.reset();
+        rclcpp::shutdown();
+    }
+
+    void SetUp() override
+    {
+        // The node, settings, lock and publisher persist across the whole
+        // suite (see the class comment); only the lock's state needs
+        // resetting between tests.
+        lock_->release();
     }
 
     // Publish a 0.5 m box at (x, y) until the lock reports it as a blob.
@@ -82,11 +100,16 @@ class TargetLockTest : public ::testing::Test
         FAIL() << "the lock never received the box at (" << x << ", " << y << ")";
     }
 
-    rclcpp::Node::SharedPtr node_;
-    std::unique_ptr<prop_maneuvers::Constants> settings_;
-    std::unique_ptr<prop_maneuvers::TargetLock> lock_;
-    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr publisher_;
+    static rclcpp::Node::SharedPtr node_;
+    static std::unique_ptr<prop_maneuvers::Constants> settings_;
+    static std::unique_ptr<prop_maneuvers::TargetLock> lock_;
+    static rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr publisher_;
 };
+
+rclcpp::Node::SharedPtr TargetLockTest::node_;
+std::unique_ptr<prop_maneuvers::Constants> TargetLockTest::settings_;
+std::unique_ptr<prop_maneuvers::TargetLock> TargetLockTest::lock_;
+rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr TargetLockTest::publisher_;
 
 TEST_F(TargetLockTest, ReleaseDropsTheLock)
 {
