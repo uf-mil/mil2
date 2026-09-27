@@ -56,6 +56,7 @@ class TargetLock
     /// Forget the current target. A FAILED acquire leaves the previous lock in
     /// place, so anything that locks onto a new object must release first or it
     /// can silently carry on with the last one.
+    /// Also clears why(), so log a failure reason before releasing.
     void release();
 
     bool locked() const

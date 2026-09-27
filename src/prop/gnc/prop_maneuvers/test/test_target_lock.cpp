@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include <chrono>
 #include <cmath>
 #include <memory>
+#include <string>
 #include <thread>
 
 #include <rclcpp/rclcpp.hpp>
@@ -19,6 +21,9 @@ using prop_maneuvers::Point;
 
 // Feeds the lock one clustered box in the map frame, the way pcd does. A box
 // already in "map" needs no transform tree: tf2 answers map->map itself.
+//
+// The test publishes and subscribes over the real DDS graph, so under
+// rmw_zenoh_cpp it needs `rmw_zenohd` running (see the plan's Conventions).
 class TargetLockTest : public ::testing::Test
 {
   protected:
@@ -33,7 +38,11 @@ class TargetLockTest : public ::testing::Test
 
     void SetUp() override
     {
-        node_ = std::make_shared<rclcpp::Node>("target_lock_test");
+        // A private namespace per process, not just per test: "cluster_markers"
+        // is the same relative topic name pcd publishes on in a live sim, so
+        // without this the test's fake buoy would leak onto a running sim (or
+        // the sim's real markers would leak into the test).
+        node_ = std::make_shared<rclcpp::Node>("target_lock_test", "/target_lock_test_" + std::to_string(::getpid()));
         settings_ = std::make_unique<prop_maneuvers::Constants>(node_.get());
         lock_ = std::make_unique<prop_maneuvers::TargetLock>(node_.get(), *settings_);
         publisher_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>("cluster_markers", rclcpp::QoS(1));
@@ -88,6 +97,9 @@ TEST_F(TargetLockTest, ReleaseDropsTheLock)
     lock_->release();
 
     EXPECT_FALSE(lock_->locked());
+    EXPECT_TRUE(lock_->stale());
+    EXPECT_EQ(lock_->radius(), 0.0);
+    EXPECT_TRUE(lock_->why().empty());
 }
 
 // Why release() exists. The standalone programs lock once and exit, so this
@@ -103,6 +115,8 @@ TEST_F(TargetLockTest, FailedAcquireKeepsThePreviousLock)
     // ...and the old buoy is still locked.
     EXPECT_TRUE(lock_->locked());
     EXPECT_NEAR(lock_->point().x, -4.0, 1e-6);
+    EXPECT_NEAR(lock_->point().y, -4.0, 1e-6);
+    EXPECT_NEAR(lock_->radius(), 0.25, 1e-6);
 }
 
 TEST_F(TargetLockTest, ReleaseThenFailedAcquireLeavesNothingLocked)
@@ -114,6 +128,22 @@ TEST_F(TargetLockTest, ReleaseThenFailedAcquireLeavesNothingLocked)
 
     EXPECT_FALSE(lock_->acquire_near(Point{ 20.0, -3.0 }));
     EXPECT_FALSE(lock_->locked());
+}
+
+// The mission runner's normal path: release the last buoy, then lock onto the
+// next one, rather than only ever failing to relock (as above).
+TEST_F(TargetLockTest, ReleaseThenLocksOntoADifferentBuoy)
+{
+    ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));
+    ASSERT_TRUE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+
+    lock_->release();
+
+    ASSERT_NO_FATAL_FAILURE(show_buoy_at(4.0, 4.0));
+    ASSERT_TRUE(lock_->acquire_near(Point{ 4.0, 4.0 }));
+
+    EXPECT_NEAR(lock_->point().x, 4.0, 1e-6);
+    EXPECT_NEAR(lock_->point().y, 4.0, 1e-6);
 }
 
 }  // namespace
