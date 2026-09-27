@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<root BTCPP_format="4">
+    <!-- Drive up to buoy_3 at (-4, -4) and stop with the bow 1.0 m off it. -->
+    <BehaviorTree ID="ApproachTest">
+        <Sequence>
+            <StaticObject point="-4;-4" ref="{buoy}"/>
+            <RosTimeout msec="180000">
+                <ApproachObject target="{buoy}" standoff="1.0"/>
+            </RosTimeout>
+        </Sequence>
+    </BehaviorTree>
+</root>

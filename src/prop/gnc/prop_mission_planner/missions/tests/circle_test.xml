@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<root BTCPP_format="4">
+    <!-- Circle buoy_3 at (-4, -4) clockwise. maneuvers.yaml's default is
+         counter-clockwise, so this proves the per-mission direction. -->
+    <BehaviorTree ID="CircleTest">
+        <Sequence>
+            <StaticObject point="-4;-4" ref="{buoy}"/>
+            <RosTimeout msec="300000">
+                <CircleObject target="{buoy}" direction="clockwise"/>
+            </RosTimeout>
+        </Sequence>
+    </BehaviorTree>
+</root>

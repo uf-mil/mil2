@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<root BTCPP_format="4">
+    <!-- Turn to face buoy_3 in prop_lake.world, at (-4, -4). -->
+    <BehaviorTree ID="FaceTest">
+        <Sequence>
+            <StaticObject point="-4;-4" ref="{buoy}"/>
+            <RosTimeout msec="120000">
+                <FaceObject target="{buoy}"/>
+            </RosTimeout>
+        </Sequence>
+    </BehaviorTree>
+</root>

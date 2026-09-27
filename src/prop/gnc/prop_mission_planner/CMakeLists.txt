@@ -37,6 +37,16 @@ target_include_directories(
 target_link_libraries(operations PUBLIC prop_maneuvers::prop_maneuvers_lib)
 ament_target_dependencies(operations PUBLIC rclcpp behaviortree_cpp)
 
+add_executable(mission_planner_node src/mission_planner_node.cpp)
+# cmake-format: off
+target_link_libraries(
+  mission_planner_node PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>"
+  ament_index_cpp::ament_index_cpp)
+# cmake-format: on
+
+install(TARGETS mission_planner_node DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY missions/ DESTINATION share/${PROJECT_NAME}/bt)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
@@ -66,6 +76,12 @@ if(BUILD_TESTING)
   ament_add_gtest(test_maneuver_nodes_live test/test_maneuver_nodes_live.cpp)
   target_link_libraries(test_maneuver_nodes_live
                         "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
+
+  ament_add_gtest(test_missions test/test_missions.cpp)
+  target_link_libraries(test_missions
+                        "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
+  target_compile_definitions(
+    test_missions PRIVATE MISSIONS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/missions")
 
   ament_lint_auto_find_test_dependencies()
 endif()

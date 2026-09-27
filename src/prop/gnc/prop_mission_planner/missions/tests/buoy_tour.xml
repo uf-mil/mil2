@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<root BTCPP_format="4">
+    <!-- Task 1's circling rule on two sim buoys: circle the entry buoy
+         clockwise, cross to the exit buoy, circle it counter-clockwise.
+         Entry = buoy_3 (-4, -4), exit = buoy_0 (20, -3). Timeouts are
+         sim-time first guesses; tune them once this runs. -->
+    <BehaviorTree ID="BuoyTour">
+        <Sequence>
+            <StaticObject point="-4;-4" ref="{entry}"/>
+            <StaticObject point="20;-3" ref="{exit}"/>
+            <RosTimeout msec="180000">
+                <ApproachObject target="{entry}" standoff="1.0"/>
+            </RosTimeout>
+            <RosTimeout msec="300000">
+                <CircleObject target="{entry}" direction="clockwise"/>
+            </RosTimeout>
+            <RosTimeout msec="240000">
+                <ApproachObject target="{exit}" standoff="1.0"/>
+            </RosTimeout>
+            <RosTimeout msec="300000">
+                <CircleObject target="{exit}" direction="counter_clockwise"/>
+            </RosTimeout>
+        </Sequence>
+    </BehaviorTree>
+</root>

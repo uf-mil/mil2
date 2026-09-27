@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!--
+    Index of every boat mission. Each mission lives in its own file; add an
+    <include> here to make it runnable with `bmp <MissionID>`.
+-->
+<root BTCPP_format="4">
+    <!-- Test missions: one maneuver each, on buoys in prop_lake.world -->
+    <include path="tests/face_test.xml"/>
+    <include path="tests/approach_test.xml"/>
+    <include path="tests/circle_test.xml"/>
+    <include path="tests/buoy_tour.xml"/>
+</root>
