@@ -1,0 +1,119 @@
+#include <gtest/gtest.h>
+
+#include <chrono>
+#include <cmath>
+#include <memory>
+#include <thread>
+
+#include <rclcpp/rclcpp.hpp>
+
+#include "prop_maneuvers/constants.hpp"
+#include "prop_maneuvers/target_lock.hpp"
+
+#include <visualization_msgs/msg/marker_array.hpp>
+
+namespace
+{
+
+using prop_maneuvers::Point;
+
+// Feeds the lock one clustered box in the map frame, the way pcd does. A box
+// already in "map" needs no transform tree: tf2 answers map->map itself.
+class TargetLockTest : public ::testing::Test
+{
+  protected:
+    static void SetUpTestSuite()
+    {
+        rclcpp::init(0, nullptr);
+    }
+    static void TearDownTestSuite()
+    {
+        rclcpp::shutdown();
+    }
+
+    void SetUp() override
+    {
+        node_ = std::make_shared<rclcpp::Node>("target_lock_test");
+        settings_ = std::make_unique<prop_maneuvers::Constants>(node_.get());
+        lock_ = std::make_unique<prop_maneuvers::TargetLock>(node_.get(), *settings_);
+        publisher_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>("cluster_markers", rclcpp::QoS(1));
+    }
+
+    // Publish a 0.5 m box at (x, y) until the lock reports it as a blob.
+    void show_buoy_at(double x, double y)
+    {
+        visualization_msgs::msg::Marker box;
+        box.header.frame_id = "map";
+        box.action = visualization_msgs::msg::Marker::ADD;
+        box.type = visualization_msgs::msg::Marker::CUBE;
+        box.pose.position.x = x;
+        box.pose.position.y = y;
+        box.pose.orientation.w = 1.0;
+        box.scale.x = 0.5;
+        box.scale.y = 0.5;
+        box.scale.z = 1.0;
+
+        auto const deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            box.header.stamp = node_->now();
+            visualization_msgs::msg::MarkerArray markers;
+            markers.markers.push_back(box);
+            publisher_->publish(markers);
+            rclcpp::spin_some(node_);
+            for (auto const &blob : lock_->blobs())
+            {
+                if (std::abs(blob.centre.x - x) < 1e-6 && std::abs(blob.centre.y - y) < 1e-6)
+                {
+                    return;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+        FAIL() << "the lock never received the box at (" << x << ", " << y << ")";
+    }
+
+    rclcpp::Node::SharedPtr node_;
+    std::unique_ptr<prop_maneuvers::Constants> settings_;
+    std::unique_ptr<prop_maneuvers::TargetLock> lock_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr publisher_;
+};
+
+TEST_F(TargetLockTest, ReleaseDropsTheLock)
+{
+    ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));
+    ASSERT_TRUE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+    ASSERT_TRUE(lock_->locked());
+
+    lock_->release();
+
+    EXPECT_FALSE(lock_->locked());
+}
+
+// Why release() exists. The standalone programs lock once and exit, so this
+// never mattered; a mission runner chains maneuvers, and without a release the
+// maneuver for buoy 2 would drive to buoy 1.
+TEST_F(TargetLockTest, FailedAcquireKeepsThePreviousLock)
+{
+    ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));
+    ASSERT_TRUE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+
+    // Nothing near (20, -3): the acquire fails...
+    EXPECT_FALSE(lock_->acquire_near(Point{ 20.0, -3.0 }));
+    // ...and the old buoy is still locked.
+    EXPECT_TRUE(lock_->locked());
+    EXPECT_NEAR(lock_->point().x, -4.0, 1e-6);
+}
+
+TEST_F(TargetLockTest, ReleaseThenFailedAcquireLeavesNothingLocked)
+{
+    ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));
+    ASSERT_TRUE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+
+    lock_->release();
+
+    EXPECT_FALSE(lock_->acquire_near(Point{ 20.0, -3.0 }));
+    EXPECT_FALSE(lock_->locked());
+}
+
+}  // namespace

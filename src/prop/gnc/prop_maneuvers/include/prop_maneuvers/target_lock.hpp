@@ -53,6 +53,11 @@ class TargetLock
     /// Re-match against the remembered point and update it.
     bool refresh();
 
+    /// Forget the current target. A FAILED acquire leaves the previous lock in
+    /// place, so anything that locks onto a new object must release first or it
+    /// can silently carry on with the last one.
+    void release();
+
     bool locked() const
     {
         return locked_.has_value();

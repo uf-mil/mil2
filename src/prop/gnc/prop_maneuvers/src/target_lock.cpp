@@ -295,6 +295,12 @@ bool TargetLock::refresh()
     return true;
 }
 
+void TargetLock::release()
+{
+    locked_.reset();
+    why_.clear();
+}
+
 bool TargetLock::stale() const
 {
     if (!locked_)

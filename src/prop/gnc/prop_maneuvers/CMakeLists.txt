@@ -124,6 +124,10 @@ if(BUILD_TESTING)
     test_constants_compiles
     PRIVATE MANEUVERS_YAML="${CMAKE_CURRENT_SOURCE_DIR}/config/maneuvers.yaml")
 
+  ament_add_gtest(test_target_lock test/test_target_lock.cpp)
+  target_link_libraries(test_target_lock prop_maneuvers_lib)
+  ament_target_dependencies(test_target_lock rclcpp visualization_msgs)
+
   ament_lint_auto_find_test_dependencies()
 endif()
 
