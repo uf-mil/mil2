@@ -23,6 +23,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -55,6 +56,95 @@ inline Rgb cluster_color(std::size_t index)
         { 70, 240, 240 }, { 240, 50, 230 }, { 210, 245, 60 }, { 250, 190, 212 }, { 0, 128, 128 },  { 220, 190, 255 },
     };
     return kPalette[index % (sizeof(kPalette) / sizeof(kPalette[0]))];
+}
+
+/// The footprint of a cluster as an oriented rectangle.
+struct OrientedBox
+{
+    double x{ 0.0 }, y{ 0.0 }, z{ 0.0 };  ///< centre of the box, not the centroid
+    double yaw{ 0.0 };                    ///< heading of the long axis
+    double length{ 0.0 };                 ///< extent along yaw
+    double width{ 0.0 };                  ///< extent across it
+    double height{ 0.0 };
+};
+
+/// Fit an oriented box to a cluster's footprint.
+///
+/// The axis comes from the 2-D principal component of the member points, which
+/// is what makes the box mean something. An axis-aligned box carries no
+/// heading of its own, so once its centre is transformed into a world frame
+/// its extents still describe whichever way the boat happened to be pointing
+/// when the sweep was taken - and a dock would read as a different shape on
+/// every heading. The principal axis is a property of the object.
+inline OrientedBox fit_oriented_box(pcl::PointCloud<pcl::PointXYZ>::ConstPtr const &cloud,
+                                    pcl::PointIndices const &cluster)
+{
+    double const n = static_cast<double>(cluster.indices.size());
+
+    double mean_x = 0.0, mean_y = 0.0, mean_z = 0.0;
+    float min_z = std::numeric_limits<float>::max();
+    float max_z = std::numeric_limits<float>::lowest();
+    for (int const idx : cluster.indices)
+    {
+        auto const &pt = (*cloud)[static_cast<std::size_t>(idx)];
+        mean_x += pt.x;
+        mean_y += pt.y;
+        mean_z += pt.z;
+        min_z = std::min(min_z, pt.z);
+        max_z = std::max(max_z, pt.z);
+    }
+    mean_x /= n;
+    mean_y /= n;
+    mean_z /= n;
+
+    // Second moments about the mean; the principal axis is the eigenvector of
+    // the larger eigenvalue, which for a symmetric 2x2 reduces to one atan2.
+    double cxx = 0.0, cyy = 0.0, cxy = 0.0;
+    for (int const idx : cluster.indices)
+    {
+        auto const &pt = (*cloud)[static_cast<std::size_t>(idx)];
+        double const dx = pt.x - mean_x;
+        double const dy = pt.y - mean_y;
+        cxx += dx * dx;
+        cyy += dy * dy;
+        cxy += dx * dy;
+    }
+    double const yaw = 0.5 * std::atan2(2.0 * cxy, cxx - cyy);
+    double const ux = std::cos(yaw);
+    double const uy = std::sin(yaw);
+
+    // Extents along the axis and across it.
+    double min_a = std::numeric_limits<double>::max();
+    double max_a = std::numeric_limits<double>::lowest();
+    double min_b = std::numeric_limits<double>::max();
+    double max_b = std::numeric_limits<double>::lowest();
+    for (int const idx : cluster.indices)
+    {
+        auto const &pt = (*cloud)[static_cast<std::size_t>(idx)];
+        double const dx = pt.x - mean_x;
+        double const dy = pt.y - mean_y;
+        double const a = dx * ux + dy * uy;
+        double const b = -dx * uy + dy * ux;
+        min_a = std::min(min_a, a);
+        max_a = std::max(max_a, a);
+        min_b = std::min(min_b, b);
+        max_b = std::max(max_b, b);
+    }
+
+    // The centre of the extents, which is not the centroid: a partly seen
+    // object has its returns bunched on the face the lidar can reach.
+    double const mid_a = 0.5 * (min_a + max_a);
+    double const mid_b = 0.5 * (min_b + max_b);
+
+    OrientedBox box;
+    box.x = mean_x + mid_a * ux - mid_b * uy;
+    box.y = mean_y + mid_a * uy + mid_b * ux;
+    box.z = mean_z;
+    box.yaw = yaw;
+    box.length = max_a - min_a;
+    box.width = max_b - min_b;
+    box.height = static_cast<double>(max_z - min_z);
+    return box;
 }
 
 }  // namespace detail
@@ -154,15 +244,6 @@ class PclClustering : public rclcpp::Node, public PcdConstants
         {
             detail::Rgb const color = detail::cluster_color(static_cast<std::size_t>(id));
 
-            // Accumulate bounding-box extents and centroid.
-            float min_x = std::numeric_limits<float>::max();
-            float min_y = std::numeric_limits<float>::max();
-            float min_z = std::numeric_limits<float>::max();
-            float max_x = std::numeric_limits<float>::lowest();
-            float max_y = std::numeric_limits<float>::lowest();
-            float max_z = std::numeric_limits<float>::lowest();
-            double cx = 0.0, cy = 0.0, cz = 0.0;
-
             for (int const idx : cluster.indices)
             {
                 auto const &pt = (*cloud)[static_cast<std::size_t>(idx)];
@@ -175,43 +256,30 @@ class PclClustering : public rclcpp::Node, public PcdConstants
                 rgb_pt.g = color.g;
                 rgb_pt.b = color.b;
                 colored.push_back(rgb_pt);
-
-                min_x = std::min(min_x, pt.x);
-                max_x = std::max(max_x, pt.x);
-                min_y = std::min(min_y, pt.y);
-                max_y = std::max(max_y, pt.y);
-                min_z = std::min(min_z, pt.z);
-                max_z = std::max(max_z, pt.z);
-                cx += pt.x;
-                cy += pt.y;
-                cz += pt.z;
             }
 
-            double const n = static_cast<double>(cluster.indices.size());
-            cx /= n;
-            cy /= n;
-            cz /= n;
+            detail::OrientedBox const box = detail::fit_oriented_box(cloud, cluster);
 
-            // Bounding-box marker.
-            visualization_msgs::msg::Marker box;
-            box.header = header;
-            box.ns = "pcd_clusters";
-            box.id = id;
-            box.type = visualization_msgs::msg::Marker::CUBE;
-            box.action = visualization_msgs::msg::Marker::ADD;
-            box.pose.position.x = cx;
-            box.pose.position.y = cy;
-            box.pose.position.z = cz;
-            box.pose.orientation.w = 1.0;
-            box.scale.x = std::max(0.05, static_cast<double>(max_x - min_x));
-            box.scale.y = std::max(0.05, static_cast<double>(max_y - min_y));
-            box.scale.z = std::max(0.05, static_cast<double>(max_z - min_z));
-            box.color.r = color.r / 255.0f;
-            box.color.g = color.g / 255.0f;
-            box.color.b = color.b / 255.0f;
-            box.color.a = 0.35f;
-            box.lifetime = rclcpp::Duration(0, 0);
-            markers.markers.push_back(box);
+            visualization_msgs::msg::Marker marker;
+            marker.header = header;
+            marker.ns = "pcd_clusters";
+            marker.id = id;
+            marker.type = visualization_msgs::msg::Marker::CUBE;
+            marker.action = visualization_msgs::msg::Marker::ADD;
+            marker.pose.position.x = box.x;
+            marker.pose.position.y = box.y;
+            marker.pose.position.z = box.z;
+            marker.pose.orientation.z = std::sin(0.5 * box.yaw);
+            marker.pose.orientation.w = std::cos(0.5 * box.yaw);
+            marker.scale.x = std::max(0.05, box.length);
+            marker.scale.y = std::max(0.05, box.width);
+            marker.scale.z = std::max(0.05, box.height);
+            marker.color.r = color.r / 255.0f;
+            marker.color.g = color.g / 255.0f;
+            marker.color.b = color.b / 255.0f;
+            marker.color.a = 0.35f;
+            marker.lifetime = rclcpp::Duration(0, 0);
+            markers.markers.push_back(marker);
             ++id;
         }
 

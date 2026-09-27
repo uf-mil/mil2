@@ -14,67 +14,59 @@ namespace prop_planner
 namespace
 {
 
-/// An obstacle grown by the safety margin: what the planner actually avoids.
-struct Disc
+/// Below this an inflated capsule is a circle and needs only one ring of
+/// corners rather than one around each end.
+constexpr double kDegenerate = 1e-6;
+
+bool route_is_clear(Point a, Point b, std::vector<Capsule> const& obstacles)
 {
-    Point center;
-    double radius{ 0.0 };
-};
-
-/// Closest approach of the segment ab to the point p.
-double distance_to_segment(Point p, Point a, Point b)
-{
-    double const dx = b.x - a.x;
-    double const dy = b.y - a.y;
-    double const length_squared = dx * dx + dy * dy;
-
-    // A segment of no length is just its endpoint.
-    if (length_squared < 1e-12)
-    {
-        return distance(p, a);
-    }
-
-    // Project p onto the infinite line through a and b, then clamp the
-    // projection back onto the segment itself.
-    double const t = std::clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / length_squared, 0.0, 1.0);
-    return std::hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    return std::none_of(obstacles.begin(), obstacles.end(),
+                        [&](Capsule const& capsule) { return hits(capsule, a, b); });
 }
 
-bool segment_is_clear(Point a, Point b, std::vector<Disc> const& discs)
-{
-    return std::none_of(discs.begin(), discs.end(),
-                        [&](Disc const& disc) { return distance_to_segment(disc.center, a, b) < disc.radius; });
-}
-
-/// Where to put the corners around a grown obstacle.
+/// How far out from the axis to place the corners around an end cap.
 ///
-/// They go on the polygon that circumscribes the circle rather than on the
-/// circle itself. Corners placed on the circle are the vertices of an inscribed
-/// polygon, and every chord of an inscribed polygon cuts inside - so no two
-/// adjacent corners could see each other, and there would be no way around an
-/// obstacle at all. Pushing them out by 1/cos(pi/n) makes those chords tangent
-/// instead, and the last thousandth clears the tangency.
+/// They go on the polygon that circumscribes the cap rather than on the cap
+/// itself. Corners placed on it are the vertices of an inscribed polygon, and
+/// every chord of an inscribed polygon cuts inside - so no two adjacent
+/// corners could see each other, and there would be no way around an obstacle
+/// at all. Pushing them out by 1/cos(pi/n) makes those chords tangent instead,
+/// and the last thousandth clears the tangency.
 double corner_ring_radius(double radius, int corners)
 {
     return radius * 1.001 / std::cos(M_PI / static_cast<double>(corners));
 }
 
-/// Start, goal, then a ring of candidate corners around every obstacle.
-std::vector<Point> build_nodes(Point start, Point goal, std::vector<Disc> const& discs, int corners_per_obstacle)
+void add_ring(std::vector<Point>& nodes, Point centre, double ring, int corners)
+{
+    double const step = 2.0 * M_PI / static_cast<double>(corners);
+    for (int i = 0; i < corners; ++i)
+    {
+        double const angle = step * static_cast<double>(i);
+        nodes.push_back({ centre.x + ring * std::cos(angle), centre.y + ring * std::sin(angle) });
+    }
+}
+
+/// Start, goal, then a ring of candidate corners around each end cap.
+///
+/// Corners only at the caps is enough. Going around a capsule means rounding
+/// one cap, running parallel to the flat side, and rounding the other - and a
+/// segment between two corners at the same angle on opposite caps sits a whole
+/// ring radius off the axis, so the flat side needs no corners of its own.
+std::vector<Point> build_nodes(Point start, Point goal, std::vector<Capsule> const& obstacles, int corners_per_obstacle)
 {
     std::vector<Point> nodes;
-    nodes.reserve(2 + discs.size() * static_cast<std::size_t>(corners_per_obstacle));
+    nodes.reserve(2 + obstacles.size() * 2 * static_cast<std::size_t>(corners_per_obstacle));
     nodes.push_back(start);
     nodes.push_back(goal);
 
-    double const step = 2.0 * M_PI / static_cast<double>(corners_per_obstacle);
-    for (auto const& disc : discs)
+    for (Capsule const& capsule : obstacles)
     {
-        double const ring = corner_ring_radius(disc.radius, corners_per_obstacle);
-        for (int i = 0; i < corners_per_obstacle; ++i)
+        double const ring = corner_ring_radius(capsule.radius, corners_per_obstacle);
+        add_ring(nodes, capsule.a, ring, corners_per_obstacle);
+        if (length(capsule) >= kDegenerate)
         {
-            double const angle = step * static_cast<double>(i);
-            nodes.push_back({ disc.center.x + ring * std::cos(angle), disc.center.y + ring * std::sin(angle) });
+            add_ring(nodes, capsule.b, ring, corners_per_obstacle);
         }
     }
     return nodes;
@@ -86,7 +78,7 @@ std::vector<Point> build_nodes(Point start, Point goal, std::vector<Disc> const&
 /// the straight lines require, because it may only turn at sampled points.
 /// Walking forward to the furthest corner still in sight removes those, which
 /// leaves guidance fewer legs to chase.
-std::vector<Point> string_pull(Point start, std::vector<Point> const& route, std::vector<Disc> const& discs)
+std::vector<Point> string_pull(Point start, std::vector<Point> const& route, std::vector<Capsule> const& obstacles)
 {
     std::vector<Point> pulled;
     pulled.reserve(route.size());
@@ -99,7 +91,7 @@ std::vector<Point> string_pull(Point start, std::vector<Point> const& route, std
         std::size_t furthest = i;
         for (std::size_t j = route.size(); j-- > i;)
         {
-            if (segment_is_clear(from, route[j], discs))
+            if (route_is_clear(from, route[j], obstacles))
             {
                 furthest = j;
                 break;
@@ -120,25 +112,25 @@ std::vector<Point> VisibilityPlanner::plan(Point start, Point goal, std::vector<
     // overlapping an endpoint. Keeping those could only ever report "no route"
     // for a situation the planner cannot fix - the boat is already inside the
     // margin, and refusing to plan would leave it there.
-    std::vector<Disc> discs;
-    discs.reserve(obstacles.size());
-    for (auto const& obstacle : obstacles)
+    std::vector<Capsule> grown;
+    grown.reserve(obstacles.size());
+    for (Obstacle const& obstacle : obstacles)
     {
-        Disc const disc{ { obstacle.x, obstacle.y }, obstacle.radius + config_.inflation };
-        if (distance(disc.center, start) >= disc.radius && distance(disc.center, goal) >= disc.radius)
+        Capsule const capsule = inflate(obstacle.shape, config_.inflation);
+        if (!contains(capsule, start) && !contains(capsule, goal))
         {
-            discs.push_back(disc);
+            grown.push_back(capsule);
         }
     }
 
     // Straight there, when nothing is in the way. The common case on open
-    // water, and it costs one segment test.
-    if (segment_is_clear(start, goal, discs))
+    // water, and it costs one test per obstacle.
+    if (route_is_clear(start, goal, grown))
     {
         return { goal };
     }
 
-    std::vector<Point> const nodes = build_nodes(start, goal, discs, config_.corners_per_obstacle);
+    std::vector<Point> const nodes = build_nodes(start, goal, grown, config_.corners_per_obstacle);
     std::size_t const count = nodes.size();
     constexpr std::size_t kStart = 0;
     constexpr std::size_t kGoal = 1;
@@ -183,7 +175,7 @@ std::vector<Point> VisibilityPlanner::plan(Point start, Point goal, std::vector<
 
             // Arithmetic before geometry: most neighbours fail on cost alone,
             // and that test is far cheaper than sweeping every obstacle.
-            if (candidate >= cost[next] || !segment_is_clear(nodes[current], nodes[next], discs))
+            if (candidate >= cost[next] || !route_is_clear(nodes[current], nodes[next], grown))
             {
                 continue;
             }
@@ -206,7 +198,7 @@ std::vector<Point> VisibilityPlanner::plan(Point start, Point goal, std::vector<
     }
     std::reverse(route.begin(), route.end());
 
-    return string_pull(start, route, discs);
+    return string_pull(start, route, grown);
 }
 
 }  // namespace prop_planner

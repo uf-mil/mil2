@@ -21,7 +21,8 @@ find_package(visualization_msgs REQUIRED)
 
 # The map and the search are plain C++ with no ROS in them, so they build and
 # test on their own.
-add_library(prop_planner_core src/obstacle_map.cpp src/visibility_planner.cpp)
+add_library(prop_planner_core src/geometry.cpp src/obstacle_map.cpp
+                              src/visibility_planner.cpp)
 target_include_directories(
   prop_planner_core
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -54,6 +55,9 @@ install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
 if(BUILD_TESTING)
   # The map and the search hold no ROS, so they test as plain C++.
   find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(test_geometry test/geometry.cpp)
+  target_link_libraries(test_geometry prop_planner_core)
 
   ament_add_gtest(test_obstacle_map test/obstacle_map.cpp)
   target_link_libraries(test_obstacle_map prop_planner_core)

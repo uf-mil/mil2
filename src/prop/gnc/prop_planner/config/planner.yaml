@@ -23,6 +23,19 @@ planner:
     # into one blob cannot wall off the course.
     max_radius: 5.0 # m
 
+    # Ceiling on any single entry's length. An obstacle's extent accumulates -
+    # each view of a dock reveals a different slice of it - so this is the
+    # valve on a bad association welding two objects into one long capsule.
+    # A convex hull has no equivalent: there is no single number to clamp.
+    max_length: 20.0 # m
+
+    # How far past a stored end an observation has to reach before it counts as
+    # revealing more of the object rather than as noise. It is also the length
+    # below which an observation is read as round, carrying position rather
+    # than extent - without that, a buoy's jitter would stretch it into a
+    # capsule one frame at a time.
+    extent_deadband: 0.3 # m
+
     # Hard cap on remembered obstacles; past it the least-seen entry is dropped.
     capacity: 256
 

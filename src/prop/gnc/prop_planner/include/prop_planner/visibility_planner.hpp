@@ -1,25 +1,14 @@
 #pragma once
 
-#include <cmath>
 #include <vector>
 
+#include "prop_planner/geometry.hpp"
 #include "prop_planner/obstacle_map.hpp"
 
 namespace prop_planner
 {
 
-struct Point
-{
-    double x{ 0.0 };
-    double y{ 0.0 };
-};
-
-inline double distance(Point a, Point b)
-{
-    return std::hypot(b.x - a.x, b.y - a.y);
-}
-
-// The shortest route past a handful of round obstacles.
+// The shortest route past a handful of obstacles.
 //
 // A course holds tens of buoys, not thousands of cells, and on that shape a
 // visibility graph beats a grid on every axis that matters: it is exact rather
@@ -29,9 +18,10 @@ inline double distance(Point a, Point b)
 // a handful of corners is exactly its input, while a grid planner would hand it
 // a dense cell path to decimate and smooth first.
 //
-// Every obstacle is grown by the hull's half beam plus a safety margin, and the
-// route is then the shortest polyline from start to goal that enters no grown
-// circle.
+// Every obstacle is a capsule grown by the hull's half beam plus a safety
+// margin, and the route is the shortest polyline from start to goal that enters
+// none of them. Growing a capsule costs one addition, which is most of why the
+// shape is a capsule and not a polygon.
 class VisibilityPlanner
 {
   public:
@@ -40,7 +30,7 @@ class VisibilityPlanner
         /// Added to every obstacle radius: half the hull's beam, plus however
         /// close you are willing to pass.
         double inflation{ 2.0 };
-        /// Corners sampled around each obstacle. More of them means routes that
+        /// Corners sampled around each end cap. More of them means routes that
         /// hug obstacles more closely, at a quadratic cost in the search.
         int corners_per_obstacle{ 8 };
     };

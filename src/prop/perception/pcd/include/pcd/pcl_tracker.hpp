@@ -6,6 +6,11 @@
  * Now listens to TF transforms to convert incoming detections into /odom (global) frame.
  * Makes a global map of all detected objects in the global frame.
  *
+ * The detection's orientation rides through with its centroid. It is the
+ * heading of the cluster's principal axis, fitted upstream in PclClustering,
+ * and tf2 rotates it along with the position - so a box still describes the
+ * object rather than whichever way the boat was pointing.
+ *
  * Algorithm (similar to the multi_object_tracking_lidar by Praveen Palanisamy,
  * ported to ROS 2 with a native C++ implementation):
  *
@@ -225,6 +230,11 @@ struct Track
     double scale_y{ 0.5 };
     double scale_z{ 0.5 };
     double pos_z{ 0.0 };  ///< Z passed through (not in EKF state)
+
+    /// Heading of the cluster's principal axis, carried through from the
+    /// detection. Without it the box downstream is just extents with no idea
+    /// which way they run, and anything reading a shape out of it is guessing.
+    geometry_msgs::msg::Quaternion orientation;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -283,6 +293,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         t.scale_y = m.scale.y;
         t.scale_z = m.scale.z;
         t.pos_z = m.pose.position.z;
+        t.orientation = m.pose.orientation;
         return t;
     }
 
@@ -424,14 +435,14 @@ class PclTracker : public rclcpp::Node, public PcdConstants
             ekf_predict(t, dt);
 
         // ── 2. Build cost matrix and assign ──────────────────────────────────
-        std::size_t const nT = tracks_.size();
-        std::size_t const nD = detections.size();
+        std::size_t const track_count = tracks_.size();
+        std::size_t const detection_count = detections.size();
 
         // cost[i][j] = Euclidean distance between track i prediction and detection j
-        std::vector<std::vector<double>> cost(nT, std::vector<double>(nD, 0.0));
-        for (std::size_t i = 0; i < nT; ++i)
+        std::vector<std::vector<double>> cost(track_count, std::vector<double>(detection_count, 0.0));
+        for (std::size_t i = 0; i < track_count; ++i)
         {
-            for (std::size_t j = 0; j < nD; ++j)
+            for (std::size_t j = 0; j < detection_count; ++j)
             {
                 double dx = tracks_[i].x[0] - detections[j]->pose.position.x;
                 double dy = tracks_[i].x[1] - detections[j]->pose.position.y;
@@ -440,14 +451,14 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         }
 
         // Greedy nearest-neighbour assignment (sufficient for low-density marine scene)
-        std::vector<int> track_to_det(nT, -1);  // which detection matched each track
-        std::vector<bool> det_used(nD, false);
+        std::vector<int> track_to_det(track_count, -1);  // which detection matched each track
+        std::vector<bool> det_used(detection_count, false);
 
-        for (std::size_t i = 0; i < nT; ++i)
+        for (std::size_t i = 0; i < track_count; ++i)
         {
             double best_cost = max_association_dist_;
             int best_j = -1;
-            for (std::size_t j = 0; j < nD; ++j)
+            for (std::size_t j = 0; j < detection_count; ++j)
             {
                 if (!det_used[j] && cost[i][j] < best_cost)
                 {
@@ -463,7 +474,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         }
 
         // ── 3. Update matched / increment misses ──────────────────────────────
-        for (std::size_t i = 0; i < nT; ++i)
+        for (std::size_t i = 0; i < track_count; ++i)
         {
             int j = track_to_det[i];
             if (j >= 0)
@@ -477,6 +488,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
                 tracks_[i].scale_y = d->scale.y;
                 tracks_[i].scale_z = d->scale.z;
                 tracks_[i].pos_z = d->pose.position.z;
+                tracks_[i].orientation = d->pose.orientation;
             }
             else
             {
@@ -485,7 +497,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         }
 
         // ── 4. Spawn new tracks for unmatched detections ──────────────────────
-        for (std::size_t j = 0; j < nD; ++j)
+        for (std::size_t j = 0; j < detection_count; ++j)
         {
             if (!det_used[j])
                 tracks_.push_back(make_track(*detections[j]));
@@ -500,8 +512,8 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         publish_tracks(header);
 
         RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
-                             "Tracks: %zu total  |  detections: %zu  |  published: %zu", tracks_.size(), nD,
-                             confirmed_count_);
+                             "Tracks: %zu total  |  detections: %zu  |  published: %zu", tracks_.size(),
+                             detection_count, confirmed_count_);
     }
 
     // ── Publishing ────────────────────────────────────────────────────────────
@@ -532,10 +544,10 @@ class PclTracker : public rclcpp::Node, public PcdConstants
             box.id = t.id;
             box.type = visualization_msgs::msg::Marker::CUBE;
             box.action = visualization_msgs::msg::Marker::ADD;
-            box.pose.position.x = t.x[0];   // EKF-filtered X
-            box.pose.position.y = t.x[1];   // EKF-filtered Y
-            box.pose.position.z = t.pos_z;  // pass-through Z
-            box.pose.orientation.w = 1.0;
+            box.pose.position.x = t.x[0];          // EKF-filtered X
+            box.pose.position.y = t.x[1];          // EKF-filtered Y
+            box.pose.position.z = t.pos_z;         // pass-through Z
+            box.pose.orientation = t.orientation;  // heading of the cluster's axis
             box.scale.x = std::max(0.05, t.scale_x);
             box.scale.y = std::max(0.05, t.scale_y);
             box.scale.z = std::max(0.05, t.scale_z);

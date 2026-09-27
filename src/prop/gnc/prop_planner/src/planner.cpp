@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "geometry_msgs/msg/point.hpp"
@@ -27,12 +28,51 @@ bool is_detection(visualization_msgs::msg::Marker const& marker)
            marker.action == visualization_msgs::msg::Marker::ADD;
 }
 
+double yaw_of(geometry_msgs::msg::Quaternion const& q)
+{
+    return std::atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+}
+
+geometry_msgs::msg::Quaternion quaternion_of(double yaw)
+{
+    geometry_msgs::msg::Quaternion q;
+    q.z = std::sin(0.5 * yaw);
+    q.w = std::cos(0.5 * yaw);
+    return q;
+}
+
+/// The smallest capsule that encloses an oriented box.
+///
+/// pcl_clustering fits each cluster's principal axis, so a detection arrives
+/// as a rectangle L by W with a real heading rather than as a box aligned to
+/// whichever way the boat happened to be pointing. The capsule that covers it
+/// runs L - W along that heading with a radius of W / sqrt(2): the corners sit
+/// exactly that far from the segment's ends, and a square footprint collapses
+/// to its circumscribed circle, which is what a buoy should be.
+Capsule capsule_of(geometry_msgs::msg::Point const& centre, geometry_msgs::msg::Vector3 const& scale, double yaw)
+{
+    double along = scale.x;
+    double across = scale.y;
+    if (across > along)
+    {
+        std::swap(along, across);
+        yaw += 0.5 * M_PI;  // the long axis is the box's local y
+    }
+
+    double const half = 0.5 * std::max(0.0, along - across);
+    double const dx = half * std::cos(yaw);
+    double const dy = half * std::sin(yaw);
+
+    return Capsule{ { centre.x - dx, centre.y - dy }, { centre.x + dx, centre.y + dy }, across / std::sqrt(2.0) };
+}
+
 }  // namespace
 
 Planner::Planner()
   : Node("planner")
   , map_({ declare_parameter("merge_distance", 2.0), declare_parameter("position_gain", 0.2),
            static_cast<int>(declare_parameter("min_hits", 3)), declare_parameter("max_radius", 5.0),
+           declare_parameter("max_length", 20.0), declare_parameter("extent_deadband", 0.3),
            static_cast<std::size_t>(declare_parameter("capacity", 256)) })
   , planner_({ declare_parameter("inflation", 2.0), static_cast<int>(declare_parameter("corners_per_obstacle", 8)) })
 {
@@ -109,13 +149,11 @@ void Planner::tracks_callback(visualization_msgs::msg::MarkerArray const& msg)
             continue;
         }
 
-        geometry_msgs::msg::Point position;
-        tf2::doTransform(marker.pose.position, position, transform);
+        // The whole pose, so the box's heading comes across with its centre.
+        geometry_msgs::msg::Pose pose;
+        tf2::doTransform(marker.pose, pose, transform);
 
-        // The tracker's boxes are axis aligned in the sensor's frame and carry
-        // no orientation of their own, so their footprint only means anything
-        // as a circle. The circumscribing one is the honest reading of it.
-        map_.observe(position.x, position.y, 0.5 * std::hypot(marker.scale.x, marker.scale.y));
+        map_.observe(capsule_of(pose.position, marker.scale, yaw_of(pose.orientation)));
     }
 }
 
@@ -205,40 +243,67 @@ void Planner::publish_obstacles(std::vector<Obstacle> const& obstacles) const
     {
         bool const confirmed = map_.is_confirmed(obstacle);
 
-        visualization_msgs::msg::Marker disc;
-        disc.header = clear.header;
-        // Two namespaces rather than two colours alone, so RViz can show either
-        // on its own and anything reading this can tell them apart without
-        // guessing at a shade.
-        disc.ns = confirmed ? "confirmed" : "pending";
-        disc.id = id++;
-        disc.type = visualization_msgs::msg::Marker::CYLINDER;
-        disc.action = visualization_msgs::msg::Marker::ADD;
-        disc.pose.position.x = obstacle.x;
-        disc.pose.position.y = obstacle.y;
-        disc.pose.orientation.w = 1.0;
+        // Drawn at the radius the planner actually keeps clear, not the one
+        // the lidar measured, so what RViz shows is what the boat will do.
+        Capsule const kept_clear = inflate(obstacle.shape, inflation_);
+        double const span = length(kept_clear);
 
-        // Drawn at the radius the planner actually keeps clear, not the one the
-        // lidar measured, so what RViz shows is what the boat will do.
-        double const kept_clear = obstacle.radius + inflation_;
-        disc.scale.x = disc.scale.y = 2.0 * kept_clear;
-        disc.scale.z = 0.2;
-        disc.color.r = confirmed ? 0.95f : 0.45f;
-        disc.color.g = confirmed ? 0.55f : 0.45f;
-        disc.color.b = confirmed ? 0.15f : 0.45f;
-        disc.color.a = confirmed ? 0.35f : 0.15f;
-        markers.markers.push_back(disc);
+        // Two namespaces rather than two colours alone, so RViz can show
+        // either on its own and anything reading this can tell them apart
+        // without guessing at a shade.
+        visualization_msgs::msg::Marker shape;
+        shape.header = clear.header;
+        shape.ns = confirmed ? "confirmed" : "pending";
+        shape.action = visualization_msgs::msg::Marker::ADD;
+        shape.color.r = confirmed ? 0.95f : 0.45f;
+        shape.color.g = confirmed ? 0.55f : 0.45f;
+        shape.color.b = confirmed ? 0.15f : 0.45f;
+        shape.color.a = confirmed ? 0.35f : 0.15f;
+        shape.pose.orientation.w = 1.0;
+        shape.scale.z = 0.2;
+
+        // A capsule draws as its two round caps with the rectangle between
+        // them. A round obstacle has no rectangle and both caps coincide, so
+        // it comes out as the single cylinder it should be.
+        shape.type = visualization_msgs::msg::Marker::CYLINDER;
+        shape.scale.x = shape.scale.y = 2.0 * kept_clear.radius;
+
+        shape.id = id++;
+        shape.pose.position.x = kept_clear.a.x;
+        shape.pose.position.y = kept_clear.a.y;
+        markers.markers.push_back(shape);
+
+        if (span > 1e-6)
+        {
+            shape.id = id++;
+            shape.pose.position.x = kept_clear.b.x;
+            shape.pose.position.y = kept_clear.b.y;
+            markers.markers.push_back(shape);
+
+            Point const centre = midpoint(kept_clear);
+            visualization_msgs::msg::Marker body = shape;
+            body.id = id++;
+            body.type = visualization_msgs::msg::Marker::CUBE;
+            body.pose.position.x = centre.x;
+            body.pose.position.y = centre.y;
+            body.pose.orientation =
+                quaternion_of(std::atan2(kept_clear.b.y - kept_clear.a.y, kept_clear.b.x - kept_clear.a.x));
+            body.scale.x = span;
+            body.scale.y = 2.0 * kept_clear.radius;
+            markers.markers.push_back(body);
+        }
 
         // The hit count is what tells you whether an entry is about to be
         // confirmed or stuck one short, so it goes where it can be read.
         visualization_msgs::msg::Marker label;
         label.header = clear.header;
         label.ns = confirmed ? "confirmed_hits" : "pending_hits";
-        label.id = disc.id;
+        label.id = id;
         label.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
         label.action = visualization_msgs::msg::Marker::ADD;
-        label.pose.position.x = obstacle.x;
-        label.pose.position.y = obstacle.y;
+        Point const centre = midpoint(kept_clear);
+        label.pose.position.x = centre.x;
+        label.pose.position.y = centre.y;
         label.pose.position.z = 1.0;
         label.pose.orientation.w = 1.0;
         label.scale.z = 0.8;
