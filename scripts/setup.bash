@@ -365,6 +365,71 @@ _mp_complete() {
 }
 complete -F _mp_complete mp
 
+# Boat (Propagator) mission planner launcher
+_bmp_share() {
+	# $1 = package name. First install prefix on AMENT_PREFIX_PATH that has it.
+	local prefix
+	local -a prefixes
+	IFS=: read -ra prefixes <<<"${AMENT_PREFIX_PATH:-}"
+	for prefix in "${prefixes[@]}"; do
+		if [[ -d "${prefix}/share/$1" ]]; then
+			echo "${prefix}/share/$1"
+			return 0
+		fi
+	done
+	return 1
+}
+
+_bmp_missions() {
+	local bt_dir
+	bt_dir="$(_bmp_share prop_mission_planner)/bt" || return 0
+	grep -rhoE '<BehaviorTree ID="[^"]+"' "${bt_dir}" 2>/dev/null |
+		sed -E 's/.*ID="([^"]+)"/\1/' | sort -u
+}
+
+bmp() {
+	if [[ $# -lt 1 || $# -gt 2 ]]; then
+		echo "Usage: bmp <mission_name> [--sim]"
+		echo "Known missions: $(_bmp_missions | tr '\n' ' ')"
+		return 2
+	fi
+
+	local mission="$1"
+	local -a sim_args=()
+	if [[ ${2:-} == "--sim" ]]; then
+		sim_args=(-p use_sim_time:=true)
+	elif [[ -n ${2:-} ]]; then
+		echo "Unknown option: $2 (expected --sim)"
+		return 2
+	fi
+
+	local maneuvers_share
+	if ! maneuvers_share="$(_bmp_share prop_maneuvers)"; then
+		echo "prop_maneuvers is not installed; build it and source install/setup.bash"
+		return 1
+	fi
+
+	echo "Launching prop_mission_planner with mission: ${mission}"
+	ros2 run prop_mission_planner mission_planner_node --ros-args \
+		--params-file "${maneuvers_share}/config/maneuvers.yaml" \
+		-p mission:="${mission}" "${sim_args[@]}"
+}
+
+_bmp_complete() {
+	local cur=${COMP_WORDS[COMP_CWORD]}
+	local words=""
+	COMPREPLY=()
+	if [[ ${COMP_CWORD} -eq 1 ]]; then
+		words="$(_bmp_missions)"
+	elif [[ ${COMP_CWORD} -eq 2 ]]; then
+		words="--sim"
+	fi
+	while IFS='' read -r line; do
+		COMPREPLY+=("$line")
+	done < <(compgen -W "${words}" -- "$cur")
+}
+complete -F _bmp_complete bmp
+
 # Swap yolo model
 yolo-swap() {
 	if [[ -z $1 ]]; then
