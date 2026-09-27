@@ -25,7 +25,7 @@ class FaceObject : public ManeuverNode
 class ApproachObject : public ManeuverNode
 {
   public:
-    using ManeuverNode::ManeuverNode;
+    ApproachObject(std::string const &name, BT::NodeConfig const &config);
     static BT::PortsList providedPorts();
 
   protected:
@@ -35,6 +35,7 @@ class ApproachObject : public ManeuverNode
 /// Circle the object in straight legs.
 ///     <CircleObject target="{buoy}" direction="clockwise"/>
 /// direction is REQUIRED: Task 1 is scored on which way the boat goes round.
+/// The ring must keep the hull clear of the object: see CircleObject::make.
 class CircleObject : public ManeuverNode
 {
   public:

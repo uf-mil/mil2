@@ -5,6 +5,7 @@
 #include <optional>
 #include <thread>
 
+#include "prop_maneuvers/geometry.hpp"
 #include "prop_mission_planner/object_ref.hpp"
 #include "tree_fixture.hpp"
 
@@ -60,7 +61,8 @@ class ManeuverFixture : public TreeFixture
         markers_->publish(markers);
     }
 
-    /// Tick until `until` holds or 5 s pass, feeding the world each time.
+    /// Tick until `until` holds or 5 s pass, feeding the world (the buoy at
+    /// buoy_x_, buoy_y_) each time.
     template <typename Predicate>
     BT::NodeStatus tick_until(BT::Tree &tree, Predicate until)
     {
@@ -68,7 +70,7 @@ class ManeuverFixture : public TreeFixture
         auto const deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
         while (std::chrono::steady_clock::now() < deadline)
         {
-            publish_world(-4.0, -4.0);
+            publish_world(buoy_x_, buoy_y_);
             rclcpp::spin_some(node_);
             status = tree.tickOnce();
             if (until(status))
@@ -80,6 +82,24 @@ class ManeuverFixture : public TreeFixture
         return status;
     }
 
+    static bool finished(BT::NodeStatus status)
+    {
+        return status == BT::NodeStatus::SUCCESS || status == BT::NodeStatus::FAILURE;
+    }
+
+    /// Process incoming messages for `msec` milliseconds.
+    void spin_for(int msec)
+    {
+        auto const deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(msec);
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            rclcpp::spin_some(node_);
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+    }
+
+    double buoy_x_{ -4.0 };
+    double buoy_y_{ -4.0 };
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr markers_;
 };
@@ -122,13 +142,20 @@ TEST_F(ManeuverFixture, HaltingStopsTheMotors)
     </Sequence>)");
     ASSERT_EQ(tick_until(tree, [](BT::NodeStatus s) { return s == BT::NodeStatus::RUNNING; }), BT::NodeStatus::RUNNING);
 
+    // Seed a NON-empty plan, so an empty one afterwards proves the halt sent
+    // it. Seeded after the node is running because FaceObject itself releases
+    // guidance on its first step, which would empty the plan on its own.
+    ctx_->maneuvers->driver.go_to(prop_maneuvers::Point{ 1.0, 1.0 });
+    auto const seeded = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    while (std::chrono::steady_clock::now() < seeded && !(last_plan && !last_plan->poses.empty()))
+    {
+        spin_for(20);
+    }
+    ASSERT_TRUE(last_plan && !last_plan->poses.empty()) << "the seeded plan never arrived";
+
     // Delivery is asynchronous: the turn command from the last tick can still
     // be in flight. Drain it first so the reset below means "since the halt".
-    for (int i = 0; i < 10; ++i)
-    {
-        rclcpp::spin_some(node_);
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    }
+    spin_for(200);
     last_plan.reset();
     last_command.reset();
     tree.haltTree();
@@ -136,22 +163,73 @@ TEST_F(ManeuverFixture, HaltingStopsTheMotors)
     auto const deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
     while (std::chrono::steady_clock::now() < deadline && !(last_plan && last_command))
     {
-        rclcpp::spin_some(node_);
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        spin_for(20);
     }
     // Then keep listening a little: one publisher's messages arrive in order,
     // so anything stale still trailing in lands BEFORE the halt's stop, and
     // the last message kept is the stop itself.
-    for (int i = 0; i < 10; ++i)
-    {
-        rclcpp::spin_some(node_);
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    }
+    spin_for(200);
     ASSERT_TRUE(last_plan.has_value()) << "no plan published on halt";
     EXPECT_TRUE(last_plan->poses.empty());
     ASSERT_TRUE(last_command.has_value()) << "no cmd_vel published on halt";
     EXPECT_EQ(last_command->linear.x, 0.0);
     EXPECT_EQ(last_command->angular.z, 0.0);
+    EXPECT_EQ(ctx_->active_maneuver, nullptr);
+}
+
+TEST_F(ManeuverFixture, FaceSucceedsWhenAlreadyFacing)
+{
+    ctx_->maneuvers->lock.release();
+    // Boat at the origin pointing along +x and not moving; buoy dead ahead.
+    buoy_x_ = 6.0;
+    buoy_y_ = 0.0;
+    auto tree = build("FaceAlreadyFacing", R"(<Sequence>
+        <StaticObject point="6;0" ref="{b}"/>
+        <FaceObject target="{b}"/>
+    </Sequence>)");
+
+    EXPECT_EQ(tick_until(tree, finished), BT::NodeStatus::SUCCESS);
+    EXPECT_EQ(ctx_->active_maneuver, nullptr) << "a finished maneuver still claims the boat";
+    tree.haltTree();
+}
+
+TEST_F(ManeuverFixture, CircleWithABadBlackboardDirectionFails)
+{
+    ctx_->maneuvers->lock.release();
+    blackboard_->set("d", std::string("cw"));
+    auto tree = build("CircleBadBlackboardDirection", R"(<Sequence>
+        <StaticObject point="-4;-4" ref="{b}"/>
+        <CircleObject target="{b}" direction="{d}"/>
+    </Sequence>)");
+
+    BT::NodeStatus status = BT::NodeStatus::IDLE;
+    EXPECT_NO_THROW(status = tick_until(tree, finished));
+    EXPECT_EQ(status, BT::NodeStatus::FAILURE);
+    EXPECT_EQ(ctx_->active_maneuver, nullptr);
+    tree.haltTree();
+}
+
+TEST_F(ManeuverFixture, ASecondManeuverCannotDriveWhileOneIsRunning)
+{
+    ctx_->maneuvers->lock.release();
+    auto tree = build("TwoManeuversAtOnce", R"(<Sequence>
+        <StaticObject point="-4;-4" ref="{b}"/>
+        <Parallel success_count="1" failure_count="1">
+            <FaceObject name="first" target="{b}" ref="{first}"/>
+            <FaceObject name="second" target="{b}" ref="{second}"/>
+        </Parallel>
+    </Sequence>)");
+
+    EXPECT_EQ(tick_until(tree, finished), BT::NodeStatus::FAILURE);
+    // Whichever locked on first drove; the other was refused before it could
+    // build a maneuver (so it never reported a lock).
+    ObjectRef ignored;
+    bool const first = blackboard_->get("first", ignored);
+    bool const second = blackboard_->get("second", ignored);
+    EXPECT_NE(first, second) << "first locked: " << first << ", second locked: " << second;
+    // The Parallel halted the one that was driving, which gave up its claim.
+    EXPECT_EQ(ctx_->active_maneuver, nullptr);
+    tree.haltTree();
 }
 
 }  // namespace

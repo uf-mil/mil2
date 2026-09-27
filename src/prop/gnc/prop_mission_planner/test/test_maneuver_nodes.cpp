@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <exception>
+#include <string>
+
 #include "tree_fixture.hpp"
 
 // The maneuver-node tests that never publish anything. The node and Context
@@ -10,7 +13,24 @@
 namespace
 {
 
-using ManeuverNodes = TreeFixture;
+/// Loading `body` must throw, and for the reason expected: `needle` names the
+/// bad port, so an unrelated load error cannot pass for it.
+class ManeuverNodes : public TreeFixture
+{
+  protected:
+    void expect_rejected(std::string const &id, std::string const &body, std::string const &needle)
+    {
+        try
+        {
+            build(id, body);
+            ADD_FAILURE() << id << ": loaded, but should have been rejected";
+        }
+        catch (std::exception const &e)
+        {
+            EXPECT_NE(std::string(e.what()).find(needle), std::string::npos) << id << ": wrong error: " << e.what();
+        }
+    }
+};
 
 TEST_F(ManeuverNodes, CircleWithoutADirectionFailsToLoad)
 {
@@ -30,6 +50,29 @@ TEST_F(ManeuverNodes, TargetAndInFrontTogetherFailToLoad)
 TEST_F(ManeuverNodes, NeitherTargetNorInFrontFailsToLoad)
 {
     EXPECT_ANY_THROW(build("FaceNeither", R"(<FaceObject/>)"));
+}
+
+TEST_F(ManeuverNodes, CircleWithANonPositiveRadiusFailsToLoad)
+{
+    expect_rejected("CircleZeroRadius", R"(<CircleObject in_front="true" direction="clockwise" radius="0"/>)",
+                    "radius");
+    expect_rejected("CircleNegativeRadius", R"(<CircleObject in_front="true" direction="clockwise" radius="-1"/>)",
+                    "radius");
+}
+
+TEST_F(ManeuverNodes, CircleWithTooFewLegsFailsToLoad)
+{
+    expect_rejected("CircleTwoLegs", R"(<CircleObject in_front="true" direction="clockwise" legs="2"/>)", "legs");
+}
+
+TEST_F(ManeuverNodes, ApproachWithANegativeStandoffFailsToLoad)
+{
+    expect_rejected("ApproachNegativeStandoff", R"(<ApproachObject in_front="true" standoff="-0.5"/>)", "standoff");
+}
+
+TEST_F(ManeuverNodes, ANegativeLockTimeoutFailsToLoad)
+{
+    expect_rejected("FaceNegativeTimeout", R"(<FaceObject in_front="true" lock_timeout="-1"/>)", "lock_timeout");
 }
 
 TEST_F(ManeuverNodes, NoPositionEstimateFailsAtTheLockTimeout)

@@ -25,16 +25,27 @@ namespace prop_mission_planner
 ///
 /// On SUCCESS nothing is released: the boat is left exactly as the maneuver
 /// left it, the same as the standalone programs.
+///
+/// Only one maneuver node drives at a time (Context::active_maneuver): one
+/// that starts while another is driving returns FAILURE without touching the
+/// shared lock or the motors. Nothing throws out of a running node: a bad
+/// input or an exception inside a maneuver stops the motors and returns
+/// FAILURE, so the rest of the tree can react.
 class ManeuverNode : public BT::StatefulActionNode
 {
   public:
     ManeuverNode(std::string const &name, BT::NodeConfig const &config);
+    ~ManeuverNode() override;
 
     /// Ports every maneuver node has. Subclasses append their own.
     static BT::PortsList common_ports();
 
   protected:
-    /// Build the maneuver. Called once per run, right after the lock is on.
+    /// Build the maneuver. Called once per run, right after the lock is on
+    /// (lock.radius() and lock.point() are valid). Return nullptr, after
+    /// logging why, when an input makes the maneuver unsafe or meaningless;
+    /// the node then stops the motors and returns FAILURE. Exceptions are
+    /// caught and treated the same way.
     virtual std::unique_ptr<prop_maneuvers::Maneuver> make(prop_maneuvers::Context &maneuvers) = 0;
 
   private:
@@ -45,6 +56,8 @@ class ManeuverNode : public BT::StatefulActionNode
     BT::NodeStatus try_lock();
     BT::NodeStatus step();
     void stop_all();
+    /// Another maneuver node is driving: log it and return true.
+    bool someone_else_driving() const;
 
     std::shared_ptr<Context> ctx_;
     std::optional<ObjectRef> target_;

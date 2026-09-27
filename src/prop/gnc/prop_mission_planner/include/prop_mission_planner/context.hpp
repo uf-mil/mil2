@@ -12,6 +12,8 @@
 namespace prop_mission_planner
 {
 
+class ManeuverNode;
+
 /// Everything a mission's nodes share. One per run, on the root blackboard
 /// under "ctx".
 struct Context
@@ -23,6 +25,10 @@ struct Context
     /// Odometry, Driver, Spinner, Reverser and TargetLock. Only one maneuver
     /// node runs at a time, so they all share this one.
     std::unique_ptr<prop_maneuvers::Context> maneuvers;
+    /// The maneuver node currently driving, or nullptr. The lock and the
+    /// motors are shared, so a second maneuver node refuses to start while
+    /// one is claimed instead of silently re-aiming the first one's boat.
+    ManeuverNode const *active_maneuver{ nullptr };
 
     rclcpp::Logger logger() const
     {
