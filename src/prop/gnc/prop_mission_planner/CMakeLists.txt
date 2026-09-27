@@ -14,12 +14,20 @@ find_package(prop_maneuvers REQUIRED)
 find_package(rclcpp REQUIRED)
 
 # Every node, plus the shared Context. Nodes register themselves from static
-# constructors (REGISTER in context.hpp), so anything linking this must use
+# initialisers (REGISTER in context.hpp), so anything linking this must use
 # WHOLE_ARCHIVE or the linker drops the registrations.
-add_library(operations STATIC src/context.cpp)
+#
 # cmake-format keeps re-wrapping this call onto a hanging continuation with an
 # odd indent, which ament_lint_cmake then rejects as "weird indentation";
 # disable formatting for it so the lint-clean, even-indented form sticks.
+# cmake-format: off
+add_library(
+  operations STATIC
+  src/context.cpp
+  src/static_object.cpp
+  src/ros_timeout.cpp
+  src/ros_delay.cpp)
+# cmake-format: on
 # cmake-format: off
 target_include_directories(
   operations PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -41,6 +49,10 @@ if(BUILD_TESTING)
 
   ament_add_gtest(test_ros_time_budget test/test_ros_time_budget.cpp)
   target_link_libraries(test_ros_time_budget operations)
+
+  ament_add_gtest(test_basic_nodes test/test_basic_nodes.cpp)
+  target_link_libraries(test_basic_nodes
+                        "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
 
   ament_lint_auto_find_test_dependencies()
 endif()

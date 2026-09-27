@@ -1,0 +1,64 @@
+#include "prop_mission_planner/ros_delay.hpp"
+
+#include <rclcpp/rclcpp.hpp>
+
+#include "prop_mission_planner/context.hpp"
+#include "prop_mission_planner/ports.hpp"
+
+namespace prop_mission_planner
+{
+
+REGISTER(RosDelay)
+
+RosDelay::RosDelay(std::string const &name, BT::NodeConfig const &config) : BT::DecoratorNode(name, config)
+{
+    if (!port_given(config, "delay_msec"))
+    {
+        throw BT::RuntimeError(name, ": delay_msec is required (ROS-time milliseconds)");
+    }
+}
+
+BT::PortsList RosDelay::providedPorts()
+{
+    return {
+        // Same port name as the builtin <Delay>, so call sites swap 1:1.
+        BT::InputPort<int>("delay_msec", "Pause in ROS-time milliseconds before the child is ticked"),
+    };
+}
+
+BT::NodeStatus RosDelay::tick()
+{
+    auto const ctx = context_of(*this);
+    if (!budget_.armed)
+    {
+        auto const delay_msec = getInput<int>("delay_msec");
+        if (!delay_msec)
+        {
+            RCLCPP_ERROR(ctx->logger(), "%s: %s", name().c_str(), delay_msec.error().c_str());
+            return BT::NodeStatus::FAILURE;
+        }
+        budget_.arm(ctx->node->now().nanoseconds(), *delay_msec);
+    }
+    setStatus(BT::NodeStatus::RUNNING);
+
+    if (!budget_.expired(ctx->node->now().nanoseconds()))
+    {
+        return BT::NodeStatus::RUNNING;
+    }
+
+    auto const status = child_node_->executeTick();
+    if (status != BT::NodeStatus::RUNNING)
+    {
+        budget_.disarm();
+        resetChild();
+    }
+    return status;
+}
+
+void RosDelay::halt()
+{
+    budget_.disarm();
+    BT::DecoratorNode::halt();
+}
+
+}  // namespace prop_mission_planner
