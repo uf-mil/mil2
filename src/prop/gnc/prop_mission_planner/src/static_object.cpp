@@ -1,5 +1,7 @@
 #include "prop_mission_planner/static_object.hpp"
 
+#include <rclcpp/rclcpp.hpp>
+
 #include "prop_mission_planner/context.hpp"
 #include "prop_mission_planner/object_ref.hpp"
 #include "prop_mission_planner/ports.hpp"
@@ -21,6 +23,10 @@ StaticObject::StaticObject(std::string const &name, BT::NodeConfig const &config
     {
         throw BT::RuntimeError(name, ": ref is required, e.g. ref=\"{entry_buoy}\"");
     }
+    if (!BT::TreeNode::isBlackboardPointer(config.output_ports.at("ref")))
+    {
+        throw BT::RuntimeError(name, ": ref must be a blackboard entry, e.g. ref=\"{entry_buoy}\"");
+    }
     if (auto const literal = literal_port(config, "point"))
     {
         (void)BT::convertFromString<ObjectRef>(*literal);  // throws on bad text
@@ -37,12 +43,18 @@ BT::PortsList StaticObject::providedPorts()
 
 BT::NodeStatus StaticObject::tick()
 {
+    auto const ctx = context_of(*this);
     auto const point = getInput<ObjectRef>("point");
     if (!point)
     {
-        throw BT::RuntimeError(name(), ": ", point.error());
+        RCLCPP_ERROR(ctx->logger(), "%s: %s", name().c_str(), point.error().c_str());
+        return BT::NodeStatus::FAILURE;
     }
-    (void)setOutput("ref", *point);
+    if (auto const result = setOutput("ref", *point); !result)
+    {
+        RCLCPP_ERROR(ctx->logger(), "%s: %s", name().c_str(), result.error().c_str());
+        return BT::NodeStatus::FAILURE;
+    }
     return BT::NodeStatus::SUCCESS;
 }
 

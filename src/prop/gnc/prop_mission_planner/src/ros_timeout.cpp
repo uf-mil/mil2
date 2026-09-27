@@ -1,5 +1,8 @@
 #include "prop_mission_planner/ros_timeout.hpp"
 
+#include <algorithm>
+#include <limits>
+
 #include <rclcpp/rclcpp.hpp>
 
 #include "prop_mission_planner/context.hpp"
@@ -21,9 +24,10 @@ RosTimeout::RosTimeout(std::string const &name, BT::NodeConfig const &config) : 
 BT::PortsList RosTimeout::providedPorts()
 {
     return {
-        // Same port name as the builtin <Timeout>, so call sites swap 1:1.
-        BT::InputPort<int>("msec", "Budget in ROS-time milliseconds; the child is halted and FAILURE returned on "
-                                   "expiry"),
+        // Same port name AND type as the builtin <Timeout>, so call sites swap
+        // 1:1 and a negative literal is rejected when the tree is built.
+        BT::InputPort<unsigned>("msec", "Budget in ROS-time milliseconds; the child is halted and FAILURE returned "
+                                        "on expiry"),
     };
 }
 
@@ -32,13 +36,17 @@ BT::NodeStatus RosTimeout::tick()
     auto const ctx = context_of(*this);
     if (!budget_.armed)
     {
-        auto const msec = getInput<int>("msec");
+        auto const msec = getInput<unsigned>("msec");
         if (!msec)
         {
             RCLCPP_ERROR(ctx->logger(), "%s: %s", name().c_str(), msec.error().c_str());
             return BT::NodeStatus::FAILURE;
         }
-        budget_.arm(ctx->node->now().nanoseconds(), *msec);
+        // Budget::arm takes a signed millisecond count; clamp rather than
+        // overflow it on an (implausible) multi-week budget.
+        auto const clamped_msec =
+            static_cast<int>(std::min<unsigned>(*msec, static_cast<unsigned>(std::numeric_limits<int>::max())));
+        budget_.arm(ctx->node->now().nanoseconds(), clamped_msec);
     }
     setStatus(BT::NodeStatus::RUNNING);
 
