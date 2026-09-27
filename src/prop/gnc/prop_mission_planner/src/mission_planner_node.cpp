@@ -9,7 +9,7 @@
  * Waits for a position estimate, builds the named tree and ticks it at 10 Hz
  * until it finishes. However it ends -- success, failure, an exception, or
  * Ctrl-C -- the tree is halted and the motors are told to stop BEFORE ROS
- * shuts down.
+ * shuts down. Both of those cleanup steps run even if the other one throws.
  */
 
 #include <behaviortree_cpp/bt_factory.h>
@@ -36,10 +36,21 @@ namespace
 {
 
 std::atomic<bool> stop_requested{ false };
+// request_stop reads-then-sets this flag with no lock; that is only safe to
+// do from a signal handler if the type is lock-free.
+static_assert(std::atomic<bool>::is_always_lock_free, "the signal handler relies on a lock-free flag");
 
-void request_stop(int /*signal*/)
+void request_stop(int signal)
 {
-    stop_requested = true;
+    // First Ctrl-C: ask the main loop to stop cleanly (halt the tree, stop the
+    // motors, then shut down). A second one means the clean path is stuck or
+    // too slow, so restore the default handler and re-raise: this process
+    // dies right here, the way it would have without our handler at all.
+    if (stop_requested.exchange(true))
+    {
+        std::signal(signal, SIG_DFL);
+        std::raise(signal);
+    }
 }
 
 std::string join(std::vector<std::string> const &items)
@@ -67,26 +78,45 @@ int main(int argc, char **argv)
     auto node = rclcpp::Node::make_shared("prop_mission_planner");
     auto const mission = node->declare_parameter<std::string>("mission", "FaceTest");
     auto const models_xml = node->declare_parameter<std::string>("models_xml", "");
+    auto const groot_port = node->declare_parameter<int>("groot_port", 1667);
     auto ctx = prop_mission_planner::make_context(node);
     auto &factory = prop_mission_planner::factory();
 
     RCLCPP_INFO(ctx->logger(), "waiting for a position estimate on odometry/filtered/global");
     rclcpp::Clock steady(RCL_STEADY_TIME);
-    while (!stop_requested && rclcpp::ok() && !ctx->maneuvers->boat().valid)
+    try
     {
-        rclcpp::spin_some(node);
-        RCLCPP_INFO_THROTTLE(ctx->logger(), steady, 5000, "still waiting for a position estimate");
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        while (!stop_requested && rclcpp::ok() && !ctx->maneuvers->boat().valid)
+        {
+            rclcpp::spin_some(node);
+            RCLCPP_INFO_THROTTLE(ctx->logger(), steady, 5000, "still waiting for a position estimate");
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+    catch (std::exception const &error)
+    {
+        RCLCPP_FATAL(ctx->logger(), "waiting for a position estimate threw: %s", error.what());
+        rclcpp::shutdown();
+        return 1;
     }
     // Under use_sim_time the clock reads 0 until the first /clock message, and
     // /clock is handled on its own thread, unordered with odometry. A
     // RosTimeout armed at t=0 would expire the moment sim time arrives, so
     // wait for a real time as well as a position.
-    while (!stop_requested && rclcpp::ok() && node->now().nanoseconds() == 0)
+    try
     {
-        rclcpp::spin_some(node);
-        RCLCPP_INFO_THROTTLE(ctx->logger(), steady, 5000, "waiting for the clock (use_sim_time with no /clock?)");
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        while (!stop_requested && rclcpp::ok() && node->now().nanoseconds() == 0)
+        {
+            rclcpp::spin_some(node);
+            RCLCPP_INFO_THROTTLE(ctx->logger(), steady, 5000, "waiting for the clock (use_sim_time with no /clock?)");
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+    catch (std::exception const &error)
+    {
+        RCLCPP_FATAL(ctx->logger(), "waiting for the clock threw: %s", error.what());
+        rclcpp::shutdown();
+        return 1;
     }
     if (stop_requested || !rclcpp::ok())
     {
@@ -113,10 +143,28 @@ int main(int argc, char **argv)
 
     if (!models_xml.empty())
     {
-        std::ofstream(models_xml) << BT::writeTreeNodesModelXML(factory);
+        std::ofstream out(models_xml);
+        out << BT::writeTreeNodesModelXML(factory);
+        if (!out)
+        {
+            RCLCPP_WARN(ctx->logger(), "could not write the node models to '%s'", models_xml.c_str());
+        }
     }
 
-    BT::Groot2Publisher groot(*tree);
+    // A busy port (e.g. another mission planner already running) must not
+    // abort the mission: Groot2 is a debugging aid, not a dependency.
+    std::unique_ptr<BT::Groot2Publisher> groot;
+    if (groot_port != 0)
+    {
+        try
+        {
+            groot = std::make_unique<BT::Groot2Publisher>(*tree, static_cast<unsigned>(groot_port));
+        }
+        catch (std::exception const &error)
+        {
+            RCLCPP_WARN(ctx->logger(), "Groot2 disabled: %s (is another mission planner running?)", error.what());
+        }
+    }
     BT::StdCoutLogger console(*tree);
 
     RCLCPP_INFO(ctx->logger(), "running mission '%s'", mission.c_str());
@@ -135,13 +183,21 @@ int main(int argc, char **argv)
             {
                 break;
             }
-            next_tick += std::chrono::milliseconds(100);
+            // max(), not a plain +=: after a tick that overran 100 ms, catch up
+            // to "now" instead of firing a burst of back-to-back ticks to make
+            // up the lost time.
+            next_tick = std::max(next_tick + std::chrono::milliseconds(100), std::chrono::steady_clock::now());
             std::this_thread::sleep_until(next_tick);
         }
     }
     catch (std::exception const &error)
     {
         RCLCPP_FATAL(ctx->logger(), "mission '%s' threw: %s", mission.c_str(), error.what());
+        status = BT::NodeStatus::FAILURE;
+    }
+    catch (...)
+    {
+        RCLCPP_FATAL(ctx->logger(), "mission '%s' threw something that isn't a std::exception", mission.c_str());
         status = BT::NodeStatus::FAILURE;
     }
 
@@ -154,8 +210,33 @@ int main(int argc, char **argv)
         RCLCPP_INFO(ctx->logger(), "mission '%s' finished: %s", mission.c_str(),
                     status == BT::NodeStatus::SUCCESS ? "SUCCESS" : "FAILURE");
     }
-    tree->haltTree();
-    ctx->stop_motors();
+    // Each cleanup step runs even if the other one throws: whichever one
+    // fails, the boat still gets the other's chance to stop it, and
+    // rclcpp::shutdown() below still runs so the process never hangs on exit.
+    try
+    {
+        tree->haltTree();
+    }
+    catch (std::exception const &error)
+    {
+        RCLCPP_ERROR(ctx->logger(), "haltTree() threw: %s", error.what());
+    }
+    catch (...)
+    {
+        RCLCPP_ERROR(ctx->logger(), "haltTree() threw something that isn't a std::exception");
+    }
+    try
+    {
+        ctx->stop_motors();
+    }
+    catch (std::exception const &error)
+    {
+        RCLCPP_ERROR(ctx->logger(), "stop_motors() threw: %s", error.what());
+    }
+    catch (...)
+    {
+        RCLCPP_ERROR(ctx->logger(), "stop_motors() threw something that isn't a std::exception");
+    }
     rclcpp::shutdown();
     return status == BT::NodeStatus::SUCCESS ? 0 : 1;
 }

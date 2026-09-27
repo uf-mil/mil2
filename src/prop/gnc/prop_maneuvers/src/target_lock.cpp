@@ -195,7 +195,10 @@ bool TargetLock::acquire_near(Point const &hint)
     if (!match.ok)
     {
         why_ = describe(match.failure);
-        RCLCPP_WARN(node_->get_logger(), "could not lock on near (%.1f, %.1f): %s", hint.x, hint.y, why_.c_str());
+        // Callers report the reason themselves -- throttled while they wait,
+        // and once when they give up -- so a WARN here on every failed
+        // attempt at 10 Hz would flood the log with the same line.
+        RCLCPP_DEBUG(node_->get_logger(), "could not lock on near (%.1f, %.1f): %s", hint.x, hint.y, why_.c_str());
         return false;
     }
 
@@ -227,7 +230,9 @@ bool TargetLock::acquire_in_front(Point const &boat, double boat_direction)
     if (candidates.empty())
     {
         why_ = "nothing in front of the boat";
-        RCLCPP_WARN(node_->get_logger(), "could not lock on: %s", why_.c_str());
+        // Same reasoning as acquire_near: the caller is the one that reports
+        // this to the user, so this is DEBUG, not WARN.
+        RCLCPP_DEBUG(node_->get_logger(), "could not lock on: %s", why_.c_str());
         return false;
     }
 
