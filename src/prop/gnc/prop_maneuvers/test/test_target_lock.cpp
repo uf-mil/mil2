@@ -23,10 +23,10 @@ using prop_maneuvers::Point;
 // already in "map" needs no transform tree: tf2 answers map->map itself.
 //
 // The test publishes and subscribes over the real DDS graph, so under
-// rmw_zenoh_cpp it needs `rmw_zenohd` running (see the plan's Conventions).
+// rmw_zenoh_cpp (Jazzy) it needs `rmw_zenohd` running (CI starts it).
 //
 // The node, settings, lock and publisher are built ONCE for the whole suite,
-// not per test: rmw_zenoh_cpp on this box stalls after several node
+// not per test: under rmw_zenoh_cpp (Jazzy) it stalls after several node
 // create/destroy cycles in one process (see
 // prop_mission_planner/test/tree_fixture.hpp for the same fix and a longer
 // explanation), and TargetLock's tf2_ros::TransformListener spins up its own

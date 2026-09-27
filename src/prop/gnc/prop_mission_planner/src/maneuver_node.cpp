@@ -74,7 +74,20 @@ BT::PortsList ManeuverNode::common_ports()
 
 BT::NodeStatus ManeuverNode::onStart()
 {
-    ctx_ = context_of(*this);
+    // context_of() throws if this tree was built without a Context on the
+    // root blackboard. The header promises nothing throws out of a running
+    // node, so catch it here: ctx_ stays null, and onHalted already guards on
+    // that (it only calls stop_all() when ctx_ is set).
+    try
+    {
+        ctx_ = context_of(*this);
+    }
+    catch (std::exception const &e)
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("prop_mission_planner"), "%s: no Context on the tree: %s", name().c_str(),
+                     e.what());
+        return BT::NodeStatus::FAILURE;
+    }
     maneuver_.reset();
     // Before touching the shared lock: releasing it here would pull the lock
     // out from under the maneuver that is driving.
@@ -169,6 +182,10 @@ BT::NodeStatus ManeuverNode::try_lock()
     std::string why = "no position estimate yet";
     if (boat.valid)
     {
+        // TODO(map/staleness): TargetLock::blobs() never ages out the last
+        // cluster frame, and prop_maneuvers::Boat::valid never goes stale, so
+        // a re-lock after clustering or the EKF stalls can use old data. The
+        // standalone programs rarely hit this because they lock once.
         locked = in_front_ ? lock.acquire_in_front(boat.position, boat.direction) : lock.acquire_near(target_->point);
         why = lock.why();
     }

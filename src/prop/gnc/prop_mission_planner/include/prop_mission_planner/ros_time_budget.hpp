@@ -6,7 +6,7 @@
 // and the maneuver nodes' lock timeout, unit-tested without ROS or BT.
 // Timestamps are int64 nanoseconds from ctx->node->now().nanoseconds(): wall
 // time on the boat, SIM time under use_sim_time -- which is the whole point.
-// Copied from the sub's mission planner (origin/gripper-task-5).
+// Adapted from the sub's mission planner (origin/gripper-task-5).
 namespace ros_time_budget
 {
 

@@ -152,9 +152,15 @@ int main(int argc, char **argv)
     }
 
     // A busy port (e.g. another mission planner already running) must not
-    // abort the mission: Groot2 is a debugging aid, not a dependency.
+    // abort the mission: Groot2 is a debugging aid, not a dependency. Neither
+    // does an out-of-range port: Groot2Publisher takes an unsigned, so a
+    // negative value would otherwise wrap around into something in range.
     std::unique_ptr<BT::Groot2Publisher> groot;
-    if (groot_port != 0)
+    if (groot_port != 0 && (groot_port < 0 || groot_port > 65535))
+    {
+        RCLCPP_WARN(ctx->logger(), "invalid groot_port %ld; Groot2 disabled", groot_port);
+    }
+    else if (groot_port != 0)
     {
         try
         {

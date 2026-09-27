@@ -16,8 +16,8 @@
 /// (publish or subscribe) need `rmw_zenohd` running (RMW is rmw_zenoh_cpp).
 ///
 /// The node and Context are built ONCE for the whole test suite, not per test:
-/// rmw_zenoh_cpp on this box leaks a participant's session threads when a node
-/// is destroyed, and a dozen-plus create/destroy cycles in one process
+/// under rmw_zenoh_cpp (Jazzy), a node leaks a participant's session threads
+/// when it is destroyed, and a dozen-plus create/destroy cycles in one process
 /// reliably (if unpredictably) deadlocks a later node's construction for tens
 /// of seconds to indefinitely. One node for the suite sidesteps the leak
 /// instead of racing it.

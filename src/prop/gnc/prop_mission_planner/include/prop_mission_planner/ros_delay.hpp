@@ -12,7 +12,7 @@ namespace prop_mission_planner
 /// The builtin <Delay>, but the pause elapses in ROS time. Settle pauses exist
 /// for physics, so in simulation they must last sim-seconds. RUNNING until the
 /// delay has passed, then ticks the child and returns its status.
-/// Copied from the sub's mission planner (origin/gripper-task-5).
+/// Adapted from the sub's mission planner (origin/gripper-task-5).
 class RosDelay : public BT::DecoratorNode
 {
   public:

@@ -14,8 +14,10 @@
             <RosTimeout msec="300000">
                 <CircleObject target="{entry}" direction="clockwise"/>
             </RosTimeout>
+            <!-- Locks from about 24 m out, where a 0.5 m buoy gets few lidar
+                 returns: give it longer than the default 10 s to lock on. -->
             <RosTimeout msec="240000">
-                <ApproachObject target="{exit}" standoff="1.0"/>
+                <ApproachObject target="{exit}" standoff="1.0" lock_timeout="30"/>
             </RosTimeout>
             <RosTimeout msec="300000">
                 <CircleObject target="{exit}" direction="counter_clockwise"/>

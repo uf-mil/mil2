@@ -15,7 +15,7 @@ namespace prop_mission_planner
 /// maneuver after a small fraction of the sim-seconds it was given.
 ///
 /// Expiry is noticed on the next tick (10 Hz). A paused sim clock freezes the
-/// budget. Copied from the sub's mission planner (origin/gripper-task-5).
+/// budget. Adapted from the sub's mission planner (origin/gripper-task-5).
 class RosTimeout : public BT::DecoratorNode
 {
   public:

@@ -20,8 +20,8 @@ namespace prop_mission_planner
 /// Today every reference is a STAND-IN: a point in the map frame, resolved by
 /// locking onto the nearest lidar cluster. When the boat has a map with stable
 /// object IDs this gains an ID and resolves through the map instead -- see
-/// docs/superpowers/specs/2026-09-26-boat-map-transition.md. Missions hold a
-/// reference, never their own copy of an object's coordinates.
+/// README.md, "Moving to a map". Missions hold a reference, never their own
+/// copy of an object's coordinates.
 struct ObjectRef
 {
     prop_maneuvers::Point point;
