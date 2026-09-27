@@ -26,7 +26,9 @@ add_library(
   src/context.cpp
   src/static_object.cpp
   src/ros_timeout.cpp
-  src/ros_delay.cpp)
+  src/ros_delay.cpp
+  src/maneuver_node.cpp
+  src/maneuver_nodes.cpp)
 # cmake-format: on
 # cmake-format: off
 target_include_directories(
@@ -52,6 +54,17 @@ if(BUILD_TESTING)
 
   ament_add_gtest(test_basic_nodes test/test_basic_nodes.cpp)
   target_link_libraries(test_basic_nodes
+                        "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
+
+  ament_add_gtest(test_maneuver_nodes test/test_maneuver_nodes.cpp)
+  target_link_libraries(test_maneuver_nodes
+                        "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
+
+  # Separate from test_maneuver_nodes: these feed in odometry, which the
+  # suite-wide Context keeps, so they cannot share a process with the
+  # no-odometry test.
+  ament_add_gtest(test_maneuver_nodes_live test/test_maneuver_nodes_live.cpp)
+  target_link_libraries(test_maneuver_nodes_live
                         "$<LINK_LIBRARY:WHOLE_ARCHIVE,operations>")
 
   ament_lint_auto_find_test_dependencies()
