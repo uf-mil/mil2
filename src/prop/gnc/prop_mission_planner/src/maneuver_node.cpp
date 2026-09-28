@@ -39,11 +39,20 @@ Problem targeting_problem(bool has_target, bool in_front)
     return "give exactly one of target=\"{ref}\" or in_front=\"true\"";
 }
 
-/// "position estimate is 1.3 s old", for logs and lock-failure reasons.
+/// "position estimate is 1.3 s old", for logs and lock-failure reasons. A
+/// negative age means the clock jumped backwards (see prop_maneuvers::too_old).
 std::string odometry_age_text(double seconds)
 {
-    char text[64];
-    std::snprintf(text, sizeof(text), "position estimate is %.1f s old", seconds);
+    char text[96];
+    if (seconds >= 0.0)
+    {
+        std::snprintf(text, sizeof(text), "position estimate is %.1f s old", seconds);
+    }
+    else
+    {
+        std::snprintf(text, sizeof(text), "position estimate is %.1f s in the future (did the clock jump back?)",
+                      -seconds);
+    }
     return text;
 }
 }  // namespace
@@ -212,7 +221,7 @@ BT::NodeStatus ManeuverNode::try_lock()
     // place the object relative to where the boat USED to be. Old cluster
     // frames are refused inside TargetLock itself (max_cluster_age).
     double const odometry_age = maneuvers.odometry_age();
-    if (boat.valid && odometry_age > ctx_->settings->max_odometry_age_)
+    if (boat.valid && prop_maneuvers::too_old(odometry_age, ctx_->settings->max_odometry_age_))
     {
         why = odometry_age_text(odometry_age);
     }
@@ -278,7 +287,7 @@ BT::NodeStatus ManeuverNode::step()
     // how old it is, so a stalled EKF would have them drive on a frozen
     // picture of the boat. Stop instead.
     double const odometry_age = ctx_->maneuvers->odometry_age();
-    if (odometry_age > ctx_->settings->max_odometry_age_)
+    if (prop_maneuvers::too_old(odometry_age, ctx_->settings->max_odometry_age_))
     {
         RCLCPP_ERROR(ctx_->logger(), "%s: %s; stopping", name().c_str(), odometry_age_text(odometry_age).c_str());
         stop_all();

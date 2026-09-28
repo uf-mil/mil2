@@ -231,4 +231,16 @@ Match match_nearest(std::vector<Blob> const &blobs, Point const &prediction, dou
 /// Human-readable reason, for logging.
 char const *describe(MatchFailure failure);
 
+/// Whether data `age_seconds` old is too old to use, given `max_age`.
+///
+/// A NEGATIVE age counts too: data stamped in the future means the clock has
+/// jumped backwards since it arrived (a sim reset, a clock step), so it
+/// describes a moment that is not now either. Symmetric, so the tolerance
+/// that absorbs ordinary lag absorbs ordinary jitter the other way. An
+/// infinite age (nothing ever received) is always too old.
+inline bool too_old(double age_seconds, double max_age)
+{
+    return age_seconds > max_age || age_seconds < -max_age;
+}
+
 }  // namespace prop_maneuvers

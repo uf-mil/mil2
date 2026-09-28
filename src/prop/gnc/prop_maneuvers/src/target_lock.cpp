@@ -18,6 +18,10 @@ namespace
 /// roughly 3 Hz, so this is a small fraction of one frame.
 constexpr auto kTransformWait = std::chrono::milliseconds(50);
 
+/// Every why() that frame_too_old() writes starts with this, so it can tell
+/// its own complaint apart from a match failure and clear only its own.
+constexpr char kFrameAgePrefix[] = "cluster frame is ";
+
 /// Keep an implausible cluster from sizing a standoff or a clearance.
 ///
 /// The clustering merges returns now and then while the boat is moving, and a
@@ -80,18 +84,36 @@ bool TargetLock::frame_too_old() const
             newest = stamp;
         }
     }
+    // An age complaint set by an earlier call must not outlive the old frame:
+    // once fresh data is back, why() would otherwise keep reporting it.
+    bool const age_complaint = why_.rfind(kFrameAgePrefix, 0) == 0;
     if (!newest)
     {
+        if (age_complaint)
+        {
+            why_.clear();
+        }
         return false;
     }
 
     double const age = (node_->now() - *newest).seconds();
-    if (age <= settings_.max_cluster_age_)
+    if (!too_old(age, settings_.max_cluster_age_))
     {
+        if (age_complaint)
+        {
+            why_.clear();
+        }
         return false;
     }
-    char text[64];
-    std::snprintf(text, sizeof(text), "cluster frame is %.1f s old", age);
+    char text[96];
+    if (age >= 0.0)
+    {
+        std::snprintf(text, sizeof(text), "%s%.1f s old", kFrameAgePrefix, age);
+    }
+    else
+    {
+        std::snprintf(text, sizeof(text), "%s%.1f s in the future (did the clock jump back?)", kFrameAgePrefix, -age);
+    }
     why_ = text;
     RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000, "%s (limit %.1f s); seeing nothing", text,
                          settings_.max_cluster_age_);

@@ -95,3 +95,11 @@ it is first added, and never reuse or renumber it, in the `map` frame.
 - The circle clearance check assumes the ideal path: the driven ring bulges
   inward, about 1.4 m measured on a 6 m, 4-leg ring.
 - `BuoyTour` has not yet been driven end to end in simulation.
+- While cluster frames are stale, obstacle avoidance sees nothing too, so a
+  detour the approach has not yet committed to is dropped and the boat heads
+  straight for its goal. The maneuver's own stale() check ends it, but only
+  `reading_max_age` (5 s) after the last good refresh.
+- The lidar must be stamped by the same clock as the mission planner: sim
+  time in simulation (`bmp ... --sim`), and on the boat the host clock or a
+  clock PTP-synced to it. Otherwise every frame looks old (or from the
+  future), and the boat logs "cluster frame is N s old" and sees nothing.

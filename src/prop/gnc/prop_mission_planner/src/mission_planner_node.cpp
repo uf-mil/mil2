@@ -207,7 +207,7 @@ int main(int argc, char **argv)
             executor.spin_some();
             bool const have_clock = node->now().nanoseconds() != 0;
             double const odometry_age = ctx->maneuvers->odometry_age();
-            if (have_clock && odometry_age <= ctx->settings->max_odometry_age_)
+            if (have_clock && !prop_maneuvers::too_old(odometry_age, ctx->settings->max_odometry_age_))
             {
                 break;
             }
@@ -222,7 +222,9 @@ int main(int argc, char **argv)
             else
             {
                 RCLCPP_INFO_THROTTLE(logger, steady, 5000,
-                                     "waiting for a fresh position estimate (last one %.1f s old)", odometry_age);
+                                     "waiting for a fresh position estimate (last one %.1f s old; negative means "
+                                     "the clock jumped back)",
+                                     odometry_age);
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
@@ -333,6 +335,10 @@ int main(int argc, char **argv)
     catch (std::exception const &error)
     {
         RCLCPP_ERROR(logger, "repeating the stop threw: %s", error.what());
+    }
+    catch (...)
+    {
+        RCLCPP_ERROR(logger, "repeating the stop threw something that isn't a std::exception");
     }
     rclcpp::shutdown();
     return status == BT::NodeStatus::SUCCESS ? 0 : 1;

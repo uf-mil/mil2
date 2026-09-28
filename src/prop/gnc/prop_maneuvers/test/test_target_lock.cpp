@@ -227,6 +227,18 @@ TEST_F(TargetLockTest, AnOldFrameShowsNothing)
     EXPECT_NE(lock_->why().find("cluster frame is"), std::string::npos) << lock_->why();
 }
 
+// A frame stamped in the FUTURE means the clock jumped backwards after it
+// arrived (a sim reset): it is no picture of now either.
+TEST_F(TargetLockTest, AFrameFromTheFutureShowsNothing)
+{
+    ASSERT_NO_FATAL_FAILURE(show_old_buoy_at(-4.0, -4.0, -5.0));
+
+    EXPECT_TRUE(lock_->blobs().empty());
+    EXPECT_FALSE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+    EXPECT_FALSE(lock_->locked());
+    EXPECT_NE(lock_->why().find("in the future"), std::string::npos) << lock_->why();
+}
+
 // ...and the age check only refuses OLD frames: once fresh ones arrive again
 // the same buoy locks as usual.
 TEST_F(TargetLockTest, AFreshFrameAfterAnOldOneLocks)
@@ -235,6 +247,18 @@ TEST_F(TargetLockTest, AFreshFrameAfterAnOldOneLocks)
     ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));
 
     EXPECT_TRUE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+    EXPECT_TRUE(lock_->why().empty()) << lock_->why();
+}
+
+// blobs() alone, with no acquire in between, must not leave the old frame's
+// complaint behind once fresh data is back.
+TEST_F(TargetLockTest, FreshBlobsClearTheOldFramesReason)
+{
+    ASSERT_NO_FATAL_FAILURE(show_old_buoy_at(-4.0, -4.0, 5.0));
+    ASSERT_FALSE(lock_->why().empty());
+
+    ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));  // calls blobs()
+
     EXPECT_TRUE(lock_->why().empty()) << lock_->why();
 }
 

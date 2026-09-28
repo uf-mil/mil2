@@ -17,6 +17,17 @@ double deg(double d)
 }
 }  // namespace
 
+TEST(TooOld, BothDirectionsAndNeverReceived)
+{
+    EXPECT_FALSE(too_old(0.0, 1.0));
+    EXPECT_FALSE(too_old(1.0, 1.0));
+    EXPECT_FALSE(too_old(-1.0, 1.0));
+    EXPECT_TRUE(too_old(1.01, 1.0));
+    // Stamped in the future: the clock jumped backwards.
+    EXPECT_TRUE(too_old(-1.01, 1.0));
+    EXPECT_TRUE(too_old(std::numeric_limits<double>::infinity(), 1.0));
+}
+
 TEST(WrapAngle, LeavesSmallAnglesAlone)
 {
     EXPECT_NEAR(wrap_angle(0.0), 0.0, kTol);
