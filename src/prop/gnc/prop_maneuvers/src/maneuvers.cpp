@@ -27,7 +27,17 @@ Context::Context(rclcpp::Node *node_in, Constants const &settings_in)
             boat_.surge = msg->twist.twist.linear.x;
             boat_.yaw_rate = msg->twist.twist.angular.z;
             boat_.valid = true;
+            odometry_received_ = node->now();
         });
+}
+
+double Context::odometry_age() const
+{
+    if (!odometry_received_)
+    {
+        return std::numeric_limits<double>::infinity();
+    }
+    return (node->now() - *odometry_received_).seconds();
 }
 
 Deadline::Deadline(rclcpp::Node *node, double seconds) : node_(node), start_(node->now()), seconds_(seconds)

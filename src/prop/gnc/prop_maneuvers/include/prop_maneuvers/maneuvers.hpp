@@ -68,6 +68,13 @@ class Context
         return boat_;
     }
 
+    /// Seconds since the last odometry message ARRIVED, by the node clock (so
+    /// sim time under use_sim_time); infinity before the first one. Arrival,
+    /// not the header stamp: the question is whether the estimate is still
+    /// coming, and a stamp from another clock or a missing one would answer
+    /// a different question. Boat::valid only says one ever came.
+    double odometry_age() const;
+
     rclcpp::Node *node;
     Constants const &settings;
     Driver driver;
@@ -77,6 +84,7 @@ class Context
 
   private:
     Boat boat_;
+    std::optional<rclcpp::Time> odometry_received_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_subscription_;
 };
 

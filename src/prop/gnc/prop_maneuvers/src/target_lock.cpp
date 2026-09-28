@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
+#include <optional>
 
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -61,9 +63,55 @@ std::vector<Blob> real_only(std::vector<Blob> blobs)
 }
 }  // namespace
 
+bool TargetLock::frame_too_old() const
+{
+    // The NEWEST stamp in the frame decides, so one marker carried over from
+    // an older frame does not condemn the rest.
+    std::optional<rclcpp::Time> newest;
+    for (auto const &marker : latest_.markers)
+    {
+        if (marker.action != visualization_msgs::msg::Marker::ADD)
+        {
+            continue;
+        }
+        rclcpp::Time const stamp(marker.header.stamp, RCL_ROS_TIME);
+        if (!newest || stamp > *newest)
+        {
+            newest = stamp;
+        }
+    }
+    if (!newest)
+    {
+        return false;
+    }
+
+    double const age = (node_->now() - *newest).seconds();
+    if (age <= settings_.max_cluster_age_)
+    {
+        return false;
+    }
+    char text[64];
+    std::snprintf(text, sizeof(text), "cluster frame is %.1f s old", age);
+    why_ = text;
+    RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000, "%s (limit %.1f s); seeing nothing", text,
+                         settings_.max_cluster_age_);
+    return true;
+}
+
 std::vector<Blob> TargetLock::blobs() const
 {
     std::vector<Blob> out;
+
+    // An old frame is refused outright, before the transform fallback below
+    // can get at it. latest_ is simply the last message received, kept for
+    // ever, and once its stamp has dropped out of the tf buffer the fallback
+    // places it with the boat's CURRENT pose: a sensor-frame snapshot from
+    // seconds ago, carried along with the boat -- phantom buoys that follow
+    // it around. Empty is the honest answer: we are not seeing anything.
+    if (frame_too_old())
+    {
+        return out;
+    }
 
     for (auto const &marker : latest_.markers)
     {
@@ -115,6 +163,9 @@ std::vector<Blob> TargetLock::blobs() const
             // Fall back to the latest transform rather than going blind. This
             // reintroduces the swing above, so it is a degraded mode and says
             // so: better a wobbly position than none while tf catches up.
+            // Only ever reached for a FRESH frame (frame_too_old() above), so
+            // the pose it borrows is at most max_cluster_age newer than the
+            // scan -- the tf-lagging-by-10-ms case this exists for.
             try
             {
                 geometry_msgs::msg::PointStamped latest = in;
@@ -186,6 +237,10 @@ bool TargetLock::acquire_near(Point const &hint)
     // 2026-09-12: the clustering emitted 9.7, 10.1 and 12.7 m radius blobs
     // over open water during a single four-leg circle, any of which would
     // have been adopted here had one landed within match_radius of the hint.
+    if (frame_too_old())
+    {
+        return false;
+    }
     auto const all = real_only(blobs());
     // The hint must land within match_radius of the real buoy. Using the much
     // larger acquire_max_range here would make the ambiguity check fire almost
@@ -212,6 +267,10 @@ bool TargetLock::acquire_near(Point const &hint)
 
 bool TargetLock::acquire_in_front(Point const &boat, double boat_direction)
 {
+    if (frame_too_old())
+    {
+        return false;
+    }
     std::vector<Blob> candidates;
     for (auto const &blob : real_only(blobs()))
     {
@@ -268,6 +327,14 @@ bool TargetLock::refresh()
     if (!locked_)
     {
         why_ = "nothing locked on to refresh";
+        return false;
+    }
+
+    // Checked first so why() names the real cause rather than the empty
+    // match it would cause. The remembered point is kept, as for any failed
+    // refresh; stale() ends the maneuver if the frames do not come back.
+    if (frame_too_old())
+    {
         return false;
     }
 

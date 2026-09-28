@@ -70,8 +70,7 @@ class TargetLockTest : public ::testing::Test
         lock_->release();
     }
 
-    // Publish a 0.5 m box at (x, y) until the lock reports it as a blob.
-    void show_buoy_at(double x, double y)
+    static visualization_msgs::msg::Marker box_at(double x, double y)
     {
         visualization_msgs::msg::Marker box;
         box.header.frame_id = "map";
@@ -83,7 +82,13 @@ class TargetLockTest : public ::testing::Test
         box.scale.x = 0.5;
         box.scale.y = 0.5;
         box.scale.z = 1.0;
+        return box;
+    }
 
+    // Publish a 0.5 m box at (x, y) until the lock reports it as a blob.
+    void show_buoy_at(double x, double y)
+    {
+        auto box = box_at(x, y);
         auto const deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
         while (std::chrono::steady_clock::now() < deadline)
         {
@@ -102,6 +107,30 @@ class TargetLockTest : public ::testing::Test
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
         FAIL() << "the lock never received the box at (" << x << ", " << y << ")";
+    }
+
+    // Publish a box at (x, y) stamped `age_seconds` in the past until the lock
+    // has received it -- which, for a frame older than max_cluster_age, shows
+    // only as blobs() naming the age in why().
+    void show_old_buoy_at(double x, double y, double age_seconds)
+    {
+        auto box = box_at(x, y);
+        auto const deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            box.header.stamp = node_->now() - rclcpp::Duration::from_seconds(age_seconds);
+            visualization_msgs::msg::MarkerArray markers;
+            markers.markers.push_back(box);
+            publisher_->publish(markers);
+            rclcpp::spin_some(node_);
+            (void)lock_->blobs();
+            if (lock_->why().find("cluster frame is") != std::string::npos)
+            {
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+        FAIL() << "the lock never reported the old frame at (" << x << ", " << y << ")";
     }
 
     static rclcpp::Node::SharedPtr node_;
@@ -171,6 +200,48 @@ TEST_F(TargetLockTest, ReleaseThenLocksOntoADifferentBuoy)
 
     EXPECT_NEAR(lock_->point().x, 4.0, 1e-6);
     EXPECT_NEAR(lock_->point().y, 4.0, 1e-6);
+}
+
+// A frame older than max_cluster_age (1 s) is not a picture of now. Before
+// this, the lock kept the last frame for ever and, once its stamp had left the
+// tf buffer, placed it with the boat's current pose: buoys that ride along
+// with the boat. It must count as seeing nothing.
+TEST_F(TargetLockTest, AnOldFrameShowsNothing)
+{
+    ASSERT_NO_FATAL_FAILURE(show_old_buoy_at(-4.0, -4.0, 5.0));
+
+    EXPECT_TRUE(lock_->blobs().empty());
+    EXPECT_FALSE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+    EXPECT_FALSE(lock_->locked());
+    EXPECT_NE(lock_->why().find("cluster frame is"), std::string::npos) << lock_->why();
+    EXPECT_NE(lock_->why().find("s old"), std::string::npos) << lock_->why();
+    EXPECT_FALSE(lock_->acquire_in_front(Point{ 0.0, 0.0 }, std::atan2(-4.0, -4.0)));
+    EXPECT_NE(lock_->why().find("cluster frame is"), std::string::npos) << lock_->why();
+}
+
+// ...and the age check only refuses OLD frames: once fresh ones arrive again
+// the same buoy locks as usual.
+TEST_F(TargetLockTest, AFreshFrameAfterAnOldOneLocks)
+{
+    ASSERT_NO_FATAL_FAILURE(show_old_buoy_at(-4.0, -4.0, 5.0));
+    ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));
+
+    EXPECT_TRUE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+    EXPECT_TRUE(lock_->why().empty()) << lock_->why();
+}
+
+// A locked target whose frames go old: refresh() fails and says why, keeping
+// the remembered point (stale() ends the maneuver if nothing fresh comes).
+TEST_F(TargetLockTest, RefreshOnAnOldFrameFailsAndSaysWhy)
+{
+    ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));
+    ASSERT_TRUE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+
+    ASSERT_NO_FATAL_FAILURE(show_old_buoy_at(-4.0, -4.0, 5.0));
+
+    EXPECT_FALSE(lock_->refresh());
+    EXPECT_NE(lock_->why().find("cluster frame is"), std::string::npos) << lock_->why();
+    EXPECT_TRUE(lock_->locked());
 }
 
 }  // namespace

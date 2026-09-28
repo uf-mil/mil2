@@ -41,7 +41,8 @@ class TargetLock
     TargetLock(rclcpp::Node *node, Constants const &settings);
 
     /// Every blob from the most recent clustering, in map coordinates.
-    /// Empty when nothing has arrived yet or the transform is unavailable.
+    /// Empty when nothing has arrived yet, the transform is unavailable, or the
+    /// newest frame is older than max_cluster_age (why() then says how old).
     std::vector<Blob> blobs() const;
 
     /// Lock onto the blob nearest `hint`, a rough map position from the caller.
@@ -86,12 +87,18 @@ class TargetLock
     }
 
   private:
+    /// True, with why_ set, when the newest marker in latest_ is older than
+    /// max_cluster_age. A frame with no ADD markers is never too old: it says
+    /// "nothing seen", which is already what an empty result means.
+    bool frame_too_old() const;
+
     rclcpp::Node *node_;
     Constants const &settings_;
 
     std::optional<Blob> locked_;
     rclcpp::Time locked_at_;
-    std::string why_;
+    /// Mutable so blobs(), which is const, can say why it came back empty.
+    mutable std::string why_;
 
     visualization_msgs::msg::MarkerArray latest_;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr markers_subscription_;

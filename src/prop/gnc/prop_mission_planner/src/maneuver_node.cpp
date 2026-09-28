@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <cstdio>
 #include <exception>
+#include <string>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -18,6 +20,14 @@ namespace
 bool valid_lock_timeout(double seconds)
 {
     return std::isfinite(seconds) && seconds >= 0.0;
+}
+
+/// "position estimate is 1.3 s old", for logs and lock-failure reasons.
+std::string odometry_age_text(double seconds)
+{
+    char text[64];
+    std::snprintf(text, sizeof(text), "position estimate is %.1f s old", seconds);
+    return text;
 }
 }  // namespace
 
@@ -180,12 +190,16 @@ BT::NodeStatus ManeuverNode::try_lock()
 
     bool locked = false;
     std::string why = "no position estimate yet";
-    if (boat.valid)
+    // A stale estimate is treated exactly like none: locking against it would
+    // place the object relative to where the boat USED to be. Old cluster
+    // frames are refused inside TargetLock itself (max_cluster_age).
+    double const odometry_age = maneuvers.odometry_age();
+    if (boat.valid && odometry_age > ctx_->settings->max_odometry_age_)
     {
-        // TODO(map/staleness): TargetLock::blobs() never ages out the last
-        // cluster frame, and prop_maneuvers::Boat::valid never goes stale, so
-        // a re-lock after clustering or the EKF stalls can use old data. The
-        // standalone programs rarely hit this because they lock once.
+        why = odometry_age_text(odometry_age);
+    }
+    else if (boat.valid)
+    {
         locked = in_front_ ? lock.acquire_in_front(boat.position, boat.direction) : lock.acquire_near(target_->point);
         why = lock.why();
     }
@@ -235,6 +249,17 @@ BT::NodeStatus ManeuverNode::try_lock()
 
 BT::NodeStatus ManeuverNode::step()
 {
+    // The maneuvers steer off the last estimate they were given and never ask
+    // how old it is, so a stalled EKF would have them drive on a frozen
+    // picture of the boat. Stop instead.
+    double const odometry_age = ctx_->maneuvers->odometry_age();
+    if (odometry_age > ctx_->settings->max_odometry_age_)
+    {
+        RCLCPP_ERROR(ctx_->logger(), "%s: %s; stopping", name().c_str(), odometry_age_text(odometry_age).c_str());
+        stop_all();
+        return BT::NodeStatus::FAILURE;
+    }
+
     prop_maneuvers::Status status = prop_maneuvers::Status::Failed;
     try
     {

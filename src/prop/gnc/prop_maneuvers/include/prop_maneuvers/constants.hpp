@@ -92,6 +92,10 @@ class Constants
         refresh_max_jump_ = node->declare_parameter("refresh_max_jump", 1.0);
         ambiguous_margin_ = node->declare_parameter("ambiguous_margin", 1.0);
         reading_max_age_ = node->declare_parameter("reading_max_age", 5.0);
+        max_cluster_age_ = node->declare_parameter("max_cluster_age", 1.0);
+
+        // ── Position estimate ─────────────────────────────────────────────
+        max_odometry_age_ = node->declare_parameter("max_odometry_age", 1.0);
 
         // ── Distances ─────────────────────────────────────────────────────
         circle_radius_ = node->declare_parameter("circle_radius", 6.0);
@@ -142,6 +146,8 @@ class Constants
     double refresh_max_jump_{ 0.0 };
     double ambiguous_margin_{ 0.0 };
     double reading_max_age_{ 0.0 };
+    double max_cluster_age_{ 0.0 };
+    double max_odometry_age_{ 0.0 };
     double circle_radius_{ 0.0 };
     int circle_legs_{ 4 };
     bool circle_counter_clockwise_{ true };

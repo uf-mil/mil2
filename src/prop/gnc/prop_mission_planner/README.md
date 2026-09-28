@@ -63,6 +63,12 @@ coordinates. Today a reference is a map point from `StaticObject`; see
 Interrupting a maneuver (a `RosTimeout` firing, a failed step, Ctrl-C) always
 releases guidance and zeroes `cmd_vel`.
 
+Old data is refused rather than trusted. A cluster frame older than
+`max_cluster_age` counts as seeing nothing, and a maneuver node will neither
+lock on nor keep driving when the last odometry arrived more than
+`max_odometry_age` ago (both 1 s, in `maneuvers.yaml`): it stops the boat and
+fails.
+
 ## Moving to a map
 
 Today every object reference is a stand-in: a map point
@@ -82,10 +88,6 @@ it is first added, and never reuse or renumber it, in the `map` frame.
 
 ## Known limits
 
-- `TargetLock::blobs()` never ages out the last cluster frame, and
-  `prop_maneuvers::Boat::valid` never goes stale, so a re-lock after
-  clustering or the EKF stalls can use old data. The standalone programs
-  rarely hit this because they lock once.
 - The circle clearance check assumes the ideal path: the driven ring bulges
   inward, about 1.4 m measured on a 6 m, 4-leg ring.
 - `BuoyTour` has not yet been driven end to end in simulation.

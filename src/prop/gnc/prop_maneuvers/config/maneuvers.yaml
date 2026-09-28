@@ -137,6 +137,21 @@
     refresh_max_jump: 1.0 # m
     ambiguous_margin: 1.0 # m, two candidates closer than this is ambiguous
     reading_max_age: 5.0  # s, a lock older than this counts as stale
+    # The newest cluster frame older than this is ignored: blobs() reports
+    # nothing rather than placing an old sensor-frame frame with the boat's
+    # CURRENT pose, which makes phantom buoys that ride along with the boat.
+    # The lidar is 10 Hz, so 1.0 s is about ten missed frames (the clustering
+    # has been seen running nearer 3 Hz, so about three of its outputs) --
+    # the clustering or tf has stopped, not hiccuped.
+    max_cluster_age: 1.0  # s
+
+    # ── Position estimate ────────────────────────────────────────────────
+    # The mission planner stops a maneuver (and will not lock on) when the
+    # last odometry message arrived longer ago than this. Measured on arrival
+    # by the node clock, so it follows sim time. The EKF publishes at 30 Hz
+    # (prop_localization/config/ekf.yaml), so a second of silence is about
+    # thirty missed estimates: it has stopped.
+    max_odometry_age: 1.0  # s
 
     # ── Distances ────────────────────────────────────────────────────────
     circle_radius: 6.0       # m, how far out to circle
