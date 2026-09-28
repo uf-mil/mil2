@@ -229,6 +229,10 @@ std::vector<Blob> TargetLock::blobs() const
 
 bool TargetLock::acquire_near(Point const &hint)
 {
+    // Asking for a new target drops the old one whatever happens next. A
+    // failed acquire that kept it would let a caller chaining maneuvers carry
+    // on with the previous object while believing it had found the new one.
+    locked_.reset();
     // real_only, for the same reason refresh() uses it: a merged blob must
     // never BE the target. This is the acquisition path the three nodes take
     // whenever use_front is false -- which is their default, and how every
@@ -267,6 +271,9 @@ bool TargetLock::acquire_near(Point const &hint)
 
 bool TargetLock::acquire_in_front(Point const &boat, double boat_direction)
 {
+    // Same as acquire_near: a new request replaces the old target, even when
+    // it finds nothing.
+    locked_.reset();
     if (frame_too_old())
     {
         return false;

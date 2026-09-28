@@ -46,17 +46,19 @@ class TargetLock
     std::vector<Blob> blobs() const;
 
     /// Lock onto the blob nearest `hint`, a rough map position from the caller.
+    /// On failure nothing is locked (any previous lock is dropped) and why()
+    /// says what went wrong.
     bool acquire_near(Point const &hint);
 
     /// Lock onto the nearest blob inside the forward cone, within range.
+    /// On failure nothing is locked, as for acquire_near.
     bool acquire_in_front(Point const &boat, double boat_direction);
 
     /// Re-match against the remembered point and update it.
     bool refresh();
 
-    /// Forget the current target. A FAILED acquire leaves the previous lock in
-    /// place, so anything that locks onto a new object must release first or it
-    /// can silently carry on with the last one.
+    /// Forget the current target on purpose, e.g. when a maneuver is
+    /// interrupted. (An acquire already drops the old lock, found or not.)
     /// Also clears why(), so log a failure reason before releasing.
     void release();
 

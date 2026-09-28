@@ -158,21 +158,29 @@ TEST_F(TargetLockTest, ReleaseDropsTheLock)
     EXPECT_TRUE(lock_->why().empty());
 }
 
-// Why release() exists. The standalone programs lock once and exit, so this
-// never mattered; a mission runner chains maneuvers, and without a release the
-// maneuver for buoy 2 would drive to buoy 1.
-TEST_F(TargetLockTest, FailedAcquireKeepsThePreviousLock)
+// A mission runner chains maneuvers. If a failed acquire kept the previous
+// lock, the maneuver for buoy 2 would find nothing and quietly drive to buoy 1.
+TEST_F(TargetLockTest, FailedAcquireDropsThePreviousLock)
 {
     ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));
     ASSERT_TRUE(lock_->acquire_near(Point{ -4.0, -4.0 }));
 
     // Nothing near (20, -3): the acquire fails...
     EXPECT_FALSE(lock_->acquire_near(Point{ 20.0, -3.0 }));
-    // ...and the old buoy is still locked.
-    EXPECT_TRUE(lock_->locked());
-    EXPECT_NEAR(lock_->point().x, -4.0, 1e-6);
-    EXPECT_NEAR(lock_->point().y, -4.0, 1e-6);
-    EXPECT_NEAR(lock_->radius(), 0.25, 1e-6);
+    // ...and the old buoy is no longer locked, with the reason kept.
+    EXPECT_FALSE(lock_->locked());
+    EXPECT_FALSE(lock_->why().empty());
+}
+
+TEST_F(TargetLockTest, FailedAcquireInFrontDropsThePreviousLock)
+{
+    ASSERT_NO_FATAL_FAILURE(show_buoy_at(-4.0, -4.0));
+    ASSERT_TRUE(lock_->acquire_near(Point{ -4.0, -4.0 }));
+
+    // Boat at the origin facing +x: the buoy is behind it.
+    EXPECT_FALSE(lock_->acquire_in_front(Point{ 0.0, 0.0 }, 0.0));
+    EXPECT_FALSE(lock_->locked());
+    EXPECT_EQ(lock_->why(), "nothing in front of the boat");
 }
 
 TEST_F(TargetLockTest, ReleaseThenFailedAcquireLeavesNothingLocked)

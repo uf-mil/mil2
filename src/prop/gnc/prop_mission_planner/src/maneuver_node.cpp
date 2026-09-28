@@ -105,8 +105,8 @@ BT::NodeStatus ManeuverNode::onStart()
     {
         return BT::NodeStatus::FAILURE;
     }
-    // A failed acquire keeps the previous lock, so start from nothing or this
-    // node could carry on with the last maneuver's object.
+    // Start from nothing. A failed acquire also drops the old lock, but until
+    // the first attempt the last maneuver's object would still be locked.
     ctx_->maneuvers->lock.release();
 
     auto const in_front = getInput<bool>("in_front");
