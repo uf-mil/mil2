@@ -9,22 +9,7 @@ extend-select = [
 ]
 
 extend-exclude = [
-    "deprecated",
-    # submodules
-    "mil_common/perception/yolov7-ros",
-    "NaviGator/gnc/navigator_path_planner/lqRRT",
-    "mil_common/drivers/pointgrey_camera_driver",
-    "mil_common/drivers/roboteq",
-    "mil_common/drivers/LMS1xx",
-    "mil_common/axros",
-    "NaviGator/simulation/VRX/vrx",
-    "NaviGator/simulation/VRX/vrx-docker",
-    "mil_common/perception/yolov7-ros",
-    "mil_common/perception/vision_stack",
-    # sub simulation
-    "SubjuGator/simulation",
-    # docker contents
-    "docker",
+    "src/subjugator/gnc/yolo_ros",
 ]
 
 target-version = "py38"
