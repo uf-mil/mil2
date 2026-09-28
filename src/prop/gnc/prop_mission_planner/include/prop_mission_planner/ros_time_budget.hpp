@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
+#include <limits>
 
 // Pure deadline arithmetic for the ROS-time decorators (RosTimeout, RosDelay)
 // and the maneuver nodes' lock timeout, unit-tested without ROS or BT.
@@ -33,5 +35,12 @@ struct Budget
         armed = false;
     }
 };
+
+/// An unsigned millisecond port value as the int Budget::arm takes, clamped
+/// rather than wrapped: anything past INT_MAX (about 24.8 days) becomes that.
+inline int clamp_msec(unsigned msec)
+{
+    return static_cast<int>(std::min<unsigned>(msec, static_cast<unsigned>(std::numeric_limits<int>::max())));
+}
 
 }  // namespace ros_time_budget

@@ -161,3 +161,24 @@ TEST_F(TreeFixture, NodesInsideASubtreeFindTheContext)
     auto tree = factory.createTree("OuterWithSubtree", blackboard_);
     EXPECT_EQ(tree.tickOnce(), BT::NodeStatus::SUCCESS);
 }
+
+// A tree built without a Context is a programming error, but nothing may
+// throw out of a node: each one logs and fails instead.
+TEST_F(TreeFixture, NodesWithoutAContextFailInsteadOfThrowing)
+{
+    blackboard_ = BT::Blackboard::create();  // no "ctx"
+    auto timeout = build("TimeoutNoContext", R"(<RosTimeout msec="60000"><AlwaysSuccess/></RosTimeout>)");
+    auto delay = build("DelayNoContext", R"(<RosDelay delay_msec="0"><AlwaysSuccess/></RosDelay>)");
+    auto object = build("StaticNoContext", R"(<StaticObject point="-4;-4" ref="{b}"/>)");
+    auto face = build("FaceNoContext", R"(<FaceObject in_front="true"/>)");
+
+    BT::NodeStatus status = BT::NodeStatus::IDLE;
+    EXPECT_NO_THROW(status = timeout.tickOnce());
+    EXPECT_EQ(status, BT::NodeStatus::FAILURE);
+    EXPECT_NO_THROW(status = delay.tickOnce());
+    EXPECT_EQ(status, BT::NodeStatus::FAILURE);
+    EXPECT_NO_THROW(status = object.tickOnce());
+    EXPECT_EQ(status, BT::NodeStatus::FAILURE);
+    EXPECT_NO_THROW(status = face.tickOnce());
+    EXPECT_EQ(status, BT::NodeStatus::FAILURE);
+}

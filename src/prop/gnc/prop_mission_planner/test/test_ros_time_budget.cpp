@@ -12,6 +12,15 @@ namespace
 constexpr std::int64_t kMsec = 1000000LL;  // ns per millisecond
 }
 
+TEST(RosTimeBudget, ClampMsecSaturatesInsteadOfWrapping)
+{
+    EXPECT_EQ(ros_time_budget::clamp_msec(0u), 0);
+    EXPECT_EQ(ros_time_budget::clamp_msec(300000u), 300000);
+    EXPECT_EQ(ros_time_budget::clamp_msec(static_cast<unsigned>(std::numeric_limits<int>::max())),
+              std::numeric_limits<int>::max());
+    EXPECT_EQ(ros_time_budget::clamp_msec(std::numeric_limits<unsigned>::max()), std::numeric_limits<int>::max());
+}
+
 TEST(RosTimeBudget, NeverExpiredBeforeArm)
 {
     Budget b;

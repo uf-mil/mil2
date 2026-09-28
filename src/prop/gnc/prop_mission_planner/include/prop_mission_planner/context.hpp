@@ -54,6 +54,12 @@ std::shared_ptr<Context> make_context(rclcpp::Node::SharedPtr const &node);
 /// error if "ctx" holds a different type.
 std::shared_ptr<Context> context_of(BT::TreeNode const &tree_node);
 
+/// context_of() for use inside a tick, where nothing may throw out of a node:
+/// logs why (on the "prop_mission_planner" logger -- there is no Context to
+/// take a node logger from) and returns nullptr instead. The caller returns
+/// FAILURE.
+std::shared_ptr<Context> context_or_log(BT::TreeNode const &tree_node);
+
 /// The factory every node registers into. A function-local static, so
 /// registration from other files' static constructors never runs before it
 /// exists (the sub's global-variable version depends on link order).

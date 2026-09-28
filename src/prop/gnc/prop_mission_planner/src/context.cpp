@@ -1,5 +1,7 @@
 #include "prop_mission_planner/context.hpp"
 
+#include <exception>
+
 namespace prop_mission_planner
 {
 
@@ -30,6 +32,20 @@ std::shared_ptr<Context> context_of(BT::TreeNode const &tree_node)
         throw BT::RuntimeError(tree_node.name(), ": no Context on the root blackboard under \"ctx\"");
     }
     return ctx;
+}
+
+std::shared_ptr<Context> context_or_log(BT::TreeNode const &tree_node)
+{
+    try
+    {
+        return context_of(tree_node);
+    }
+    catch (std::exception const &e)
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("prop_mission_planner"), "%s: no Context on the tree: %s",
+                     tree_node.name().c_str(), e.what());
+        return nullptr;
+    }
 }
 
 BT::BehaviorTreeFactory &factory()

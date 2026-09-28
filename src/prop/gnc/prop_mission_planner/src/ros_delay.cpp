@@ -1,8 +1,5 @@
 #include "prop_mission_planner/ros_delay.hpp"
 
-#include <algorithm>
-#include <limits>
-
 #include <rclcpp/rclcpp.hpp>
 
 #include "prop_mission_planner/context.hpp"
@@ -32,24 +29,21 @@ BT::PortsList RosDelay::providedPorts()
 
 BT::NodeStatus RosDelay::tick()
 {
-    auto const ctx = context_of(*this);
+    if (!ctx_ && !(ctx_ = context_or_log(*this)))
+    {
+        return BT::NodeStatus::FAILURE;
+    }
     if (!budget_.armed)
     {
-        auto const delay_msec = getInput<unsigned>("delay_msec");
-        if (!delay_msec)
+        if (Problem const problem = arm_from_msec_port(*this, "delay_msec", budget_, ctx_->node->now().nanoseconds()))
         {
-            RCLCPP_ERROR(ctx->logger(), "%s: %s", name().c_str(), delay_msec.error().c_str());
+            RCLCPP_ERROR(ctx_->logger(), "%s: %s", name().c_str(), problem->c_str());
             return BT::NodeStatus::FAILURE;
         }
-        // Budget::arm takes a signed millisecond count; clamp rather than
-        // overflow it on an (implausible) multi-week delay.
-        auto const clamped_msec =
-            static_cast<int>(std::min<unsigned>(*delay_msec, static_cast<unsigned>(std::numeric_limits<int>::max())));
-        budget_.arm(ctx->node->now().nanoseconds(), clamped_msec);
     }
     setStatus(BT::NodeStatus::RUNNING);
 
-    if (!budget_.expired(ctx->node->now().nanoseconds()))
+    if (!budget_.expired(ctx_->node->now().nanoseconds()))
     {
         return BT::NodeStatus::RUNNING;
     }

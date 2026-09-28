@@ -16,10 +16,27 @@ namespace prop_mission_planner
 
 namespace
 {
+// One validator per port, each used both when the tree is built (literal XML
+// values) and in onStart ({blackboard} values), so no rule is written twice.
+
 /// A usable lock timeout: finite and not negative.
-bool valid_lock_timeout(double seconds)
+Problem lock_timeout_problem(double seconds)
 {
-    return std::isfinite(seconds) && seconds >= 0.0;
+    if (std::isfinite(seconds) && seconds >= 0.0)
+    {
+        return std::nullopt;
+    }
+    return "lock_timeout must be a finite number of seconds >= 0";
+}
+
+/// Exactly one of target / in_front.
+Problem targeting_problem(bool has_target, bool in_front)
+{
+    if (has_target != in_front)
+    {
+        return std::nullopt;
+    }
+    return "give exactly one of target=\"{ref}\" or in_front=\"true\"";
 }
 
 /// "position estimate is 1.3 s old", for logs and lock-failure reasons.
@@ -46,19 +63,23 @@ ManeuverNode::ManeuverNode(std::string const &name, BT::NodeConfig const &config
     {
         in_front = BT::convertFromString<bool>(it->second);
     }
-    if (in_front && port_given(config, "target") == *in_front)
+    if (in_front)
     {
-        throw BT::RuntimeError(name, ": give exactly one of target=\"{ref}\" or in_front=\"true\"");
+        if (Problem const problem = targeting_problem(port_given(config, "target"), *in_front))
+        {
+            throw BT::RuntimeError(name, ": ", *problem);
+        }
     }
 
-    if (auto const literal = literal_port(config, "lock_timeout"))
+    reject_bad_literal<double>(name, config, "lock_timeout", lock_timeout_problem);
+
+    // Same rule as StaticObject: ref="locked" (no braces) is not a place to
+    // write to, and would only fail when the lock is finally taken.
+    auto const ref = config.output_ports.find("ref");
+    if (ref != config.output_ports.end() && !BT::TreeNode::isBlackboardPointer(ref->second))
     {
-        double const seconds = BT::convertFromString<double>(*literal);
-        if (!valid_lock_timeout(seconds))
-        {
-            throw BT::RuntimeError(name, ": lock_timeout must be a finite number of seconds >= 0, not \"", *literal,
-                                   "\"");
-        }
+        throw BT::RuntimeError(name, ": ref must be a blackboard entry, e.g. ref=\"{locked}\", not \"", ref->second,
+                               "\"");
     }
 }
 
@@ -84,18 +105,11 @@ BT::PortsList ManeuverNode::common_ports()
 
 BT::NodeStatus ManeuverNode::onStart()
 {
-    // context_of() throws if this tree was built without a Context on the
-    // root blackboard. The header promises nothing throws out of a running
-    // node, so catch it here: ctx_ stays null, and onHalted already guards on
-    // that (it only calls stop_all() when ctx_ is set).
-    try
+    // No Context on the tree: logged, and ctx_ stays null, which onHalted
+    // already guards on (it only calls stop_all() when ctx_ is set).
+    ctx_ = context_or_log(*this);
+    if (!ctx_)
     {
-        ctx_ = context_of(*this);
-    }
-    catch (std::exception const &e)
-    {
-        RCLCPP_ERROR(rclcpp::get_logger("prop_mission_planner"), "%s: no Context on the tree: %s", name().c_str(),
-                     e.what());
         return BT::NodeStatus::FAILURE;
     }
     maneuver_.reset();
@@ -117,9 +131,9 @@ BT::NodeStatus ManeuverNode::onStart()
     }
     in_front_ = *in_front;
     bool const has_target = port_given(config(), "target");
-    if (has_target == in_front_)
+    if (Problem const problem = targeting_problem(has_target, in_front_))
     {
-        RCLCPP_ERROR(ctx_->logger(), "%s: give exactly one of target=\"{ref}\" or in_front=\"true\"", name().c_str());
+        RCLCPP_ERROR(ctx_->logger(), "%s: %s", name().c_str(), problem->c_str());
         return BT::NodeStatus::FAILURE;
     }
     target_.reset();
@@ -135,10 +149,14 @@ BT::NodeStatus ManeuverNode::onStart()
     }
 
     auto const lock_timeout = getInput<double>("lock_timeout");
-    if (!lock_timeout || !valid_lock_timeout(*lock_timeout))
+    if (!lock_timeout)
     {
-        RCLCPP_ERROR(ctx_->logger(), "%s: lock_timeout must be a finite number of seconds >= 0 (%s)", name().c_str(),
-                     lock_timeout ? std::to_string(*lock_timeout).c_str() : lock_timeout.error().c_str());
+        RCLCPP_ERROR(ctx_->logger(), "%s: lock_timeout: %s", name().c_str(), lock_timeout.error().c_str());
+        return BT::NodeStatus::FAILURE;
+    }
+    if (Problem const problem = lock_timeout_problem(*lock_timeout))
+    {
+        RCLCPP_ERROR(ctx_->logger(), "%s: %s, not %g", name().c_str(), problem->c_str(), *lock_timeout);
         return BT::NodeStatus::FAILURE;
     }
     lock_timeout_ = *lock_timeout;
@@ -235,7 +253,14 @@ BT::NodeStatus ManeuverNode::try_lock()
         }
         if (config().output_ports.count("ref") > 0)
         {
-            (void)setOutput("ref", ObjectRef{ lock.point() });
+            // A later step that reads {ref} would otherwise act on whatever
+            // the entry held before -- or on nothing -- without a word.
+            if (auto const written = setOutput("ref", ObjectRef{ lock.point() }); !written)
+            {
+                RCLCPP_ERROR(ctx_->logger(), "%s: could not write ref: %s", name().c_str(), written.error().c_str());
+                stop_all();
+                return BT::NodeStatus::FAILURE;
+            }
         }
     }
     catch (std::exception const &e)

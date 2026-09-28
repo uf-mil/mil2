@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <optional>
+#include <string>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -28,17 +29,47 @@ std::optional<bool> counter_clockwise_from(std::string const &direction)
     return std::nullopt;
 }
 
-bool valid_radius(double radius)
+// One validator per port, each used both when the tree is built (literal XML
+// values) and in make() ({blackboard} values and the maneuvers.yaml
+// defaults), so no rule is written twice.
+
+Problem direction_problem(std::string const &direction)
 {
-    return std::isfinite(radius) && radius > 0.0;
+    if (counter_clockwise_from(direction))
+    {
+        return std::nullopt;
+    }
+    return "direction must be \"clockwise\" or \"counter_clockwise\"";
+}
+
+Problem radius_problem(double radius)
+{
+    if (std::isfinite(radius) && radius > 0.0)
+    {
+        return std::nullopt;
+    }
+    return "radius must be a finite number of metres > 0";
 }
 
 /// A ring of fewer than three legs is a line, not a circle.
 constexpr int kMinLegs{ 3 };
 
-bool valid_standoff(double standoff)
+Problem legs_problem(int legs)
 {
-    return std::isfinite(standoff) && standoff >= 0.0;
+    if (legs >= kMinLegs)
+    {
+        return std::nullopt;
+    }
+    return "legs must be at least " + std::to_string(kMinLegs);
+}
+
+Problem standoff_problem(double standoff)
+{
+    if (std::isfinite(standoff) && standoff >= 0.0)
+    {
+        return std::nullopt;
+    }
+    return "standoff must be a finite number of metres >= 0";
 }
 }  // namespace
 
@@ -54,13 +85,7 @@ std::unique_ptr<prop_maneuvers::Maneuver> FaceObject::make(prop_maneuvers::Conte
 
 ApproachObject::ApproachObject(std::string const &name, BT::NodeConfig const &config) : ManeuverNode(name, config)
 {
-    if (auto const literal = literal_port(config, "standoff"))
-    {
-        if (!valid_standoff(BT::convertFromString<double>(*literal)))
-        {
-            throw BT::RuntimeError(name, ": standoff must be a finite number of metres >= 0, not \"", *literal, "\"");
-        }
-    }
+    reject_bad_literal<double>(name, config, "standoff", standoff_problem);
 }
 
 BT::PortsList ApproachObject::providedPorts()
@@ -85,9 +110,9 @@ std::unique_ptr<prop_maneuvers::Maneuver> ApproachObject::make(prop_maneuvers::C
         }
         standoff = *given;
     }
-    if (!valid_standoff(standoff))
+    if (Problem const problem = standoff_problem(standoff))
     {
-        RCLCPP_ERROR(logger, "%s: standoff must be >= 0 m, got %.2f", name().c_str(), standoff);
+        RCLCPP_ERROR(logger, "%s: %s, not %g", name().c_str(), problem->c_str(), standoff);
         return nullptr;
     }
     return std::make_unique<prop_maneuvers::ApproachObject>(maneuvers, standoff);
@@ -101,29 +126,9 @@ CircleObject::CircleObject(std::string const &name, BT::NodeConfig const &config
     {
         throw BT::RuntimeError(name, ": direction is required (\"clockwise\" or \"counter_clockwise\")");
     }
-    if (auto const literal = literal_port(config, "direction"))
-    {
-        if (!counter_clockwise_from(*literal))
-        {
-            throw BT::RuntimeError(name, ": direction must be \"clockwise\" or \"counter_clockwise\", not \"", *literal,
-                                   "\"");
-        }
-    }
-    if (auto const literal = literal_port(config, "radius"))
-    {
-        if (!valid_radius(BT::convertFromString<double>(*literal)))
-        {
-            throw BT::RuntimeError(name, ": radius must be a finite number of metres > 0, not \"", *literal, "\"");
-        }
-    }
-    if (auto const literal = literal_port(config, "legs"))
-    {
-        if (BT::convertFromString<int>(*literal) < kMinLegs)
-        {
-            throw BT::RuntimeError(name, ": legs must be at least ", std::to_string(kMinLegs), ", not \"", *literal,
-                                   "\"");
-        }
-    }
+    reject_bad_literal<std::string>(name, config, "direction", direction_problem);
+    reject_bad_literal<double>(name, config, "radius", radius_problem);
+    reject_bad_literal<int>(name, config, "legs", legs_problem);
 }
 
 BT::PortsList CircleObject::providedPorts()
@@ -146,13 +151,12 @@ std::unique_ptr<prop_maneuvers::Maneuver> CircleObject::make(prop_maneuvers::Con
         RCLCPP_ERROR(logger, "%s: direction: %s", name().c_str(), direction.error().c_str());
         return nullptr;
     }
-    auto const counter_clockwise = counter_clockwise_from(*direction);
-    if (!counter_clockwise)
+    if (Problem const problem = direction_problem(*direction))
     {
-        RCLCPP_ERROR(logger, "%s: direction must be \"clockwise\" or \"counter_clockwise\", not \"%s\"", name().c_str(),
-                     direction->c_str());
+        RCLCPP_ERROR(logger, "%s: %s, not \"%s\"", name().c_str(), problem->c_str(), direction->c_str());
         return nullptr;
     }
+    bool const counter_clockwise = *counter_clockwise_from(*direction);
 
     // radius and legs have no port default, so "given" is detectable: an
     // unreadable {blackboard} entry fails rather than quietly using the yaml.
@@ -178,10 +182,14 @@ std::unique_ptr<prop_maneuvers::Maneuver> CircleObject::make(prop_maneuvers::Con
         }
         legs = *given;
     }
-    if (!valid_radius(radius) || legs < kMinLegs)
+    if (Problem const problem = radius_problem(radius))
     {
-        RCLCPP_ERROR(logger, "%s: need radius > 0 m and legs >= %d, got radius %.2f m, legs %d", name().c_str(),
-                     kMinLegs, radius, legs);
+        RCLCPP_ERROR(logger, "%s: %s, not %g", name().c_str(), problem->c_str(), radius);
+        return nullptr;
+    }
+    if (Problem const problem = legs_problem(legs))
+    {
+        RCLCPP_ERROR(logger, "%s: %s, not %d", name().c_str(), problem->c_str(), legs);
         return nullptr;
     }
 
@@ -207,7 +215,7 @@ std::unique_ptr<prop_maneuvers::Maneuver> CircleObject::make(prop_maneuvers::Con
                      settings.min_gap_);
         return nullptr;
     }
-    return std::make_unique<prop_maneuvers::CircleObject>(maneuvers, radius, legs, *counter_clockwise);
+    return std::make_unique<prop_maneuvers::CircleObject>(maneuvers, radius, legs, counter_clockwise);
 }
 
 // Last, after everything the nodes above use (see REGISTER in context.hpp).

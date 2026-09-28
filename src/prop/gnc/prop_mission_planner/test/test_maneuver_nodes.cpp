@@ -75,6 +75,22 @@ TEST_F(ManeuverNodes, ANegativeLockTimeoutFailsToLoad)
     expect_rejected("FaceNegativeTimeout", R"(<FaceObject in_front="true" lock_timeout="-1"/>)", "lock_timeout");
 }
 
+// A ref without braces is a literal, not a place to write: refused when the
+// tree is built, the same as StaticObject, rather than when the lock is
+// finally taken. BT itself already rejects text that is not an ObjectRef
+// ("locked"); text that happens to parse as one ("1;2") gets past BT, and is
+// the case the node's own check exists for.
+TEST_F(ManeuverNodes, ARefWithoutBracesFailsToLoad)
+{
+    expect_rejected("FaceRefNoBraces", R"(<FaceObject in_front="true" ref="locked"/>)", "\"ref\"");
+    expect_rejected("FaceRefPointLiteral", R"(<FaceObject in_front="true" ref="1;2"/>)", "ref must be a blackboard");
+}
+
+TEST_F(ManeuverNodes, CircleWithAnUnknownDirectionNamesThePort)
+{
+    expect_rejected("CircleBadDirectionNamed", R"(<CircleObject in_front="true" direction="cw"/>)", "direction");
+}
+
 TEST_F(ManeuverNodes, NoPositionEstimateFailsAtTheLockTimeout)
 {
     auto tree = build("FaceNoOdometry", R"(<Sequence>

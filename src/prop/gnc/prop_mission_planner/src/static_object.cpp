@@ -43,7 +43,11 @@ BT::PortsList StaticObject::providedPorts()
 
 BT::NodeStatus StaticObject::tick()
 {
-    auto const ctx = context_of(*this);
+    auto const ctx = context_or_log(*this);
+    if (!ctx)
+    {
+        return BT::NodeStatus::FAILURE;
+    }
     auto const point = getInput<ObjectRef>("point");
     if (!point)
     {
