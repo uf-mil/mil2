@@ -49,7 +49,7 @@ class PcdConstants
         node->declare_parameter("max_distance", 30.0);
 
         // ── Water-surface / height rejection ────────────────────────────────
-        node->declare_parameter("water_z_min", -0.5);
+        node->declare_parameter("water_z_min", -0.40);
         node->declare_parameter("water_z_max", 10.0);
 
         // ── Voxel-grid down-sampling ─────────────────────────────────────────
@@ -116,7 +116,7 @@ class PcdConstants
 
     // ── Water-surface rejection ──────────────────────────────────────────────
     /// Lower Z bound [m]. Points below this are treated as water returns.
-    double water_z_min_{ -0.5 };
+    double water_z_min_{ -0.40 };
     /// Upper Z bound [m]. Points above this are treated as sky / mast noise.
     double water_z_max_{ 10.0 };
 

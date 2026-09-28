@@ -23,8 +23,14 @@ add_definitions(${PCL_DEFINITIONS})
 
 # ── pcl_filter node ──────────────────────────────────────────────────────────
 add_executable(pcl_filter_node src/pcl_filter_node.cpp)
-ament_target_dependencies(pcl_filter_node rclcpp sensor_msgs pcl_conversions
-                          tf2)
+ament_target_dependencies(
+  pcl_filter_node
+  rclcpp
+  sensor_msgs
+  pcl_conversions
+  tf2
+  tf2_ros
+  geometry_msgs)
 target_link_libraries(pcl_filter_node ${PCL_LIBRARIES})
 
 # ── pcl_clustering node ──────────────────────────────────────────────────────

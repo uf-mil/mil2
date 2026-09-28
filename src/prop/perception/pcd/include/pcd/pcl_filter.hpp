@@ -21,6 +21,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <tf2/exceptions.h>
 
 #include <cmath>
 #include <deque>
@@ -33,8 +34,11 @@
 #include "pcd/pcd_constants.hpp"
 
 #include <builtin_interfaces/msg/time.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2_ros/buffer.hpp>
+#include <tf2_ros/transform_listener.hpp>
 
 namespace pcd
 {
@@ -67,6 +71,9 @@ class PclFilter : public rclcpp::Node, public PcdConstants
             imu_topic_, rclcpp::SensorDataQoS(), std::bind(&PclFilter::imu_cb, this, std::placeholders::_1));
 
         pub_ = create_publisher<sensor_msgs::msg::PointCloud2>("filtered_cloud", rclcpp::QoS(1));
+
+        tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
         RCLCPP_INFO(get_logger(),
                     "pcl_filter started — topic='%s'  imu='%s'  dist=[%.2f, %.2f] m  "
@@ -107,7 +114,7 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         }
 
         auto filtered = apply_distance_filter(cloud);
-        filtered = apply_z_filter(filtered, attitude_at(msg->header.stamp));
+        filtered = apply_z_filter(filtered, attitude_at(msg->header.stamp, msg->header.frame_id));
         filtered = apply_voxel(filtered);
 
         if (filtered->empty())
@@ -203,7 +210,17 @@ class PclFilter : public rclcpp::Node, public PcdConstants
     }
 
     /**
-     * @brief Roll and pitch closest in time to `stamp`, within attitude_max_age_.
+     * @brief Roll and pitch OF THE CLOUD'S FRAME, from the IMU sample closest
+     *        in time to `stamp`, within attitude_max_age_.
+     *
+     * The IMU reports its own orientation, not the lidar's, and the two are not
+     * mounted alike: prop.urdf yaws the IMU by pi ("mounted backwards"), which
+     * flips the sign of both its roll and its pitch relative to the boat.
+     * Levelling by the raw IMU angles therefore tilted the cloud the wrong way.
+     * Measured 2026-09-28 on 160 captured turning frames (4.5 deg nose-up):
+     * raw-IMU levelling let a median 7334 water points through a -0.35 cut;
+     * the same frames levelled in the cloud's frame let through 0. So the IMU
+     * orientation is carried into the cloud frame through TF first.
      *
      * Matched by nearest timestamp rather than "whatever arrived last": an
      * offline replay of this exact frame set, keyed on the last-received
@@ -213,11 +230,13 @@ class PclFilter : public rclcpp::Node, public PcdConstants
      * it was paired with was not the one the boat actually had when the cloud
      * was captured.
      *
-     * Returns std::nullopt if the buffer is empty or every sample is older or
-     * newer than attitude_max_age_ from `stamp`, so callers fail safe to the
-     * unlevelled z cut instead of levelling by a stale or absent attitude.
+     * Returns std::nullopt if the buffer is empty, every sample is older or
+     * newer than attitude_max_age_ from `stamp`, or TF has no transform between
+     * the IMU and cloud frames, so callers fail safe to the unlevelled z cut
+     * instead of levelling by a stale, absent or wrongly-mounted attitude.
      */
-    std::optional<Attitude> attitude_at(builtin_interfaces::msg::Time const &stamp) const
+    std::optional<Attitude> attitude_at(builtin_interfaces::msg::Time const &stamp,
+                                        std::string const &cloud_frame) const
     {
         if (imu_buffer_.empty())
         {
@@ -248,11 +267,30 @@ class PclFilter : public rclcpp::Node, public PcdConstants
             return std::nullopt;
         }
 
-        tf2::Quaternion q(best->orientation.x, best->orientation.y, best->orientation.z, best->orientation.w);
+        // Mounting only, so the latest (static) transform is the right one.
+        geometry_msgs::msg::TransformStamped imu_from_cloud;
+        try
+        {
+            imu_from_cloud = tf_buffer_->lookupTransform(best->header.frame_id, cloud_frame, tf2::TimePointZero);
+        }
+        catch (tf2::TransformException const &e)
+        {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                                 "no transform from cloud frame '%s' to IMU frame '%s' (%s); using the "
+                                 "unlevelled z cut",
+                                 cloud_frame.c_str(), best->header.frame_id.c_str(), e.what());
+            return std::nullopt;
+        }
+
+        // world <- cloud = (world <- imu) * (imu <- cloud)
+        tf2::Quaternion const world_from_imu(best->orientation.x, best->orientation.y, best->orientation.z,
+                                             best->orientation.w);
+        auto const &r = imu_from_cloud.transform.rotation;
+        tf2::Quaternion const imu_from_cloud_q(r.x, r.y, r.z, r.w);
         double roll = 0.0;
         double pitch = 0.0;
         double yaw = 0.0;
-        tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+        tf2::Matrix3x3(world_from_imu * imu_from_cloud_q).getRPY(roll, pitch, yaw);
         return Attitude{ roll, pitch };
     }
 
@@ -282,6 +320,9 @@ class PclFilter : public rclcpp::Node, public PcdConstants
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_;
     /// Recent IMU samples, oldest first, trimmed to kImuBufferWindowSec.
     std::deque<sensor_msgs::msg::Imu> imu_buffer_;
+    /// For the IMU-to-cloud mounting rotation.
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 };
 
 }  // namespace pcd
