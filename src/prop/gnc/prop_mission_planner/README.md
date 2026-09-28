@@ -15,9 +15,11 @@ Before `bmp`, make sure:
 - `rmw_zenohd` is running (`pgrep -x rmw_zenohd`);
 - `install/setup.bash` is sourced in the shell you run `bmp` from.
 
-The node waits (logging every 5 s) for a position estimate and a clock before
+The node loads the mission first, so a wrong name fails at once. It then
+waits (logging every 5 s) for a fresh position estimate and a clock before
 starting the mission, so a missing piece above shows up as a stall, not a
-crash.
+crash. There is no default mission: without `-p mission:=<name>` it lists the
+known ones and exits.
 
 ## Running a mission
 
@@ -28,13 +30,15 @@ crash.
 as the parameter file, so the maneuvers use the same tuning as the standalone
 programs. Tab completion lists the installed missions.
 
-Watch it live in Groot2 (port 1667, `-p groot_port:=0` to turn it off). If the
+Watch it live in Groot2 (port 1667, `-p groot_port:=0` to turn it off; Groot2
+also uses the next port up, so 1 to 65534). If the
 port is already busy, or the value given is out of range, the node logs a
 warning and the mission runs without Groot2. Every transition is also printed
 to the console.
 
-Ctrl-C releases guidance and zeroes `cmd_vel`, then exits: the boat coasts, it
-does not hold position. A second Ctrl-C kills the process immediately,
+Ctrl-C releases guidance and zeroes `cmd_vel`, repeats the zero for half a
+second so a last guidance command cannot outlive it, then exits: the boat
+coasts, it does not hold position. A second Ctrl-C kills the process immediately,
 without sending those stop messages -- use it only if the first one hangs.
 
 ## Writing one
