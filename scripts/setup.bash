@@ -381,9 +381,20 @@ _bmp_share() {
 }
 
 _bmp_missions() {
-	local bt_dir
+	# Only the missions the node can actually run: the trees in files that
+	# prop_missions.xml <include>s (paths relative to the bt dir, as BT
+	# resolves them), not every XML file that happens to be installed.
+	local bt_dir index path
+	local -a files=()
 	bt_dir="$(_bmp_share prop_mission_planner)/bt" || return 0
-	grep -rhoE '<BehaviorTree ID="[^"]+"' "${bt_dir}" 2>/dev/null |
+	index="${bt_dir}/prop_missions.xml"
+	[[ -f ${index} ]] || return 0
+	while IFS='' read -r path; do
+		[[ ${path} == /* ]] || path="${bt_dir}/${path}"
+		[[ -f ${path} ]] && files+=("${path}")
+	done < <(grep -oE '<include[^>]*path="[^"]+"' "${index}" | sed -E 's/.*path="([^"]+)"/\1/')
+	[[ ${#files[@]} -gt 0 ]] || return 0
+	grep -hoE '<BehaviorTree ID="[^"]+"' "${files[@]}" 2>/dev/null |
 		sed -E 's/.*ID="([^"]+)"/\1/' | sort -u
 }
 
