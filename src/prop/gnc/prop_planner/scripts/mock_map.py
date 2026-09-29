@@ -1,36 +1,42 @@
 #!/usr/bin/env python3
-"""Publish a retained test grid with a wall and a gap; no real map input.
+"""Publish synthetic tracked detections for the persistent obstacle map.
 
-OccupancyGrid is the planner's temporary map interface. If the real mapping
-system uses another data structure, a future adapter should convert that map
-into the grid representation expected by the planner.
+The historical executable name is retained, but this publishes MarkerArray,
+not OccupancyGrid. Repeated detections satisfy ObstacleMap's confirmation gate.
 """
 import rclpy
-from nav_msgs.msg import OccupancyGrid
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile
+from visualization_msgs.msg import Marker, MarkerArray
 
 
 def main():
     rclpy.init()
     node = Node("prop_planner_mock_map")
-    topic = node.declare_parameter("map_topic", "/prop_planner/mock_map").value
-    publisher = node.create_publisher(
-        OccupancyGrid, topic,
-        QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
-    )
-    grid = OccupancyGrid()
-    grid.header.frame_id = "map"
-    grid.header.stamp = node.get_clock().now().to_msg()
-    grid.info.resolution = 1.0
-    grid.info.width = 20
-    grid.info.height = 20
-    grid.info.origin.orientation.w = 1.0
-    grid.data = [0] * 400
-    for y in range(15):
-        grid.data[y * 20 + 10] = 100
-    publisher.publish(grid)
-    node.get_logger().info(f"Published synthetic 20 x 20 grid on {topic}")
+    topic = node.declare_parameter("tracks_topic", "tracked_markers").value
+    frame = node.declare_parameter("map_frame", "map").value
+    publisher = node.create_publisher(MarkerArray, topic, 10)
+
+    def publish():
+        clear = Marker()
+        clear.action = Marker.DELETEALL
+        obstacle = Marker()
+        obstacle.header.frame_id = frame
+        obstacle.header.stamp = node.get_clock().now().to_msg()
+        obstacle.ns = "mock_tracks"
+        obstacle.id = 1
+        obstacle.type = Marker.CUBE
+        obstacle.action = Marker.ADD
+        obstacle.pose.position.x = 10.0
+        obstacle.pose.orientation.w = 1.0
+        obstacle.scale.x = 2.0
+        obstacle.scale.y = 8.0
+        obstacle.scale.z = 1.0
+        obstacle.color.r = 1.0
+        obstacle.color.a = 1.0
+        publisher.publish(MarkerArray(markers=[clear, obstacle]))
+
+    node.create_timer(0.2, publish)
+    node.get_logger().info(f"Publishing synthetic tracked detections on {topic}")
     try:
         rclpy.spin(node)
     finally:
