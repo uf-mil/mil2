@@ -22,8 +22,6 @@ Solve().
 #include <utility>
 #include <vector>
 
-#include <rclcpp/logging.hpp>
-
 namespace pcd
 {
 
@@ -103,9 +101,6 @@ class Hungarian
                 a[i][j] -= colMin;
             }
         }
-
-        RCLCPP_DEBUG(rclcpp::get_logger("hungarian"),
-                     "Hungarian::solve() — cost matrix size: %zu×%zu (expanded to %zu×%zu)", nRows, nCols, N, N);
 
         // star-prime submarking
         // mask: kMaskNone = plain, kMaskStarred = starred zero (tentative match), kMaskPrimed = primed zero
@@ -236,7 +231,7 @@ class Hungarian
                     // No: augment along the alternating path starting at (zr, zc).
                     std::vector<std::pair<int, int>> path;
 
-                    path.push_back({ zr, zc });
+                    path.emplace_back(zr, zc);
 
                     while (true)
                     {
@@ -253,7 +248,7 @@ class Hungarian
 
                         if (r < 0)
                             break;  // no starred zero in this column: path is done
-                        path.push_back({ r, c });
+                        path.emplace_back(r, c);
 
                         int c2 = -1;
                         for (std::size_t j = 0; j < N; ++j)
@@ -262,7 +257,7 @@ class Hungarian
                                 c2 = static_cast<int>(j);
                                 break;
                             }
-                        path.push_back({ r, c2 });
+                        path.emplace_back(r, c2);
                     }
 
                     // Toggle: unstar every starred zero on the path, star every
