@@ -58,7 +58,7 @@ class PropPlanner : public rclcpp::Node
         if (map_frame_.empty() || !std::isfinite(inflation_) || inflation_ < 0 || corners < 4 || corners > 64)
             throw std::invalid_argument("require a map_frame, finite nonnegative inflation, and 4..64 corners");
         planner_ = std::make_unique<prop_planner::VisibilityPlanner>(
-            prop_planner::VisibilityPlanner::Config{inflation_, corners});
+            prop_planner::VisibilityPlanner::Config{inflation_, static_cast<int>(corners)});
         tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
         tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
@@ -105,7 +105,11 @@ class PropPlanner : public rclcpp::Node
         if (no_heading) pose.pose.orientation.w = 1.0;
         if (pose.header.frame_id != map_frame_)
             pose = tf_buffer_->transform(pose, map_frame_, tf2::durationFromSec(0.2));
-        if (no_heading) pose.pose.orientation = geometry_msgs::msg::Quaternion{};
+        if (no_heading)
+        {
+            pose.pose.orientation.x = pose.pose.orientation.y = pose.pose.orientation.z = 0.0;
+            pose.pose.orientation.w = 0.0;
+        }
         return pose;
     }
 

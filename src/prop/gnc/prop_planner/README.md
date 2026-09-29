@@ -1,53 +1,68 @@
 # prop_planner
 
-On-demand 2D A* planning, separate from mission selection and path execution.
-A mission chooses destinations and their order; this node computes a route
-between a start and a goal using the latest occupancy grid. A reachable goal
-is required: a general-purpose planner cannot guarantee it can go anywhere.
+On-demand coordinate planning using Carlos's persistent `ObstacleMap` and
+visibility-graph A* from `carlos-path-plannning`. The geometry, map, search, and
+C++ tests are reused. This replaces the earlier OccupancyGrid/four-connected
+prototype; the ROS wrapper keeps the `nav_msgs/srv/GetPlan` service contract.
 
 ## Interfaces
 
-- Service: `~/plan` (normally `/prop_planner/plan`), `nav_msgs/srv/GetPlan`.
-  Supply `start` and `goal` as `PoseStamped`. An empty start frame requests the
-  latest odometry pose; an explicit start works without odometry.
-  Set `tolerance: 0.0`; nonzero tolerances are currently rejected.
-- Map input: `/prop_planner/mock_map`, `nav_msgs/msg/OccupancyGrid`, configurable
-  with `global_map_topic`. Reliable, transient-local QoS, depth 1; the publisher
-  must offer transient-local durability. This is a placeholder interface, not
-  the map branch's `obstacle_map` MarkerArray interface.
-- Position input: `/odometry/filtered/global`, `nav_msgs/msg/Odometry`, configurable
-  with `odom_topic`. Sensor-data QoS accepts best-effort and reliable publishers.
+- Service `~/plan` (normally `/prop_planner/plan`): supply stamped start and goal
+  poses with `tolerance: 0`. An empty start frame uses the latest odometry.
+  Poses are transformed into `map_frame` at their timestamps; zero timestamp
+  requests the latest TF. Missing transforms return an empty path.
+- Input `tracked_markers`: `visualization_msgs/msg/MarkerArray`, reliable/volatile
+  depth 10, configurable through `tracks_topic`. ADD/CUBE detections are
+  transformed individually and converted to capsules. DELETEALL clears the
+  tracker's visualization, not persistent obstacle memory.
+- Input `/odometry/filtered/global`: `nav_msgs/msg/Odometry`, sensor-data QoS,
+  configurable through `odom_topic`. Explicit-start requests need no odometry.
   Position logging remains throttled to once per second.
-- Result: `response.plan`, a `nav_msgs/msg/Path`. Empty means planning failed;
-  the node logs the reason. GetPlan has no separate status/message fields.
+- Response `plan`: `nav_msgs/msg/Path`, with the exact start, route waypoints,
+  and transformed goal pose. Every pose shares the path header. A zero goal
+  quaternion means no requested final heading; otherwise use a unit quaternion.
 
-The service returns a path without publishing movement commands. A mission
-caller can inspect it and then publish the accepted path on `plan` with reliable,
-transient-local QoS, depth 1, for Prop guidance. Avoid competing with the existing
-fixed-waypoint mission publisher. Requests do not initiate continuous replanning;
-map changes require another call. Subscriptions continue between calls, while a
-synchronous search temporarily occupies the node's single-threaded executor.
+The node only returns paths. It does not subscribe to `goal_pose`, publish `plan`,
+or command movement. A calling node must select the path and publish it to
+guidance with reliable, transient-local QoS, depth 1. Do not run competing
+automatic path publishers on that same topic.
 
-## Algorithm and limits
+## Map and planning behavior
 
-Four-connected A* searches free grid cells (occupancy 0–49); unknown and occupied
-cells are blocked. The result includes the exact endpoints and traversed cell
-centers, preserving the requested final orientation. Every pose shares the path's
-frame and timestamp. Endpoint-to-center connections stay inside endpoint cells.
+The reused map defaults confirm obstacles after three associated observations,
+merge observations within 2 m of their axes, and retain up to 256 entries. At
+capacity the least-seen entry is evicted. Objects do not expire just because they
+leave the sensor view. These map settings currently use the core defaults.
 
-Inputs must share the map frame; no TF conversion is performed. Only axis-aligned
-maps with a unit identity rotation are accepted. Invalid metadata, non-finite or
-out-of-bounds positions, blocked endpoints, and unreachable goals return an empty
-path. Grids are limited to one million cells to bound search memory and work.
-This is planar planning; z is carried in poses but is not collision-checked.
-The map must already include vessel clearance. There is no obstacle inflation,
-turn-radius constraint, dynamic-obstacle handling, smoothing, or input-age check.
-A collision-free grid route is not a guarantee that guidance's actual trajectory
-will clear obstacles. This is a planning prototype for synthetic maps.
+Parameters:
 
-## Build and try with a synthetic map
+| Parameter | Default | Purpose |
+| --- | --- | --- |
+| `map_frame` | `map` | Common planning frame |
+| `odom_topic` | `/odometry/filtered/global` | Estimated boat pose |
+| `tracks_topic` | `tracked_markers` | Perception detections |
+| `inflation` | `2.0` | Clearance added to obstacle radii, metres |
+| `corners_per_obstacle` | `8` | Candidates around each end cap; range 4–64 |
 
-In Bash, from the workspace root:
+A* connects candidate points with collision-free straight segments, allowing
+arbitrary directions. String pulling removes unnecessary waypoints. Search is
+shortest on the sampled graph, not guaranteed globally shortest in continuous
+space. The service rejects start/goal positions inside confirmed inflated
+obstacles before invoking the core, which otherwise ignores endpoint overlaps.
+
+Missing inputs, invalid requests, missing TF, and unreachable goals return an
+empty path with the reason logged. GetPlan has no separate status field.
+
+No perception messages yet means planning fails. An empty scan is valid and
+allows straight-line planning. Receipt does not establish complete coverage:
+unobserved space and unconfirmed detections are not blocked. There are no map
+bounds, automatic replanning, freshness checks, moving-obstacle prediction,
+curvature constraints, or vertical collision checks. A synchronous callback
+plans against one snapshot of confirmed obstacles. The default map/global
+odometry pairing matches this branch's guidance; keep frames consistent when
+connecting a caller to guidance.
+
+## Build and try
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -62,40 +77,22 @@ In another sourced terminal:
 ros2 run prop_planner mock_map.py
 ```
 
-The mock publisher retains a 20 × 20 grid with 1 m cells in `map`, starting at
-(0, 0), with a wall at x = 10–11 m and a passage beyond y = 15 m. It remains
-running so late subscribers can receive the map. In a third sourced terminal:
+The historical name `mock_map.py` is retained, but it now publishes repeated
+tracked CUBE markers, not OccupancyGrid. The synthetic obstacle is 2 m by 8 m,
+centred at (10, 0). After at least three observations, request a route around it:
 
 ```bash
 ros2 service call /prop_planner/plan nav_msgs/srv/GetPlan "{
-  start: {header: {frame_id: map}, pose: {position: {x: 2.5, y: 2.5}, orientation: {w: 1.0}}},
-  goal: {header: {frame_id: map}, pose: {position: {x: 17.5, y: 2.5}, orientation: {w: 1.0}}},
+  start: {header: {frame_id: map}, pose: {position: {x: 0.0, y: 0.0}, orientation: {w: 1.0}}},
+  goal: {header: {frame_id: map}, pose: {position: {x: 20.0, y: 0.0}, orientation: {w: 1.0}}},
   tolerance: 0.0
 }"
 ```
 
-The returned path detours through the passage. This explicit-start example needs
-no localization process. To use the boat's latest position, omit `start` and
-ensure odometry has arrived in `map`.
-
-## Relationship to existing nodes
-
-- Prop `prop_controller/src/mission.cpp` publishes a configured waypoint path
-  on `plan`. It is currently a publisher node, not a planning service.
-- Prop guidance consumes `plan` and odometry, then publishes `cmd_vel`.
-- Subjugator's PID controller consumes odometry and desired poses and publishes
-  `cmd_wrench`. Its `~/enable` and `~/reset` services manage controller state;
-  the control loop itself operates continuously through topics.
-- Subjugator localization uses `robot_localization`'s EKF to fuse IMU, DVL velocity,
-  and depth into estimated state. Its launch file exposes set-pose, enable,
-  toggle, and a custom reset service. The reset wrapper asynchronously requests
-  a zero pose; its response does not confirm completion of that downstream call.
-- Subjugator's current `PathPlanner.cpp` receives goals through a topic and
-  publishes paths; having a `PathPlan.srv` definition elsewhere does not make
-  that implementation a service server.
-
-This planner follows the persistent-node/service-callback pattern from those
-management services, but its operation is to compute and return a route.
+For real detections, stop the mock publisher and supply the perception stack's
+`tracked_markers`, TF, and localization. In simulation, set
+`--ros-args -p use_sim_time:=true` on the service. This package change does not
+import Carlos's Gazebo launch or start his automatic topic-based planner.
 
 ## Tests
 
@@ -104,8 +101,7 @@ ROS_DOMAIN_ID=87 colcon test --packages-select prop_planner --event-handlers con
 colcon test-result --test-result-base build/prop_planner --verbose
 ```
 
-Tests launch the actual executable and cover odometry logging, missing map and
-odometry, explicit and implicit starts, wall avoidance, path headers and final
-orientation, frame mismatch, unsupported tolerance, non-finite/out-of-bounds
-goals, unknown goals, unreachable routes, and malformed grids. Use an unused ROS
-domain to isolate testing from boat software.
+C++ tests cover geometry, map memory, and visibility planning. ROS tests cover
+missing inputs, empty scans, confirmation, segment clearance, map persistence,
+blocked endpoints, invalid inputs, odometry starts, TF for detections/start/goal,
+and preservation of unspecified final heading. Use an unused ROS domain.
