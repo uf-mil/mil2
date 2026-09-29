@@ -30,11 +30,19 @@ known ones and exits.
 as the parameter file, so the maneuvers use the same tuning as the standalone
 programs. Tab completion lists the installed missions.
 
-Watch it live in Groot2 (port 1667, `-p groot_port:=0` to turn it off; Groot2
-also uses the next port up, so 1 to 65534). If the
-port is already busy, or the value given is out of range, the node logs a
-warning and the mission runs without Groot2. Every transition is also printed
-to the console.
+`bmp` takes only the mission and `--sim`, like the sub's `mp`. To set any
+other parameter, run the node directly; `-p` values override the parameter
+file:
+
+    ros2 run prop_mission_planner mission_planner_node --ros-args \
+        --params-file "$(ros2 pkg prefix prop_maneuvers)/share/prop_maneuvers/config/maneuvers.yaml" \
+        -p mission:=BuoyTour -p use_sim_time:=true -p groot_port:=0
+
+Watch it live in Groot2 on port 1667 (`groot_port`; 0 turns it off, and since
+Groot2 also uses the next port up the range is 1 to 65534). If the port is
+already busy, or the value is out of range, the node logs a warning and the
+mission runs without Groot2, so a leftover runner never stops a new one.
+Every transition is also printed to the console.
 
 Ctrl-C releases guidance and zeroes `cmd_vel`, repeats the zero for half a
 second so a last guidance command cannot outlive it, then exits: the boat
