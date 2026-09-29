@@ -1,0 +1,11 @@
+---
+/pid_controller:
+  ros__parameters:
+    # vector indices correspond to x,y,z position,
+    # then roll,pitch,yaw orientation gains
+    kp: [15.0, 40.0, 0.0, 0.0, 0.0, 10.0]
+    ki: [0.05, 1.0, 0.0, 0.0, 0.0, 0.0]
+    kd: [50.0, 0.0, 0.0, 0.0, 0.0, 10.0]
+    imax: [15.0, 15.0, 0.0, 0.0, 0.0, 0.0]
+    imin: [-15.0, -15.0, 0.0, 0.0, 0.0, 0.0]
+    antiwindup: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
