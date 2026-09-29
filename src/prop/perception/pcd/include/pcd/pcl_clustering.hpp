@@ -200,10 +200,10 @@ class PclClustering : public rclcpp::Node, public PcdConstants
 
             double const height = static_cast<double>(max_z - min_z);
             double const footprint = std::max(static_cast<double>(max_x - min_x), static_cast<double>(max_y - min_y));
-            RCLCPP_INFO(get_logger(), "cluster id=%d height=%.3f footprint=%.3f ratio=%.2f", id, height, footprint,
-                        footprint / std::max(height, 1e-4));
+            RCLCPP_DEBUG(get_logger(), "cluster id=%d height=%.3f footprint=%.3f ratio=%.2f", id, height, footprint,
+                         footprint / std::max(height, 1e-4));
 
-            if ((height > 0.0 && footprint / height > cluster_flatness_threshold_))
+            if (height <= 1e-4 || footprint / height > cluster_flatness_threshold_)
             {
                 continue;  // skip: neither points nor marker get published for this cluster
             }

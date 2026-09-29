@@ -431,24 +431,23 @@ class PclTracker : public rclcpp::Node, public PcdConstants
 
         // ── 2. Build cost matrix and assign ──────────────────────────────────
         std::size_t const nT = tracks_.size();
-        std::size_t const nD = detections.size();
+        std::size_t const nD = detections.size();  // codespell:ignore
 
         // cost[i][j] = Euclidean distance between track i prediction and detection j.
         // Pairs beyond the gate are set to a huge sentinel so the solver always
-        // prefers leaving them unmatched (see hungarian.hpp for why that works).
-        std::vector<std::vector<double>> cost(nT, std::vector<double>(nD, 0.0));
+        // prefers leaving them unmatched
+        std::vector<std::vector<double>> cost(nT, std::vector<double>(nD, 0.0));  // codespell:ignore
+
         for (std::size_t i = 0; i < nT; ++i)
         {
-            for (std::size_t j = 0; j < nD; ++j)
+            for (std::size_t j = 0; j < nD; ++j)  // codespell:ignore
+
             {
-                double dx = tracks_[i].x[0] - detections[j]->pose.position.x;
-                double dy = tracks_[i].x[1] - detections[j]->pose.position.y;
+                double const dx = tracks_[i].x[0] - detections[j]->pose.position.x;
+                double const dy = tracks_[i].x[1] - detections[j]->pose.position.y;
                 double const dist = std::sqrt(dx * dx + dy * dy);
 
-                RCLCPP_INFO(get_logger(), "Before the accessing the hungarian");
                 cost[i][j] = (dist <= max_association_dist_) ? dist : Hungarian::kGateRejectCost;
-
-                RCLCPP_INFO(get_logger(), "after the accessing the hungarian");
             }
         }
 
@@ -456,13 +455,12 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         // match, which was order-dependent and prone to ID switches whenever two
         // tracks' gating windows overlapped).
         std::vector<int> track_to_det(nT, -1);  // which detection matched each track
-        std::vector<bool> det_used(nD, false);
+        std::vector<bool> det_used(nD, false);  // codespell:ignore
 
-        if (nT > 0 && nD > 0)
+        if (nT > 0 && nD > 0)  // codespell:ignore
+
         {
-            RCLCPP_INFO(get_logger(), "Before the solving the hungarian");
             Hungarian::solve(cost, track_to_det);
-            RCLCPP_INFO(get_logger(), "after the accessing the hungarian");
 
             // A match against a gate-rejected pair is still a valid *assignment*
             // as far as the solver is concerned (it only avoided it when a cheaper
@@ -509,7 +507,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         }
 
         // ── 4. Spawn new tracks for unmatched detections ──────────────────────
-        for (std::size_t j = 0; j < nD; ++j)
+        for (std::size_t j = 0; j < nD; ++j)  // codespell:ignore
         {
             if (!det_used[j])
                 tracks_.push_back(make_track(*detections[j]));
@@ -524,7 +522,8 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         publish_tracks(header);
 
         RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
-                             "Tracks: %zu total  |  detections: %zu  |  published: %zu", tracks_.size(), nD,
+                             "Tracks: %zu total  |  detections: %zu  |  published: %zu", tracks_.size(),
+                             nD,  // codespell:ignore
                              confirmed_count_);
     }
 

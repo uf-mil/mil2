@@ -6,7 +6,10 @@
  * publishes "tracked_markers" with stable per-object EKF track IDs.
  */
 
-#include <rclcpp/rclcpp.hpp>
+#include <memory>
+
+#include <rclcpp/executors.hpp>
+#include <rclcpp/utilities.hpp>
 
 #include "pcd/pcl_tracker.hpp"
 

@@ -13,24 +13,29 @@ Solve().
 
 */
 
+#pragma once
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <utility>
 #include <vector>
 
-#include <rclcpp/rclcpp.hpp>
+#include <rclcpp/logging.hpp>
 
 namespace pcd
 {
 
-class Hungarian : public rclcpp::Node
+class Hungarian
 {
   public:
-    Hungarian();
-    ~Hungarian();
     static constexpr double kEps = 1e-9;
     static constexpr double kGateRejectCost = 1.0e9;
+
+    static constexpr int kMaskNone = 0;
+    static constexpr int kMaskStarred = 1;
+    static constexpr int kMaskPrimed = 2;
 
     // Method to solve the assignment problem
     // Rows can be tracks
@@ -99,32 +104,27 @@ class Hungarian : public rclcpp::Node
             }
         }
 
-        RCLCPP_INFO(rclcpp::get_logger("hungarian"),
-                    "Hungarian::solve() — cost matrix size: %zu×%zu (expanded to %zu×%zu)", nRows, nCols, N, N);
+        RCLCPP_DEBUG(rclcpp::get_logger("hungarian"),
+                     "Hungarian::solve() — cost matrix size: %zu×%zu (expanded to %zu×%zu)", nRows, nCols, N, N);
 
         // star-prime submarking
-
-        // mask: 0 = plain, 1 = starred zero (tentative match), 2 = primed zero
-        std::vector<std::vector<int>> mask(N, std::vector<int>(N, 0));
+        // mask: kMaskNone = plain, kMaskStarred = starred zero (tentative match), kMaskPrimed = primed zero
+        std::vector<std::vector<int>> mask(N, std::vector<int>(N, kMaskNone));
         std::vector<bool> rowCover(N, false), colCover(N, false);
 
         auto isZero = [&](double v) { return std::fabs(v) < kEps; };
 
         // Initial starring: one starred zero per row/col, greedily.
-
         for (std::size_t i = 0; i < N; ++i)
-
             for (std::size_t j = 0; j < N; ++j)
-
                 if (isZero(a[i][j]) && !rowCover[i] && !colCover[j])
                 {
-                    mask[i][j] = 1;
+                    mask[i][j] = kMaskStarred;
                     rowCover[i] = true;
                     colCover[j] = true;
                 }
 
         std::fill(rowCover.begin(), rowCover.end(), false);
-
         std::fill(colCover.begin(), colCover.end(), false);
 
         auto coverStarredColumns = [&]()
@@ -132,11 +132,8 @@ class Hungarian : public rclcpp::Node
             std::fill(colCover.begin(), colCover.end(), false);
 
             for (std::size_t i = 0; i < N; ++i)
-
                 for (std::size_t j = 0; j < N; ++j)
-
-                    if (mask[i][j] == 1)
-
+                    if (mask[i][j] == kMaskStarred)
                         colCover[j] = true;
         };
 
@@ -216,12 +213,12 @@ class Hungarian : public rclcpp::Node
                     continue;  // retry: an uncovered zero now exists
                 }
 
-                mask[zr][zc] = 2;  // prime it
+                mask[zr][zc] = kMaskPrimed;  // prime it
 
                 // Is there a starred zero in this row?
                 int starCol = -1;
                 for (std::size_t j = 0; j < N; ++j)
-                    if (mask[zr][j] == 1)
+                    if (mask[zr][j] == kMaskStarred)
                     {
                         starCol = static_cast<int>(j);
                         break;
@@ -248,22 +245,19 @@ class Hungarian : public rclcpp::Node
                         int r = -1;
 
                         for (std::size_t i = 0; i < N; ++i)
-
-                            if (mask[i][c] == 1)
+                            if (mask[i][c] == kMaskStarred)
                             {
                                 r = static_cast<int>(i);
-
                                 break;
                             }
 
                         if (r < 0)
-
                             break;  // no starred zero in this column: path is done
                         path.push_back({ r, c });
 
                         int c2 = -1;
                         for (std::size_t j = 0; j < N; ++j)
-                            if (mask[r][j] == 2)
+                            if (mask[r][j] == kMaskPrimed)
                             {
                                 c2 = static_cast<int>(j);
                                 break;
@@ -273,25 +267,20 @@ class Hungarian : public rclcpp::Node
 
                     // Toggle: unstar every starred zero on the path, star every
                     // primed zero on the path -> one more starred zero overall.
-
                     for (auto const &rc : path)
                     {
-                        if (mask[rc.first][rc.second] == 1)
-
-                            mask[rc.first][rc.second] = 0;
-
-                        else if (mask[rc.first][rc.second] == 2)
-
-                            mask[rc.first][rc.second] = 1;
+                        if (mask[rc.first][rc.second] == kMaskStarred)
+                            mask[rc.first][rc.second] = kMaskNone;
+                        else if (mask[rc.first][rc.second] == kMaskPrimed)
+                            mask[rc.first][rc.second] = kMaskStarred;
                     }
 
                     std::fill(rowCover.begin(), rowCover.end(), false);
 
                     for (std::size_t i = 0; i < N; ++i)
-
                         for (std::size_t j = 0; j < N; ++j)
-                            if (mask[i][j] == 2)
-                                mask[i][j] = 0;
+                            if (mask[i][j] == kMaskPrimed)
+                                mask[i][j] = kMaskNone;
 
                     coverStarredColumns();
                     augmented = true;
@@ -305,10 +294,8 @@ class Hungarian : public rclcpp::Node
         double total = 0.0;
 
         for (std::size_t i = 0; i < nRows; ++i)
-
             for (std::size_t j = 0; j < nCols; ++j)
-
-                if (mask[i][j] == 1)
+                if (mask[i][j] == kMaskStarred)
                 {
                     assignment[i] = static_cast<int>(j);
                     total += cost_in[i][j];

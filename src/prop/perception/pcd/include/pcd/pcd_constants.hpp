@@ -126,7 +126,7 @@ class PcdConstants
     /// Maximum number of points allowed in a single cluster.
     int cluster_max_points_{ 25000 };
 
-    float cluster_flatness_threshold_{ 3.0 };  ///< Max Z extent / XY extent ratio to consider a cluster "flat"
+    double cluster_flatness_threshold_{ 3.0 };  ///< Max Z extent / XY extent ratio to consider a cluster "flat"
 
     // ── EKF tracker ──────────────────────────────────────────────────────────
     /// Max centroid-to-centroid distance [m] for nearest-neighbour association.
