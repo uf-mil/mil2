@@ -53,7 +53,12 @@ planner:
     # ─────────────────────────────────────────────────
     # Output
     # ─────────────────────────────────────────────────
-    map_frame: "map"
+    # The frame obstacles are remembered in and the plan is published in.
+    # Overridden by the launch file's frame argument, which keeps it in step
+    # with whichever odometry the planner is following - the two have to name
+    # the same frame or the boat's position and the obstacles are not
+    # comparable. The node refuses to plan when they disagree.
+    map_frame: "odom"
 
     # How often a new route is worked out. Well under perception rate on
     # purpose: guidance restarts its leg tracking on every plan it receives.

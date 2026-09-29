@@ -143,6 +143,15 @@ void ObstacleMap::observe(Capsule observation)
         {
             evict_least_seen();
         }
+        // Below the deadband a length is not evidence of extent, so it is not
+        // worth recording either. Without this a round buoy keeps whatever
+        // spurious length its very first frame happened to fit, forever -
+        // every later observation only slides it, never shortens it.
+        if (length(observation) <= config_.extent_deadband)
+        {
+            Point const centre = midpoint(observation);
+            observation = Capsule{ centre, centre, observation.radius };
+        }
         obstacles_.push_back(Obstacle{ observation, 1 });
         return;
     }

@@ -8,6 +8,7 @@
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
+#include "mil_msgs/msg/perception_object_array.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "prop_planner/obstacle_map.hpp"
@@ -25,7 +26,15 @@ namespace prop_planner
 //        odometry/filtered/global  nav_msgs/Odometry
 //        goal_pose                 geometry_msgs/PoseStamped, RViz's "2D Goal Pose"
 //   out  plan                      nav_msgs/Path, map frame, latched
-//        obstacle_map              visualization_msgs/MarkerArray, what it remembers
+//        obstacles                 mil_msgs/PerceptionObjectArray, the map itself
+//        obstacle_map              visualization_msgs/MarkerArray, the same thing drawn
+//
+// Two outputs for the map because they are for different readers. obstacles
+// carries the entries as data - one object per capsule, with its axis, extent
+// and hit count - and is what to echo or subscribe to. obstacle_map is a
+// rendering of those same entries for RViz, and a rendering cannot be read
+// back: a capsule draws as two caps and a body, so counting its markers counts
+// shapes rather than obstacles.
 //
 // Detections are remembered in the map frame. That is the only frame here a
 // moored buoy holds still in: odom is fed by an EKF with orientation and
@@ -46,6 +55,7 @@ class Planner : public rclcpp::Node
     void replan();
     void publish_plan(std::vector<Point> const& route) const;
     void publish_obstacles(std::vector<Obstacle> const& obstacles) const;
+    void publish_objects(std::vector<Obstacle> const& obstacles) const;
 
     /// Whether the route says something new enough to interrupt guidance for.
     bool worth_publishing(std::vector<Point> const& route) const;
@@ -74,6 +84,7 @@ class Planner : public rclcpp::Node
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr plan_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obstacles_pub_;
+    rclcpp::Publisher<mil_msgs::msg::PerceptionObjectArray>::SharedPtr objects_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
 };
 

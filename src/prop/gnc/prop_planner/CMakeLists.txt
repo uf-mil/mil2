@@ -12,6 +12,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(mil_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(tf2 REQUIRED)
@@ -33,6 +34,7 @@ target_link_libraries(planner prop_planner_core)
 ament_target_dependencies(
   planner
   geometry_msgs
+  mil_msgs
   nav_msgs
   rclcpp
   tf2

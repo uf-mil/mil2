@@ -11,6 +11,8 @@
 
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "mil_msgs/msg/perception_object.hpp"
+#include "std_msgs/msg/color_rgba.hpp"
 #include "tf2/time.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "visualization_msgs/msg/marker.hpp"
@@ -88,23 +90,52 @@ Planner::Planner()
         "tracked_markers", rclcpp::QoS(10),
         [this](visualization_msgs::msg::MarkerArray::SharedPtr const msg) { tracks_callback(*msg); });
 
-    odom_sub_ = create_subscription<nav_msgs::msg::Odometry>("odometry/filtered/global", 10,
-                                                             [this](nav_msgs::msg::Odometry::SharedPtr const msg)
-                                                             {
-                                                                 position_ = { msg->pose.pose.position.x,
-                                                                               msg->pose.pose.position.y };
-                                                                 located_ = true;
-                                                             });
+    // Relative, so which estimate this follows is a remap in the launch file.
+    // It has to be the one published in map_frame_: the boat's position and
+    // the obstacles are compared directly, so a mismatch plans a real route
+    // through the wrong water.
+    odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
+        "odometry", 10,
+        [this](nav_msgs::msg::Odometry::SharedPtr const msg)
+        {
+            if (msg->header.frame_id != map_frame_)
+            {
+                RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000,
+                                      "odometry is in %s but the map is in %s, so nothing can be planned. Remap "
+                                      "odometry to the estimate published in %s, or set map_frame to %s.",
+                                      msg->header.frame_id.c_str(), map_frame_.c_str(), map_frame_.c_str(),
+                                      msg->header.frame_id.c_str());
+                return;
+            }
+            position_ = { msg->pose.pose.position.x, msg->pose.pose.position.y };
+            located_ = true;
+        });
 
     goal_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
         "goal_pose", 10,
         [this](geometry_msgs::msg::PoseStamped::SharedPtr const msg)
         {
-            goal_ = { msg->pose.position.x, msg->pose.position.y };
-            goal_orientation_ = msg->pose.orientation;
+            // RViz publishes a goal in whatever its Fixed Frame is set to,
+            // which is not necessarily the frame being planned in. Transform
+            // rather than reject, so changing that dropdown to look at
+            // something does not quietly send the boat somewhere else.
+            geometry_msgs::msg::PoseStamped goal;
+            try
+            {
+                goal = tf_buffer_->transform(*msg, map_frame_, tf2::durationFromSec(0.2));
+            }
+            catch (tf2::TransformException const& ex)
+            {
+                RCLCPP_WARN(get_logger(), "goal in %s cannot be brought into %s, ignoring it: %s",
+                            msg->header.frame_id.c_str(), map_frame_.c_str(), ex.what());
+                return;
+            }
+
+            goal_ = { goal.pose.position.x, goal.pose.position.y };
+            goal_orientation_ = goal.pose.orientation;
             has_goal_ = true;
             published_.clear();  // a new goal always deserves a fresh plan
-            RCLCPP_INFO(get_logger(), "new goal at (%.1f, %.1f)", goal_.x, goal_.y);
+            RCLCPP_INFO(get_logger(), "new goal at (%.1f, %.1f) in %s", goal_.x, goal_.y, map_frame_.c_str());
         });
 
     // Guidance subscribes transient local, so a plan published before it is up
@@ -113,6 +144,7 @@ Planner::Planner()
     latched.transient_local();
     plan_pub_ = create_publisher<nav_msgs::msg::Path>("plan", latched);
     obstacles_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("obstacle_map", rclcpp::QoS(1));
+    objects_pub_ = create_publisher<mil_msgs::msg::PerceptionObjectArray>("obstacles", rclcpp::QoS(1));
 
     timer_ = create_wall_timer(std::chrono::duration<double>(1.0 / rate), [this] { replan(); });
 
@@ -160,6 +192,7 @@ void Planner::tracks_callback(visualization_msgs::msg::MarkerArray const& msg)
 void Planner::replan()
 {
     std::vector<Obstacle> const obstacles = map_.confirmed();
+    publish_objects(map_.all());
     publish_obstacles(map_.all());
 
     if (!located_ || !has_goal_)
@@ -228,92 +261,167 @@ void Planner::publish_plan(std::vector<Point> const& route) const
     plan_pub_->publish(path);
 }
 
+namespace
+{
+
+/// Append a capsule to the array as the shapes that draw it: a cylinder at
+/// each end cap, and the rectangle between them when it has any length.
+///
+/// Four ids are reserved per capsule so two entries can never collide on a
+/// (namespace, id) pair, which is what RViz keys markers on - a collision
+/// silently overwrites.
+void append_capsule(visualization_msgs::msg::MarkerArray& markers, std_msgs::msg::Header const& header,
+                    std::string const& ns, int base, Capsule const& capsule, std_msgs::msg::ColorRGBA const& color,
+                    double height)
+{
+    visualization_msgs::msg::Marker cap;
+    cap.header = header;
+    cap.ns = ns;
+    cap.action = visualization_msgs::msg::Marker::ADD;
+    cap.type = visualization_msgs::msg::Marker::CYLINDER;
+    cap.color = color;
+    cap.pose.orientation.w = 1.0;
+    cap.scale.x = cap.scale.y = 2.0 * capsule.radius;
+    cap.scale.z = height;
+
+    cap.id = base;
+    cap.pose.position.x = capsule.a.x;
+    cap.pose.position.y = capsule.a.y;
+    markers.markers.push_back(cap);
+
+    double const span = length(capsule);
+    if (span <= 1e-6)
+    {
+        return;  // a round obstacle: one cap is the whole shape
+    }
+
+    cap.id = base + 1;
+    cap.pose.position.x = capsule.b.x;
+    cap.pose.position.y = capsule.b.y;
+    markers.markers.push_back(cap);
+
+    Point const centre = midpoint(capsule);
+    visualization_msgs::msg::Marker body = cap;
+    body.id = base + 2;
+    body.type = visualization_msgs::msg::Marker::CUBE;
+    body.pose.position.x = centre.x;
+    body.pose.position.y = centre.y;
+    body.pose.orientation = quaternion_of(std::atan2(capsule.b.y - capsule.a.y, capsule.b.x - capsule.a.x));
+    body.scale.x = span;
+    body.scale.y = 2.0 * capsule.radius;
+    markers.markers.push_back(body);
+}
+
+std_msgs::msg::ColorRGBA rgba(float r, float g, float b, float a)
+{
+    std_msgs::msg::ColorRGBA color;
+    color.r = r;
+    color.g = g;
+    color.b = b;
+    color.a = a;
+    return color;
+}
+
+}  // namespace
+
 void Planner::publish_obstacles(std::vector<Obstacle> const& obstacles) const
 {
     visualization_msgs::msg::MarkerArray markers;
 
+    std_msgs::msg::Header header;
+    header.frame_id = map_frame_;
+    header.stamp = now();
+
     visualization_msgs::msg::Marker clear;
-    clear.header.frame_id = map_frame_;
-    clear.header.stamp = now();
+    clear.header = header;
     clear.action = visualization_msgs::msg::Marker::DELETEALL;
     markers.markers.push_back(clear);
 
-    int id = 0;
+    int index = 0;
     for (Obstacle const& obstacle : obstacles)
     {
+        // Eight ids per entry: four for the margin, four for the shape inside
+        // it, and the label takes the last.
+        int const base = 8 * index++;
         bool const confirmed = map_.is_confirmed(obstacle);
+        std::string const suffix = confirmed ? "confirmed" : "pending";
 
-        // Drawn at the radius the planner actually keeps clear, not the one
-        // the lidar measured, so what RViz shows is what the boat will do.
-        Capsule const kept_clear = inflate(obstacle.shape, inflation_);
-        double const span = length(kept_clear);
-
-        // Two namespaces rather than two colours alone, so RViz can show
-        // either on its own and anything reading this can tell them apart
-        // without guessing at a shade.
-        visualization_msgs::msg::Marker shape;
-        shape.header = clear.header;
-        shape.ns = confirmed ? "confirmed" : "pending";
-        shape.action = visualization_msgs::msg::Marker::ADD;
-        shape.color.r = confirmed ? 0.95f : 0.45f;
-        shape.color.g = confirmed ? 0.55f : 0.45f;
-        shape.color.b = confirmed ? 0.15f : 0.45f;
-        shape.color.a = confirmed ? 0.35f : 0.15f;
-        shape.pose.orientation.w = 1.0;
-        shape.scale.z = 0.2;
-
-        // A capsule draws as its two round caps with the rectangle between
-        // them. A round obstacle has no rectangle and both caps coincide, so
-        // it comes out as the single cylinder it should be.
-        shape.type = visualization_msgs::msg::Marker::CYLINDER;
-        shape.scale.x = shape.scale.y = 2.0 * kept_clear.radius;
-
-        shape.id = id++;
-        shape.pose.position.x = kept_clear.a.x;
-        shape.pose.position.y = kept_clear.a.y;
-        markers.markers.push_back(shape);
-
-        if (span > 1e-6)
-        {
-            shape.id = id++;
-            shape.pose.position.x = kept_clear.b.x;
-            shape.pose.position.y = kept_clear.b.y;
-            markers.markers.push_back(shape);
-
-            Point const centre = midpoint(kept_clear);
-            visualization_msgs::msg::Marker body = shape;
-            body.id = id++;
-            body.type = visualization_msgs::msg::Marker::CUBE;
-            body.pose.position.x = centre.x;
-            body.pose.position.y = centre.y;
-            body.pose.orientation =
-                quaternion_of(std::atan2(kept_clear.b.y - kept_clear.a.y, kept_clear.b.x - kept_clear.a.x));
-            body.scale.x = span;
-            body.scale.y = 2.0 * kept_clear.radius;
-            markers.markers.push_back(body);
-        }
+        // Two rings, because they answer different questions. The outer one is
+        // what the planner keeps clear and is the only one that explains the
+        // route it picked; the inner one is what the lidar actually measured,
+        // which at this scale the margin would otherwise swallow whole.
+        append_capsule(markers, header, "margin_" + suffix, base, inflate(obstacle.shape, inflation_),
+                       confirmed ? rgba(0.95f, 0.55f, 0.15f, 0.18f) : rgba(0.45f, 0.45f, 0.45f, 0.10f), 0.05);
+        append_capsule(markers, header, "detected_" + suffix, base + 4, obstacle.shape,
+                       confirmed ? rgba(1.0f, 0.35f, 0.05f, 0.9f) : rgba(0.6f, 0.6f, 0.6f, 0.6f), 0.6);
 
         // The hit count is what tells you whether an entry is about to be
         // confirmed or stuck one short, so it goes where it can be read.
+        Point const centre = midpoint(obstacle.shape);
         visualization_msgs::msg::Marker label;
-        label.header = clear.header;
-        label.ns = confirmed ? "confirmed_hits" : "pending_hits";
-        label.id = id;
+        label.header = header;
+        label.ns = "hits_" + suffix;
+        label.id = base + 7;
         label.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
         label.action = visualization_msgs::msg::Marker::ADD;
-        Point const centre = midpoint(kept_clear);
         label.pose.position.x = centre.x;
         label.pose.position.y = centre.y;
-        label.pose.position.z = 1.0;
+        label.pose.position.z = 1.2;
         label.pose.orientation.w = 1.0;
-        label.scale.z = 0.8;
-        label.color.r = label.color.g = label.color.b = 1.0f;
-        label.color.a = 0.9f;
+        label.scale.z = 0.5;
+        label.color = rgba(1.0f, 1.0f, 1.0f, 0.85f);
         label.text = std::to_string(obstacle.hits);
         markers.markers.push_back(label);
     }
 
     obstacles_pub_->publish(markers);
+}
+
+void Planner::publish_objects(std::vector<Obstacle> const& obstacles) const
+{
+    mil_msgs::msg::PerceptionObjectArray objects;
+    objects.objects.reserve(obstacles.size());
+
+    uint32_t id = 0;
+    for (Obstacle const& obstacle : obstacles)
+    {
+        Capsule const& shape = obstacle.shape;
+        Point const centre = midpoint(shape);
+
+        mil_msgs::msg::PerceptionObject object;
+        object.header.frame_id = map_frame_;
+        object.header.stamp = now();
+        object.id = id++;
+
+        // The capsule, as an oriented extent: the pose is the middle of the
+        // axis and the way it runs, scale.x is the axis length and scale.y the
+        // full width. A round entry has a zero length axis, which is what a
+        // buoy should be.
+        object.pose.position.x = centre.x;
+        object.pose.position.y = centre.y;
+        object.pose.orientation = quaternion_of(std::atan2(shape.b.y - shape.a.y, shape.b.x - shape.a.x));
+        object.scale.x = length(shape);
+        object.scale.y = 2.0 * shape.radius;
+        object.scale.z = 0.0;
+
+        // Observations, and whether that is enough to be planned around.
+        object.confidence = static_cast<float>(obstacle.hits);
+        object.labeled_classification = map_.is_confirmed(obstacle) ? "confirmed" : "pending";
+
+        // The axis endpoints, for anything that would rather have the capsule
+        // than rebuild it from the pose.
+        geometry_msgs::msg::Point32 end;
+        end.x = static_cast<float>(shape.a.x);
+        end.y = static_cast<float>(shape.a.y);
+        object.points.push_back(end);
+        end.x = static_cast<float>(shape.b.x);
+        end.y = static_cast<float>(shape.b.y);
+        object.points.push_back(end);
+
+        objects.objects.push_back(object);
+    }
+
+    objects_pub_->publish(objects);
 }
 
 }  // namespace prop_planner
