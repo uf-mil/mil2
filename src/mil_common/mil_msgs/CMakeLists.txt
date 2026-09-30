@@ -25,6 +25,8 @@ set(msg_files
     "msg/PerceptionTarget.msg"
     "msg/PerceptionObjectArray.msg"
     "msg/PerceptionTargetArray.msg"
+    "msg/PipelineSegmentStatus.msg"
+    "msg/PipelineSurveyReport.msg"
     "msg/Point2D.msg"
     "msg/PoseTwistStamped.msg"
     "msg/PoseTwist.msg"
