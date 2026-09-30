@@ -43,7 +43,10 @@
     # ─────────────────────────────────────────────────
     # Euclidean cluster extraction
     # ─────────────────────────────────────────────────
-    cluster_tolerance: 0.1    # [m]  max neighbour distance for the same cluster
+    # Must exceed the gap between lidar rings on a target (2 deg apart: ~0.35 m
+    # at 10 m), or each ring becomes its own cluster and none reaches
+    # cluster_min_points. 0.1 split every buoy past ~5 m.
+    cluster_tolerance: 0.5    # [m]  max neighbour distance for the same cluster
     # Counted AFTER the voxel grid, so this is occupied 10 cm cubes, not lidar
     # returns. One ring across a 0.5 m buoy fills ~5; the ~0.4 m of buoy above
     # water_z_min is crossed by 2-3 rings only inside ~10 m.
