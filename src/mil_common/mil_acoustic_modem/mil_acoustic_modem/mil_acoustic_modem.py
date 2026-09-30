@@ -1,6 +1,7 @@
 # This node will run on the boat and sub
 
 import rclpy
+import serial.tools.list_ports
 from mil_msgs.msg import PipelineSegmentStatus, PipelineSurveyReport, Point2D
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
@@ -15,7 +16,7 @@ class AcousticModem(Node):
     def __init__(self):
         super().__init__("acoustic_modem")
 
-        self.declare_parameter("modem_serial_port", "/dev/ttyACM1")
+        self.declare_parameter("modem_serial_port", "AUTO")
         self.declare_parameter("local_address", 0)
         self.declare_parameter("remote_address", 0)
         self.declare_parameter("carrier_waveform_id", 0)
@@ -50,12 +51,30 @@ class AcousticModem(Node):
         ):
             self.modem = TestingModemInterface()
         else:
-            self.modem = HardwareModemInterface(
-                "modem",
+            serial_port = (
                 self.get_parameter("modem_serial_port")
                 .get_parameter_value()
-                .string_value,
+                .string_value
             )
+            if serial_port == "AUTO":
+                ports = serial.tools.list_ports.comports()
+
+                if not ports:
+                    print("No USB serial devices found")
+                    raise SystemExit
+
+                modem_port = next(
+                    (port for port in ports if "04D8:00DF" in port.hwid),
+                    None,
+                )
+
+                if modem_port is None:
+                    print("No modem serial device found")
+                    raise SystemExit
+
+                serial_port = modem_port.device
+
+            self.modem = HardwareModemInterface("modem", serial_port)
             self.modem.init_modem()
             self.modem.set_setting("Highest Address", 2)
             self.modem.set_setting(
@@ -132,7 +151,11 @@ def main(args=None):
 
     executor = MultiThreadedExecutor()
     executor.add_node(acoustic_modem)
-    executor.spin()
+
+    try:
+        executor.spin()
+    except SystemExit:
+        print("Quitting")
 
     acoustic_modem.destroy_node()
     rclpy.shutdown()
