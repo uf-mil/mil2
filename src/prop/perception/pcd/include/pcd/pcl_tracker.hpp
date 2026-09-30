@@ -3,24 +3,28 @@
  * performs frame-to-frame data association so that each physical object
  * keeps the same integer track ID across frames.
  *
- * Now listens to TF transforms to convert incoming detections into /odom (global) frame.
- * Makes a global map of all detected objects in the global frame.
+ * Transforms incoming detections into target_frame (typically odom).
  *
  * Algorithm (similar to the multi_object_tracking_lidar by Praveen Palanisamy,
  * ported to ROS 2 with a native C++ implementation):
  *
  *   1. For each incoming detection frame:
- *        a. Predict all existing tracks forward (constant-velocity EKF).
- *        b. Build a cost matrix: distance(predicted_centroid, detection),
+ *        a. Transform CUBE markers into target_frame at the marker stamp
+ *           (short TF timeout). EKF dt is taken from that stamp, not arrival time.
+ *        b. Merge detections whose AABB gap is <= merge_gap (union-find), then
+ *           cap at max_detections.
+ *        c. Predict all existing tracks forward (constant-velocity EKF).
+ *        d. Build a cost matrix: distance(predicted_centroid, detection),
  *           gated by max_association_dist (out-of-range pairs get a huge
  *           sentinel cost so they are effectively excluded).
- *        c. Hungarian (Kuhn–Munkres) assignment — globally-optimal, unlike
+ *        e. Hungarian (Kuhn–Munkres) assignment — globally-optimal, unlike
  *           a greedy nearest-neighbour match. See hungarian.hpp.
- *        d. Update matched tracks; increment miss counter for unmatched tracks.
- *        e. Spawn new tracks for unmatched detections.
- *        f. Delete tracks whose miss counter exceeds max_missed_frames.
- *   2. Publish all confirmed tracks (hits >= min_hits) as a MarkerArray with
- *      stable .id fields and per-track colours. - publishes on /tracked_markers
+ *        f. Update matched tracks (hits++); on a miss reset hits and increment
+ *           missed. Spawn unmatched detections only while under max_tracks.
+ *        g. Delete tentative tracks after max_missed_tentative misses and
+ *           confirmed tracks after max_missed_frames.
+ *   2. Publish all confirmed tracks as a MarkerArray with stable .id fields
+ *      and per-track colours on /tracked_markers.
  *
  * EKF state:  x = [px, py, vx, vy]^T  (2-D constant-velocity model)
  * Measurement: z = [px, py]^T          (centroid of bounding-box marker)
@@ -28,10 +32,12 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -217,8 +223,9 @@ inline TrackRgb track_color(int id)
 struct Track
 {
     int id{ -1 };
-    int hits{ 0 };    ///< consecutive frames matched
-    int missed{ 0 };  ///< consecutive frames without match
+    int hits{ 0 };            ///< consecutive frames matched (reset on miss)
+    int missed{ 0 };          ///< consecutive frames without match
+    bool confirmed{ false };  ///< sticky; set once hits reach min_hits
 
     // EKF state and covariance
     ekf_math::Vec4 x{};   ///< [px, py, vx, vy]
@@ -259,8 +266,10 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("tracked_markers", rclcpp::QoS(1));
 
         RCLCPP_INFO(get_logger(),
-                    "pcl_tracker started — target_frame='%s'  assoc_dist=%.1f m  max_miss=%d  min_hits=%d",
-                    target_frame_.c_str(), max_association_dist_, max_missed_frames_, min_hits_);
+                    "pcl_tracker started — target_frame='%s'  assoc_dist=%.1f m  "
+                    "max_miss=%d/%d  min_hits=%d  max_tracks=%d  merge_gap=%.2f m",
+                    target_frame_.c_str(), max_association_dist_, max_missed_tentative_, max_missed_frames_, min_hits_,
+                    max_tracks_, merge_gap_);
     }
 
   private:
@@ -273,16 +282,17 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         t.id = next_id_++;
         t.hits = 1;
         t.missed = 0;
+        t.confirmed = (t.hits >= min_hits_);
 
         // EKF initial state: position from marker centroid, zero velocity.
         t.x = { m.pose.position.x, m.pose.position.y, 0.0, 0.0 };
 
-        // Initial covariance — large positional uncertainty, zero velocity.
+        // Initial covariance — large positional uncertainty, modest velocity.
         t.P = {};
-        t.P[0][0] = 5.0;   // px variance
-        t.P[1][1] = 5.0;   // py variance
-        t.P[2][2] = 10.0;  // vx variance
-        t.P[3][3] = 10.0;  // vy variance
+        t.P[0][0] = 5.0;  // px variance
+        t.P[1][1] = 5.0;  // py variance
+        t.P[2][2] = 1.0;  // vx variance
+        t.P[3][3] = 1.0;  // vy variance
 
         t.scale_x = m.scale.x;
         t.scale_y = m.scale.y;
@@ -315,6 +325,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         Q[3][3] = q_vel;
 
         t.P = mat44_add(mat44_mul_transpose(mat44_mul(F, t.P), F), Q);
+        clamp_velocity(t);
     }
 
     ///  update step with measurement z = [px, py].
@@ -368,12 +379,128 @@ class PclTracker : public rclcpp::Node, public PcdConstants
             for (int j = 0; j < 4; ++j)
                 IKH[i][j] = I[i][j] - KH[i][j];
         t.P = mat44_mul(IKH, t.P);
+        clamp_velocity(t);
+    }
+
+    void clamp_velocity(Track& t) const
+    {
+        double const speed = std::hypot(t.x[2], t.x[3]);
+        if (speed > max_track_speed_ && speed > 1e-9)
+        {
+            double const s = max_track_speed_ / speed;
+            t.x[2] *= s;
+            t.x[3] *= s;
+        }
+    }
+
+    /// Merge AABB detections whose box-to-box gap is <= merge_gap_ (union-find).
+    std::vector<visualization_msgs::msg::Marker>
+    merge_detections(std::vector<visualization_msgs::msg::Marker> const& boxes) const
+    {
+        std::size_t const n = boxes.size();
+        if (n <= 1)
+        {
+            return boxes;
+        }
+
+        std::vector<int> parent(n);
+        std::iota(parent.begin(), parent.end(), 0);
+
+        auto find = [&](auto&& self, int i) -> int
+        {
+            return parent[static_cast<std::size_t>(i)] == i ?
+                       i :
+                       parent[static_cast<std::size_t>(i)] = self(self, parent[static_cast<std::size_t>(i)]);
+        };
+        auto unite = [&](int a, int b)
+        {
+            a = find(find, a);
+            b = find(find, b);
+            if (a != b)
+            {
+                parent[static_cast<std::size_t>(b)] = a;
+            }
+        };
+
+        auto aabb_gap = [](visualization_msgs::msg::Marker const& a, visualization_msgs::msg::Marker const& b)
+        {
+            double const gap_x =
+                std::max(0.0, std::abs(a.pose.position.x - b.pose.position.x) - (a.scale.x + b.scale.x) / 2.0);
+            double const gap_y =
+                std::max(0.0, std::abs(a.pose.position.y - b.pose.position.y) - (a.scale.y + b.scale.y) / 2.0);
+            return std::hypot(gap_x, gap_y);
+        };
+
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            for (std::size_t j = i + 1; j < n; ++j)
+            {
+                if (aabb_gap(boxes[i], boxes[j]) <= merge_gap_)
+                {
+                    unite(static_cast<int>(i), static_cast<int>(j));
+                }
+            }
+        }
+
+        std::vector<std::vector<std::size_t>> groups(n);
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            groups[static_cast<std::size_t>(find(find, static_cast<int>(i)))].push_back(i);
+        }
+
+        std::vector<visualization_msgs::msg::Marker> merged;
+        merged.reserve(n);
+        for (auto const& g : groups)
+        {
+            if (g.empty())
+            {
+                continue;
+            }
+
+            double min_x = std::numeric_limits<double>::infinity();
+            double min_y = std::numeric_limits<double>::infinity();
+            double min_z = std::numeric_limits<double>::infinity();
+            double max_x = -std::numeric_limits<double>::infinity();
+            double max_y = -std::numeric_limits<double>::infinity();
+            double max_z = -std::numeric_limits<double>::infinity();
+            for (std::size_t const idx : g)
+            {
+                auto const& m = boxes[idx];
+                min_x = std::min(min_x, m.pose.position.x - m.scale.x / 2.0);
+                max_x = std::max(max_x, m.pose.position.x + m.scale.x / 2.0);
+                min_y = std::min(min_y, m.pose.position.y - m.scale.y / 2.0);
+                max_y = std::max(max_y, m.pose.position.y + m.scale.y / 2.0);
+                min_z = std::min(min_z, m.pose.position.z - m.scale.z / 2.0);
+                max_z = std::max(max_z, m.pose.position.z + m.scale.z / 2.0);
+            }
+
+            visualization_msgs::msg::Marker out = boxes[g.front()];
+            out.pose.position.x = 0.5 * (min_x + max_x);
+            out.pose.position.y = 0.5 * (min_y + max_y);
+            out.pose.position.z = 0.5 * (min_z + max_z);
+            out.pose.orientation.w = 1.0;
+            out.scale.x = std::max(0.05, max_x - min_x);
+            out.scale.y = std::max(0.05, max_y - min_y);
+            out.scale.z = std::max(0.05, max_z - min_z);
+            merged.push_back(out);
+        }
+        return merged;
     }
 
     // ── Callback ──────────────────────────────────────────────────────────────
 
     void markers_cb(visualization_msgs::msg::MarkerArray::ConstSharedPtr const msg)
     {
+        rclcpp::Time frame_stamp{ 0, 0, RCL_ROS_TIME };
+        for (auto const& m : msg->markers)
+        {
+            if (m.type == visualization_msgs::msg::Marker::CUBE && m.action == visualization_msgs::msg::Marker::ADD)
+            {
+                frame_stamp = rclcpp::Time(m.header.stamp, RCL_ROS_TIME);
+                break;
+            }
+        }
+
         // Collect only CUBE (bounding-box) markers, transformed into target_frame_.
         std::vector<visualization_msgs::msg::Marker> transformed_detections;
         transformed_detections.reserve(msg->markers.size());
@@ -391,20 +518,36 @@ class PclTracker : public rclcpp::Node, public PcdConstants
 
             try
             {
-                out = tf_buffer_->transform(in, target_frame_, tf2::durationFromSec(0.5));
+                out = tf_buffer_->transform(in, target_frame_, tf2::durationFromSec(0.05));
                 RCLCPP_DEBUG(get_logger(), "Transformed marker ID %d from '%s' to '%s'", m.id,
                              in.header.frame_id.c_str(), target_frame_.c_str());
             }
             catch (tf2::TransformException const& ex)
             {
-                RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "TF transform failed for marker ID %d: %s", m.id,
-                                     ex.what());
-                continue;  // drop detection if the transform does not exist
+                try
+                {
+                    // Fall back to the newest available transform
+                    in.header.stamp = rclcpp::Time(0, 0, RCL_ROS_TIME);  // zero = latest
+                    out = tf_buffer_->transform(in, target_frame_, tf2::durationFromSec(0.0));
+                }
+                catch (tf2::TransformException const& ex)
+                {
+                    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "TF failed for marker %d: %s", m.id,
+                                         ex.what());
+                    continue;
+                }
             }
             visualization_msgs::msg::Marker mt = m;
             mt.pose = out.pose;
             mt.header.frame_id = target_frame_;
+            mt.header.stamp = frame_stamp;
             transformed_detections.push_back(mt);
+        }
+
+        transformed_detections = merge_detections(transformed_detections);
+        if (max_detections_ > 0 && static_cast<int>(transformed_detections.size()) > max_detections_)
+        {
+            transformed_detections.resize(static_cast<std::size_t>(max_detections_));
         }
 
         std::vector<visualization_msgs::msg::Marker const*> detections;
@@ -412,17 +555,23 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         for (auto const& m : transformed_detections)
             detections.push_back(&m);
 
-        // Compute dt
-        rclcpp::Time now = this->now();
         double dt = 0.1;  // default fallback
-        if (last_stamp_.nanoseconds() > 0)
+        if (frame_stamp.nanoseconds() > 0 && last_stamp_.nanoseconds() > 0)
         {
-            double d = (now - last_stamp_).seconds();
+            double const d = (frame_stamp - last_stamp_).seconds();
             if (d > 0.001 && d < 2.0)
+            {
                 dt = d;
+            }
         }
-        last_stamp_ = now;
-        std_msgs::msg::Header header = msg->markers.empty() ? std_msgs::msg::Header{} : msg->markers.back().header;
+        if (frame_stamp.nanoseconds() > 0)
+        {
+            last_stamp_ = frame_stamp;
+        }
+
+        std_msgs::msg::Header header;
+        rclcpp::Time const pub_stamp = frame_stamp.nanoseconds() > 0 ? frame_stamp : this->now();
+        header.stamp = pub_stamp;
         header.frame_id = target_frame_;
 
         // ── 1. Predict all tracks ─────────────────────────────────────────────
@@ -494,6 +643,10 @@ class PclTracker : public rclcpp::Node, public PcdConstants
                 ekf_update(tracks_[i], d->pose.position.x, d->pose.position.y);
                 tracks_[i].hits++;
                 tracks_[i].missed = 0;
+                if (tracks_[i].hits >= min_hits_)
+                {
+                    tracks_[i].confirmed = true;
+                }
                 // Update bounding-box scale from latest detection
                 tracks_[i].scale_x = d->scale.x;
                 tracks_[i].scale_y = d->scale.y;
@@ -502,6 +655,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
             }
             else
             {
+                tracks_[i].hits = 0;
                 tracks_[i].missed++;
             }
         }
@@ -509,13 +663,19 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         // ── 4. Spawn new tracks for unmatched detections ──────────────────────
         for (std::size_t j = 0; j < nD; ++j)  // codespell:ignore
         {
-            if (!det_used[j])
+            if (!det_used[j] && static_cast<int>(tracks_.size()) < max_tracks_)
+            {
                 tracks_.push_back(make_track(*detections[j]));
+            }
         }
 
         // ── 5. Prune stale tracks ─────────────────────────────────────────────
         tracks_.erase(std::remove_if(tracks_.begin(), tracks_.end(),
-                                     [this](Track const& t) { return t.missed > max_missed_frames_; }),
+                                     [this](Track const& t)
+                                     {
+                                         int const limit = t.confirmed ? max_missed_frames_ : max_missed_tentative_;
+                                         return t.missed > limit;
+                                     }),
                       tracks_.end());
 
         // ── 6. Publish confirmed tracks ───────────────────────────────────────
@@ -543,7 +703,7 @@ class PclTracker : public rclcpp::Node, public PcdConstants
         confirmed_count_ = 0;
         for (auto const& t : tracks_)
         {
-            if (t.hits < min_hits_)
+            if (!t.confirmed)
                 continue;  // not yet confirmed
             ++confirmed_count_;
 

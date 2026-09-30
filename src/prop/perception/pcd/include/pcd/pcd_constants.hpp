@@ -48,10 +48,13 @@ class PcdConstants
     static constexpr int kDefaultClusterMaxPoints = 25000;
     static constexpr double kDefaultClusterFlatnessThreshold = 3.0;
     static constexpr double kDefaultMaxAssociationDist = 3.0;
-    static constexpr int kDefaultMaxMissedFrames = 5;
+    static constexpr int kDefaultMaxMissedFrames = 10;
+    static constexpr int kDefaultMaxMissedTentative = 2;
     static constexpr int kDefaultMinHits = 2;
-    static constexpr int kDefaultMaxTracks = 50;
+    static constexpr int kDefaultMaxTracks = 20;
     static constexpr int kDefaultMaxDetections = 50;
+    static constexpr double kDefaultMergeGap = 0.75;
+    static constexpr double kDefaultMaxTrackSpeed = 5.0;
 
     /**
      * @brief Construct the constants mixin.
@@ -84,6 +87,8 @@ class PcdConstants
         node->declare_parameter("max_association_dist", kDefaultMaxAssociationDist);
         /// Number of consecutive missed frames before a track is deleted.
         node->declare_parameter("max_missed_frames", kDefaultMaxMissedFrames);
+        /// Consecutive misses before a tentative (unconfirmed) track is deleted.
+        node->declare_parameter("max_missed_tentative", kDefaultMaxMissedTentative);
         /// Minimum number of consecutive hits before a track is published.
         /// Suppresses single-frame phantom detections.
         node->declare_parameter("min_hits", kDefaultMinHits);
@@ -91,8 +96,12 @@ class PcdConstants
         node->declare_parameter<std::string>("target_frame", "odom");
 
         node->declare_parameter("max_tracks", kDefaultMaxTracks);
-        /// Hard cap on detections consumed per frame
+        /// Hard cap on detections consumed per frame (applied after merge).
         node->declare_parameter("max_detections", kDefaultMaxDetections);
+        /// Box-to-box gap [m] below which detections are merged before association.
+        node->declare_parameter("merge_gap", kDefaultMergeGap);
+        /// Maximum EKF speed [m/s]; velocity is scaled down if it exceeds this.
+        node->declare_parameter("max_track_speed", kDefaultMaxTrackSpeed);
 
         // ── I/O ──────────────────────────────────────────────────────────────
         node->declare_parameter<std::string>("input_topic", "/velodyne_points");
@@ -110,11 +119,14 @@ class PcdConstants
 
         max_association_dist_ = node->get_parameter("max_association_dist").as_double();
         max_missed_frames_ = static_cast<int>(node->get_parameter("max_missed_frames").as_int());
+        max_missed_tentative_ = static_cast<int>(node->get_parameter("max_missed_tentative").as_int());
         min_hits_ = static_cast<int>(node->get_parameter("min_hits").as_int());
         target_frame_ = node->get_parameter("target_frame").as_string();
         input_topic_ = node->get_parameter("input_topic").as_string();
         max_tracks_ = static_cast<int>(node->get_parameter("max_tracks").as_int());
         max_detections_ = static_cast<int>(node->get_parameter("max_detections").as_int());
+        merge_gap_ = node->get_parameter("merge_gap").as_double();
+        max_track_speed_ = node->get_parameter("max_track_speed").as_double();
     }
 
   protected:
@@ -169,9 +181,13 @@ class PcdConstants
     double max_association_dist_{
         kDefaultMaxAssociationDist
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
-    /// Frames of consecutive misses before a track is removed.
+    /// Frames of consecutive misses before a confirmed track is removed.
     int max_missed_frames_{
         kDefaultMaxMissedFrames
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    /// Frames of consecutive misses before a tentative track is removed.
+    int max_missed_tentative_{
+        kDefaultMaxMissedTentative
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
     /// Consecutive hits before a track is published (anti-spurious filter).
     int min_hits_{
@@ -190,6 +206,14 @@ class PcdConstants
         kDefaultMaxDetections
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
         // ///< Hard cap on number of detections consumed per frame
+    /// Box-to-box gap [m] for merging fragment detections before Hungarian.
+    double merge_gap_{
+        kDefaultMergeGap
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    /// Speed clamp [m/s] applied to EKF velocity.
+    double max_track_speed_{
+        kDefaultMaxTrackSpeed
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 
     // ── Topics ───────────────────────────────────────────────────────────────
     /// Input PointCloud2 topic name.
