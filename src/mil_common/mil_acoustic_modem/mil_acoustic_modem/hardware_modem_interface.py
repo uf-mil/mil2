@@ -6,6 +6,7 @@ for controlling an acoustic modem.
 # Dependencies
 import base64
 import time
+from threading import Lock
 
 import serial
 
@@ -117,6 +118,7 @@ class HardwareModemInterface(ModemInterface):
             baudrate=self.__baud_rate,
             timeout=self.__serial_timeout,
         )
+        self.serial_lock = Lock()
 
         print("**********Initializing Modem**********")
         print(
@@ -405,29 +407,33 @@ class HardwareModemInterface(ModemInterface):
     # IMs
 
     def read_im(self):
-        im_message = None
+        with self.serial_lock:
+            im_message = None
 
-        data = self.__read_data()
-        if data.startswith("RECVIM"):
-            print(data)
-            im_message = data.split(",")[-1]
-            return base64.b64decode(im_message)
+            data = self.__read_data()
+            if data.startswith("RECVIM"):
+                print(data)
+                im_message = data.split(",")[-1]
+                return base64.b64decode(im_message)
 
     def send_im(self, data):
         print("Sending IM...")
-        print(f"raw bytes: {data}")
-        base64_bytes = base64.b64encode(data)
-        data_str = base64_bytes.decode("utf-8")
-        print(f"data: {data_str}")
-        input = f"AT*SENDIM,{len(data_str)},{self.get_setting("Remote Address")},ack,{data_str}\r"
-        print(input)
-        self.__send_data(input)
-        time.sleep(3)  # brief delay
 
-        # Check for 'OK'
-        response = self.__read_data()
-        print(response)
-        print("sent!")
+        with self.serial_lock:
+            print("lock acquired")
+            print(f"raw bytes: {data}")
+            base64_bytes = base64.b64encode(data)
+            data_str = base64_bytes.decode("utf-8")
+            print(f"data: {data_str}")
+            input = f"AT*SENDIM,{len(data_str)},{self.get_setting("Remote Address")},ack,{data_str}\r"
+            print(input)
+            self.__send_data(input)
+            time.sleep(1)  # brief delay
+
+            # Check for 'OK'
+            response = self.__read_data()
+            print(response)
+            print("sent!")
 
     ########## <Nonvolatile operations> ##########
     # Saves currently-saved settings to non-volatile memory

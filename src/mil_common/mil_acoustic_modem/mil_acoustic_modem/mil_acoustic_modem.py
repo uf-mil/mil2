@@ -37,9 +37,9 @@ class AcousticModem(Node):
             callback_group=self.sub_group,
         )
 
-        # 2 seconds (equal to the serial read timeout)
+        # 2 seconds (serial read timeout + 1 to give time for sending)
         self.timer = self.create_timer(
-            2,
+            3,
             self.read_latest_data,
             callback_group=self.timer_group,
         )
