@@ -44,7 +44,10 @@
     # Euclidean cluster extraction
     # ─────────────────────────────────────────────────
     cluster_tolerance: 0.1    # [m]  max neighbour distance for the same cluster
-    cluster_min_points: 50    # minimum points to keep a cluster
+    # Counted AFTER the voxel grid, so this is occupied 10 cm cubes, not lidar
+    # returns. One ring across a 0.5 m buoy fills ~5; the ~0.4 m of buoy above
+    # water_z_min is crossed by 2-3 rings only inside ~10 m.
+    cluster_min_points: 15    # minimum points to keep a cluster
     cluster_max_points: 25000 # maximum points allowed in a single cluster
 
     # ─────────────────────────────────────────────────
