@@ -1,8 +1,8 @@
 import cv2
 from camera import Camera
-from undistort import Undistorter
 from detection import Detector
 from tracking import Tracker
+from undistort import Undistorter
 
 
 def main():
@@ -17,7 +17,7 @@ def main():
             if not ret:
                 print("can't receive frame (stream end?).")
                 break
-            
+
             corrected = undistorter.apply(frame)
             tracks = tracker.track(corrected)
             annotated = detector.draw(corrected, tracks)

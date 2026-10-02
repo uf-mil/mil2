@@ -2,13 +2,13 @@ import cv2
 
 
 class Camera:
-   # set initial camera settings for unwarp.
-    def __init__(self, index=0, width=1920, height=1080, fsp=30,  backend=cv2.CAP_MSMF):
-        self.width = width 
+    # set initial camera settings for unwarp.
+    def __init__(self, index=0, width=1920, height=1080, fsp=30, backend=cv2.CAP_MSMF):
+        self.width = width
         self.height = height
 
         self.cap = cv2.VideoCapture(index, backend)
-        if not self.cap.isOpened(): 
+        if not self.cap.isOpened():
             raise RuntimeError(f"unable to open camera at index {index}")
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
@@ -24,13 +24,13 @@ class Camera:
 
         print(f"camera settings set: {fourcc_str} @ {actual_w}x{actual_h}")
         if (actual_w, actual_h) != (self.width, self.height):
-            print(f"requested {self.width}x{self.height}, but "
-                    f"got {actual_w}x{actual_h}"
-                    )
+            print(
+                f"requested {self.width}x{self.height}, but "
+                f"got {actual_w}x{actual_h}",
+            )
 
     def read(self):
         return self.cap.read()
- 
+
     def release(self):
         self.cap.release()
-

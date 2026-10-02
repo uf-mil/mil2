@@ -1,5 +1,5 @@
-from ultralytics import YOLO
 import cv2
+from ultralytics import YOLO
 
 
 class Detector:
@@ -19,12 +19,14 @@ class Detector:
             class_id = int(box.cls[0])
             label = self.model.names[class_id]
 
-            detections.append({
-                "box": (int(x1), int(y1), int(x2), int(y2)),
-                "conf": conf,
-                "class_id": class_id,
-                "label": label,
-            })
+            detections.append(
+                {
+                    "box": (int(x1), int(y1), int(x2), int(y2)),
+                    "conf": conf,
+                    "class_id": class_id,
+                    "label": label,
+                },
+            )
 
         return detections
 
@@ -35,9 +37,19 @@ class Detector:
         for det in detections:
             x1, y1, x2, y2 = det["box"]
             track_id = det.get("track_id")
-            label = f'#{track_id} {det["label"]} {det["conf"]:.2f}' if track_id is not None \
+            label = (
+                f'#{track_id} {det["label"]} {det["conf"]:.2f}'
+                if track_id is not None
                 else f'{det["label"]} {det["conf"]:.2f}'
+            )
             cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(annotated, label, (x1, max(y1 - 8, 0)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(
+                annotated,
+                label,
+                (x1, max(y1 - 8, 0)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 255, 0),
+                2,
+            )
         return annotated
