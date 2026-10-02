@@ -17,13 +17,11 @@ find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(nav2_util)
 
 add_executable(trajectory_planner src/node.cpp src/TrajectoryPlanner.cpp)
-ament_target_dependencies(trajectory_planner rclcpp nav_msgs geometry_msgs
-                          Eigen3 nav2_util)
-target_include_directories(trajectory_planner PRIVATE ${EIGEN3_INCLUDE_DIR}
-                                                      include)
+target_link_libraries(trajectory_planner rclcpp::rclcpp Eigen3::Eigen
+                      ${nav_msgs_TARGETS} ${geometry_msgs_TARGETS})
+target_include_directories(trajectory_planner PRIVATE include)
 
 install(TARGETS trajectory_planner DESTINATION lib/${PROJECT_NAME})
 
