@@ -3,11 +3,11 @@ import cv2
 
 class Camera:
     # set initial camera settings for unwarp.
-    def __init__(self, index=0, width=1920, height=1080, fsp=30, backend=cv2.CAP_MSMF):
+    def __init__(self, index=0, width=1920, height=1080, fsp=30):
         self.width = width
         self.height = height
 
-        self.cap = cv2.VideoCapture(index, backend)
+        self.cap = cv2.VideoCapture(index)
         if not self.cap.isOpened():
             raise RuntimeError(f"unable to open camera at index {index}")
 

@@ -6,7 +6,7 @@ from undistort import Undistorter
 
 
 def main():
-    cam = Camera(index=1, width=1920, height=1080)
+    cam = Camera(index=0, width=1920, height=1080)
     undistorter = Undistorter("camera_params.json")
     detector = Detector("models/best.pt")
     tracker = Tracker(detector.model)
