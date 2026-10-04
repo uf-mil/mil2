@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package mil_acoustic_modem;
+
+message PipelineSurveyReport
+{
+    float active_buoy_position_x = 1;
+    float active_buoy_position_y = 2;
+
+    enum PipelineSegmentStatus
+    {
+        PIPELINE_SEGMENT_UNKNOWN = 0;
+        PIPELINE_SEGMENT_INTACT = 1;
+        PIPELINE_SEGMENT_DAMAGED = 2;
+    }
+
+    repeated PipelineSegmentStatus segments = 3;
+}
