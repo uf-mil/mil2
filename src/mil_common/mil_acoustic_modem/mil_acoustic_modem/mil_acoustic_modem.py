@@ -32,7 +32,7 @@ class AcousticModem(Node):
         )
         self.pipeline_survey_report_subscriber = self.create_subscription(
             PipelineSurveyReport,
-            f"pipeline_survey_report_sending_{self.get_parameter("modem_serial_port").get_parameter_value().string_value[-1]}",
+            f"pipeline_survey_report_sending_{self.get_parameter('modem_serial_port').get_parameter_value().string_value[-1]}",
             self.send_pipeline_survey_report,
             10,
             callback_group=self.sub_group,

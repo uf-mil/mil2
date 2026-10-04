@@ -425,7 +425,7 @@ class HardwareModemInterface(ModemInterface):
             base64_bytes = base64.b64encode(data)
             data_str = base64_bytes.decode("utf-8")
             print(f"data: {data_str}")
-            input = f"AT*SENDIM,{len(data_str)},{self.get_setting("Remote Address")},ack,{data_str}\r"
+            input = f"AT*SENDIM,{len(data_str)},{self.get_setting('Remote Address')},ack,{data_str}\r"
             print(input)
             self.__send_data(input)
             time.sleep(1)  # brief delay
