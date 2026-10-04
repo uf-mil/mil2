@@ -12,6 +12,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common filters search segmentation)
+find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -22,7 +23,14 @@ add_definitions(${PCL_DEFINITIONS})
 
 # ── pcl_filter node ──────────────────────────────────────────────────────────
 add_executable(pcl_filter_node src/pcl_filter_node.cpp)
-ament_target_dependencies(pcl_filter_node rclcpp sensor_msgs pcl_conversions)
+ament_target_dependencies(
+  pcl_filter_node
+  rclcpp
+  sensor_msgs
+  pcl_conversions
+  tf2
+  tf2_ros
+  tf2_geometry_msgs)
 target_link_libraries(pcl_filter_node ${PCL_LIBRARIES})
 
 # ── pcl_clustering node ──────────────────────────────────────────────────────

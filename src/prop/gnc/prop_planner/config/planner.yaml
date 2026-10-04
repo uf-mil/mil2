@@ -1,68 +1,56 @@
 ---
 planner:
   ros__parameters:
-    # ─────────────────────────────────────────────────
-    # Obstacle map
-    # ─────────────────────────────────────────────────
-    # Two detections closer together than this are taken to be the same object.
-    # Larger than the localization error, smaller than the gap between buoys:
-    # too small and a GPS correction spawns a duplicate buoy beside the real
-    # one, too large and a gate's two buoys merge into a wall across it.
-    merge_distance: 2.0 # m
+
+    # ||| Obstacle map |||
+    merge_distance: 1.5  # m
 
     # How much of a new detection is folded into an entry that already exists.
     # Low, because a cluster centroid walks toward whichever face of the buoy
     # the lidar can see, and the average of many views beats any one of them.
     position_gain: 0.2
 
-    # Detections before an entry is worth routing around. This is what keeps
-    # wave crests out of the map: a crest is not seen three times in one place.
-    min_hits: 3
-
-    # Ceiling on any single entry's radius, so a frame that merges two buoys
-    # into one blob cannot wall off the course.
-    max_radius: 5.0 # m
-
-    # Ceiling on any single entry's length. An obstacle's extent accumulates -
-    # each view of a dock reveals a different slice of it - so this is the
-    # valve on a bad association welding two objects into one long capsule.
-    # A convex hull has no equivalent: there is no single number to clamp.
-    max_length: 20.0 # m
+    # Detections before an entry is worth routing around. For stuff like waves
+    min_hits: 25
+    max_radius: 5.0  # m
+    max_length: 15.0  # m
 
     # How far past a stored end an observation has to reach before it counts as
     # revealing more of the object rather than as noise. It is also the length
-    # below which an observation is read as round, carrying position rather
-    # than extent - without that, a buoy's jitter would stretch it into a
-    # capsule one frame at a time.
-    extent_deadband: 0.3 # m
+    # below which an observation is read as round, carrying position
+    # rather than extent.
+    extent_deadband: 0.3  # m
+
+    # An entry this close should be visible, so failing to see it counts
+    # against it. It has to stay inside the range where detection actually
+    # works, not where the lidar nominally reaches: a 0.5 m freeboard buoy
+    # drops to a single ring past about 5 m and stops clearing
+    # cluster_min_points, so anything beyond that would be penalised for being
+    # invisible and dropped while still real. Raise it only alongside the
+    # clustering thresholds. 0.0 never forgets anything.
+    verify_range: 3.0  # m
+
+    # Frames an entry may go unseen, while close enough to be seen, before it
+    # is dropped. 1.5 s at 10 Hz.
+    max_misses: 25
 
     # Hard cap on remembered obstacles; past it the least-seen entry is dropped.
-    capacity: 256
+    capacity: 75
 
-    # ─────────────────────────────────────────────────
-    # Route planning
-    # ─────────────────────────────────────────────────
-    # Added to every obstacle's radius: half the hull's beam plus however close
-    # you are willing to pass. This is the number to raise after a near miss.
+    start_enabled: false
+
+    # ||| Route planning |||
+    # Added to every obstacle's radius
     inflation: 2.0 # m
 
-    # Candidate corners sampled around each obstacle. Eight is enough to round
-    # a buoy without visible faceting; the search cost grows quadratically.
+    # Candidate corners sampled around each obstacle
     corners_per_obstacle: 8
 
-    # ─────────────────────────────────────────────────
-    # Output
-    # ─────────────────────────────────────────────────
-    # The frame obstacles are remembered in and the plan is published in.
-    # Overridden by the launch file's frame argument, which keeps it in step
-    # with whichever odometry the planner is following - the two have to name
-    # the same frame or the boat's position and the obstacles are not
-    # comparable. The node refuses to plan when they disagree.
-    map_frame: "odom"
+    # Should change to odom when going to real
+    map_frame: "map"
 
-    # How often a new route is worked out. Well under perception rate on
-    # purpose: guidance restarts its leg tracking on every plan it receives.
-    rate: 1.0 # Hz
+    # How often a new route is worked out.
+    rate: 2.0 # Hz
 
     # A waypoint has to move at least this far before the new route is worth
     # publishing over the old one.

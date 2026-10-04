@@ -303,6 +303,11 @@ alias start-controller='ros2 service call /pid_controller/enable std_srvs/srv/Se
 alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: false}"'
 alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"
 
+# aliases for the prop path planner. Starting also clears the obstacle map, so
+# a task begins with what the lidar can see rather than what the last one left.
+alias start-planning='ros2 service call /planner/enable std_srvs/srv/SetBool "{data: true}"'
+alias stop-planning='ros2 service call /planner/enable std_srvs/srv/SetBool "{data: false}"'
+
 # Launch the start-wand node, optionally choosing which mission it runs.
 # Usage: start-wand [mission_name]   (defaults to the node's built-in mission)
 start-wand() {

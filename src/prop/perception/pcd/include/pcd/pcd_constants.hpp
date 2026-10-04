@@ -49,8 +49,10 @@ class PcdConstants
         node->declare_parameter("max_distance", 30.0);
 
         // ── Water-surface / height rejection ────────────────────────────────
-        node->declare_parameter("water_z_min", -0.5);
-        node->declare_parameter("water_z_max", 10.0);
+        node->declare_parameter("min_height_above_water", 0.17);
+        node->declare_parameter("max_height_above_water", 10.0);
+        node->declare_parameter("lidar_height", 0.67);
+        node->declare_parameter<std::string>("gravity_frame", "odom");
 
         // ── Voxel-grid down-sampling ─────────────────────────────────────────
         node->declare_parameter("voxel_leaf_size", 0.1);
@@ -77,8 +79,10 @@ class PcdConstants
         // Read them all back into member variables.
         min_distance_ = node->get_parameter("min_distance").as_double();
         max_distance_ = node->get_parameter("max_distance").as_double();
-        water_z_min_ = node->get_parameter("water_z_min").as_double();
-        water_z_max_ = node->get_parameter("water_z_max").as_double();
+        min_height_above_water_ = node->get_parameter("min_height_above_water").as_double();
+        max_height_above_water_ = node->get_parameter("max_height_above_water").as_double();
+        lidar_height_ = node->get_parameter("lidar_height").as_double();
+        gravity_frame_ = node->get_parameter("gravity_frame").as_string();
         voxel_leaf_size_ = node->get_parameter("voxel_leaf_size").as_double();
         cluster_tolerance_ = node->get_parameter("cluster_tolerance").as_double();
         cluster_min_points_ = node->get_parameter("cluster_min_points").as_int();
@@ -97,10 +101,15 @@ class PcdConstants
     double max_distance_{ 30.0 };
 
     // ── Water-surface rejection ──────────────────────────────────────────────
-    /// Lower Z bound [m]. Points below this are treated as water returns.
-    double water_z_min_{ -0.5 };
-    /// Upper Z bound [m]. Points above this are treated as sky / mast noise.
-    double water_z_max_{ 10.0 };
+    /// Height above the water surface below which a return is water [m].
+    double min_height_above_water_{ 0.17 };
+    /// Height above the water above which a return is sky or mast noise [m].
+    double max_height_above_water_{ 10.0 };
+    /// Lidar height above the water when level [m].
+    double lidar_height_{ 0.67 };
+    /// A frame whose Z axis is up. Used to find the water plane in sensor
+    /// coordinates; without it the hull is assumed level.
+    std::string gravity_frame_{ "odom" };
 
     // ── Voxel-grid down-sampling ─────────────────────────────────────────────
     /// Voxel leaf size [m]. Set to 0.0 to disable down-sampling.

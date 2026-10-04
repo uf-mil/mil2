@@ -11,15 +11,22 @@
     max_distance: 50.0       # [m]  reject points farther than this
 
     # ─────────────────────────────────────────────────
-    # Water-surface rejection (Z / height filter)
+    # Water-surface rejection
     # ─────────────────────────────────────────────────
-    # Points whose Z coordinate is below this threshold are assumed
-    # to be water returns and are discarded.  Set relative to the
-    # sensor frame (negative = below the lidar).
-    water_z_min: -0.5      # [m]  lower bound — reject water below this Z
+    # Measured from the water plane, not along the sensor's Z. The hull pitches,
+    # and a gate tied to the sensor's own axis moves with it: at three degrees
+    # the water twenty metres ahead sits ~0.4 m higher in sensor coordinates
+    # than it does level, clears any fixed gate, and arrives downstream as an
+    # obstacle. The plane is found from gravity_frame via TF each sweep.
+    min_height_above_water: 0.17  # [m]  below this is water
+    max_height_above_water: 10.0  # [m]  above this is sky or mast noise
 
-    # Upper Z bound (optional sky/mast crop).  Set very large to disable.
-    water_z_max: 10.0        # [m]  upper bound — reject sky noise above this Z
+    # Lidar height above the waterline, level. prop.urdf mounts it at 0.67.
+    lidar_height: 0.67       # [m]
+
+    # Any frame whose Z axis is up. Without it the hull is assumed level and
+    # the gate behaves as it did before, which is wrong underway.
+    gravity_frame: "odom"
 
     # ─────────────────────────────────────────────────
     # Voxel-grid down-sampling (pre-clustering)

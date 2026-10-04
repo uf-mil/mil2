@@ -44,17 +44,19 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 "odometry",
-                default_value="/odometry/filtered/local",
-                description="Odometry to follow. The local estimate is "
-                "continuous; the global one is absolute but steps whenever GPS "
-                "corrects it. Must match the frame argument.",
+                default_value="/odometry/filtered/global",
+                description="Odometry to follow. The global estimate steps "
+                "whenever GPS corrects it; the local one is continuous, but "
+                "only once something feeds ekf_local a translation source - "
+                "on the IMU alone it never moves at all. Must match frame.",
             ),
             DeclareLaunchArgument(
                 "frame",
-                default_value="odom",
+                default_value="map",
                 description="Frame to remember obstacles in and publish the "
                 "plan in. Must be the frame the odometry argument is "
-                "published in.",
+                "published in. odom only works where ekf_local has a "
+                "translation source, or buoys drift through it at hull speed.",
             ),
             DeclareLaunchArgument(
                 "use_sim_time",

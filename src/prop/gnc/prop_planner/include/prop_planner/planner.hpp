@@ -13,6 +13,7 @@
 #include "nav_msgs/msg/path.hpp"
 #include "prop_planner/obstacle_map.hpp"
 #include "prop_planner/visibility_planner.hpp"
+#include "std_srvs/srv/set_bool.hpp"
 #include "tf2_ros/buffer.hpp"
 #include "tf2_ros/transform_listener.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -25,6 +26,7 @@ namespace prop_planner
 //   in   tracked_markers           visualization_msgs/MarkerArray, from pcl_tracker
 //        odometry/filtered/global  nav_msgs/Odometry
 //        goal_pose                 geometry_msgs/PoseStamped, RViz's "2D Goal Pose"
+//   srv  ~/enable                  std_srvs/SetBool, start or stop the whole thing
 //   out  plan                      nav_msgs/Path, map frame, latched
 //        obstacles                 mil_msgs/PerceptionObjectArray, the map itself
 //        obstacle_map              visualization_msgs/MarkerArray, the same thing drawn
@@ -73,6 +75,7 @@ class Planner : public rclcpp::Node
     Point goal_{};
     geometry_msgs::msg::Quaternion goal_orientation_;
     bool has_goal_{ false };
+    bool enabled_{ true };
 
     std::vector<Point> published_;
 
@@ -85,6 +88,7 @@ class Planner : public rclcpp::Node
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr plan_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obstacles_pub_;
     rclcpp::Publisher<mil_msgs::msg::PerceptionObjectArray>::SharedPtr objects_pub_;
+    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr enable_srv_;
     rclcpp::TimerBase::SharedPtr timer_;
 };
 

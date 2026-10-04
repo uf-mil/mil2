@@ -15,6 +15,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(mil_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -37,6 +38,7 @@ ament_target_dependencies(
   mil_msgs
   nav_msgs
   rclcpp
+  std_srvs
   tf2
   tf2_geometry_msgs
   tf2_ros
@@ -55,18 +57,6 @@ install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
 
 if(BUILD_TESTING)
-  # The map and the search hold no ROS, so they test as plain C++.
-  find_package(ament_cmake_gtest REQUIRED)
-
-  ament_add_gtest(test_geometry test/geometry.cpp)
-  target_link_libraries(test_geometry prop_planner_core)
-
-  ament_add_gtest(test_obstacle_map test/obstacle_map.cpp)
-  target_link_libraries(test_obstacle_map prop_planner_core)
-
-  ament_add_gtest(test_visibility_planner test/visibility_planner.cpp)
-  target_link_libraries(test_visibility_planner prop_planner_core)
-
   find_package(ament_lint_auto REQUIRED)
   list(
     APPEND

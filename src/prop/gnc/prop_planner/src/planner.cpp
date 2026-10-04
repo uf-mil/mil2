@@ -13,6 +13,7 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "mil_msgs/msg/perception_object.hpp"
 #include "std_msgs/msg/color_rgba.hpp"
+#include "std_srvs/srv/set_bool.hpp"
 #include "tf2/time.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "visualization_msgs/msg/marker.hpp"
@@ -75,6 +76,7 @@ Planner::Planner()
   , map_({ declare_parameter("merge_distance", 2.0), declare_parameter("position_gain", 0.2),
            static_cast<int>(declare_parameter("min_hits", 3)), declare_parameter("max_radius", 5.0),
            declare_parameter("max_length", 20.0), declare_parameter("extent_deadband", 0.3),
+           declare_parameter("verify_range", 10.0), static_cast<int>(declare_parameter("max_misses", 15)),
            static_cast<std::size_t>(declare_parameter("capacity", 256)) })
   , planner_({ declare_parameter("inflation", 2.0), static_cast<int>(declare_parameter("corners_per_obstacle", 8)) })
 {
@@ -115,6 +117,11 @@ Planner::Planner()
         "goal_pose", 10,
         [this](geometry_msgs::msg::PoseStamped::SharedPtr const msg)
         {
+            if (!enabled_)
+            {
+                return;
+            }
+
             // RViz publishes a goal in whatever its Fixed Frame is set to,
             // which is not necessarily the frame being planned in. Transform
             // rather than reject, so changing that dropdown to look at
@@ -146,13 +153,39 @@ Planner::Planner()
     obstacles_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("obstacle_map", rclcpp::QoS(1));
     objects_pub_ = create_publisher<mil_msgs::msg::PerceptionObjectArray>("obstacles", rclcpp::QoS(1));
 
+    enabled_ = declare_parameter("start_enabled", true);
+    enable_srv_ =
+        create_service<std_srvs::srv::SetBool>("~/enable",
+                                               [this](std_srvs::srv::SetBool::Request::SharedPtr const request,
+                                                      std_srvs::srv::SetBool::Response::SharedPtr const response)
+                                               {
+                                                   // Enabling always starts from an empty map, so a task begins with
+                                                   // what it can see rather than what the last one left behind.
+                                                   if (request->data && !enabled_)
+                                                   {
+                                                       map_.clear();
+                                                       has_goal_ = false;
+                                                       published_.clear();
+                                                   }
+                                                   enabled_ = request->data;
+                                                   response->success = true;
+                                                   response->message = enabled_ ? "planning, map cleared" : "stopped";
+                                                   RCLCPP_INFO(get_logger(), "%s", response->message.c_str());
+                                               });
+
     timer_ = create_wall_timer(std::chrono::duration<double>(1.0 / rate), [this] { replan(); });
 
-    RCLCPP_INFO(get_logger(), "planner started - send a goal on goal_pose, or use RViz's 2D Goal Pose");
+    RCLCPP_INFO(get_logger(), "planner %s - send a goal on goal_pose, or use RViz's 2D Goal Pose",
+                enabled_ ? "running" : "idle, waiting on ~/enable");
 }
 
 void Planner::tracks_callback(visualization_msgs::msg::MarkerArray const& msg)
 {
+    if (!enabled_)
+    {
+        return;
+    }
+
     auto const first = std::find_if(msg.markers.begin(), msg.markers.end(), is_detection);
     if (first == msg.markers.end())
     {
@@ -187,10 +220,20 @@ void Planner::tracks_callback(visualization_msgs::msg::MarkerArray const& msg)
 
         map_.observe(capsule_of(pose.position, marker.scale, yaw_of(pose.orientation)));
     }
+
+    if (located_)
+    {
+        map_.forget_unseen(position_);
+    }
 }
 
 void Planner::replan()
 {
+    if (!enabled_)
+    {
+        return;
+    }
+
     std::vector<Obstacle> const obstacles = map_.confirmed();
     publish_objects(map_.all());
     publish_obstacles(map_.all());
