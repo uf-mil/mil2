@@ -49,7 +49,7 @@ std::vector<geometry_msgs::msg::Pose> PathPlanner::slerp(geometry_msgs::msg::Pos
 
     // get vector from current to goal with magnitude segment_legnth, add this to A one too few times, then final path
     // is B
-    // TODO rotations??
+
     double const segment_legnth = 0.5;
     double const x_err = goal_pose.position.x - last_odom_.pose.pose.position.x;
     double const y_err = goal_pose.position.y - last_odom_.pose.pose.position.y;
@@ -72,13 +72,22 @@ std::vector<geometry_msgs::msg::Pose> PathPlanner::slerp(geometry_msgs::msg::Pos
     segment_count_ = (int)(err_magnitude / segment_legnth);
     for (int i = 1; i < segment_count_ + 1; ++i)
     {
-        // orientation rides along with translation so short paths stay short
+        // orientation completes in the first half of the path, then holds
+        // at the goal rotation while translation finishes
         double t = static_cast<double>(i) / (segment_count_);
+        double t2 = t * 2.0;
         geometry_msgs::msg::Pose pose;
+        if (t2 < 1.0)
+        {
+            pose.orientation = slerp.at(t2).quat_msg();
+        }
+        else
+        {
+            pose.orientation = slerp.at(1.0).quat_msg();
+        }
         pose.position.x = last_odom_.pose.pose.position.x + i * delta_x;
         pose.position.y = last_odom_.pose.pose.position.y + i * delta_y;
         pose.position.z = last_odom_.pose.pose.position.z + i * delta_z;
-        pose.orientation = slerp.at(t).quat_msg();
         path.push_back(pose);
     }
 
