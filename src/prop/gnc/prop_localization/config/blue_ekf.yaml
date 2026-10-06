@@ -1,0 +1,75 @@
+---
+# Local EKF: IMU only continuous estimate (odom -> base_link)
+ekf_local:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: false
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    # Orientation and angular velocity only. A hull sitting in water is never
+    # still, and fusing the accelerometer through that - with nothing measuring
+    # velocity to hold it down - walks the estimate away within seconds. Speed
+    # over ground comes from the GPS instead.
+    imu0: /imu
+    imu0_config: [false, false, false,
+                  true, true, true,
+                  false, false, false,
+                  true, true, true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 10
+    imu0_remove_gravitational_acceleration: true
+
+# Global EKF: IMU + GPS odometry (map -> odom)
+ekf_global:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: false
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: map
+
+    # Orientation and angular velocity only. A hull sitting in water is never
+    # still, and fusing the accelerometer through that - with nothing measuring
+    # velocity to hold it down - walks the estimate away within seconds. Speed
+    # over ground comes from the GPS instead.
+    imu0: /imu
+    imu0_config: [false, false, false,
+                  true, true, true,
+                  false, false, false,
+                  true, true, true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 10
+    imu0_remove_gravitational_acceleration: true
+
+    odom0: /odometry/gps
+    odom0_config: [true, true, true,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    odom0_differential: false
+    odom0_relative: false
+    odom0_queue_size: 10
+
+navsat_transform:
+  ros__parameters:
+    frequency: 30.0
+    delay: 3.0
+    magnetic_declination_radians: 0.0
+    yaw_offset: 0.0
+    zero_altitude: true
+    broadcast_utm_transform: true
+    publish_filtered_gps: true
+    use_odometry_yaw: false
+    # The datum comes from the first fix, on the boat and in simulation alike.
+    wait_for_datum: false

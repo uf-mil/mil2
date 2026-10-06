@@ -195,3 +195,7 @@ src/subjugator/mission_planner/logs/mission_debug.txt
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+
+##
+rosbag*
+src/prop/src/fusioncore

@@ -1,0 +1,104 @@
+---
+# ============================================================
+# LOCAL EKF: continuous estimate  (odom -> base_link)
+# Fuses IMU + wheel/lidar odometry
+# ============================================================
+ekf_local:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: true
+    publish_tf: true
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom        # odom -> base_link
+
+    imu0: "/imu/data"
+    imu0_config: [
+      false, false, false, # x, y, z
+      true, true, true,    # roll, pitch, yaw
+      false, false, false, # vx, vy, vz
+      true, true, true,    # vroll, vpitch, vyaw
+      true, true, true     # ax, ay, az
+    ]
+    imu0_differential: false
+    imu0_relative: true
+    imu0_remove_gravitational_acceleration: true
+    gravitational_acceleration: 10.25
+    imu0_queue_size: 10
+
+    odom0: "/lidar/odom"
+    odom0_config: [
+      false, false, false, # x, y, z
+      false, false, false, # roll, pitch, yaw
+      true, true, false,   # vx, vy, vz  (surface robot -> vz=false)
+      false, false, false, # vroll, vpitch, vyaw
+      false, false, false  # ax, ay, az
+    ]
+    odom0_differential: false
+    odom0_relative: true
+    odom0_queue_size: 10
+
+    disabled_at_startup: false
+
+# ============================================================
+# GLOBAL EKF: GPS-anchored estimate  (map -> odom)
+# Fuses local odometry output + GPS-derived odometry from navsat_transform
+# ============================================================
+ekf_global:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: true
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: map    # map -> odom
+
+    # Feed the LOCAL ekf's output into the global ekf
+    odom0: "/odometry/filtered/local"
+    odom0_config: [
+      true, true, false,   # x, y, z
+      false, false, true,  # roll, pitch, yaw
+      true, true, false,   # vx, vy, vz
+      false, false, true,  # vroll, vpitch, vyaw
+      false, false, false  # ax, ay, az
+    ]
+    odom0_differential: false
+    odom0_relative: false
+    odom0_queue_size: 10
+
+    # GPS odometry from navsat_transform
+    odom1: "/odometry/gps"
+    odom1_config: [
+      true, true, false,   # x, y (GPS position), not z
+      false, false, false, # no orientation from GPS
+      false, false, false,
+      false, false, false,
+      false, false, false
+    ]
+    odom1_differential: false
+    odom1_relative: false
+    odom1_queue_size: 10
+
+    disabled_at_startup: false
+
+# ============================================================
+# NAVSAT TRANSFORM: GPS fix -> odometry in map frame
+# ============================================================
+navsat_transform:
+  ros__parameters:
+    frequency: 30.0
+    delay: 3.0
+    magnetic_declination_radians: 0.0
+    yaw_offset: 0.0
+    zero_altitude: true
+    broadcast_utm_transform: true
+    broadcast_utm_transform_as_parent_frame: false
+    publish_filtered_gps: true
+    use_odometry_yaw: false
+    wait_for_datum: false
+    # navsat_transform subscribes to:
+    #   /imu/data              (for initial heading)
+    #   /gps/fix               (your GPS topic — remap if different)
+    #   /odometry/filtered/local  (the continuous local estimate)
+    # and publishes /odometry/gps -> fed into ekf_global above
