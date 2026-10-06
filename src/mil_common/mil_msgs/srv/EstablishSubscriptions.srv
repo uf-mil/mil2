@@ -1,4 +1,5 @@
 string[] topics
+string[] image_fields # /topic:field | if the topic is the image message /topic
 ---
 bool success
 string[] active_topics

@@ -58,3 +58,18 @@ def test_cnn_encoder_rejects_unsupported_channel_count():
 
     with pytest.raises(ValueError, match="channel dimension must be 1 or 3"):
         encoder(image)
+
+
+def test_cnn_encoder_moves_cpu_inputs_to_cuda_encoder():
+    """Accepts CPU images even after the encoder has been moved onto CUDA."""
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is required for this regression test.")
+
+    encoder = CNNEncoder(latent_dim=32).to("cuda")
+    image = torch.randint(0, 256, (3, 96, 144), dtype=torch.uint8)
+
+    latent = encoder(image)
+
+    assert latent.shape == (1, 32)
+    assert latent.device.type == "cuda"
+    assert torch.isfinite(latent).all()

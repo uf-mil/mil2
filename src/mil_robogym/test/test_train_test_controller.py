@@ -134,9 +134,15 @@ def _load_controller_module(monkeypatch):
     trainer_module.Trainer = DummyTrainer
     monkeypatch.setitem(sys.modules, "mil_robogym.vairl.trainer", trainer_module)
     sys.modules.pop("mil_robogym.ui.pages.train_test_page.train_test_controller", None)
-    return importlib.import_module(
+    module = importlib.import_module(
         "mil_robogym.ui.pages.train_test_page.train_test_controller",
     )
+    monkeypatch.setattr(
+        module,
+        "ensure_project_input_topics_ready",
+        lambda project, *, timeout_s, operation, start_simulation: None,
+    )
+    return module
 
 
 def _reset_dummy_trainer_state():
@@ -180,7 +186,10 @@ def test_start_training_refreshes_history_with_saved_agent(monkeypatch):
     assert view.history_refreshes == ["2026_03_26_03_15_pm_ep_0003"]
     assert view.refreshed_agent_names == ["2026_03_26_03_15_pm_final"]
     assert view.selected_agent_name == "2026_03_26_03_15_pm_final"
-    assert "Training agent with saved settings" in view.terminal_messages[0]
+    assert (
+        view.terminal_messages[0] == "Checking project input topics before training..."
+    )
+    assert "Training agent with saved settings" in view.terminal_messages[1]
     assert "Latest saved agent: 2026_03_26_03_15_pm_final" in view.terminal_messages[-1]
     assert view.live_metrics_payloads[0] == {}
     assert view.live_metrics_payloads[-1]["reward_mean"] == [0.5]
@@ -212,6 +221,46 @@ def test_start_training_reports_failure_without_crashing(monkeypatch):
         view.terminal_messages[-1]
         == "Training failed.\nRuntimeError: training exploded"
     )
+
+
+def test_start_training_reports_topic_preflight_failure(monkeypatch):
+    """Training refuses to start when required project topics are not ready."""
+    _reset_dummy_trainer_state()
+    module = _load_controller_module(monkeypatch)
+    view = DummyView()
+    controller = module.TrainTestViewController(view, DummyApp())
+
+    monkeypatch.setattr(
+        module,
+        "ensure_project_input_topics_ready",
+        lambda project, *, timeout_s, operation, start_simulation: (
+            _ for _ in ()
+        ).throw(
+            RuntimeError(
+                "Cannot start training because project input topics are not ready.\n"
+                "Not receiving messages within the readiness timeout: ['/imu/data']",
+            ),
+        ),
+    )
+
+    controller.set_context(
+        {
+            "robogym_project": {
+                "name": "Demo Project",
+                "input_topics": {"/imu/data": ["orientation.x"]},
+            },
+        },
+    )
+    controller.start_training()
+
+    assert controller.trainer is None
+    assert controller._training_thread is None
+    assert view.training_enabled_states == []
+    assert view.terminal_messages == [
+        "Checking project input topics before training...",
+        "Cannot start training because project input topics are not ready.\n"
+        "Not receiving messages within the readiness timeout: ['/imu/data']",
+    ]
 
 
 def test_stop_training_requests_worker_shutdown(monkeypatch):

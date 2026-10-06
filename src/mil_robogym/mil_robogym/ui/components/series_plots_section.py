@@ -35,6 +35,7 @@ class SeriesPlotsSection:
         self._metric_controls_signature: (
             tuple[tuple[str, ...], tuple[str, ...]] | None
         ) = None
+        self._selected_sample_index: int | None = None
         self._placeholder_text = empty_state_message
         self._empty_state_message = empty_state_message
         self._pending_data_message = pending_data_message
@@ -120,6 +121,7 @@ class SeriesPlotsSection:
         self._metric_data = {}
         self._selected_metrics = []
         self._x_metric_name = None
+        self._selected_sample_index = None
         self._placeholder_text = message or self._empty_state_message
         self._render_metric_controls(force=True)
         self._render_plots()
@@ -141,6 +143,14 @@ class SeriesPlotsSection:
         if self._metric_data:
             self._render_metric_controls()
             self._render_plots()
+
+    def set_selected_sample_index(self, index: int | None) -> None:
+        """Highlight one sample position across all rendered plots."""
+        normalized_index = index if index is None or index >= 0 else None
+        if normalized_index == self._selected_sample_index:
+            return
+        self._selected_sample_index = normalized_index
+        self._render_plots()
 
     def set_metrics_data(
         self,
@@ -396,6 +406,16 @@ class SeriesPlotsSection:
                     "linewidth": 0.6,
                 },
             )
+            selected_x_value = self._selected_x_value(x_values)
+            if selected_x_value is not None:
+                axis.axvline(
+                    x=selected_x_value,
+                    color="#C75C1A",
+                    linestyle="--",
+                    linewidth=1.2,
+                    alpha=0.9,
+                    zorder=5,
+                )
             axis.label_outer()
 
         axes[-1].set_xlabel("")
@@ -432,6 +452,13 @@ class SeriesPlotsSection:
             return []
         first_series = next(iter(self._metric_data.values()), [])
         return [float(index) for index in range(len(first_series))]
+
+    def _selected_x_value(self, x_values: Sequence[float]) -> float | None:
+        if self._selected_sample_index is None:
+            return None
+        if not (0 <= self._selected_sample_index < len(x_values)):
+            return None
+        return float(x_values[self._selected_sample_index])
 
     def _show_placeholder(self, text: str) -> None:
         self.placeholder_label.configure(text=text)
