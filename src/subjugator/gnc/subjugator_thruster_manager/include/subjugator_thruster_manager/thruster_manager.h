@@ -15,7 +15,6 @@ class ThrusterManager : public rclcpp::Node
 
   private:
     rclcpp::Subscription<geometry_msgs::msg::Wrench>::SharedPtr wrench_subscription_;
-    Eigen::VectorXd reference_wrench_;  // TODO: change to Vector6d
     Eigen::MatrixXd tam_;
     int const dof_ = 6;
     int const thruster_count_ = 8;
@@ -25,6 +24,7 @@ class ThrusterManager : public rclcpp::Node
 
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr thrust_publisher_;
+    subjugator_msgs::msg::ThrusterEfforts efforts_;
 
     void wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg);
     void timer_callback();
