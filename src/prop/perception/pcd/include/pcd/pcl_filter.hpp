@@ -1,14 +1,19 @@
 /**
  * @file pcl_filter.hpp
- * @brief PclFilter — pass-through distance filter and water-surface rejection.
+ * @brief PclFilter — pass-through distance filter, water-surface rejection,
+ *        and TF transform to target_frame (odom).
  *
- * Inherits all tunable parameters from PcdConstants (config/pcd_params.yaml).
+ * Inherits all tunable parameters from PcdConstants (config/pcd_params.yaml)
  *
  * Filter pipeline (applied in order):
  *   1. Radial distance pass-through  — rejects points outside [min_distance, max_distance].
  *   2. Z-height pass-through         — rejects water returns below water_z_min and
  *                                      sky noise above water_z_max.
  *   3. Voxel-grid down-sample        — reduces density before clustering (optional).
+ *   4. TF transform                  — reprojects the filtered cloud from velodyne
+ *                                      frame into target_frame (odom) so that
+ *                                      downstream clustering and tracking work in
+ *                                      a stable global frame.
  */
 
 #pragma once
@@ -23,6 +28,9 @@
 #include <string>
 
 #include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/buffer.hpp>
+#include <tf2_ros/transform_listener.hpp>
+#include <tf2_sensor_msgs/tf2_sensor_msgs.hpp>
 
 #include "pcd/pcd_constants.hpp"
 
@@ -34,8 +42,8 @@ namespace pcd
 /**
  * @class PclFilter
  * @brief ROS 2 node that subscribes to a raw PointCloud2 topic, applies
- *        distance and height filtering, optionally voxel-downsamples, and
- *        re-publishes the cleaned cloud for downstream clustering.
+ *        distance and height filtering, optionally voxel-downsamples, then
+ *        transforms the cloud to target_frame (odom) and re-publishes it.
  *
  * Inherits constants from PcdConstants.
  */
@@ -44,6 +52,9 @@ class PclFilter : public rclcpp::Node, public PcdConstants
   public:
     PclFilter() : rclcpp::Node("pcl_filter"), PcdConstants(this)
     {
+        tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
         sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
             input_topic_, rclcpp::SensorDataQoS(), std::bind(&PclFilter::cloud_cb, this, std::placeholders::_1));
 
@@ -51,8 +62,9 @@ class PclFilter : public rclcpp::Node, public PcdConstants
 
         RCLCPP_INFO(get_logger(),
                     "pcl_filter started — topic='%s'  dist=[%.2f, %.2f] m  "
-                    "z=[%.2f, %.2f] m  voxel=%.3f m",
-                    input_topic_.c_str(), min_distance_, max_distance_, water_z_min_, water_z_max_, voxel_leaf_size_);
+                    "z=[%.2f, %.2f] m  voxel=%.3f m  target_frame='%s'",
+                    input_topic_.c_str(), min_distance_, max_distance_, water_z_min_, water_z_max_, voxel_leaf_size_,
+                    target_frame_.c_str());
     }
 
   private:
@@ -81,9 +93,34 @@ class PclFilter : public rclcpp::Node, public PcdConstants
             return;
         }
 
+        // Convert filtered PCL cloud back to ROS message (still in velodyne frame).
+        sensor_msgs::msg::PointCloud2 filtered_msg;
+        pcl::toROSMsg(*filtered, filtered_msg);
+        filtered_msg.header = msg->header;
+
+        // Transform from velodyne frame into target_frame (odom).
         sensor_msgs::msg::PointCloud2 out_msg;
-        pcl::toROSMsg(*filtered, out_msg);
-        out_msg.header = msg->header;
+        try
+        {
+            out_msg = tf_buffer_->transform(filtered_msg, target_frame_, tf2::durationFromSec(0.1));
+        }
+        catch (tf2::TransformException const& ex)
+        {
+            try
+            {
+                // Fall back to latest available transform (zero timestamp).
+                filtered_msg.header.stamp = rclcpp::Time(0, 0, RCL_ROS_TIME);
+                out_msg = tf_buffer_->transform(filtered_msg, target_frame_, tf2::durationFromSec(0.0));
+            }
+            catch (tf2::TransformException const& ex2)
+            {
+                RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                                     "TF transform '%s'→'%s' failed: %s — dropping cloud",
+                                     msg->header.frame_id.c_str(), target_frame_.c_str(), ex2.what());
+                return;
+            }
+        }
+
         pub_->publish(out_msg);
     }
 
@@ -95,11 +132,11 @@ class PclFilter : public rclcpp::Node, public PcdConstants
      * Computes the Euclidean distance of each point from the sensor origin and
      * discards those outside [min_distance_, max_distance_].
      */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_distance_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in) const
+    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_distance_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const& in) const
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr out(new pcl::PointCloud<pcl::PointXYZ>);
         out->reserve(in->size());
-        for (auto const &pt : *in)
+        for (auto const& pt : *in)
         {
             double const r = std::sqrt(static_cast<double>(pt.x) * pt.x + static_cast<double>(pt.y) * pt.y +
                                        static_cast<double>(pt.z) * pt.z);
@@ -121,7 +158,7 @@ class PclFilter : public rclcpp::Node, public PcdConstants
      * All points below water_z_min_ are treated as water-surface reflections
      * and are discarded.
      */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_z_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in) const
+    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_z_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const& in) const
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr out(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::PassThrough<pcl::PointXYZ> pass;
@@ -137,7 +174,7 @@ class PclFilter : public rclcpp::Node, public PcdConstants
      *
      * Skipped when voxel_leaf_size_ <= 0.
      */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_voxel(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in) const
+    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_voxel(pcl::PointCloud<pcl::PointXYZ>::Ptr const& in) const
     {
         if (voxel_leaf_size_ <= 0.0)
         {
@@ -153,6 +190,8 @@ class PclFilter : public rclcpp::Node, public PcdConstants
     }
 
     // ── Members ───────────────────────────────────────────────────────────────
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_;
 };

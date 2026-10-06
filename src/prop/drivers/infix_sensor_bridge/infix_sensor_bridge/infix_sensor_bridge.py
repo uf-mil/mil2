@@ -29,6 +29,7 @@ class SensorBridge(Node):
                 break
             except Exception:
                 time.sleep(1)
+            time.sleep(1)
 
         self.stream = self.sock.makefile("r")
 
@@ -51,7 +52,7 @@ class SensorBridge(Node):
                 msg = Imu()
 
                 # ROS timestamp
-                # msg.header.stamp = self.get_clock().now().to_msg()
+                msg.header.stamp = self.get_clock().now().to_msg()
 
                 # Change this to whatever coordinate frame your IMU uses.
                 msg.header.frame_id = "base_link"
@@ -87,8 +88,8 @@ class SensorBridge(Node):
                 magnetic_field = mag_packet["magnetic_field"]
                 msg = MagneticField()
 
-                # msg.header.stamp = self.get_clock().now().to_msg()
-                # msg.header.frame_id = "base_link"
+                msg.header.stamp = self.get_clock().now().to_msg()
+                msg.header.frame_id = "base_link"
 
                 msg.magnetic_field.x = magnetic_field[0]
                 msg.magnetic_field.y = magnetic_field[1]

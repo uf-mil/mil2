@@ -28,7 +28,7 @@ def pkg_share(pkg, *path):
 
 
 def generate_launch_description():
-    config = pkg_share("prop_localization", "config", "ekf.yaml")
+    config = pkg_share("prop_localization", "config", "killme.yaml")
 
     with open(pkg_share("prop_localization", "urdf", "prop.urdf")) as urdf:
         robot_description = urdf.read()
@@ -65,8 +65,7 @@ def generate_launch_description():
                 name="navsat_transform",
                 parameters=[config],
                 remappings=[
-                    ("gps/fix", "/gps_raw"),
-                    ("imu", "/imu"),
+                    ("imu", "/imu/data"),
                     ("odometry/filtered", "/odometry/filtered/global"),
                     ("odometry/gps", "/odometry/gps"),
                 ],
