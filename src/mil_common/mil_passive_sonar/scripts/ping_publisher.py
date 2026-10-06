@@ -15,6 +15,8 @@ def main():
     PORT = 2007
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        node.declare_parameter("pinger_frequency", 35_000)
+
         pub = node.create_publisher(ProcessedPing, "hydrophones/solved", 10)
         pose_pub = node.create_publisher(PoseStamped, "hydrophones/pose", 10)
         s.connect((HOST, PORT))
@@ -49,26 +51,31 @@ def main():
                 ping_msg.frequency = int(json_data["frequency_Hz"])
                 ping_msg.origin_distance_m = float(json_data["origin_distance_m"])
 
-                if not 33_000 <= ping_msg.frequency <= 37_000:
+                pinger_frequency = (
+                    node.get_parameter("pinger_frequency")
+                    .get_parameter_value()
+                    .integer_value
+                )
+
+                if abs(pinger_frequency - ping_msg.frequency) > 2_500:
                     continue
 
                 pub.publish(ping_msg)
 
-                if True:  # 25_000 <= ping_msg.frequency <= 35_000:
-                    pose_msg = PoseStamped()
-                    pose_msg.header.frame_id = "base_link"
-                    # calculate quaternion
-                    vec = np.array([x, y, z])
-                    left = np.cross(np.array([0, 0, 1]), vec)
-                    up = np.cross(vec, left)
+                pose_msg = PoseStamped()
+                pose_msg.header.frame_id = "base_link"
+                # calculate quaternion
+                vec = np.array([x, y, z])
+                left = np.cross(np.array([0, 0, 1]), vec)
+                up = np.cross(vec, left)
 
-                    mat = np.array([vec, left, up]).T
-                    quat = transforms3d.quaternions.mat2quat(mat)
-                    pose_msg.pose.orientation.w = quat[0]
-                    pose_msg.pose.orientation.x = quat[1]
-                    pose_msg.pose.orientation.y = quat[2]
-                    pose_msg.pose.orientation.z = quat[3]
-                    pose_pub.publish(pose_msg)
+                mat = np.array([vec, left, up]).T
+                quat = transforms3d.quaternions.mat2quat(mat)
+                pose_msg.pose.orientation.w = quat[0]
+                pose_msg.pose.orientation.x = quat[1]
+                pose_msg.pose.orientation.y = quat[2]
+                pose_msg.pose.orientation.z = quat[3]
+                pose_pub.publish(pose_msg)
             except json.JSONDecodeError as e:
                 parse_error_count += 1
                 # ignore first two (normal behavior)
