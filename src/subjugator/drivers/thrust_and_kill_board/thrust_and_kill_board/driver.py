@@ -12,6 +12,8 @@ from std_msgs.msg import String
 from std_srvs.srv import Empty
 from subjugator_msgs.msg import Temperature, ThrusterEfforts
 
+import serial, time
+
 from thrust_and_kill_board.packets import (
     HeartbeatReceivePacket,
     HeartbeatSetPacket,
@@ -27,6 +29,10 @@ from thrust_and_kill_board.packets import (
 # note that you also need to mess with the yaml file in the config dir
 DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E4623C80DF43092D-if00"  # v2
 DEFAULT_BAUDRATE = 115200
+
+# TODO add this to the config
+PORT_MODEM: str = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_57EDA3B48984F48A-if00"
+BAUDRATE_MODEM: int = 115200
 
 
 def msg_to_string(msg):
@@ -50,6 +56,14 @@ class ThrustAndKillNode(
     def __init__(self):
         # Port parameter
         super().__init__("thrust_and_kill_board", None, None)
+
+        # connect to evil modem tube
+        self.modem_pico = serial.Serial(
+            port=self.PORT_MODEM,
+            baudrate=BAUDRATE_MODEM,
+            timeout=1
+        )
+
         port_description = ParameterDescriptor(
             type=ParameterType.PARAMETER_STRING,
             description="Serial port to connect to the thrust and kill board",
@@ -176,11 +190,15 @@ class ThrustAndKillNode(
     def _set_kill(self, request, response):
         self.get_logger().info("Received kill service request.")
         self.send_packet(KillSetPacket(True, KillStatus.SOFTWARE_REQUESTED))
+        msg = "r\n"
+        self.modem_pico.write(msg.encode('utf-8'))
         return response
 
     def _unset_kill(self, request, response):
         self.get_logger().info("Received unkill service request.")
         self.send_packet(KillSetPacket(False, KillStatus.SOFTWARE_REQUESTED))
+        msg = "g\n"
+        self.modem_pico.write(msg.encode('utf-8'))
         return response
 
     def _send_heartbeat(self):
@@ -192,7 +210,11 @@ class ThrustAndKillNode(
                 "Thrust board heartbeat timeout! Rejecting further thruster commands.",
             )
             self.heartbeat_timedout = True
+            msg = "r\n"
+            self.modem_pico.write(msg.encode('utf-8'))
         else:
+            msg = "g\n"
+            self.modem_pico.write(msg.encode('utf-8'))
             if not self.heartbeat_timedout:
                 self.get_logger().debug("Thrust board heartbeat is live.")
             else:
