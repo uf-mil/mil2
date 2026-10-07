@@ -1,31 +1,41 @@
 # prop_planner
 
-On-demand coordinate planning using Carlos's persistent `ObstacleMap` and
-visibility-graph A* from `carlos-path-plannning`. The geometry, map, search, and
-C++ tests are reused. This replaces the earlier OccupancyGrid/four-connected
-prototype; the ROS wrapper keeps the `nav_msgs/srv/GetPlan` service contract.
+Continuous coordinate planning using a persistent `ObstacleMap` and
+visibility-graph A* from `carlos-path-plannning`.
 
 ## Interfaces
 
-- Service `~/plan` (normally `/prop_planner/plan`): supply stamped start and goal
-  poses with `tolerance: 0`. An empty start frame uses the latest odometry.
-  Poses are transformed into `map_frame` at their timestamps; zero timestamp
-  requests the latest TF. Missing transforms return an empty path.
+- Service `~/active` (normally `/prop_planner/active`): `std_srvs/srv/Trigger`.
+  Query only; `success` reports the `active` parameter and `message` is
+  `active` or `inactive`. The default is false. While inactive, odometry, goal, and
+  perception callbacks return immediately, and planning/publication stop.
+  The status and toggle services remain available. Set it from launch or
+  at runtime. It does not guarantee a valid route or fresh inputs.
+- Service `~/toggle_active`: `std_srvs/srv/Trigger`. Each call flips the active
+  parameter: false → true → false. Like `~/active`, the response `success`
+  carries the resulting flag (false means inactive, not a failed toggle).
+  No goal, odometry, or perception input is needed to query or toggle it.
+- Input `goal_pose`: `geometry_msgs/msg/PoseStamped`, reliable/volatile depth 10.
+  The latest goal replaces the previous goal, including invalid goals. Poses
+  are transformed into `map_frame` at their timestamps; zero requests latest TF.
+- Output `/path`: `nav_msgs/msg/Path`, reliable/volatile depth 10, published at
+  10 Hz while active using a wall timer. Each tick replans from the latest odometry to the
+  latest goal using confirmed obstacles. Missing inputs or planning failures
+  publish an empty path instead of retaining an old route.
 - Input `tracked_markers`: `visualization_msgs/msg/MarkerArray`, reliable/volatile
   depth 10, configurable through `tracks_topic`. ADD/CUBE detections are
   transformed individually and converted to capsules. DELETEALL clears the
   tracker's visualization, not persistent obstacle memory.
 - Input `/odometry/filtered/global`: `nav_msgs/msg/Odometry`, sensor-data QoS,
-  configurable through `odom_topic`. Explicit-start requests need no odometry.
-  Position logging remains throttled to once per second.
-- Response `plan`: `nav_msgs/msg/Path`, with the exact start, route waypoints,
-  and transformed goal pose. Every pose shares the path header. A zero goal
-  quaternion means no requested final heading; otherwise use a unit quaternion.
+  configurable through `odom_topic`.
 
-The node only returns paths. It does not subscribe to `goal_pose`, publish `plan`,
-or command movement. A calling node must select the path and publish it to
-guidance with reliable, transient-local QoS, depth 1. Do not run competing
-automatic path publishers on that same topic.
+Paths contain the odometry start, route waypoints, and transformed goal. Every
+pose shares the path header. A zero goal quaternion means no requested final
+heading; otherwise use a unit quaternion. Topic names can be remapped through
+ROS arguments. Toggle active before sending inputs. Messages received while inactive are
+ignored; previously accepted inputs and the persistent map are retained.
+While inactive, a reminder is logged every two seconds. Activation logs once;
+routine position logs are disabled and planning diagnostics use DEBUG. The former `~/plan` GetPlan service has been removed.
 
 ## Map and planning behavior
 
@@ -38,6 +48,7 @@ Parameters:
 
 | Parameter | Default | Purpose |
 | --- | --- | --- |
+| `active` | `false` | Enable input processing, planning, and publication |
 | `map_frame` | `map` | Common planning frame |
 | `odom_topic` | `/odometry/filtered/global` | Estimated boat pose |
 | `tracks_topic` | `tracked_markers` | Perception detections |
@@ -47,20 +58,20 @@ Parameters:
 A* connects candidate points with collision-free straight segments, allowing
 arbitrary directions. String pulling removes unnecessary waypoints. Search is
 shortest on the sampled graph, not guaranteed globally shortest in continuous
-space. The service rejects start/goal positions inside confirmed inflated
+space. The planner rejects start/goal positions inside confirmed inflated
 obstacles before invoking the core, which otherwise ignores endpoint overlaps.
 
-Missing inputs, invalid requests, missing TF, and unreachable goals return an
-empty path with the reason logged. GetPlan has no separate status field.
+Missing inputs, invalid goals, missing TF, and unreachable goals return an
+empty path while active; the reason is available at DEBUG log level.
 
 No perception messages yet means planning fails. An empty scan is valid and
 allows straight-line planning. Receipt does not establish complete coverage:
 unobserved space and unconfirmed detections are not blocked. There are no map
-bounds, automatic replanning, freshness checks, moving-obstacle prediction,
-curvature constraints, or vertical collision checks. A synchronous callback
+bounds, freshness checks, moving-obstacle prediction,
+curvature constraints, or vertical collision checks. A synchronous timer callback
 plans against one snapshot of confirmed obstacles. The default map/global
 odometry pairing matches this branch's guidance; keep frames consistent when
-connecting a caller to guidance.
+connecting the path output to guidance.
 
 ## Build and try
 
@@ -79,20 +90,21 @@ ros2 run prop_planner mock_map.py
 
 The historical name `mock_map.py` is retained, but it now publishes repeated
 tracked CUBE markers, not OccupancyGrid. The synthetic obstacle is 2 m by 8 m,
-centred at (10, 0). After at least three observations, request a route around it:
+centred at (10, 0). Supply odometry from localization, then publish a goal:
 
 ```bash
-ros2 service call /prop_planner/plan nav_msgs/srv/GetPlan "{
-  start: {header: {frame_id: map}, pose: {position: {x: 0.0, y: 0.0}, orientation: {w: 1.0}}},
-  goal: {header: {frame_id: map}, pose: {position: {x: 20.0, y: 0.0}, orientation: {w: 1.0}}},
-  tolerance: 0.0
+ros2 service call /prop_planner/toggle_active std_srvs/srv/Trigger '{}'
+ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped "{
+  header: {frame_id: map},
+  pose: {position: {x: 20.0, y: 0.0}, orientation: {w: 1.0}}
 }"
+ros2 service call /prop_planner/active std_srvs/srv/Trigger '{}'
+ros2 topic echo /path
 ```
 
 For real detections, stop the mock publisher and supply the perception stack's
 `tracked_markers`, TF, and localization. In simulation, set
-`--ros-args -p use_sim_time:=true` on the service. This package change does not
-import Carlos's Gazebo launch or start his automatic topic-based planner.
+`--ros-args -p use_sim_time:=true` on the node.
 
 ## Tests
 

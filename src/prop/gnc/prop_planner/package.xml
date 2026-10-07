@@ -2,12 +2,13 @@
 <package format="3">
   <name>prop_planner</name>
   <version>0.0.0</version>
-  <description>On-demand visibility-graph planning using a persistent obstacle map.</description>
+  <description>Continuous visibility-graph planning using a persistent obstacle map.</description>
   <maintainer email="zhuen.zhong@ufl.edu">Zhuen Zhong</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>nav_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
   <depend>visualization_msgs</depend>

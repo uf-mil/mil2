@@ -1,12 +1,16 @@
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
-#include <nav_msgs/srv/get_plan.hpp>
+#include <nav_msgs/msg/path.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <std_srvs/srv/trigger.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_ros/buffer.hpp>
 #include <tf2_ros/transform_listener.hpp>
@@ -45,12 +49,24 @@ prop_planner::Capsule capsule_of(geometry_msgs::msg::Pose const &pose,
     return {{p.x - dx, p.y - dy}, {p.x + dx, p.y + dy}, across / std::sqrt(2.0)};
 }
 }  // namespace
-
 class PropPlanner : public rclcpp::Node
 {
   public:
     PropPlanner() : Node("prop_planner"), map_(prop_planner::ObstacleMap::Config{})
     {
+        active_ = declare_parameter<bool>("active", false);
+        active_callback_ = add_post_set_parameters_callback(
+            [this](std::vector<rclcpp::Parameter> const &parameters)
+            {
+                for (auto const &parameter : parameters)
+                {
+                    if (parameter.get_name() != "active") continue;
+                    bool const active = parameter.as_bool();
+                    if (active == active_) continue;
+                    active_ = active;
+                    if (active_) RCLCPP_INFO(get_logger(), "prop_planner is active now");
+                }
+            });
         map_frame_ = declare_parameter<std::string>("map_frame", "map");
         inflation_ = declare_parameter("inflation", 2.0);
         auto const corners = declare_parameter("corners_per_obstacle", 8);
@@ -66,27 +82,57 @@ class PropPlanner : public rclcpp::Node
             odom_topic, rclcpp::SensorDataQoS(),
             [this](nav_msgs::msg::Odometry::ConstSharedPtr msg)
             {
+                if (!active_) return;
                 if (msg->header.frame_id.empty() || !finite_pose(msg->pose.pose)) return;
                 last_odom_ = *msg;
                 has_odom_ = true;
-                auto const &p = msg->pose.pose.position;
-                RCLCPP_INFO_THROTTLE(get_logger(), log_clock_, 1000,
-                    "Boat position in frame '%s': x=%.2f m, y=%.2f m, z=%.2f m",
-                    msg->header.frame_id.c_str(), p.x, p.y, p.z);
+
             });
 
         auto const tracks_topic = declare_parameter<std::string>("tracks_topic", "tracked_markers");
         tracks_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
             tracks_topic, rclcpp::QoS(10),
             [this](visualization_msgs::msg::MarkerArray::ConstSharedPtr msg) { tracks_cb(*msg); });
-        
-        plan_service_ = create_service<nav_msgs::srv::GetPlan>(
-            "~/plan", [this](nav_msgs::srv::GetPlan::Request::SharedPtr request,
-                            nav_msgs::srv::GetPlan::Response::SharedPtr response)
-            { response->plan = plan(*request); });
-        RCLCPP_INFO(get_logger(), "Waiting for odometry on %s", odom_sub_->get_topic_name());
-        RCLCPP_INFO(get_logger(), "Planning service ready; detections on %s, frame %s",
-                    tracks_sub_->get_topic_name(), map_frame_.c_str());
+
+        goal_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
+            "goal_pose", rclcpp::QoS(10),
+            [this](geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
+            {
+                if (!active_) return;
+                goal_ = *msg;
+                has_goal_ = true;
+            });
+        path_pub_ = create_publisher<nav_msgs::msg::Path>("/path", rclcpp::QoS(10));
+        status_service_ = create_service<std_srvs::srv::Trigger>(
+            "~/active", [this](std_srvs::srv::Trigger::Request::SharedPtr,
+                              std_srvs::srv::Trigger::Response::SharedPtr response)
+            {
+                response->success = active_;
+                response->message = response->success ? "active" : "inactive";
+            });
+        toggle_service_ = create_service<std_srvs::srv::Trigger>(
+            "~/toggle_active", [this](std_srvs::srv::Trigger::Request::SharedPtr,
+                                     std_srvs::srv::Trigger::Response::SharedPtr response)
+            {
+                bool const active = !active_;
+                auto const result = set_parameter(rclcpp::Parameter("active", active));
+                // As with ~/active, success carries the resulting active state.
+                response->success = active_;
+                response->message = result.successful
+                    ? (response->success ? "active" : "inactive") : result.reason;
+            });
+        publish_timer_ = create_wall_timer(std::chrono::milliseconds(100),
+            [this]()
+            {
+                if (!active_)
+                {
+                    RCLCPP_INFO_THROTTLE(get_logger(), log_clock_, 2000,
+                        "prop_planner is not active; toggle active to true first");
+                    return;
+                }
+                path_pub_->publish(plan());
+            });
+        if (active_) RCLCPP_INFO(get_logger(), "prop_planner is active now");
     }
 
   private:
@@ -113,6 +159,7 @@ class PropPlanner : public rclcpp::Node
 
     void tracks_cb(visualization_msgs::msg::MarkerArray const &msg)
     {
+        if (!active_) return;
         using Marker = visualization_msgs::msg::Marker;
         bool detection_seen = false, accepted = false;
         bool empty_scan = msg.markers.empty();
@@ -135,38 +182,39 @@ class PropPlanner : public rclcpp::Node
             }
             catch (std::exception const &error)
             {
-                RCLCPP_WARN(get_logger(), "Ignoring detection: %s", error.what());
+                RCLCPP_DEBUG(get_logger(), "Ignoring detection: %s", error.what());
             }
         }
         // An empty scan is valid input, distinct from no perception messages yet.
         if (accepted || (!detection_seen && empty_scan)) has_map_ = true;
     }
 
-    nav_msgs::msg::Path plan(nav_msgs::srv::GetPlan::Request const &request)
+    nav_msgs::msg::Path plan()
     {
+        if (!active_) return nav_msgs::msg::Path{};
         auto fail = [this](char const *reason)
         {
-            RCLCPP_WARN(get_logger(), "Planning failed: %s", reason);
-            return nav_msgs::msg::Path{};
+            RCLCPP_DEBUG(get_logger(), "Planning failed: %s", reason);
+            nav_msgs::msg::Path path;
+            path.header.frame_id = map_frame_;
+            path.header.stamp = now();
+            return path;
         };
+        if (!has_goal_) return fail("no goal received");
         if (!has_map_) return fail("no valid perception input received");
-        if (request.tolerance != 0.0) return fail("only tolerance = 0 is supported");
-        auto start = request.start;
-        if (start.header.frame_id.empty())
-        {
-            if (!has_odom_) return fail("no odometry received for implicit start");
-            start.header = last_odom_.header;
-            start.pose = last_odom_.pose.pose;
-        }
+        if (!has_odom_) return fail("no odometry received");
+        geometry_msgs::msg::PoseStamped start;
+        start.header = last_odom_.header;
+        start.pose = last_odom_.pose.pose;
         try
         {
             start = in_map(start);
-            auto goal = in_map(request.goal);
+            auto goal = in_map(goal_);
             prop_planner::Point const a{start.pose.position.x, start.pose.position.y};
             prop_planner::Point const b{goal.pose.position.x, goal.pose.position.y};
             auto const obstacles = map_.confirmed();
             // The borrowed core ignores obstacles overlapping endpoints. Preserve
-            // the service's stricter contract by rejecting those requests first.
+            // strict endpoint clearance by rejecting those goals first.
             for (auto const &obstacle : obstacles)
             {
                 auto const grown = prop_planner::inflate(obstacle.shape, inflation_);
@@ -200,6 +248,8 @@ class PropPlanner : public rclcpp::Node
         }
     }
 
+    bool active_{false};
+    rclcpp::node_interfaces::PostSetParametersCallbackHandle::SharedPtr active_callback_;
     std::string map_frame_;
     double inflation_;
     prop_planner::ObstacleMap map_;
@@ -207,7 +257,13 @@ class PropPlanner : public rclcpp::Node
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     rclcpp::Clock log_clock_{RCL_STEADY_TIME};
-    rclcpp::Service<nav_msgs::srv::GetPlan>::SharedPtr plan_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr status_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr toggle_service_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+    rclcpp::TimerBase::SharedPtr publish_timer_;
+    geometry_msgs::msg::PoseStamped goal_;
+    bool has_goal_{false};
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr tracks_sub_;
     nav_msgs::msg::Odometry last_odom_;

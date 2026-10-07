@@ -3,6 +3,7 @@ project(prop_planner)
 
 find_package(ament_cmake REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
@@ -20,7 +21,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   target_compile_options(prop_planner_node PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 target_link_libraries(prop_planner_node prop_planner_core)
-ament_target_dependencies(prop_planner_node nav_msgs rclcpp geometry_msgs visualization_msgs
+ament_target_dependencies(prop_planner_node nav_msgs std_srvs rclcpp geometry_msgs visualization_msgs
   tf2 tf2_ros tf2_geometry_msgs)
 
 install(TARGETS prop_planner_node prop_planner_core DESTINATION lib/${PROJECT_NAME})
