@@ -32,13 +32,8 @@ Context::Context(rclcpp::Node *node_in, Constants const &settings_in)
 
 Deadline::Deadline(rclcpp::Node *node, double seconds) : node_(node), start_(node->now()), seconds_(seconds)
 {
-    // A node built with use_sim_time before its first /clock message reads
-    // now() as 0. Starting the clock here would then measure "seconds since
-    // the simulation began" instead of "seconds from now", so the deadline is
-    // born already expired against any sim that has been up longer than it.
-    // Observed on 2026-09-07: a maneuver launched against a sim at t=604 s
-    // gave up "after 300 s" in the same millisecond it started, on the first
-    // momentary gap in perception.
+    // With use_sim_time, now() reads 0 until the first /clock message; starting
+    // the count from that would make the deadline expire immediately.
     started_ = start_.nanoseconds() > 0;
 }
 
@@ -46,13 +41,11 @@ bool Deadline::expired() const
 {
     rclcpp::Time const now = node_->now();
 
-    // Start the count from the first real reading rather than from a zero
-    // that only meant "the clock had not arrived yet".
     if (!started_)
     {
         if (now.nanoseconds() == 0)
         {
-            return false;  // still no clock; nothing has begun, so nothing can be late
+            return false;
         }
         start_ = now;
         started_ = true;
@@ -91,9 +84,7 @@ Status FaceObject::step()
         return Status::Failed;
     }
 
-    // Release the driver before commanding a single turn. If guidance still
-    // holds points it publishes cmd_vel ten times a second and the two streams
-    // interleave, making the boat stutter.
+    // Guidance still publishing cmd_vel would interleave with the turn commands.
     if (!released_)
     {
         context_.driver.release();
@@ -109,9 +100,7 @@ Status FaceObject::step()
             return Status::Running;
         }
 
-        // Inside the tolerance, which is NOT the same as finished. step() has
-        // already published the stop; give the boat somewhere to put its
-        // remaining turn before believing the number.
+        // Inside the tolerance is not finished: let the remaining turn play out.
         settle_deadline_.emplace(context_.node, context_.settings.stop_timeout_);
         phase_ = Phase::Settling;
         RCLCPP_INFO(context_.node->get_logger(), "face: inside the tolerance at %.1f deg/s, letting it settle",
@@ -119,7 +108,6 @@ Status FaceObject::step()
         return Status::Running;
     }
 
-    // Phase::Settling.
     bool const stopped = std::abs(boat.yaw_rate) <= context_.settings.stop_turn_rate_;
     bool const gave_up = settle_deadline_ && settle_deadline_->expired();
     if (!stopped && !gave_up)
@@ -129,9 +117,7 @@ Status FaceObject::step()
         return Status::Running;
     }
 
-    // Re-measure where the boat actually came to rest. This is the whole point
-    // of waiting: the error at the moment of crossing describes a heading the
-    // boat was only sweeping through.
+    // Re-measure at rest; the error at the moment of crossing was mid-sweep.
     double const resting = wrap_angle(target - boat.direction);
 
     if (std::abs(resting) <= context_.settings.point_tolerance_)
@@ -179,12 +165,8 @@ CircleObject::CircleObject(Context &context, double radius, int legs, bool count
 
 Point CircleObject::aim_past(Point const &from, Point const &corner) const
 {
-    // Same trick, and the same reason, as ApproachObject::aim_goal: guidance
-    // stops commanding once it is hold_radius from its last waypoint, so a
-    // corner handed over as-is leaves the boat parked short of the ring. Short
-    // of a corner means INSIDE the ring, which is the direction that matters:
-    // measured in simulation on 2026-09-12, a circle asked for 6.00 m never
-    // got further out than 5.28 m and closed to 1.84 m.
+    // Guidance stops hold_radius short of its last waypoint, which would park
+    // the boat inside the ring; aim that far past the corner (see aim_goal).
     double const span = distance(from, corner);
     if (span < 1e-6)
     {
@@ -196,30 +178,15 @@ Point CircleObject::aim_past(Point const &from, Point const &corner) const
 
 bool CircleObject::run_to_corner(Boat const &boat)
 {
-    // Judged on the REAL corner, not on nearness to the aim point handed over.
-    // driver.arrived() asks about the last waypoint with arrive_tolerance,
-    // which at 1.5 m is larger than guidance's own 1.0 m hold radius -- so it
-    // can report arrival before guidance has even stopped driving. Same defect
-    // ApproachObject documents and fixes for itself with standoff_tolerance.
+    // Judged on the real corner, not driver.arrived(), whose tolerance is
+    // looser than guidance's hold radius.
     if (distance(boat.position, corner_) <= context_.settings.corner_tolerance_)
     {
         return true;
     }
 
-    // Backstop. Once guidance has parked there is nothing left to close the
-    // gap, so waiting for the tight tolerance would hang until the maneuver
-    // timed out. Take what was achieved and say how far off it was, rather
-    // than either hanging or pretending the corner was reached.
-    //
-    // "Parked" is a question about GUIDANCE: it stops commanding once it is
-    // within its own hold radius of its own final waypoint, which is the aim
-    // point and not the corner. Asking driver.arrived() instead measures
-    // arrive_tolerance -- 1.5 m, and about a different point -- so the two
-    // agreed only by coincidence, while the aim-past happened to make up the
-    // difference. Measured 2026-09-13, after prop_controller moved hold_radius
-    // from 1.0 to 0.10 and the aim-past shrank with it: the backstop began
-    // firing 1.40 m from EVERY corner, took each one early, and pulled a
-    // 6.00 m ring in to a 3.92 m worst sag against an ideal of 4.24 m.
+    // Backstop: once guidance has parked at the aim point nothing closes the
+    // gap, so take what was achieved instead of hanging until the timeout.
     if (distance(boat.position, aim_) <= context_.settings.guidance_hold_radius_)
     {
         RCLCPP_WARN(context_.node->get_logger(),
@@ -256,17 +223,8 @@ Status CircleObject::step()
         return Status::Failed;
     }
 
-    // Keep confirming the buoy is there, on the move. Same idiom and same
-    // reason as ApproachObject: without it the lock's timestamp would freeze
-    // for the whole lap and stale() would fire on the clock alone.
-    //
-    // A failed refresh is expected here and is not treated as a problem. The
-    // buoy sits 90 degrees off the beam while circling, which is exactly
-    // where the antenna blind wedges are, so it goes unseen for part of every
-    // leg by geometry. TargetLock::refresh throttles its own complaint about
-    // that. Only a lock that has gone genuinely stale -- unseen for
-    // reading_max_age, well past the time a wedge can hide it -- says the
-    // buoy is actually lost.
+    // Keep the lock's timestamp fresh. A failed refresh is normal here (the
+    // buoy sits in the blind wedges for part of each leg); only stale() means lost.
     if ((context_.node->now() - last_refresh_).seconds() >= kRefreshInterval)
     {
         context_.lock.refresh();
@@ -293,9 +251,7 @@ Status CircleObject::step()
                 return Status::Failed;
             }
 
-            // Pin the lap to the line out through the boat, so the boat does
-            // not have to double back to start, and every later corner is
-            // measured from here.
+            // Pin the lap to the line out through the boat so it need not double back.
             entry_bearing_ = bearing(context_.lock.point(), boat.position);
             corner_ = ring_corner(context_.lock.point(), radius_, entry_bearing_, 0, legs_, counter_clockwise_);
             aim_ = aim_past(boat.position, corner_);
@@ -338,9 +294,7 @@ Status CircleObject::step()
                 return Status::Succeeded;
             }
 
-            // Roll straight on. Nothing is released and nothing is stopped:
-            // handing guidance a new plan replaces the old one, so the boat
-            // turns towards the next corner while still carrying way.
+            // Roll straight on: a new plan replaces the old one without stopping.
             start_leg(boat);
             return Status::Running;
         }
@@ -351,9 +305,7 @@ Status CircleObject::step()
 
 void CircleObject::start_leg(Boat const &boat)
 {
-    // Redraw around wherever the buoy now is, but at the angle this leg was
-    // always going to end on. The centre follows the lock; the angle does not
-    // follow the boat. See ring_corner.
+    // Redraw around the buoy's current position, at the angle this leg always ended on (see ring_corner).
     corner_ = ring_corner(context_.lock.point(), radius_, entry_bearing_, legs_driven_ + 1, legs_, counter_clockwise_);
     aim_ = aim_past(boat.position, corner_);
     context_.driver.go_to(aim_);
@@ -368,14 +320,8 @@ ApproachObject::ApproachObject(Context &context, double standoff)
 
 namespace
 {
-/// The worst thing blocking the leg from `boat` to `goal`, ignoring `target`
-/// itself. Used to decide whether to back off before planning a route.
-///
-/// Deliberately separate from plan_route: the decision to reverse is taken
-/// before there is any route to drive, and plan_route's answer to
-/// TooCloseToSwing is to give up and hand back best effort. Asking it here
-/// would lose the distinction between "nothing in the way" and "in the way and
-/// unroutable".
+/// The worst thing blocking the leg from `boat` to `goal`, ignoring `target`.
+/// Separate from plan_route so "nothing in the way" stays distinct from "in the way and unroutable".
 DetourNeed worst_need(Context const &context, Point const &boat, Point const &goal, Point const &target)
 {
     DetourNeed worst = DetourNeed::None;
@@ -402,26 +348,12 @@ DetourNeed worst_need(Context const &context, Point const &boat, Point const &go
 
 Point ApproachObject::aim_goal(Point const &boat) const
 {
-    // Stop clear of the object's SURFACE, so the standoff means the same thing
-    // whatever size the object is -- and measure it from the BOW, because that
-    // is the part of the boat that gets close to things. base_link is the
-    // lidar, 0.760 m aft of the bow, so leaving that out would put the front
-    // of the boat three quarters of a metre nearer than asked.
-    // Aim past the intended stopping point by guidance's hold radius: it stops
-    // commanding once it is that close to the final waypoint, so a goal placed
-    // exactly on the mark leaves the boat parked short with nothing left to
-    // close the gap.
+    // Stop clear of the object's surface, measured from the bow (base_link is 0.760 m aft of it).
+    // Aim guidance_hold_radius past that, since guidance parks short of its last waypoint.
     double const want_from_centre = context_.lock.radius() + standoff_ + context_.settings.hull_front_;
 
-    // The floor is where the BOW touches the object, not where base_link does.
-    // The goal is a base_link pose and the bow is hull_front_ ahead of it, so
-    // clamping at lock.radius() would still command the front of the boat
-    // 0.760 m inside the buoy. With the shipped defaults the aim-past and the
-    // standoff happen to cancel exactly, and only guidance parking short kept
-    // the boat off it; any approach_standoff below guidance_hold_radius drove
-    // straight through. Nothing keeps maneuvers.yaml's guidance_hold_radius in
-    // step with prop_controller's own hold_radius either, so this floor is the
-    // only thing standing between a mismatched pair and a collision.
+    // Floor at where the bow touches the object, not base_link. guidance_hold_radius is not tied to
+    // prop_controller's hold_radius, so this is the only guard against driving into the object.
     double const floor = context_.lock.radius() + context_.settings.hull_front_;
     double const aim_from_centre = std::max(floor, want_from_centre - context_.settings.guidance_hold_radius_);
     return standoff_point(boat, context_.lock.point(), aim_from_centre);
@@ -443,9 +375,7 @@ ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
 
     for (auto const &blob : context_.lock.blobs())
     {
-        // Never treat the target as its own obstacle. The margin is a setting
-        // rather than a hardcoded metre because it depends on how far the
-        // clustering's idea of the buoy's edge can sit from the lock's.
+        // Never treat the target as its own obstacle; the margin covers clustering and lock disagreeing on the edge.
         if (distance(blob.centre, target) <= context_.lock.radius() + context_.settings.target_blob_margin_)
         {
             continue;
@@ -467,10 +397,7 @@ ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
         }
     }
 
-    // Anything that is not a straddle -- including TooCloseToSwing -- gets the
-    // straight line. Backing off is step()'s business and happens at most once
-    // per approach; by the time a second TooCloseToSwing turns up there is
-    // nothing left to try, so best effort beats refusing to move.
+    // Anything but a straddle gets the straight line; backing off is step()'s job and happens once.
     if (chosen.need != DetourNeed::Straddle)
     {
         return plan;
@@ -478,15 +405,13 @@ ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
 
     if (chosen.achieved < context_.settings.detour_clearance_ - 1e-6)
     {
-        // Say so rather than quietly under-delivering. This happens when the
-        // goal itself lies inside the clearance, which no routing can fix.
+        // Say so: the goal itself lies inside the clearance, which no routing can fix.
         RCLCPP_WARN(context_.node->get_logger(), "approach: stepping around at %.2f m, %.2f m was asked for",
                     chosen.achieved, context_.settings.detour_clearance_);
     }
 
     plan.route = { chosen.before, chosen.after, goal };
-    // The straddle was planned for the leg boat -> goal, so that is the
-    // direction "past it" is measured along later.
+    // The straddle was planned for boat -> goal, so "past it" is measured along that.
     plan.commitment = Commitment{ chosen_blob, chosen.before, chosen.after, bearing(boat.position, goal) };
     return plan;
 }
@@ -498,19 +423,13 @@ bool ApproachObject::supersedes(std::optional<Commitment> const &fresh, Boat con
         return false;
     }
 
-    // Blobs carry no identity from one frame to the next, so "the same
-    // obstacle" has to be "close enough to the one remembered". match_radius
-    // is the tolerance the lock already uses to re-find an object it is
-    // tracking, and the job here is the same one.
+    // Blobs have no identity across frames; match within match_radius, as the lock does.
     if (distance(fresh->obstacle.centre, commitment_->obstacle.centre) <= context_.settings.match_radius_)
     {
         return false;
     }
 
-    // Something else, but further off than the obstacle being stepped around.
-    // Deal with it after this one rather than instead of it: swapping now
-    // would drop the committed pair half way through and cut straight back
-    // across the near obstacle, which is exactly what the commitment is for.
+    // Another, farther obstacle waits its turn; swapping now would drop the committed pair half way.
     return distance(boat.position, fresh->obstacle.centre) < distance(boat.position, commitment_->obstacle.centre);
 }
 
@@ -571,35 +490,20 @@ Status ApproachObject::step()
                 return Status::Running;
             }
 
-            // Pointed at it: best possible look, so re-read before planning.
-            //
-            // The stamp goes with the refresh, and both happen before EVERY
-            // exit from this phase, backing off included. Phase::Driving
-            // subtracts last_refresh_ from the node clock, and a
-            // default-constructed rclcpp::Time carries a different clock
-            // source, so leaving it unstamped throws rather than simply
-            // reading as "long ago".
+            // Pointed at it: re-read before planning. Stamp last_refresh_ before every exit from this phase;
+            // a default-constructed Time has a different clock source, so subtracting it throws.
             context_.lock.refresh();
             last_refresh_ = context_.node->now();
 
-            // The SAME goal plan_route will use. An earlier version rebuilt it
-            // here without the bow offset or the aim-past, so the back-off
-            // decision was taken on a leg the boat would never drive -- and
-            // the gap between the two grows with hull_front or
-            // guidance_hold_radius, either of which could make the approach
-            // skip a back-off it needed or take one it did not.
+            // The same goal plan_route uses, so the back-off decision is made on the leg that will be driven.
             Point const goal = aim_goal(boat.position);
 
-            // Asked once, here, on the reading taken a moment ago. This is the
-            // only point in the approach where the boat is stopped and pointed
-            // at the target, so it is the only point where a reverse is cheap;
-            // has_reversed_ then keeps it to one for the rest of the maneuver.
+            // Asked once, while stopped and pointed at the target (the only cheap moment to reverse).
+            // has_reversed_ limits it to one.
             if (!has_reversed_ &&
                 worst_need(context_, boat.position, goal, context_.lock.point()) == DetourNeed::TooCloseToSwing)
             {
-                // Only one thing commands the motors at a time. The spinner
-                // has just had them and guidance must stay quiet, so both are
-                // shut down before the reverser is given a single tick.
+                // One thing commands the motors at a time: stop the spinner and guidance first.
                 context_.driver.release();
                 context_.spinner.stop();
                 reverse_start_ = boat.position;
@@ -625,22 +529,9 @@ Status ApproachObject::step()
 
         case Phase::BackingOff:
         {
-            // Re-checked on EVERY step, not once on entry. The boat can see
-            // straight out the back -- the blind spots are on the sides -- so
-            // this is live data rather than a snapshot, and a reverse takes
-            // several seconds, which is long enough for something to drift in
-            // behind us. Stopping short and taking a worse route is always
-            // better than backing into a buoy: Reverser has no sensors of its
-            // own and will do exactly that if nobody is watching for it.
-            // An EMPTY blob list is not evidence the water is clear. blobs()
-            // returns {} both when the clustering genuinely sees nothing and
-            // when the transform lookup throws, and those mean opposite
-            // things here. Tell them apart by the situation rather than the
-            // list: the approach is locked onto a blob, so during a reverse
-            // the clustering should always be reporting at least that one.
-            // Nothing at all means we have stopped seeing, not that there is
-            // nothing to see -- and reversing on a blind reading is the one
-            // thing reverser.hpp tells callers never to do.
+            // Re-checked every step: a reverse takes seconds and Reverser has no sensors. An empty blob list is
+            // not proof the water is clear (blobs() also returns {} when the transform throws), and the locked
+            // blob should always be reported, so treat empty as blind.
             std::vector<Blob> const behind_us = context_.lock.blobs();
             if (behind_us.empty())
             {
@@ -656,14 +547,8 @@ Status ApproachObject::step()
                 return Status::Running;
             }
 
-            // Check the water the boat has LEFT to cover, not the whole
-            // reverse over again. reverse_distance_ is measured from
-            // reverse_start_, but this strip is measured from where the boat
-            // is NOW, so passing the full distance every step slides the strip
-            // backwards with the boat and by the end sweeps roughly twice the
-            // reverse. A buoy sitting just past the end of the reverse would
-            // then abort it with the boat a handspan from finishing, having
-            // never been on course to reach the buoy at all.
+            // Check only the water left to cover; the strip is measured from the boat's current position,
+            // so passing the full distance would sweep about twice the reverse.
             double const still_to_cover = std::max(0.0, reverse_distance_ - distance(reverse_start_, boat.position));
 
             if (!clear_behind(behind_us, boat.position, boat.direction, still_to_cover,
@@ -680,16 +565,8 @@ Status ApproachObject::step()
                 return Status::Running;
             }
 
-            // Keep confirming the object while backing off, on the same
-            // cadence Phase::Driving uses. The reverser holds the heading, so
-            // the target stays in front of the lidar the whole way and this is
-            // a real look, not a formality. Without it the lock's timestamp
-            // would freeze for the length of the reverse -- 2.0 m at 0.4 m/s
-            // is five seconds, which is exactly reading_max_age -- and the
-            // approach would reach Phase::Driving one tick from stale on the
-            // strength of the clock alone. A failed refresh is survivable and
-            // stays quiet here; Phase::Driving reports a lock that has
-            // genuinely gone.
+            // Keep the lock fresh during the reverse (about reading_max_age long). A failed refresh is fine;
+            // Phase::Driving reports a lock that is truly lost.
             if ((context_.node->now() - last_refresh_).seconds() >= kRefreshInterval)
             {
                 context_.lock.refresh();
@@ -699,11 +576,7 @@ Status ApproachObject::step()
             if (context_.reverser.step(boat.position, boat.direction, reverse_start_, reverse_held_direction_,
                                        reverse_distance_))
             {
-                // step() publishes its own zero command on the tick it
-                // finishes. Saying so again costs one duplicate zero twist and
-                // means leaving the motors uncommanded does not depend on a
-                // primitive's internals, which is the same reason the timeout
-                // branch above stops it too.
+                // step() already published its own zero; repeating it keeps the motors from depending on its internals.
                 context_.reverser.stop();
                 RCLCPP_INFO(context_.node->get_logger(), "approach: backed off, re-planning");
                 Plan const plan = plan_route(boat);
@@ -717,48 +590,16 @@ Status ApproachObject::step()
 
         case Phase::Driving:
         {
-            // Judge arrival on the STANDOFF, which is what this maneuver
-            // promises, not on nearness to the goal waypoint.
-            //
-            // driver.arrived() asks whether the boat is within
-            // arrive_tolerance of the last waypoint, and that tolerance is
-            // 1.5 m against a 3.0 m standoff -- so the approach was allowed to
-            // stop half a standoff short and call it success. Measured in
-            // simulation on 2026-09-07: asked to stop 3.22 m from a buoy, it
-            // reported "arrived" at 4.70 m, short by exactly arrive_tolerance,
-            // having driven barely half a metre. The gap also moves whenever
-            // the lock does, so the error is not even consistent.
-            //
-            // guidance parks on the final waypoint, so it keeps closing on its
-            // own; the maneuver simply has to stop declaring victory early.
+            // Judge arrival on the standoff, not driver.arrived(): its 1.5 m tolerance let the approach stop half a
+            // standoff short.
             double const wanted = context_.lock.radius() + standoff_ + context_.settings.hull_front_;
             double const actual = distance(boat.position, context_.lock.point());
 
-            // AIM AT THE STANDOFF, and use standoff_tolerance only to judge the
-            // result. This used to declare at `wanted + standoff_tolerance`,
-            // which put the stopping point 0.30 m BEYOND the target by
-            // construction -- the tolerance was doing duty as a target band
-            // rather than as a pass mark.
-            //
-            // It is worth less than it looks. Measured 2026-09-13 against
-            // ground truth, asked to leave 1.00 m: 1.55 m off before, 1.50 m
-            // after. Only about 0.06 m, not the 0.30 m the arithmetic above
-            // suggests, because `wanted` is measured from the LOCK, and the
-            // lock is not the buoy -- see the note in the settling phase. Do
-            // it anyway: aiming at the target rather than at the edge of the
-            // tolerance is right on its own terms, and it stops the tolerance
-            // from being spent before the maneuver has begun.
-            //
-            // Reachable because aim_goal() already aims guidance_hold_radius
-            // INSIDE the standoff, so guidance parks around `wanted` rather
-            // than short of it. The fallback below is what keeps a tighter
-            // test from hanging when it does not.
+            // Aim at the standoff and use standoff_tolerance only as the pass mark. aim_goal() aims
+            // guidance_hold_radius inside it, so guidance parks near `wanted`.
             bool const on_the_standoff = actual <= wanted;
 
-            // Guidance has stopped, the boat has stopped, and nothing further
-            // is coming. Take it if it is inside the tolerance, rather than
-            // waiting out maneuver_timeout to fail at a distance that was
-            // acceptable all along.
+            // Guidance and boat have stopped: accept anything inside the tolerance rather than timing out.
             bool const parked_close_enough = context_.driver.arrived(boat.position) &&
                                              std::abs(boat.surge) <= context_.settings.stop_speed_ &&
                                              actual <= wanted + context_.settings.standoff_tolerance_;
@@ -772,18 +613,8 @@ Status ApproachObject::step()
                                 "taking it, inside the %.2f m tolerance",
                                 actual - wanted, context_.settings.standoff_tolerance_);
                 }
-                // Crossing the standoff is not arriving on it. Measured
-                // 2026-09-13, the boat crossed at 1.58 m/s and carried on for
-                // another 0.85 m before stopping, so the distance reported
-                // here described a place it was only passing through.
-                //
-                // Hold station on the spot rather than releasing. A plan of
-                // one waypoint AT THE BOAT leaves guidance inside its own
-                // hold_radius, so it returns zero speed -- but it keeps
-                // publishing, which matters as much as the zero does:
-                // thruster_manager drops thrust entirely after command_timeout
-                // of silence, so releasing here cut the brake off mid-stop and
-                // left the boat coasting on whatever it still carried.
+                // Crossing the standoff is not arriving on it. Hold station with a one-waypoint-at-the-boat plan rather
+                // than releasing: thruster_manager cuts thrust after command_timeout of silence.
                 context_.driver.go_to(boat.position);
                 settle_deadline_.emplace(context_.node, context_.settings.stop_timeout_);
                 phase_ = Phase::Settling;
@@ -792,9 +623,7 @@ Status ApproachObject::step()
                 return Status::Running;
             }
 
-            // Still short, but guidance thinks it has parked. Nothing more is
-            // coming, so say what was actually achieved rather than waiting
-            // out the timeout in silence.
+            // Still short but guidance has parked: report what was achieved.
             if (context_.driver.arrived(boat.position))
             {
                 RCLCPP_WARN_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 2000,
@@ -803,15 +632,8 @@ Status ApproachObject::step()
                                      actual, actual - wanted);
             }
 
-            // Keep confirming the object is actually still there while
-            // driving. Without this, the lock's timestamp freezes the moment
-            // the drive starts (refresh() is only otherwise called once, back
-            // in FaceTarget), and stale() below would fire on the clock alone
-            // -- aborting a perfectly good approach just because it takes
-            // longer than reading_max_age to arrive. A single failed refresh
-            // is survivable, same as CircleObject: it does not clear the
-            // lock, so the remembered point is still used until a refresh
-            // actually succeeds or the lock goes genuinely stale.
+            // Keep the lock fresh while driving, else stale() fires on the clock alone. One failed refresh is
+            // survivable.
             if ((context_.node->now() - last_refresh_).seconds() >= kRefreshInterval)
             {
                 if (!context_.lock.refresh() && !context_.lock.stale())
@@ -822,9 +644,7 @@ Status ApproachObject::step()
                 last_refresh_ = context_.node->now();
             }
 
-            // A stale lock means we have not seen the object for
-            // reading_max_age and are driving at a memory. Stop rather than
-            // close in on a position nothing has confirmed.
+            // Stale: we would be driving at a memory. Stop.
             if (context_.lock.stale())
             {
                 context_.driver.release();
@@ -834,9 +654,7 @@ Status ApproachObject::step()
                 return Status::Failed;
             }
 
-            // Let a committed straddle go once the obstacle it steps around is
-            // genuinely behind the hull. From there the direct line to the
-            // goal cannot cross it, so there is nothing left to hold.
+            // Release a committed straddle once the obstacle is behind the hull.
             if (commitment_ && !obstacle_ahead(boat.position, commitment_->travel, commitment_->obstacle,
                                                context_.settings.hull_behind_))
             {
@@ -844,33 +662,15 @@ Status ApproachObject::step()
                 RCLCPP_INFO(context_.node->get_logger(), "approach: past the obstacle, back on the direct line");
             }
 
-            // The picture can change while driving: the object's estimate can
-            // shift, or a blob can move into the way. Re-hand the route only
-            // when it has actually changed, since a new plan restarts
-            // guidance's leg from the boat's current position.
+            // Re-hand the route only when it changed; a new plan restarts guidance's leg.
             Plan plan = plan_route(boat);
 
-            // KEEP THE COMMITTED STRADDLE. This is not a missing optimisation
-            // and must not be tidied away: the plan above is made from where
-            // the boat is NOW, and driving to the first straddle waypoint
-            // moves the boat sideways, which pushes the obstacle further off
-            // the line from here to the goal. Part way along that first leg
-            // the obstacle stops counting as blocking at all, plan_route
-            // collapses to the goal alone, and guidance is handed a straight
-            // line back across the very obstacle it was stepping around --
-            // delivering min_gap instead of detour_clearance, whatever
-            // detour_clearance is set to. The pair only works as a pair, so it
-            // is held until obstacle_ahead() says the obstacle is behind us.
-            //
-            // The route is still live: the goal is re-taken from the plan
-            // every tick, so the target moving is followed, and a different,
-            // nearer obstacle turning up replaces the commitment outright.
+            // Keep the committed straddle; do not tidy away. Replanning from the current position collapses to the
+            // goal alone once the first leg moves the obstacle off the line, sending guidance back across it.
+            // The goal is still re-taken each tick, and a nearer obstacle replaces the commitment.
             if (commitment_ && !supersedes(plan.commitment, boat))
             {
-                // Waypoints already behind the boat are left out. guidance
-                // restarts at waypoint 0 from wherever the boat is on every
-                // hand-over, so a passed waypoint left in the list would turn
-                // the boat round to go back and collect it.
+                // Drop waypoints already behind the boat; guidance restarts at waypoint 0 on each hand-over.
                 plan.route.clear();
                 for (Point const &waypoint : { commitment_->before, commitment_->after })
                 {
@@ -905,8 +705,7 @@ Status ApproachObject::step()
                 return Status::Running;
             }
 
-            // Report where the boat ACTUALLY IS, re-measured now, not where it
-            // was when it crossed. That is the whole point of waiting.
+            // Report where the boat actually is now, not where it crossed.
             double const resting = distance(boat.position, context_.lock.point());
             double const bow = resting - context_.lock.radius() - context_.settings.hull_front_;
 
@@ -915,33 +714,13 @@ Status ApproachObject::step()
 
             if (gave_up)
             {
-                // Still moving after stop_timeout. The standoff was reached, so
-                // this is not a failure -- but the number below is a snapshot
-                // of something still in motion, and saying so is the whole
-                // reason this phase exists.
+                // Still moving after stop_timeout: not a failure, but the number is a snapshot.
                 RCLCPP_WARN(context_.node->get_logger(),
                             "approach: still making %.2f m/s after %.0f s; reporting anyway", boat.surge,
                             context_.settings.stop_timeout_);
             }
-            // WHY THIS STILL READS LOW, and it is not the maneuver's fault.
-            // The lidar only paints the NEAR FACE of a buoy, so the cluster's
-            // centre sits roughly half a radius closer than the real one and
-            // its width reads narrow. Measured 2026-09-13: a buoy truly at
-            // (-4.0, -4.0) locked at (-3.9, -3.9) -- 0.14 m nearer along the
-            // line of approach, against the 0.125 m that half of a 0.25 m
-            // radius predicts -- and its radius reported 0.19 m rather than
-            // 0.25. Both errors push the same way, so the boat stops about
-            // 0.2 m further out than asked and then reports the shortfall
-            // against the same optimistic point, printing 1.26 m where ground
-            // truth said 1.50 m.
-            //
-            // That is the bulk of what is left, and it belongs in the lock or
-            // the clustering, not here. Fixing it means estimating a centre
-            // from an arc rather than taking the bounding box of what came
-            // back.
-            //
-            // standoff_tolerance's real job: judging the result, now that it
-            // is no longer built into the target.
+            // Reads low by about 0.2 m: the lidar paints only a buoy's near face, so the cluster centre and radius
+            // both read short. That belongs in the lock or clustering. standoff_tolerance only judges the result.
             if (std::abs(bow - standoff_) > context_.settings.standoff_tolerance_)
             {
                 RCLCPP_WARN(context_.node->get_logger(),

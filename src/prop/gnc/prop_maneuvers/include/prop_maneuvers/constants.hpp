@@ -28,30 +28,19 @@ class Constants
     {
         auto const deg = [](double d) { return d * M_PI / 180.0; };
 
-        // ── Hull and sensor geometry ──────────────────────────────────────
-        // MEASURED on the boat 2026-09-08, from the lidar's edge and converted
-        // to its centre with the lidar's 4 7/8 in diameter. prop.urdf puts the
-        // lidar directly above base_link, so they are base_link-relative as
-        // these need to be. See config/maneuvers.yaml for the tape figures.
-        //
-        // base_link is NOT in the middle of the boat: 0.760 m to the front and
-        // 0.367 m to the propellers. Two extents, because the boat meets things
-        // differently by direction -- passing something to the side is bounded
-        // by the hull's width, backing into something by how far it reaches
-        // behind base_link.
-        //
-        // hull_behind is to the PROPELLERS; the pontoons reach further back, so
-        // it is optimistic for reversing until the tails are measured.
+        // Hull and sensor geometry
+        // Measured on the boat 2026-09-08 (tape figures in config/maneuvers.yaml), base_link-relative because
+        // prop.urdf puts the lidar directly above base_link. base_link is not mid-boat: 0.760 m to the front,
+        // 0.367 m to the propellers. hull_behind is to the propellers; the pontoons reach further, so it is
+        // optimistic for reversing until the tails are measured.
         hull_half_width_ = node->declare_parameter("hull_half_width", 0.443);
         hull_behind_ = node->declare_parameter("hull_behind", 0.367);
         hull_front_ = node->declare_parameter("hull_front", 0.760);
         guidance_hold_radius_ = node->declare_parameter("guidance_hold_radius", 1.0);
         auto const spots = node->declare_parameter("blind_spots_deg", std::vector<double>{});
         use_blind_spots_ = node->declare_parameter("use_blind_spots", true);
-        // Refuse to start on a malformed list rather than quietly carrying on
-        // with no blind spots. An odd-length list is always a typo, and the
-        // quiet path is the dangerous one: the Task 10 mask would then mask
-        // nothing, and the blind-spot test would pass without testing anything.
+        // Refuse a malformed list rather than carry on with no blind spots; an odd-length list is always a typo
+        // and the quiet path would make the blind-spot test pass without testing anything.
         if (spots.size() % 2 != 0)
         {
             RCLCPP_FATAL(node->get_logger(), "blind_spots_deg needs a flat list of from, to pairs; got %zu values.",
@@ -60,16 +49,8 @@ class Constants
         }
         for (std::size_t i = 0; i + 1 < spots.size(); i += 2)
         {
-            // Each pair is read anticlockwise from `from` to `to`, so a pair
-            // given the wrong way round does not describe a narrow wedge -- it
-            // describes everything EXCEPT that wedge. Swapping 90 and 135 turns
-            // a 45 degree blind spot into a 315 degree one and the mask blanks
-            // almost the whole scan, which looks like a dead lidar rather than
-            // a typo. Same reasoning as the odd-length check above: refuse
-            // rather than run on a list that cannot mean what was intended.
-            //
-            // A pair is legitimate up to 180 degrees; wider than that and the
-            // sighted arc is the smaller one, which is certainly not a "spot".
+            // Each pair is read anticlockwise from `from` to `to`, so a swapped pair means everything except that
+            // wedge (and blanks almost the whole scan). Refuse it, and refuse pairs wider than 180 degrees.
             double const span = wrap_angle(deg(spots[i + 1]) - deg(spots[i]));
             if (span <= 0.0)
             {
@@ -123,12 +104,8 @@ class Constants
         maneuver_timeout_ = node->declare_parameter("maneuver_timeout", 300.0);
     }
 
-    // Public, deliberately. The sibling pattern in pcd_constants.hpp keeps its
-    // cached values protected because only derived nodes read them. Here the
-    // helper classes -- TargetLock, Context -- hold a `Constants const &`
-    // WITHOUT inheriting it, so protected would not compile.
-    // The YAML in config/maneuvers.yaml and the defaults below must be kept
-    // identical; nothing enforces that automatically.
+    // Public on purpose: TargetLock and Context hold a `Constants const &` without inheriting it.
+    // The YAML in config/maneuvers.yaml and the defaults below must be kept identical by hand.
     double hull_half_width_{ 0.0 };
     double hull_behind_{ 0.0 };
     double hull_front_{ 0.0 };

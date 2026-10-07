@@ -37,13 +37,9 @@ struct Blob
     Point centre;
     double radius{ 0.0 };
 
-    /// True when the clustering reported this bigger than any single object on
-    /// the course could be, so its size has been clamped and its centre cannot
-    /// be trusted either -- it is the centroid of whatever got merged.
-    ///
-    /// Such a blob is still AVOIDED: something is there, or might be. It is
-    /// never adopted as the object being tracked, because the thing we are
-    /// approaching is a 0.46 m buoy and this is not one.
+    /// True when the clustering reported this bigger than any object on the course, so its size is clamped
+    /// and its centre (the centroid of whatever merged) is untrustworthy. Still avoided, never adopted as the tracked
+    /// object.
     bool merged{ false };
 };
 
@@ -54,13 +50,10 @@ struct Offset
     bool within_segment{ false };  ///< closest approach falls between a and b
 };
 
-/// Wrap to [-pi, pi], both ends inclusive (std::remainder can return exactly
-/// -pi; that is not a bug to "round" the other way).
+/// Wrap to [-pi, pi], both ends inclusive (std::remainder can return exactly -pi).
 double wrap_angle(double angle);
 
-/// Radians to degrees, for log lines only. Every angle in this package is
-/// radians; degrees exist so a human reading the output does not have to
-/// convert in their head.
+/// Radians to degrees, for log lines only; every angle in this package is radians.
 constexpr double degrees(double radians)
 {
     return radians * 180.0 / M_PI;
@@ -76,18 +69,10 @@ double distance(Point const &a, Point const &b);
 /// An empty list means the lidar sees everywhere.
 bool is_blind(double relative_angle, std::vector<BlindSpot> const &blind_spots);
 
-/// The `index`-th corner of a ring of `legs` evenly spaced corners, at
-/// `radius` about `centre`.
-///
-/// The angle is ABSOLUTE, measured from `entry_bearing` -- the bearing from
-/// the object out through the boat when the ring was entered. Index 0 is
-/// therefore the entry point, and index `legs` is the entry point again, one
-/// full lap later. That is the whole point of taking a fixed reference:
-/// stepping on from wherever the boat actually reached turns every short
-/// corner into a debt carried round the lap, and the lap never closes.
-/// Measured in simulation on 2026-09-12, four "90 degree" legs drawn that way
-/// advanced 90, 76, 83 and 90 degrees and finished 316 degrees round while
-/// reporting four of four legs done.
+/// The `index`-th corner of a ring of `legs` evenly spaced corners, at `radius` about `centre`.
+/// The angle is absolute, measured from `entry_bearing` (object -> boat when the ring was entered), so
+/// index 0 is the entry point and index `legs` is the same point one lap later. Stepping on from wherever
+/// the boat actually reached carries every short corner round the lap and the lap never closes.
 Point ring_corner(Point const &centre, double radius, double entry_bearing, int index, int legs,
                   bool counter_clockwise);
 
@@ -97,26 +82,13 @@ Point ring_corner(Point const &centre, double radius, double entry_bearing, int 
 Point standoff_point(Point const &start, Point const &target, double standoff);
 
 /// Where `p` sits relative to the leg `a` -> `b`.
-///
-/// `perpendicular` is the distance to the INFINITE LINE, not the segment: for
-/// a `p` whose closest approach falls just past either end (`within_segment
-/// == false`), the true distance to the nearest endpoint is understated. A
-/// point at (10.5, 0) against the leg (0,0) -> (10,0) is only 0.5 m past the
-/// end, but this returns the perpendicular distance to the line (0) with
-/// `within_segment == false` -- callers must not read a false
-/// `within_segment` as "far away".
+/// `perpendicular` is the distance to the infinite line, not the segment: when `within_segment` is false
+/// it understates the distance to the nearest endpoint, so do not read false as "far away".
 Offset distance_to_segment(Point const &p, Point const &a, Point const &b);
 
-/// True distance from `p` to the nearest point ON the polyline through
-/// `path`, clamped at every segment end.
-///
-/// Unlike distance_to_segment, which reports the perpendicular to an infinite
-/// line, this is the distance the boat actually keeps. That difference is the
-/// whole reason the old single-waypoint detour under-delivered: the waypoint
-/// was correct and the path was not.
-///
-/// An empty path returns infinity; a one-point path returns the distance to
-/// that point.
+/// True distance from `p` to the nearest point on the polyline through `path`, clamped at every segment end.
+/// Unlike distance_to_segment this is the distance the boat actually keeps. An empty path returns
+/// infinity; a one-point path returns the distance to that point.
 double distance_to_polyline(Point const &p, std::vector<Point> const &path);
 
 /// What, if anything, the boat should do about an obstacle on its leg.
@@ -137,69 +109,32 @@ struct Detour
 };
 
 /// Plan a way past `obstacle` while travelling `from` -> `to`.
-///
-/// Every distance here is measured from the HULL to the obstacle's SURFACE,
-/// so the numbers mean what a person would picture. `hull_half_width` is how
-/// far the hull reaches to the side of base_link, which is what odometry
-/// reports and what this function's points are expressed in.
-///
-///   - `min_gap` decides only WHETHER a detour is needed: an obstacle the
-///     hull would pass no closer than this is left alone. Wide enough
-///     obstacles are avoided, gates are driven through.
-///   - `clearance` is how far out the detour actually swings.
-///
-/// Two waypoints, not one. A single waypoint reaches full sideways offset
-/// only as the boat draws level with the obstacle, so the path bulges inward
-/// before it -- measured at 1.05 m against 1.25 m asked for. Two waypoints
-/// finish the sideways move before the obstacle and hold it past.
-///
-/// `achieved` reports the clearance the composed path really delivers. It can
-/// be less than `clearance`, and can even be negative, when the goal itself
-/// lies inside the clearance: the path ends at the goal, so no routing can
-/// recover that. Callers should log the shortfall rather than refuse.
+/// Distances are hull to obstacle surface. `hull_half_width` is how far the hull reaches to the side of base_link.
+///   - `min_gap` decides only whether a detour is needed; obstacles the hull passes no closer than this are left alone.
+///   - `clearance` is how far out the detour swings.
+/// Two waypoints, not one: a single one reaches full offset only abeam of the obstacle, so the path
+/// bulges inward before it (1.05 m delivered against 1.25 m asked).
+/// `achieved` reports the clearance the path really delivers, which can be below `clearance` (even
+/// negative) when the goal itself lies inside it. Callers should log the shortfall rather than refuse.
 Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, double hull_half_width, double min_gap,
                    double clearance);
 
-/// How far `p` lies ahead of a boat at `boat` pointing along
-/// `travel_direction`. Negative means behind it.
-///
-/// Only the along-track component; sideways offset is ignored entirely. This
-/// is the primitive behind "have I passed that yet?", asked of an obstacle by
-/// obstacle_ahead() and of a waypoint by the maneuvers.
+/// How far `p` lies ahead of a boat at `boat` pointing along `travel_direction`; negative is behind.
+/// Along-track only; sideways offset is ignored.
 double along_track(Point const &boat, double travel_direction, Point const &p);
 
-/// True while `obstacle` still lies ahead of a boat at `boat` travelling in
-/// `travel_direction`.
-///
-/// This answers "have I finished stepping around it yet?", which is the
-/// question a caller driving a straddle has to keep asking. A straddle is only
-/// correct as a whole: driving to its first waypoint carries the boat
-/// SIDEWAYS, which pushes the obstacle further off the straight line from the
-/// boat to the goal, so a plan made half way along it finds nothing in the way
-/// and hands back the very line the straddle exists to avoid. Holding the
-/// committed pair until this returns false is what stops that.
-///
-/// Only the along-track component counts. An obstacle level with the boat but
-/// well off to one side is still "ahead": the boat has not passed it, and how
-/// far it has to swing is plan_detour's question, not this one.
-///
-/// Measured hull-to-surface, like everything else here: the obstacle is behind
-/// only once its near surface has cleared the back of the hull, `hull_behind`
-/// metres behind base_link. Its centre drawing level with base_link is not
-/// enough -- the hull is still alongside it.
+/// True while `obstacle` still lies ahead of a boat at `boat` travelling in `travel_direction`.
+/// Answers "have I finished stepping around it?". A straddle is only correct as a whole: its first
+/// waypoint carries the boat sideways, so a plan made half way finds nothing in the way and hands back
+/// the straight line, which is why the committed pair is held until this returns false.
+/// Along-track only, hull to surface: the obstacle is behind once its near surface clears the back of the
+/// hull (`hull_behind` behind base_link), not when its centre draws level.
 bool obstacle_ahead(Point const &boat, double travel_direction, Blob const &obstacle, double hull_behind);
 
-/// True when nothing sits in the strip the hull would sweep reversing
-/// `distance` metres from `boat`, which points along `boat_direction`.
-///
-/// The strip runs from base_link to `hull_behind + distance` behind it, and
-/// `hull_half_width` either side. A blob counts as intruding when its circle
-/// touches that rectangle at all.
-///
-/// Deliberately separate from Reverser, which stays as dumb as Driver and
-/// Spinner. The caller checks this before and during a reverse; the boat can
-/// see straight out the back -- the blind spots are on the sides -- so the
-/// check runs on live data, not a snapshot taken before setting off.
+/// True when nothing sits in the strip the hull would sweep reversing `distance` metres from `boat`
+/// (`boat_direction` is its heading). The strip runs from base_link to `hull_behind + distance` behind it,
+/// `hull_half_width` either side; a blob intrudes when its circle touches it.
+/// Separate from Reverser, which stays dumb. Callers check before and during a reverse, on live data.
 bool clear_behind(std::vector<Blob> const &blobs, Point const &boat, double boat_direction, double distance_back,
                   double hull_half_width, double hull_behind);
 
@@ -220,11 +155,8 @@ struct Match
     MatchFailure failure{ MatchFailure::NoBlobs };
 };
 
-/// Pick the blob nearest `prediction`.
-///
-/// Fails when the nearest is further than `match_radius`, and fails when a
-/// second blob is within `ambiguous_margin` of the nearest one's distance --
-/// silently latching onto the wrong buoy is worse than stopping.
+/// Pick the blob nearest `prediction`. Fails when the nearest is beyond `match_radius`, or when a second
+/// blob is within `ambiguous_margin` of its distance; latching onto the wrong buoy is worse than stopping.
 Match match_nearest(std::vector<Blob> const &blobs, Point const &prediction, double match_radius,
                     double ambiguous_margin);
 

@@ -180,26 +180,10 @@ Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, dou
     // clearance across the swept range, and a 45 degree entry leg.
     double const spacing = swing_radius;
 
-    // Both waypoints are held ON the leg, between the boat and the goal.
-    //
-    // The perpendicular offset contributes nothing along-track, so before and
-    // after sit at the obstacle's along-track position minus and plus spacing.
-    // Neither trigger gate bounds that. within_segment only says the obstacle
-    // is somewhere between the ends, and TooCloseToSwing only rejects a boat
-    // already inside the swing -- so an obstacle nearly ABEAM of the boat
-    // passes both and puts `before` behind it, while one nearly AT the goal
-    // puts `after` past it.
-    //
-    // A waypoint behind the boat is the worse of the two: guidance restarts at
-    // waypoint 0 on every hand-over and scales its forward speed by the cosine
-    // of the bearing error, so a point astern reads as zero speed and a full
-    // rate turn -- the boat spins on the spot and backtracks for a point it
-    // has already passed. A waypoint past the goal simply carries the bow
-    // nearer the object than the standoff promises.
-    //
-    // Clamping rather than refusing: a squeezed straddle still beats a
-    // straight line, and `achieved` below is measured on the points actually
-    // produced, so the caller's under-delivery warning stays honest.
+    // Both waypoints are held on the leg, between the boat and the goal. An obstacle nearly abeam would put
+    // `before` behind the boat (guidance would spin to go back for it) and one nearly at the goal would put
+    // `after` past it (the bow ends nearer than the standoff). Clamp rather than refuse: a squeezed straddle
+    // beats a straight line, and `achieved` is measured on the points produced, so the warning stays honest.
     double const foot_along = along * length;
     double const before_along = std::max(0.0, foot_along - spacing);
     double const after_along = std::min(length, foot_along + spacing);

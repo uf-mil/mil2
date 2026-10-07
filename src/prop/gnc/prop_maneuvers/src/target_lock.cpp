@@ -11,16 +11,12 @@ namespace prop_maneuvers
 {
 namespace
 {
-/// How long to wait for the transform at a scan's own stamp before giving up
-/// on it and taking the degraded latest-transform path. The clustering runs at
-/// roughly 3 Hz, so this is a small fraction of one frame.
+/// How long to wait for the transform at a scan's own stamp before taking the degraded latest-transform
+/// path; a small fraction of the clustering's ~3 Hz frame.
 constexpr auto kTransformWait = std::chrono::milliseconds(50);
 
-/// Keep an implausible cluster from sizing a standoff or a clearance.
-///
-/// The clustering merges returns now and then while the boat is moving, and a
-/// merged blob's half-width is not the object's radius. Everything downstream
-/// adds this to a distance, so one bad frame quietly moves the goalposts.
+/// Keep an implausible cluster from sizing a standoff or clearance: a merged blob's half-width is not
+/// the object's radius.
 Blob sane(Blob blob, double limit, rclcpp::Node *node)
 {
     if (blob.radius > limit)
@@ -46,14 +42,8 @@ TargetLock::TargetLock(rclcpp::Node *node, Constants const &settings)
 
 namespace
 {
-/// The blobs that could plausibly BE the object we are tracking.
-///
-/// Merged clusters are dropped here and nowhere else: they still have to be
-/// avoided, so plan_detour and clear_behind keep seeing them, but adopting one
-/// as the target hands the approach a phantom. Measured 2026-09-08: a merged
-/// blob whose centroid sat within a metre of the real buoy captured the lock,
-/// inflated the standoff to 4.50 m by way of its clamped radius, and stopped
-/// the boat 1.24 m short while reporting that it had arrived.
+/// The blobs that could plausibly be the object we are tracking. Merged clusters are dropped here only;
+/// they are still avoided, but adopting one as the target hands the approach a phantom.
 std::vector<Blob> real_only(std::vector<Blob> blobs)
 {
     blobs.erase(std::remove_if(blobs.begin(), blobs.end(), [](Blob const &b) { return b.merged; }), blobs.end());
@@ -81,40 +71,17 @@ std::vector<Blob> TargetLock::blobs() const
         geometry_msgs::msg::PointStamped out_point;
         try
         {
-            // Transform at the MARKER'S OWN STAMP, not the latest available.
-            //
-            // An earlier version forced rclcpp::Time(0) here on the reasoning
-            // that the position chain updates faster than the lidar. That is
-            // true and it is exactly the problem: pairing old lidar data with
-            // a new pose swings every static object by roughly range times the
-            // yaw that happened in between. Measured in simulation on
-            // 2026-09-07, a stationary buoy 5.2 m away appeared to jump 1.93 m
-            // in a single refresh while the boat turned -- about 22 degrees of
-            // yaw, well under a second at the 0.6 rad/s cap. The lock followed
-            // the phantom, the standoff point collapsed onto the boat, and the
-            // approach reported "arrived" without moving. This is very likely
-            // the same unexplained 1.4 m lock drift seen on an earlier run.
-            //
-            // tf2 interpolates within its buffer, so asking for the scan's own
-            // time is both cheap and correct.
-            //
-            // Waiting a moment for it matters more than it looks. The scan is
-            // stamped when it was taken and the position chain publishes just
-            // after, so the correct transform routinely does not exist YET --
-            // observed in simulation on 2026-09-12, the lookup wanted t=43.200
-            // while tf held up to t=43.190 and fell through to the degraded
-            // branch below on ten milliseconds. Without the wait the "correct"
-            // path is the one almost never taken, and every blob is smeared by
-            // the fallback exactly as the comment above warns. The wait is
-            // bounded well under the clustering's own period, so a genuinely
-            // absent transform still fails fast.
+            // Transform at the marker's own stamp, not the latest: pairing old lidar data with a newer pose swings
+            // a static object by range times the yaw in between (a buoy 5.2 m away appeared to jump 1.93 m).
+            // tf2 interpolates, so this is cheap. Wait briefly for it: the scan is stamped before the pose chain
+            // publishes, so the right transform often does not exist yet. The wait stays under the clustering period
+            // so a truly absent transform fails fast.
             out_point = tf_buffer_->transform(in, "map", kTransformWait);
         }
         catch (tf2::TransformException const &error)
         {
-            // Fall back to the latest transform rather than going blind. This
-            // reintroduces the swing above, so it is a degraded mode and says
-            // so: better a wobbly position than none while tf catches up.
+            // Fall back to the latest transform rather than going blind. This reintroduces the swing above, so it is
+            // degraded.
             try
             {
                 geometry_msgs::msg::PointStamped latest = in;
@@ -127,37 +94,18 @@ std::vector<Blob> TargetLock::blobs() const
             }
             catch (tf2::TransformException const &fallback_error)
             {
-                // Skip THIS marker, not the whole frame. An earlier version
-                // returned {} here, which threw away every blob already
-                // converted from the same MarkerArray -- so one late or
-                // duplicated cluster blanked perception for that tick. An
-                // empty list is read elsewhere as "we have stopped seeing",
-                // and Phase::BackingOff aborts a perfectly good reverse on
-                // it, so manufacturing one from a single bad marker is the
-                // expensive failure. If every marker fails, the list still
-                // comes back empty and that guard still fires correctly.
+                // Skip this marker, not the whole frame. An empty list is read elsewhere as "we have stopped seeing"
+                // (Phase::BackingOff aborts a reverse on it), so one bad marker must not manufacture one.
                 RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000,
                                      "cannot place a blob on the map: %s (skipping it)", fallback_error.what());
                 continue;
             }
         }
 
-        // The clustering publishes a box; treat the larger of its two ground
-        // dimensions as a diameter.
-        //
-        // Clamped here, for EVERY consumer, not just the locked object. The
-        // clustering merges returns over open water now and then and reports
-        // one enormous blob: radii of 3.2 m and 5.2 m were seen on
-        // 2026-09-07, and 9.3 m earlier the same evening. Left raw, such a
-        // phantom does real damage -- it inflated an approach's standoff past
-        // its own distance to the target, and it reached into the reverse
-        // strip from 1.8 m off to the side and blocked backing off entirely,
-        // leaving the boat stuck with nowhere it was willing to go.
-        //
-        // Clamping rather than discarding: something is there, or at least
-        // might be, so it should still be avoided. It just must not be
-        // believed about its size. Anything on this course is a buoy about
-        // 0.46 m across, so max_object_radius is generous already.
+        // The clustering publishes a box; treat the larger ground dimension as a diameter.
+        // Clamped here for every consumer: merged clusters over open water gave radii of 3-9 m that inflated
+        // standoffs and blocked the reverse strip. Clamp rather than discard, since something may be there;
+        // anything on this course is about 0.46 m across, so max_object_radius is already generous.
         double const width = std::max(marker.scale.x, marker.scale.y);
         double radius = width / 2.0;
         bool merged = false;
@@ -178,18 +126,11 @@ std::vector<Blob> TargetLock::blobs() const
 
 bool TargetLock::acquire_near(Point const &hint)
 {
-    // real_only, for the same reason refresh() uses it: a merged blob must
-    // never BE the target. This is the acquisition path the three nodes take
-    // whenever use_front is false -- which is their default, and how every
-    // documented command line drives them -- so leaving it raw meant the one
-    // path most used was the one path a phantom could capture. Measured on
-    // 2026-09-12: the clustering emitted 9.7, 10.1 and 12.7 m radius blobs
-    // over open water during a single four-leg circle, any of which would
-    // have been adopted here had one landed within match_radius of the hint.
+    // real_only, as in refresh(): a merged blob must never be the target. This is the acquisition path
+    // the nodes take by default, so leaving it raw left the most-used path open to a phantom.
     auto const all = real_only(blobs());
-    // The hint must land within match_radius of the real buoy. Using the much
-    // larger acquire_max_range here would make the ambiguity check fire almost
-    // every time, because several buoys would sit inside it.
+    // The hint must land within match_radius of the real buoy; the larger acquire_max_range would trip the ambiguity
+    // check.
     Match const match = match_nearest(all, hint, settings_.match_radius_, settings_.ambiguous_margin_);
 
     if (!match.ok)
@@ -231,16 +172,9 @@ bool TargetLock::acquire_in_front(Point const &boat, double boat_direction)
         return false;
     }
 
-    // Nearest one in the cone wins. Ambiguity is not checked here: the caller
-    // asked for whatever is in front, so picking the closest is the answer.
-    // There is no prediction to disambiguate against, unlike acquire_near and
-    // refresh, which lean on match_nearest's margin check. The tradeoff is
-    // real: two buoys at similar range inside the forward cone resolve
-    // silently to the nearer one, with no warning that the pick was close.
-    // This is the one acquisition path meant for autonomous use on the real
-    // boat, and the only one with no such protection -- a future reader
-    // should weigh that knowingly rather than assume the ambiguity check
-    // above applies here too.
+    // Nearest in the cone wins. Ambiguity is not checked: there is no prediction to compare against, unlike
+    // acquire_near and refresh. Two buoys at similar range resolve silently to the nearer one, and this is
+    // the only acquisition path meant for autonomous use on the real boat, so weigh that knowingly.
     Blob nearest = candidates.front();
     for (auto const &blob : candidates)
     {
@@ -266,21 +200,15 @@ bool TargetLock::refresh()
         return false;
     }
 
-    // Tracking, not finding: use the tight gate. See refresh_max_jump in
-    // config/maneuvers.yaml for why this is not match_radius.
+    // Tracking, not finding: use the tight gate (see refresh_max_jump in config/maneuvers.yaml).
     Match const match =
         match_nearest(real_only(blobs()), locked_->centre, settings_.refresh_max_jump_, settings_.ambiguous_margin_);
 
     if (!match.ok)
     {
         why_ = describe(match.failure);
-        // THROTTLED. Callers refresh every kRefreshInterval (0.3 s) while
-        // driving, and a run of failures is normal rather than alarming: the
-        // object spends part of every circle leg inside an antenna blind
-        // wedge, and the clustering drops a frame now and then. Unthrottled
-        // this logged at 3 Hz and buried everything else in the run. A lock
-        // that is genuinely lost is reported by the caller's stale() check,
-        // which is the line worth reading.
+        // Throttled: failures are normal here (blind wedges, dropped clustering frames) and a 3 Hz log buries
+        // everything else. A lost lock is reported by the caller's stale() check.
         RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000,
                              "refresh failed: %s (keeping the remembered point)", why_.c_str());
         return false;

@@ -20,10 +20,7 @@ namespace prop_maneuvers
 /// Waits for a position estimate, acquires the lock the caller asked for, then
 /// steps a maneuver until it finishes and exits.
 ///
-/// One class rather than three programs. face_object, circle_object and
-/// approach_object were the same 112 lines each -- the same parameters, the
-/// same acquisition, the same give-up deadline, the same timer and the same
-/// exit -- differing only in which maneuver they constructed.
+/// One class for all three programs, which differ only in which maneuver they construct.
 class ManeuverRunner : public rclcpp::Node, public Constants
 {
   public:
