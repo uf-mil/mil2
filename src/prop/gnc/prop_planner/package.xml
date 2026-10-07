@@ -7,17 +7,17 @@
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <depend>nav_msgs</depend>
-  <depend>std_srvs</depend>
-  <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
-  <depend>visualization_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>std_srvs</depend>
   <depend>tf2</depend>
-  <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>visualization_msgs</depend>
   <test_depend>ament_cmake_gtest</test_depend>
-  <test_depend>tf2_ros_py</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>tf2_ros_py</test_depend>
   <exec_depend>rclpy</exec_depend>
 
   <export>

@@ -1,4 +1,5 @@
 """Exercise continuous planning, status, perception input, and TF."""
+
 import math
 import os
 import subprocess
@@ -10,12 +11,12 @@ import pytest
 import rclpy
 from geometry_msgs.msg import PoseStamped, TransformStamped
 from nav_msgs.msg import Odometry, Path
-from std_srvs.srv import Trigger
 from rclpy.context import Context
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.parameter import Parameter
 from rclpy.parameter_client import AsyncParameterClient
-from rclpy.executors import SingleThreadedExecutor
 from rclpy.qos import qos_profile_sensor_data
+from std_srvs.srv import Trigger
 from tf2_ros import StaticTransformBroadcaster
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -36,12 +37,23 @@ def planner(tmp_path, request):
     node.create_subscription(Path, ns + "/path", paths.append, 10)
     logs = tmp_path / "planner.log"
     with logs.open("w") as output:
-        process = subprocess.Popen([
-            os.environ["PROP_PLANNER_EXECUTABLE"], "--ros-args", "-r", f"__ns:={ns}",
-            "-r", f"/path:={ns}/path",
-            *(["-p", "active:=true"] if getattr(request, "param", True) else []),
-            "-p", f"tracks_topic:={ns}/tracks", "-p", f"odom_topic:={ns}/odom",
-        ], stdout=output, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(
+            [
+                os.environ["PROP_PLANNER_EXECUTABLE"],
+                "--ros-args",
+                "-r",
+                f"__ns:={ns}",
+                "-r",
+                f"/path:={ns}/path",
+                *(["-p", "active:=true"] if getattr(request, "param", True) else []),
+                "-p",
+                f"tracks_topic:={ns}/tracks",
+                "-p",
+                f"odom_topic:={ns}/odom",
+            ],
+            stdout=output,
+            stderr=subprocess.STDOUT,
+        )
         try:
             assert client.wait_for_service(timeout_sec=10), logs.read_text()
 
@@ -240,7 +252,10 @@ def test_continuous_publication_without_goal(planner):
 @pytest.mark.parametrize("planner", [False], indirect=True)
 def test_toggle_active_without_inputs(planner):
     node, _, _, _, _ = planner
-    toggle = node.create_client(Trigger, node.get_namespace() + "/prop_planner/toggle_active")
+    toggle = node.create_client(
+        Trigger,
+        node.get_namespace() + "/prop_planner/toggle_active",
+    )
     assert toggle.wait_for_service(timeout_sec=5)
     assert not node.planner_status().success
     for active in (True, False, True, False):

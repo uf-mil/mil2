@@ -11,7 +11,8 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
-add_library(prop_planner_core src/geometry.cpp src/obstacle_map.cpp src/visibility_planner.cpp)
+add_library(prop_planner_core src/geometry.cpp src/obstacle_map.cpp
+                              src/visibility_planner.cpp)
 target_compile_features(prop_planner_core PUBLIC cxx_std_17)
 target_include_directories(prop_planner_core PUBLIC include)
 
@@ -21,10 +22,19 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   target_compile_options(prop_planner_node PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 target_link_libraries(prop_planner_node prop_planner_core)
-ament_target_dependencies(prop_planner_node nav_msgs std_srvs rclcpp geometry_msgs visualization_msgs
-  tf2 tf2_ros tf2_geometry_msgs)
+ament_target_dependencies(
+  prop_planner_node
+  nav_msgs
+  std_srvs
+  rclcpp
+  geometry_msgs
+  visualization_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs)
 
-install(TARGETS prop_planner_node prop_planner_core DESTINATION lib/${PROJECT_NAME})
+install(TARGETS prop_planner_node prop_planner_core
+        DESTINATION lib/${PROJECT_NAME})
 
 install(PROGRAMS scripts/mock_map.py DESTINATION lib/${PROJECT_NAME})
 
@@ -35,9 +45,9 @@ if(BUILD_TESTING)
     target_link_libraries(test_${core_test} prop_planner_core)
   endforeach()
   find_package(ament_cmake_pytest REQUIRED)
-  ament_add_pytest_test(test_prop_planner test/test_prop_planner.py
-    TIMEOUT 90
-    ENV PROP_PLANNER_EXECUTABLE=$<TARGET_FILE:prop_planner_node>)
+  ament_add_pytest_test(
+    test_prop_planner test/test_prop_planner.py TIMEOUT 90 ENV
+    PROP_PLANNER_EXECUTABLE=$<TARGET_FILE:prop_planner_node>)
 endif()
 
 ament_package()

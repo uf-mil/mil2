@@ -24,7 +24,8 @@ def main():
     odom_topic = node.declare_parameter("odom_topic", "/odometry/filtered/global").value
     odom_publisher = (
         node.create_publisher(Odometry, odom_topic, qos_profile_sensor_data)
-        if publish_odometry else None
+        if publish_odometry
+        else None
     )
 
     def publish():
@@ -56,7 +57,9 @@ def main():
     node.create_timer(0.2, publish)
     node.get_logger().info(f"Publishing synthetic tracked detections on {topic}")
     if publish_odometry:
-        node.get_logger().info(f"Publishing synthetic stationary odometry on {odom_topic}")
+        node.get_logger().info(
+            f"Publishing synthetic stationary odometry on {odom_topic}",
+        )
     try:
         rclpy.spin(node)
     finally:
