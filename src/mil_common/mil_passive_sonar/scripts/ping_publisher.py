@@ -7,7 +7,7 @@ import numpy as np
 import rclpy
 import transforms3d
 from geometry_msgs.msg import PoseStamped
-from mil_msgs.msg import ProcessedPing
+from mil_msgs.msg import AcousticPingerConfig, ProcessedPing
 
 
 def main():
@@ -22,6 +22,13 @@ def main():
         s.connect((HOST, PORT))
         node.get_logger().info(
             f"\nping_publisher connected to {HOST}:{PORT}, forwarding TCP messages to {pub.topic_name}...",
+        )
+
+        node.create_subscription(
+            AcousticPingerConfig,
+            "acoustic_pinger_config_received",
+            set_pinger_frequency,
+            1,
         )
 
         # Need to ignore the first 2 JSON Parse Errors (nothing wrong)
@@ -83,6 +90,15 @@ def main():
                     node.get_logger().error(f"JSONDecodeError: {e}")
             except KeyError as e:
                 node.get_logger().error(f"Key Error: {e}")
+
+
+def set_pinger_frequency(msg):
+    frequency_parameter = rclpy.parameter.Parameter(
+        "pinger_frequency",
+        rclpy.parameter.Parameter.Type.INTEGER,
+        msg.frequency,
+    )
+    node.set_parameters([frequency_parameter])
 
 
 if __name__ == "__main__":

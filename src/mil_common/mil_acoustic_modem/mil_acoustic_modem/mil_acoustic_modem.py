@@ -2,13 +2,20 @@
 
 import rclpy
 import serial.tools.list_ports
-from mil_msgs.msg import Heartbeat, PipelineSegmentStatus, PipelineSurveyReport, Point2D
+from mil_msgs.msg import (
+    AcousticPingerConfig,
+    Heartbeat,
+    PipelineSegmentStatus,
+    PipelineSurveyReport,
+    Point2D,
+)
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
 from mil_acoustic_modem.hardware_modem_interface import HardwareModemInterface
 from mil_acoustic_modem.protobuf import (
+    acoustic_pinger_config_pb2,
     heartbeat_pb2,
     mil_message_pb2,
     pipeline_survey_report_pb2,
@@ -51,6 +58,20 @@ class AcousticModem(Node):
             Heartbeat,
             "heartbeat_sending",
             self.send_heartbeat,
+            10,
+            callback_group=self.sub_group,
+        )
+
+        self.acoustic_pinger_config_publisher = self.create_publisher(
+            AcousticPingerConfig,
+            "acoustic_pinger_config_received",
+            5,
+        )
+
+        self.acoustic_pinger_config_subscriber = self.create_subscriber(
+            AcousticPingerConfig,
+            "acoustic_pinger_config_sending",
+            self.send_acoustic_pinger_config,
             10,
             callback_group=self.sub_group,
         )
@@ -167,6 +188,13 @@ class AcousticModem(Node):
                     report_msg.segments.append(segment_status)
 
                 self.pipeline_survey_report_publisher.publish(report_msg)
+            case mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_ACOUSTIC_PINGER_CONFIG:
+                config_msg = AcousticPingerConfig()
+                body = parsed_mil_message.acoustic_pinger_config
+
+                config_msg.frequency = body.frequency
+
+                self.acoustic_pinger_config_publisher.publish(config_msg)
 
     def send_pipeline_survey_report(self, msg):
         report_protobuf = pipeline_survey_report_pb2.PipelineSurveyReport()
@@ -201,6 +229,20 @@ class AcousticModem(Node):
         mil_protobuf = mil_message_pb2.MilMessage()
         mil_protobuf.type = mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_HEARTBEAT
         mil_protobuf.heartbeat = heartbeat_protobuf
+
+        protobuf_string = mil_protobuf.SerializeToString()
+
+        self.modem.send_im(protobuf_string)
+
+    def send_acoustic_pinger_config(self, msg):
+        config_protobuf = acoustic_pinger_config_pb2.AcousticPingerConfig()
+        config_protobuf.frequency = msg.frequency
+
+        mil_protobuf = mil_message_pb2.MilMessage()
+        mil_protobuf.type = (
+            mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_ACOUSTIC_PINGER_CONFIG
+        )
+        mil_protobuf.acoustic_pinger_config = config_protobuf
 
         protobuf_string = mil_protobuf.SerializeToString()
 

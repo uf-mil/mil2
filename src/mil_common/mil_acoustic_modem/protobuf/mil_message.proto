@@ -4,11 +4,13 @@ package mil_acoustic_modem;
 
 import "pipeline_survey_report.proto";
 import "heartbeat.proto";
+import "acoustic_pinger_config.proto";
 
 enum MilMessageType
 {
     MIL_MESSAGE_TYPE_HEARTBEAT = 0;
     MIL_MESSAGE_TYPE_PIPELINE_SURVEY_REPORT = 1;
+    MIL_MESSAGE_TYPE_ACOUSTIC_PINGER_CONFIG = 2;
 }
 
 // Defining this to be able to tell what type of message
@@ -22,5 +24,6 @@ message MilMessage
     {
         Heartbeat heartbeat = 2;
         PipelineSurveyReport pipeline_survey_report = 3;
+        AcousticPingerConfig acoustic_pinger_config = 4;
     }
 }
