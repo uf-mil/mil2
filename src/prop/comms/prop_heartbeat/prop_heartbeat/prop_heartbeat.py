@@ -12,7 +12,7 @@ class PropHeartbeat(rclpy.Node):
 
         self.heartbeat_publisher = self.create_publisher(Heartbeat, "heartbeats", 10)
 
-        self.odometry_subscriber = self.create_subscriber(
+        self.odometry_subscriber = self.create_subscription(
             Odometry,
             "/odometry/filtered/global",
             self.odometry_callback,

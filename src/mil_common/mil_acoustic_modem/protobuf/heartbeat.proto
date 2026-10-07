@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package mil_acoustic_modem;
+
+message Heartbeat
+{
+    string state = 1;
+
+    float position_x = 2;
+    float position_y = 3;
+
+    float speed = 4;
+    float heading = 5;
+    float roll = 6;
+    float pitch = 7;
+    float depth = 8;
+
+    string task = 9;
+    string type = 10;
+}

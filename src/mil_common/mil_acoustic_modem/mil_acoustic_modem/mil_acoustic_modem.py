@@ -2,13 +2,17 @@
 
 import rclpy
 import serial.tools.list_ports
-from mil_msgs.msg import PipelineSegmentStatus, PipelineSurveyReport, Point2D
+from mil_msgs.msg import Heartbeat, PipelineSegmentStatus, PipelineSurveyReport, Point2D
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
 from mil_acoustic_modem.hardware_modem_interface import HardwareModemInterface
-from mil_acoustic_modem.protobuf import pipeline_survey_report_pb2
+from mil_acoustic_modem.protobuf import (
+    heartbeat_pb2,
+    mil_message_pb2,
+    pipeline_survey_report_pb2,
+)
 from mil_acoustic_modem.testing_modem_interface import TestingModemInterface
 
 
@@ -32,8 +36,21 @@ class AcousticModem(Node):
         )
         self.pipeline_survey_report_subscriber = self.create_subscription(
             PipelineSurveyReport,
-            f"pipeline_survey_report_sending_{self.get_parameter('modem_serial_port').get_parameter_value().string_value[-1]}",
+            "pipeline_survey_report_sending",
             self.send_pipeline_survey_report,
+            10,
+            callback_group=self.sub_group,
+        )
+
+        self.heartbeat_publisher = self.create_publisher(
+            Heartbeat,
+            "heartbeat_received",
+            5,
+        )
+        self.heartbeat_subscriber = self.create_subscription(
+            Heartbeat,
+            "heartbeat_sending",
+            self.send_heartbeat,
             10,
             callback_group=self.sub_group,
         )
@@ -60,7 +77,7 @@ class AcousticModem(Node):
                 ports = serial.tools.list_ports.comports()
 
                 if not ports:
-                    print("No USB serial devices found")
+                    self.get_logger().error("no USB serial devices found")
                     raise SystemExit
 
                 modem_port = next(
@@ -69,7 +86,7 @@ class AcousticModem(Node):
                 )
 
                 if modem_port is None:
-                    print("No modem serial device found")
+                    self.get_logger().error("no modem serial device found")
                     raise SystemExit
 
                 serial_port = modem_port.device
@@ -98,48 +115,94 @@ class AcousticModem(Node):
                 self.get_parameter("gain").get_parameter_value().integer_value,
             )
 
-            print("modem setup!")
+            self.get_logger().info("acoustic modem setup")
 
     def read_latest_data(self):
-        print("running read...")
         protobuf_bytes = self.modem.read_im()
 
         if protobuf_bytes is None:
             return
 
-        parsed_message = pipeline_survey_report_pb2.PipelineSurveyReport()
-        parsed_message.ParseFromString(protobuf_bytes)
+        parsed_mil_message = mil_message_pb2.MilMessage()
+        parsed_mil_message.ParseFromString(protobuf_bytes)
 
-        print("received msg")
-        print(protobuf_bytes)
-        print(parsed_message)
+        match parsed_mil_message.type:
+            case mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_HEARTBEAT:
+                heartbeat_msg = Heartbeat()
+                body = parsed_mil_message.heartbeat
 
-        ros_msg = PipelineSurveyReport()
+                heartbeat_msg.state = body.state
 
-        point_2d = Point2D()
-        point_2d.x = parsed_message.active_buoy_position_x
-        point_2d.y = parsed_message.active_buoy_position_y
+                point_2d = Point2D()
+                point_2d.x = body.position_x
+                point_2d.y = body.position_y
 
-        ros_msg.active_buoy_position = point_2d
-        ros_msg.segments = []
+                heartbeat_msg.position = point_2d
 
-        for status in parsed_message.segments:
-            segment_status = PipelineSegmentStatus()
-            segment_status.status = status
+                heartbeat_msg.speed = body.speed
+                heartbeat_msg.heading = body.heading
+                heartbeat_msg.roll = body.roll
+                heartbeat_msg.pitch = body.pitch
+                heartbeat_msg.depth = body.depth
 
-            ros_msg.segments.append(segment_status)
+                heartbeat_msg.task = body.task
+                heartbeat_msg.type = body.type
 
-        self.pipeline_survey_report_publisher.publish(ros_msg)
+                self.heartbeat_publisher.publish(heartbeat_msg)
+            case mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_PIPELINE_SURVEY_REPORT:
+                report_msg = PipelineSurveyReport()
+                body = parsed_mil_message.pipeline_survey_report
+
+                point_2d = Point2D()
+                point_2d.x = body.active_buoy_position_x
+                point_2d.y = body.active_buoy_position_y
+
+                report_msg.active_buoy_position = point_2d
+                report_msg.segments = []
+
+                for status in body.segments:
+                    segment_status = PipelineSegmentStatus()
+                    segment_status.status = status
+
+                    report_msg.segments.append(segment_status)
+
+                self.pipeline_survey_report_publisher.publish(report_msg)
 
     def send_pipeline_survey_report(self, msg):
-        self.get_logger().info("got message!")
-        protobuf_message = pipeline_survey_report_pb2.PipelineSurveyReport()
-        protobuf_message.active_buoy_position_x = msg.active_buoy_position.x
-        protobuf_message.active_buoy_position_y = msg.active_buoy_position.y
+        report_protobuf = pipeline_survey_report_pb2.PipelineSurveyReport()
+        report_protobuf.active_buoy_position_x = msg.active_buoy_position.x
+        report_protobuf.active_buoy_position_y = msg.active_buoy_position.y
         for segment in msg.segments:
-            protobuf_message.segments.append(segment.status)
+            report_protobuf.segments.append(segment.status)
 
-        protobuf_string = protobuf_message.SerializeToString()
+        mil_protobuf = mil_message_pb2.MilMessage()
+        mil_protobuf.type = (
+            mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_PIPELINE_SURVEY_REPORT
+        )
+        mil_protobuf.pipeline_survey_report = report_protobuf
+
+        protobuf_string = mil_protobuf.SerializeToString()
+
+        self.modem.send_im(protobuf_string)
+
+    def send_heartbeat(self, msg):
+        heartbeat_protobuf = heartbeat_pb2.Heartbeat()
+        heartbeat_protobuf.state = msg.state
+        heartbeat_protobuf.position_x = msg.position.x
+        heartbeat_protobuf.position.y = msg.position.y
+        heartbeat_protobuf.speed = msg.speed
+        heartbeat_protobuf.heading = msg.heading
+        heartbeat_protobuf.roll = msg.roll
+        heartbeat_protobuf.pitch = msg.pitch
+        heartbeat_protobuf.depth = msg.depth
+        heartbeat_protobuf.task = msg.task
+        heartbeat_protobuf.type = msg.type
+
+        mil_protobuf = mil_message_pb2.MilMessage()
+        mil_protobuf.type = mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_HEARTBEAT
+        mil_protobuf.heartbeat = heartbeat_protobuf
+
+        protobuf_string = mil_protobuf.SerializeToString()
 
         self.modem.send_im(protobuf_string)
 

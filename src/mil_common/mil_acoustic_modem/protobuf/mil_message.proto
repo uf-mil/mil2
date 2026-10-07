@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package mil_acoustic_modem;
+
+import "pipeline_survey_report.proto";
+import "heartbeat.proto";
+
+enum MilMessageType
+{
+    MIL_MESSAGE_TYPE_HEARTBEAT = 0;
+    MIL_MESSAGE_TYPE_PIPELINE_SURVEY_REPORT = 1;
+}
+
+// Defining this to be able to tell what type of message
+// is being sent. Using this over google.protobuf.Any since
+// Any includes the type descriptor as a string, which makes
+// the message too large to be sent as an IM on the acoustic modem
+message MilMessage
+{
+    MilMessageType type = 1;
+    oneof body
+    {
+        Heartbeat heartbeat = 2;
+        PipelineSurveyReport pipeline_survey_report = 3;
+    }
+}
