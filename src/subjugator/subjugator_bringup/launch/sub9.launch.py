@@ -72,6 +72,12 @@ def generate_launch_description():
         }.items(),
     )
 
+    acoustic_modem = Node(
+        package="mil_acoustic_modem",
+        executable="mil_acoustic_modem",
+        output="both",
+    )
+
     return LaunchDescription(
         [
             new_depth,
@@ -81,5 +87,6 @@ def generate_launch_description():
             servo_driver,
             thrust_launch,
             subjugator_setup,
+            acoustic_modem,
         ],
     )
