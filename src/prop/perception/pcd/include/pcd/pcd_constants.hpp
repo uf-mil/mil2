@@ -102,7 +102,7 @@ class PcdConstants
 
     // ── Water-surface rejection ──────────────────────────────────────────────
     /// Height above the water surface below which a return is water [m].
-    double min_height_above_water_{ 0.17 };
+    double min_height_above_water_{ 0.25 };
     /// Height above the water above which a return is sky or mast noise [m].
     double max_height_above_water_{ 10.0 };
     /// Lidar height above the water when level [m].
