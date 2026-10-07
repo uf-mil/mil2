@@ -44,6 +44,7 @@ class Guidance : public rclcpp::Node
     double hold_radius_;    // station keeping deadband
     double yaw_tolerance_;  // heading deadband once it is on the point
     double approach_gain_;  // m/s per m remaining
+    double reverse_cone_;   // rad either side of dead astern in which the last waypoint is backed onto
 
     std::vector<Point> waypoints_;
     Point leg_start_{ 0.0, 0.0 };
