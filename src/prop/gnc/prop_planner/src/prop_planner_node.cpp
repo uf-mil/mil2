@@ -30,7 +30,6 @@ double yaw_of(geometry_msgs::msg::Quaternion const &q)
     return std::atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
 }
 
-// Same oriented-box to enclosing-capsule conversion as Carlos's planner.
 prop_planner::Capsule capsule_of(geometry_msgs::msg::Pose const &pose,
                                 geometry_msgs::msg::Vector3 const &scale)
 {
@@ -76,12 +75,11 @@ class PropPlanner : public rclcpp::Node
                     msg->header.frame_id.c_str(), p.x, p.y, p.z);
             });
 
-        // Match Carlos's perception input. OccupancyGrid is no longer required:
-        // detections are transformed and accumulated in the shared ObstacleMap core.
         auto const tracks_topic = declare_parameter<std::string>("tracks_topic", "tracked_markers");
         tracks_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
             tracks_topic, rclcpp::QoS(10),
             [this](visualization_msgs::msg::MarkerArray::ConstSharedPtr msg) { tracks_cb(*msg); });
+        
         plan_service_ = create_service<nav_msgs::srv::GetPlan>(
             "~/plan", [this](nav_msgs::srv::GetPlan::Request::SharedPtr request,
                             nav_msgs::srv::GetPlan::Response::SharedPtr response)
