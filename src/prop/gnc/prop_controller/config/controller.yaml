@@ -10,6 +10,7 @@ guidance:
     hold_radius: 0.10 # m, station keeping deadband
     yaw_tolerance: 0.09 # rad, ~5 deg, heading deadband once it is on the point
     approach_gain: 0.1 # m/s per m remaining
+    reverse_cone: 0.5 # rad, back onto a goal this close to dead astern
 
 thruster_manager:
   ros__parameters:
