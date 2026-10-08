@@ -134,8 +134,8 @@
     # boat's own position error, nothing more. Sharing match_radius let a
     # phantom cluster 2.63 m away capture the lock mid-manoeuvre and hand the
     # approach a target that was not there.
-    refresh_max_jump: 1.0 # m
-    ambiguous_margin: 1.0 # m, two candidates closer than this is ambiguous
+    refresh_max_jump: 1.0  # m
+    ambiguous_margin: 1.0  # m, two candidates closer than this is ambiguous
     reading_max_age: 5.0  # s, a lock older than this counts as stale
 
     # ── Distances ────────────────────────────────────────────────────────
@@ -213,7 +213,8 @@
     # corner; without that, nothing could close the last metre and this would
     # hang until the timeout.
     corner_tolerance: 0.5       # m
-    point_tolerance_deg: 5.0    # how close counts as pointing at it
+    # Keep above guidance's yaw_tolerance (0.09 rad, ~5.2 deg).
+    point_tolerance_deg: 6.0    # how close counts as pointing at it
 
     # ── Settling ─────────────────────────────────────────────────────────
     # Crossing the standoff is not the same as stopping on it. The approach

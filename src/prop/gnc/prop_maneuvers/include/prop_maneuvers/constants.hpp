@@ -94,7 +94,7 @@ class Constants
         stop_turn_rate_ = deg(node->declare_parameter("stop_turn_rate_deg", 2.0));
         stop_timeout_ = node->declare_parameter("stop_timeout", 10.0);
         corner_tolerance_ = node->declare_parameter("corner_tolerance", 0.5);
-        point_tolerance_ = deg(node->declare_parameter("point_tolerance_deg", 5.0));
+        point_tolerance_ = deg(node->declare_parameter("point_tolerance_deg", 6.0));
 
         // ── Giving up ─────────────────────────────────────────────────────
         maneuver_timeout_ = node->declare_parameter("maneuver_timeout", 300.0);
