@@ -7,8 +7,10 @@
   <license>TODO</license>
   <maintainer email="a@a.com">Dean</maintainer>
 
+  <depend>infix_sensor_bridge</depend>
   <depend>pcd</depend>
-  <depend>prop_gazebo</depend>
+  <depend>prop_bringup</depend>
+  <depend>rf2o_laser_odometry</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
