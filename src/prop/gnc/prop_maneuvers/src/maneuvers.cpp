@@ -11,10 +11,7 @@ namespace prop_maneuvers
 {
 
 Context::Context(rclcpp::Node *node_in, Constants const &settings_in)
-  : node(node_in)
-  , settings(settings_in)
-  , driver(node_in, settings_in.arrive_tolerance_)
-  , lock(node_in, settings_in)
+  : node(node_in), settings(settings_in), driver(node_in, settings_in.arrive_tolerance_), lock(node_in, settings_in)
 {
     odometry_subscription_ = node->create_subscription<nav_msgs::msg::Odometry>(
         "odometry/filtered/global", 10,
@@ -369,8 +366,6 @@ void CircleObject::start_leg(Boat const &boat)
 ApproachObject::ApproachObject(Context &context, double standoff)
   : context_(context), deadline_(context.node, context.settings.maneuver_timeout_), standoff_(standoff)
 {
-    // Phase::FaceTarget turns the boat, so guidance must not be publishing cmd_vel.
-    context_.driver.release();
 }
 
 namespace
@@ -522,9 +517,7 @@ Status ApproachObject::step()
 {
     if (deadline_.expired())
     {
-                // Hand guidance a point straight behind us. It backs onto a final waypoint that is almost dead
-                // astern instead of turning to it.
-        context_.driver.release();
+        hold_station(context_);
         RCLCPP_ERROR(context_.node->get_logger(), "approach: gave up after %.0f s",
                      context_.settings.maneuver_timeout_);
         return Status::Failed;

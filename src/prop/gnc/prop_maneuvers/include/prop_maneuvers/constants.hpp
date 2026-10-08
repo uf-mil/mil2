@@ -96,10 +96,6 @@ class Constants
         corner_tolerance_ = node->declare_parameter("corner_tolerance", 0.5);
         point_tolerance_ = deg(node->declare_parameter("point_tolerance_deg", 5.0));
 
-        // ── Turning ───────────────────────────────────────────────────────
-        turn_gain_ = node->declare_parameter("turn_gain", 1.2);
-        max_turn_rate_ = node->declare_parameter("max_turn_rate", 0.6);
-
         // ── Giving up ─────────────────────────────────────────────────────
         maneuver_timeout_ = node->declare_parameter("maneuver_timeout", 300.0);
     }
@@ -135,8 +131,6 @@ class Constants
     double stop_timeout_{ 0.0 };
     double corner_tolerance_{ 0.0 };
     double point_tolerance_{ 0.0 };
-    double turn_gain_{ 0.0 };
-    double max_turn_rate_{ 0.0 };
     double maneuver_timeout_{ 0.0 };
 };
 

@@ -6,10 +6,9 @@
  *
  * guidance drives to each point in turn, parks on the last one and, if that
  * pose carries a heading, turns to it. It publishes cmd_vel continuously while
- * it holds any points at all, so anything that commands the motors itself
- * MUST have release() called first. release() publishes an empty Path, which
- * makes guidance return early and go completely quiet. Nothing in this package
- * commands the motors directly any more; release() is for giving up the boat.
+ * it holds any points at all. Nothing in this package commands the motors
+ * directly. release() publishes an empty Path, which makes guidance go quiet
+ * and lets thruster_manager cut thrust; prefer a plan at the boat to hold it.
  */
 
 #pragma once

@@ -287,9 +287,5 @@
     # boat had not finished moving.
     stop_timeout: 10.0          # s
 
-    # ── Turning ──────────────────────────────────────────────────────────
-    turn_gain: 1.2              # turn rate commanded per radian of error
-    max_turn_rate: 0.6          # rad/s cap, matches guidance
-
     # ── Giving up ────────────────────────────────────────────────────────
     maneuver_timeout: 300.0     # s of SIMULATED time before a maneuver fails

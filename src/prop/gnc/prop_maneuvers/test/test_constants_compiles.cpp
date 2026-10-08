@@ -35,7 +35,6 @@ TEST_F(Fixture, LoadsWithDefaults)
     prop_maneuvers::Constants settings(node.get());
     EXPECT_GT(settings.circle_radius_, 0.0);
     EXPECT_GE(settings.circle_legs_, 3);
-    EXPECT_GT(settings.max_turn_rate_, 0.0);
 }
 
 // The shipped config is what actually runs, and nothing else loads it. Both
