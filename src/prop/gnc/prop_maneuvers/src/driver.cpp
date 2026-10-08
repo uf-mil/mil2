@@ -28,7 +28,8 @@ void Driver::go_to(std::vector<Point> const &points)
         pose.header = path.header;
         pose.pose.position.x = point.x;
         pose.pose.position.y = point.y;
-        pose.pose.orientation.w = 1.0;
+        // A zero-length quaternion tells guidance "finish on any heading"; the msg default (w = 1) means yaw 0.
+        pose.pose.orientation.w = 0.0;
         path.poses.push_back(pose);
     }
 
