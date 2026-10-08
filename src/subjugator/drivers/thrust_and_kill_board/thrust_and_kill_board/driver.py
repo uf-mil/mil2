@@ -6,6 +6,7 @@ import contextlib
 import time
 
 import rclpy
+import serial
 from electrical_protocol import AckPacket, NackPacket, Packet, SerialDeviceNode
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from std_msgs.msg import String
@@ -18,6 +19,7 @@ from thrust_and_kill_board.packets import (
     KillReceivePacket,
     KillSetPacket,
     KillStatus,
+    ManualReceivePacket,
     TemperaturePacketRecieve,
     TemperaturePacketRequest,
     ThrusterId,
@@ -25,8 +27,15 @@ from thrust_and_kill_board.packets import (
 )
 
 # note that you also need to mess with the yaml file in the config dir
-DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E4623C80DF43092D-if00"  # v2
+# old v2 DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E4623C80DF43092D-if00"
+# new v2
+DEFAULT_PORT = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E46620B797352E39-if00"
 DEFAULT_BAUDRATE = 115200
+
+# TODO add this to the config
+# other modem board PORT_MODEM: str = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_57EDA3B48984F48A-if00"
+PORT_MODEM: str = "/dev/serial/by-id/usb-Raspberry_Pi_Pico_CF65538182B74A3B-if00"
+BAUDRATE_MODEM: int = 115200
 
 
 def msg_to_string(msg):
@@ -41,15 +50,22 @@ class ThrustAndKillNode(
         | AckPacket
         | NackPacket
         | KillReceivePacket
-        | TemperaturePacketRecieve,
+        | TemperaturePacketRecieve
+        | ManualReceivePacket,
     ],
 ):
 
-    killed: bool = True
+    # killed: bool = True
 
     def __init__(self):
         # Port parameter
         super().__init__("thrust_and_kill_board", None, None)
+
+        # connect to evil modem tube
+        self.modem_pico: serial.Serial | None = None
+
+        self.modem_msg = "r\n"
+
         port_description = ParameterDescriptor(
             type=ParameterType.PARAMETER_STRING,
             description="Serial port to connect to the thrust and kill board",
@@ -127,6 +143,22 @@ class ThrustAndKillNode(
         )
         self.last_heartbeat_time = time.monotonic()
         self.heartbeat_timedout = False
+        self.send_packet(KillSetPacket(True, KillStatus.SOFTWARE_REQUESTED))
+
+    def _connect_modem(self) -> bool:
+        if self.modem_pico is not None:
+            self.modem_pico.close()
+            self.modem_pico = None
+        try:
+            self.modem_pico = serial.Serial(
+                port=PORT_MODEM,
+                baudrate=BAUDRATE_MODEM,
+                timeout=1,
+            )
+            return True
+        except serial.SerialException:
+            self.modem_pico = None
+            return False
 
     def _thruster_efforts_cb(self, msg: ThrusterEfforts):
         if not self.heartbeat_timedout:
@@ -156,6 +188,8 @@ class ThrustAndKillNode(
     def on_packet_received(self, packet: Packet):
         if isinstance(packet, HeartbeatReceivePacket):
             self.last_heartbeat_time = time.monotonic()
+            if self._connect_modem() and self.modem_pico is not None:
+                self.modem_pico.write(self.modem_msg.encode("utf-8"))
         else:
             self.get_logger().debug(f"Thrust Board received packet: {packet}")
             packet_msg = String()
@@ -164,6 +198,16 @@ class ThrustAndKillNode(
 
         if isinstance(packet, KillReceivePacket):
             self.get_logger().error(f"Received kill packet from thrusters: {packet}")
+            if packet.set:
+                self.modem_msg = "r\n"
+                if self._connect_modem() and self.modem_pico is not None:
+                    self.modem_pico.write(self.modem_msg.encode("utf-8"))
+                    self.modem_pico.close()
+                self.modem_pico = None
+            else:
+                self.modem_msg = "g\n"
+                if self._connect_modem() and self.modem_pico is not None:
+                    self.modem_pico.write(self.modem_msg.encode("utf-8"))
 
         if isinstance(packet, TemperaturePacketRecieve):
             msg = Temperature()
@@ -173,9 +217,30 @@ class ThrustAndKillNode(
                 f"Temperatures (°C): sensor0={msg.sensor0:.2f}",
             )
 
+        if isinstance(packet, ManualReceivePacket):
+            # ignore if killed!
+            if self.modem_msg == "r\n":
+                return
+
+            self.get_logger().info(f"Manual status: {packet.set}")
+            if packet.set:
+                self.modem_msg = "y\n"
+                if self._connect_modem() and self.modem_pico is not None:
+                    self.modem_pico.write(self.modem_msg.encode("utf-8"))
+            else:
+                self.modem_msg = "g\n"
+                if self._connect_modem() and self.modem_pico is not None:
+                    self.modem_pico.write(self.modem_msg.encode("utf-8"))
+
     def _set_kill(self, request, response):
         self.get_logger().info("Received kill service request.")
         self.send_packet(KillSetPacket(True, KillStatus.SOFTWARE_REQUESTED))
+        self.modem_msg = "r\n"
+        if self._connect_modem() and self.modem_pico is not None:
+            self.modem_pico.write(self.modem_msg.encode("utf-8"))
+            self.modem_pico.close()
+            self.modem_pico = None
+
         return response
 
     def _unset_kill(self, request, response):
@@ -192,7 +257,11 @@ class ThrustAndKillNode(
                 "Thrust board heartbeat timeout! Rejecting further thruster commands.",
             )
             self.heartbeat_timedout = True
+            self.modem_msg = "r\n"
+            if self._connect_modem() and self.modem_pico is not None:
+                self.modem_pico.write(self.modem_msg.encode("utf-8"))
         else:
+            # msg = "y\n"
             if not self.heartbeat_timedout:
                 self.get_logger().debug("Thrust board heartbeat is live.")
             else:
