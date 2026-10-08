@@ -63,13 +63,21 @@ constexpr double kReplanDistance{ 0.5 };
 constexpr double kRepublishHeading{ 3.0 * M_PI / 180.0 };
 
 /// Keep the boat where it is. Unlike release(), guidance keeps publishing zero speed, so thruster_manager does not
-/// cut thrust and let the boat drift. Falls back to release() when there is no position yet.
-void hold_station(Context &context)
+/// cut thrust and let the boat drift. With a heading, guidance also keeps the boat pointed that way; without one it
+/// leaves the heading alone. Falls back to release() when there is no position yet.
+void hold_station(Context &context, std::optional<double> heading = std::nullopt)
 {
     Boat const boat = context.boat();
     if (boat.valid)
     {
-        context.driver.go_to(boat.position);
+        if (heading)
+        {
+            context.driver.turn_to(boat.position, *heading);
+        }
+        else
+        {
+            context.driver.go_to(boat.position);
+        }
     }
     else
     {
@@ -188,7 +196,7 @@ Status FaceObject::step()
 
     if (std::abs(resting) <= context_.settings.point_tolerance_)
     {
-        hold_station(context_);
+        hold_station(context_, target);
         RCLCPP_INFO(context_.node->get_logger(), "face: pointing at (%.1f, %.1f), %.1f deg off",
                     context_.lock.point().x, context_.lock.point().y, degrees(resting));
         return Status::Succeeded;
@@ -196,7 +204,7 @@ Status FaceObject::step()
 
     if (settled.gave_up)
     {
-        hold_station(context_);
+        hold_station(context_, target);
         RCLCPP_WARN(context_.node->get_logger(),
                     "face: still turning at %.1f deg/s after %.0f s; reporting %.1f deg off", degrees(boat.yaw_rate),
                     context_.settings.stop_timeout_, degrees(resting));
@@ -205,7 +213,7 @@ Status FaceObject::step()
 
     if (++corrections_ > kMaxCorrections)
     {
-        hold_station(context_);
+        hold_station(context_, target);
         RCLCPP_WARN(context_.node->get_logger(), "face: settled %.1f deg off after %d corrections; reporting that",
                     degrees(resting), kMaxCorrections);
         return Status::Succeeded;
