@@ -19,6 +19,15 @@ find_package(visualization_msgs REQUIRED)
 
 include_directories(include)
 
+set(MANEUVER_DEPS
+    rclcpp
+    nav_msgs
+    geometry_msgs
+    visualization_msgs
+    tf2
+    tf2_ros
+    tf2_geometry_msgs)
+
 # ── Shared library ───────────────────────────────────────────────────────────
 add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp src/spinner.cpp)
 # Split out deliberately: with four sources on one line, cmake-format wraps the
@@ -26,57 +35,19 @@ add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp src/spinner.cpp)
 # indentation". Both tools accept this form. Do not fold it back in.
 target_sources(prop_maneuvers_lib PRIVATE src/target_lock.cpp src/maneuvers.cpp
                                           src/reverser.cpp src/runner.cpp)
-ament_target_dependencies(
-  prop_maneuvers_lib
-  rclcpp
-  nav_msgs
-  geometry_msgs
-  visualization_msgs
-  tf2
-  tf2_ros
-  tf2_geometry_msgs)
+ament_target_dependencies(prop_maneuvers_lib ${MANEUVER_DEPS})
 
 install(TARGETS prop_maneuvers_lib DESTINATION lib)
 
 # ── Maneuver programs ────────────────────────────────────────────────────────
-add_executable(face_object src/face_object_node.cpp)
-target_link_libraries(face_object prop_maneuvers_lib)
-ament_target_dependencies(
-  face_object
-  rclcpp
-  nav_msgs
-  geometry_msgs
-  visualization_msgs
-  tf2
-  tf2_ros
-  tf2_geometry_msgs)
+set(MANEUVER_PROGRAMS face_object circle_object approach_object)
+foreach(program ${MANEUVER_PROGRAMS})
+  add_executable(${program} src/${program}_node.cpp)
+  target_link_libraries(${program} prop_maneuvers_lib)
+  ament_target_dependencies(${program} ${MANEUVER_DEPS})
+endforeach()
 
-add_executable(circle_object src/circle_object_node.cpp)
-target_link_libraries(circle_object prop_maneuvers_lib)
-ament_target_dependencies(
-  circle_object
-  rclcpp
-  nav_msgs
-  geometry_msgs
-  visualization_msgs
-  tf2
-  tf2_ros
-  tf2_geometry_msgs)
-
-add_executable(approach_object src/approach_object_node.cpp)
-target_link_libraries(approach_object prop_maneuvers_lib)
-ament_target_dependencies(
-  approach_object
-  rclcpp
-  nav_msgs
-  geometry_msgs
-  visualization_msgs
-  tf2
-  tf2_ros
-  tf2_geometry_msgs)
-
-install(TARGETS face_object circle_object approach_object
-        DESTINATION lib/${PROJECT_NAME})
+install(TARGETS ${MANEUVER_PROGRAMS} DESTINATION lib/${PROJECT_NAME})
 
 # ── Simulator support ────────────────────────────────────────────────────────
 add_executable(scan_to_cloud src/scan_to_cloud_node.cpp)
@@ -112,11 +83,9 @@ if(BUILD_TESTING)
   ament_add_gtest(test_geometry test/test_geometry.cpp)
   target_link_libraries(test_geometry prop_maneuvers_lib)
 
-  # Nothing else compiles constants.hpp until Task 7 builds a node, so a break
-  # in it would otherwise go unnoticed for several tasks. This costs nothing and
-  # catches it immediately.
+  # Constructs Constants from defaults and from the shipped config, so a bad
+  # parameter or a typo in maneuvers.yaml fails here rather than on the water.
   ament_add_gtest(test_constants_compiles test/test_constants_compiles.cpp)
-  ament_target_dependencies(test_constants_compiles rclcpp)
   target_link_libraries(test_constants_compiles prop_maneuvers_lib)
   # The source tree's copy, not the installed one: the test must fail on a bad
   # config before it is installed anywhere.

@@ -112,18 +112,12 @@ def generate_launch_description():
                 actions=[
                     Node(
                         package="prop_controller",
-                        executable="guidance",
-                        name="guidance",
+                        executable=name,
+                        name=name,
                         parameters=[controller_config],
                         output="screen",
-                    ),
-                    Node(
-                        package="prop_controller",
-                        executable="thruster_manager",
-                        name="thruster_manager",
-                        parameters=[controller_config],
-                        output="screen",
-                    ),
+                    )
+                    for name in ("guidance", "thruster_manager")
                 ],
             ),
             TimerAction(

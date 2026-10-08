@@ -74,7 +74,7 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     os.path.join(maneuvers_share, "config", "maneuvers.yaml"),
-                    {"use_sim_time": True},
+                    {"use_sim_time": LaunchConfiguration("use_sim_time")},
                 ],
                 remappings=[
                     ("scan", "/lidar/scan"),

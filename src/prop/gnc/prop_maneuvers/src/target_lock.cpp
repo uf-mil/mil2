@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <optional>
 
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -14,19 +15,6 @@ namespace
 /// How long to wait for the transform at a scan's own stamp before taking the degraded latest-transform
 /// path; a small fraction of the clustering's ~3 Hz frame.
 constexpr auto kTransformWait = std::chrono::milliseconds(50);
-
-/// Keep an implausible cluster from sizing a standoff or clearance: a merged blob's half-width is not
-/// the object's radius.
-Blob sane(Blob blob, double limit, rclcpp::Node *node)
-{
-    if (blob.radius > limit)
-    {
-        RCLCPP_WARN_THROTTLE(node->get_logger(), *node->get_clock(), 2000,
-                             "clustering reported a %.1f m radius; clamping to %.1f m", blob.radius, limit);
-        blob.radius = limit;
-    }
-    return blob;
-}
 }  // namespace
 
 TargetLock::TargetLock(rclcpp::Node *node, Constants const &settings)
@@ -124,6 +112,13 @@ std::vector<Blob> TargetLock::blobs() const
     return out;
 }
 
+void TargetLock::adopt(Blob const &blob)
+{
+    locked_ = blob;
+    locked_at_ = node_->now();
+    why_.clear();
+}
+
 bool TargetLock::acquire_near(Point const &hint)
 {
     // real_only, as in refresh(): a merged blob must never be the target. This is the acquisition path
@@ -140,9 +135,7 @@ bool TargetLock::acquire_near(Point const &hint)
         return false;
     }
 
-    locked_ = sane(match.blob, settings_.max_object_radius_, node_);
-    locked_at_ = node_->now();
-    why_.clear();
+    adopt(match.blob);
     RCLCPP_INFO(node_->get_logger(), "locked on at (%.1f, %.1f), radius %.2f m", locked_->centre.x, locked_->centre.y,
                 locked_->radius);
     return true;
@@ -150,7 +143,11 @@ bool TargetLock::acquire_near(Point const &hint)
 
 bool TargetLock::acquire_in_front(Point const &boat, double boat_direction)
 {
-    std::vector<Blob> candidates;
+    // Nearest in the cone wins. Ambiguity is not checked: there is no prediction to compare against, unlike
+    // acquire_near and refresh. Two buoys at similar range resolve silently to the nearer one, and this is
+    // the only acquisition path meant for autonomous use on the real boat, so weigh that knowingly.
+    std::optional<Blob> nearest;
+    double nearest_range = 0.0;
     for (auto const &blob : real_only(blobs()))
     {
         double const range = distance(boat, blob.centre);
@@ -159,34 +156,21 @@ bool TargetLock::acquire_in_front(Point const &boat, double boat_direction)
             continue;
         }
         double const relative = wrap_angle(bearing(boat, blob.centre) - boat_direction);
-        if (std::abs(relative) <= settings_.acquire_cone_)
+        if (std::abs(relative) <= settings_.acquire_cone_ && (!nearest || range < nearest_range))
         {
-            candidates.push_back(blob);
+            nearest = blob;
+            nearest_range = range;
         }
     }
 
-    if (candidates.empty())
+    if (!nearest)
     {
         why_ = "nothing in front of the boat";
         RCLCPP_WARN(node_->get_logger(), "could not lock on: %s", why_.c_str());
         return false;
     }
 
-    // Nearest in the cone wins. Ambiguity is not checked: there is no prediction to compare against, unlike
-    // acquire_near and refresh. Two buoys at similar range resolve silently to the nearer one, and this is
-    // the only acquisition path meant for autonomous use on the real boat, so weigh that knowingly.
-    Blob nearest = candidates.front();
-    for (auto const &blob : candidates)
-    {
-        if (distance(boat, blob.centre) < distance(boat, nearest.centre))
-        {
-            nearest = blob;
-        }
-    }
-
-    locked_ = sane(nearest, settings_.max_object_radius_, node_);
-    locked_at_ = node_->now();
-    why_.clear();
+    adopt(*nearest);
     RCLCPP_INFO(node_->get_logger(), "locked on in front at (%.1f, %.1f), radius %.2f m", locked_->centre.x,
                 locked_->centre.y, locked_->radius);
     return true;
@@ -215,9 +199,7 @@ bool TargetLock::refresh()
     }
 
     double const moved = distance(match.blob.centre, locked_->centre);
-    locked_ = sane(match.blob, settings_.max_object_radius_, node_);
-    locked_at_ = node_->now();
-    why_.clear();
+    adopt(match.blob);
     RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 2000, "refreshed, moved %.2f m to (%.1f, %.1f)",
                          moved, locked_->centre.x, locked_->centre.y);
     return true;

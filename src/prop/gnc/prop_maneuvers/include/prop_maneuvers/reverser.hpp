@@ -14,9 +14,7 @@
  * from a 180 degree detour, and the target stays in front of the lidar
  * throughout.
  *
- * The caller MUST have released the driver first, exactly as with Spinner. If
- * guidance still holds points it keeps publishing cmd_vel ten times a second
- * and the two streams interleave, making the boat stutter.
+ * The caller MUST have released the driver first, exactly as with Spinner.
  *
  * The caller MUST also check clear_behind() first, and again on every step.
  * This class has no sensors and will happily reverse into a buoy.

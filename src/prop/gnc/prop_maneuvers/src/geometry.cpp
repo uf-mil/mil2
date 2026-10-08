@@ -70,23 +70,51 @@ Point standoff_point(Point const &start, Point const &target, double standoff)
     return Point{ start.x + (target.x - start.x) * scale, start.y + (target.y - start.y) * scale };
 }
 
+namespace
+{
+/// The leg `a` -> `b`, for projecting points onto it.
+struct Leg
+{
+    Point a;
+    double dx;
+    double dy;
+    double length_squared;
+
+    Leg(Point const &from, Point const &to)
+      : a(from), dx(to.x - from.x), dy(to.y - from.y), length_squared(dx * dx + dy * dy)
+    {
+    }
+
+    /// Where `p` projects onto the infinite line: 0 at `a`, 1 at `b`. Needs length_squared > 0.
+    double along(Point const &p) const
+    {
+        return ((p.x - a.x) * dx + (p.y - a.y) * dy) / length_squared;
+    }
+};
+
+/// How a point sits relative to a straight leg.
+struct Offset
+{
+    double perpendicular;  ///< distance to the infinite line through the leg, not the segment
+    bool within_segment;   ///< closest approach falls between the leg's ends; always false for a zero-length leg
+};
+
 Offset distance_to_segment(Point const &p, Point const &a, Point const &b)
 {
-    double const dx = b.x - a.x;
-    double const dy = b.y - a.y;
-    double const length_squared = dx * dx + dy * dy;
+    Leg const leg{ a, b };
 
-    if (length_squared == 0.0)
+    if (leg.length_squared == 0.0)
     {
         return Offset{ distance(p, a), false };
     }
 
-    double const along = ((p.x - a.x) * dx + (p.y - a.y) * dy) / length_squared;
+    double const along = leg.along(p);
     // Perpendicular distance to the infinite line, via the 2D cross product.
-    double const across = std::abs((p.x - a.x) * dy - (p.y - a.y) * dx) / std::sqrt(length_squared);
+    double const across = std::abs((p.x - a.x) * leg.dy - (p.y - a.y) * leg.dx) / std::sqrt(leg.length_squared);
 
     return Offset{ across, along >= 0.0 && along <= 1.0 };
 }
+}  // namespace
 
 double distance_to_polyline(Point const &p, std::vector<Point> const &path)
 {
@@ -94,27 +122,18 @@ double distance_to_polyline(Point const &p, std::vector<Point> const &path)
     {
         return std::numeric_limits<double>::infinity();
     }
-    if (path.size() == 1)
-    {
-        return distance(p, path.front());
-    }
 
-    double best = std::numeric_limits<double>::infinity();
+    double best = distance(p, path.front());  // all there is for a one-point path
     for (std::size_t i = 0; i + 1 < path.size(); ++i)
     {
-        Point const &a = path[i];
-        Point const &b = path[i + 1];
-        double const dx = b.x - a.x;
-        double const dy = b.y - a.y;
-        double const length_squared = dx * dx + dy * dy;
+        Leg const leg{ path[i], path[i + 1] };
 
         double t = 0.0;
-        if (length_squared > 0.0)
+        if (leg.length_squared > 0.0)
         {
-            t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / length_squared;
-            t = std::clamp(t, 0.0, 1.0);  // the clamp is the point of this function
+            t = std::clamp(leg.along(p), 0.0, 1.0);  // the clamp is the point of this function
         }
-        best = std::min(best, distance(p, Point{ a.x + dx * t, a.y + dy * t }));
+        best = std::min(best, distance(p, Point{ leg.a.x + leg.dx * t, leg.a.y + leg.dy * t }));
     }
     return best;
 }
@@ -144,19 +163,19 @@ Detour plan_detour(Point const &from, Point const &to, Blob const &obstacle, dou
         return result;
     }
 
-    double const dx = to.x - from.x;
-    double const dy = to.y - from.y;
     // A zero-length leg cannot reach here: distance_to_segment forces
     // within_segment = false for one, and that returned above.
-    double const length_squared = dx * dx + dy * dy;
-    double const length = std::sqrt(length_squared);
+    Leg const leg{ from, to };
+    double const dx = leg.dx;
+    double const dy = leg.dy;
+    double const length = std::sqrt(leg.length_squared);
 
     // Along-track unit vector.
     double const tx = dx / length;
     double const ty = dy / length;
 
     // Foot of the perpendicular from the obstacle onto the leg.
-    double const along = ((obstacle.centre.x - from.x) * dx + (obstacle.centre.y - from.y) * dy) / length_squared;
+    double const along = leg.along(obstacle.centre);
     Point const foot{ from.x + dx * along, from.y + dy * along };
 
     // Unit vector from the obstacle towards the leg -- the clear side. When

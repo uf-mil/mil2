@@ -28,10 +28,8 @@ hull through the water being avoided and taking about four times as long.
 `Reverser` exists to skip that turn and keep the target in front of the lidar
 the whole time.
 
-Releasing the driver is not optional. Both `Spinner` and `Reverser` need
-`driver.release()` first — switching `Driver` off by publishing an **empty**
-list on `plan` — or `guidance` keeps sending "hold still" commands ten times a
-second and they interleave with the direct commands, making the boat stutter.
+Releasing the driver is not optional: both `Spinner` and `Reverser` need
+`driver.release()` first (why: see `driver.hpp`).
 
 `Reverser` additionally needs `clear_behind()` checked before the reverse
 starts and again on every step, because it has no sensors of its own and will

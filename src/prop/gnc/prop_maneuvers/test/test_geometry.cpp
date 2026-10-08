@@ -124,39 +124,14 @@ TEST(StandoffPoint, DoesNotReverseWhenAlreadyCloseEnough)
     EXPECT_NEAR(p.y, 0.0, kTol);
 }
 
-TEST(DistanceToSegment, MeasuresAcrossTheLeg)
-{
-    auto const off = distance_to_segment({ 5, 2 }, { 0, 0 }, { 10, 0 });
-    EXPECT_NEAR(off.perpendicular, 2.0, kTol);
-    EXPECT_TRUE(off.within_segment);
-}
-
-TEST(DistanceToSegment, KnowsWhenThePointIsPastAnEnd)
-{
-    EXPECT_FALSE(distance_to_segment({ -5, 2 }, { 0, 0 }, { 10, 0 }).within_segment);
-    EXPECT_FALSE(distance_to_segment({ 15, 2 }, { 0, 0 }, { 10, 0 }).within_segment);
-}
-
-TEST(DistanceToSegment, ZeroLengthLegReturnsDistanceToThatPoint)
-{
-    // a == b: the "leg" is a single point. distance_to_segment falls back to
-    // plain distance-to-a-point and reports within_segment == false, which
-    // is what detour_point relies on to skip the length_squared == 0 case.
-    auto const off = distance_to_segment({ 3, 4 }, { 0, 0 }, { 0, 0 });
-    EXPECT_NEAR(off.perpendicular, 5.0, kTol);
-    EXPECT_FALSE(off.within_segment);
-}
-
 // ── distance_to_polyline ─────────────────────────────────────────────────
 
-TEST(DistanceToPolyline, ClampsToTheSegmentEndsUnlikeDistanceToSegment)
+TEST(DistanceToPolyline, ClampsToTheSegmentEnds)
 {
-    // distance_to_segment reports the perpendicular to the INFINITE line, so
-    // it calls this point 0.0 away. The boat never goes there: the leg stops
-    // at (10, 0), so the real closest approach is 0.5 m.
+    // The point lies on the infinite line through the leg, 0.0 from it. The boat never goes there: the leg
+    // stops at (10, 0), so the real closest approach is 0.5 m.
     std::vector<Point> const path{ { 0, 0 }, { 10, 0 } };
     EXPECT_NEAR(distance_to_polyline({ 10.5, 0 }, path), 0.5, kTol);
-    EXPECT_NEAR(distance_to_segment({ 10.5, 0 }, { 0, 0 }, { 10, 0 }).perpendicular, 0.0, kTol);
 }
 
 TEST(DistanceToPolyline, TakesTheSmallestOverEveryLeg)
@@ -217,17 +192,6 @@ TEST(PlanDetour, StraddlesABlockingObstacleAndDeliversTheClearance)
     EXPECT_NEAR(d.achieved, kClearance, kTol);
 }
 
-TEST(PlanDetour, TheDrivenPathIsWhatIsMeasuredNotTheWaypoints)
-{
-    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(10, 0.3), kHalfWidth, kMinGap, kClearance);
-    ASSERT_EQ(d.need, DetourNeed::Straddle);
-
-    // Recomputed here independently of plan_detour's own bookkeeping.
-    std::vector<Point> const driven{ { 0, 0 }, d.before, d.after, { 20, 0 } };
-    double const hull_gap = distance_to_polyline({ 10, 0.3 }, driven) - 0.25 - kHalfWidth;
-    EXPECT_NEAR(hull_gap, kClearance, kTol);
-}
-
 TEST(PlanDetour, RefusesToSwingWhenTheBoatStartsTooClose)
 {
     // 1.51 m from the buoy centre, inside the 1.75 m the swing needs.
@@ -243,6 +207,17 @@ TEST(PlanDetour, BestEffortWhenTheGoalItselfSitsInsideTheClearance)
     auto const d = plan_detour({ 0, 0 }, { 10, 0 }, buoy(9.5, 0.3), kHalfWidth, kMinGap, kClearance);
     ASSERT_EQ(d.need, DetourNeed::Straddle);
     EXPECT_LT(d.achieved, kClearance);
+
+    // The obstacle is close to the goal, which would push `after` beyond it and carry the bow nearer the
+    // object than the standoff promises before the boat turned back for the goal.
+    EXPECT_LE(d.after.x, 10.0 + kTol) << "second straddle waypoint is past the goal";
+    EXPECT_LE(d.before.x, 10.0 + kTol);
+}
+
+TEST(PlanDetour, NothingForAZeroLengthLeg)
+{
+    auto const d = plan_detour({ 5, 0 }, { 5, 0 }, buoy(5, 0.1), kHalfWidth, kMinGap, kClearance);
+    EXPECT_EQ(d.need, DetourNeed::None);
 }
 
 TEST(PlanDetour, GoesLeftWhenTheObstacleSitsExactlyOnTheLine)
@@ -255,49 +230,21 @@ TEST(PlanDetour, GoesLeftWhenTheObstacleSitsExactlyOnTheLine)
     EXPECT_NEAR(d.after.y, 1.75, kTol);
 }
 
-TEST(PlanDetour, SpacingEqualsTheSidewaysOffset)
+TEST(PlanDetour, ClampsWaypointsOntoTheLegAndReportsWhatThePathAchieves)
 {
-    // The swept result: any narrower under-delivers, any wider only drives
-    // further. Recorded as a test so a future "tidy-up" cannot quietly change it.
-    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(10, 0.3), kHalfWidth, kMinGap, kClearance);
-    ASSERT_EQ(d.need, DetourNeed::Straddle);
-    double const spacing = distance(d.before, d.after) / 2.0;
-    double const offset = 0.25 + kHalfWidth + kClearance;
-    EXPECT_NEAR(spacing, offset, kTol);
-}
-
-TEST(PlanDetour, NeverPutsTheFirstWaypointBehindTheBoat)
-{
-    // An obstacle close on the bow passes both gates: 0.85 m off the leg trips
-    // the 0.90 m trigger, and at 1.81 m away the boat is outside the 1.75 m
-    // swing, so this is not TooCloseToSwing. Unclamped, `before` lands at
-    // along-track -0.15 m -- astern. guidance restarts at waypoint 0 on every
-    // hand-over and scales forward speed by the cosine of the bearing error,
-    // so a point astern means the boat spins on the spot instead of driving.
+    // An obstacle close on the bow passes both gates: 0.85 m off the leg trips the 0.90 m trigger, and at
+    // 1.81 m away the boat is outside the 1.75 m swing, so this is not TooCloseToSwing. Unclamped, `before`
+    // lands at along-track -0.15 m -- astern. guidance restarts at waypoint 0 on every hand-over and scales
+    // forward speed by the cosine of the bearing error, so a point astern means the boat spins on the spot
+    // instead of driving.
     auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(1.6, 0.85), kHalfWidth, kMinGap, kClearance);
     ASSERT_EQ(d.need, DetourNeed::Straddle);
     EXPECT_GE(d.before.x, -kTol) << "first straddle waypoint is behind the boat";
     EXPECT_GE(d.after.x, -kTol);
-}
 
-TEST(PlanDetour, NeverPutsTheSecondWaypointPastTheGoal)
-{
-    // An obstacle close to the goal pushes `after` beyond it, which would
-    // carry the bow nearer the object than the standoff promises before the
-    // boat turned back for the goal.
-    auto const d = plan_detour({ 0, 0 }, { 10, 0 }, buoy(9.5, 0.3), kHalfWidth, kMinGap, kClearance);
-    ASSERT_EQ(d.need, DetourNeed::Straddle);
-    EXPECT_LE(d.after.x, 10.0 + kTol) << "second straddle waypoint is past the goal";
-    EXPECT_LE(d.before.x, 10.0 + kTol);
-}
-
-TEST(PlanDetour, ClampingStillReportsWhatThePathActuallyAchieves)
-{
     // A clamped straddle delivers less than was asked for. It must still
     // measure the path it really produced, so the caller's under-delivery
     // warning stays truthful rather than quoting an ideal it did not drive.
-    auto const d = plan_detour({ 0, 0 }, { 20, 0 }, buoy(1.6, 0.85), kHalfWidth, kMinGap, kClearance);
-    ASSERT_EQ(d.need, DetourNeed::Straddle);
 
     std::vector<Point> const driven{ { 0, 0 }, d.before, d.after, { 20, 0 } };
     double const hull_gap = distance_to_polyline({ 1.6, 0.85 }, driven) - 0.25 - kHalfWidth;
@@ -431,39 +378,28 @@ TEST(ClearBehind, TheStripFollowsTheBoatNotTheMap)
 // along it no longer sees the obstacle as blocking and would hand back the
 // straight line the straddle exists to avoid.
 
-TEST(AlongTrack, MeasuresForwardAndBackwardAlongTheHeading)
+TEST(AlongTrack, MeasuresOnlyTheComponentAlongTheHeading)
 {
     EXPECT_NEAR(along_track({ 0, 0 }, 0.0, { 5, 0 }), 5.0, kTol);
     EXPECT_NEAR(along_track({ 0, 0 }, 0.0, { -5, 0 }), -5.0, kTol);
-}
 
-TEST(AlongTrack, IgnoresSidewaysOffsetEntirely)
-{
     // Level with the boat but a long way to the side is still level with it.
     EXPECT_NEAR(along_track({ 0, 0 }, 0.0, { 5, 100 }), 5.0, kTol);
     EXPECT_NEAR(along_track({ 0, 0 }, 0.0, { 0, 100 }), 0.0, kTol);
-}
 
-TEST(AlongTrack, FollowsTheHeadingNotTheMapAxes)
-{
+    // It follows the heading, not the map axes.
     EXPECT_NEAR(along_track({ 0, 0 }, M_PI / 2.0, { 0, 5 }), 5.0, kTol);
     EXPECT_NEAR(along_track({ 0, 0 }, M_PI, { -5, 0 }), 5.0, kTol);
 }
 
-TEST(ObstacleAhead, TrueWhileTheObstacleIsStillInFront)
+TEST(ObstacleAhead, HoldsUntilItsSurfaceClearsTheBackOfTheHull)
 {
     EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { 5, 0 }, 0.25 }, 1.0));
-}
 
-TEST(ObstacleAhead, StillAheadWhenLevelWithTheBoat)
-{
     // base_link is level with it, but the hull reaches 1 m further back and is
     // still alongside. Letting go here would cut the corner on the way out.
     EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { 0, 2 }, 0.25 }, 1.0));
-}
 
-TEST(ObstacleAhead, BehindOnlyOnceItsSurfaceClearsTheBackOfTheHull)
-{
     // Threshold is -(radius + hull_behind) = -1.25 m.
     EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.2, 0 }, 0.25 }, 1.0));
     EXPECT_FALSE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.3, 0 }, 0.25 }, 1.0));

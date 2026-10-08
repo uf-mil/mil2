@@ -90,11 +90,6 @@ class Deadline
     double seconds_;
 };
 
-/// How often a maneuver re-confirms the object while driving, in node-clock seconds. 0.3 s is well under
-/// reading_max_age (5.0 s) and short enough to fire on a close-in approach at low RTF.
-/// Shared by ApproachObject and CircleObject.
-constexpr double kRefreshInterval{ 0.3 };
-
 /// Something that can be stepped and says how it went, so one runner can drive any maneuver.
 class Maneuver
 {
@@ -125,7 +120,6 @@ class FaceObject : public Maneuver
 
     Context &context_;
     Deadline deadline_;
-    bool released_{ false };
     Phase phase_{ Phase::Turning };
     std::optional<Deadline> settle_deadline_;
     int corrections_{ 0 };
@@ -224,6 +218,9 @@ class ApproachObject : public Maneuver
     /// Where to stop, plus straddle waypoints if something blocks the line.
     Plan plan_route(Boat const &boat) const;
 
+    /// Plan from where the boat is, hand it to guidance and enter Phase::Driving.
+    void begin_driving(Boat const &boat);
+
     /// True when a fresh straddle should replace the one in flight; only a different, nearer obstacle does.
     bool supersedes(std::optional<Commitment> const &fresh, Boat const &boat) const;
 
@@ -236,7 +233,6 @@ class ApproachObject : public Maneuver
     double standoff_;
 
     Phase phase_{ Phase::FaceTarget };
-    bool released_for_turn_{ false };
     std::vector<Point> route_;
 
     // The straddle being driven, held for the whole detour rather than replanned (see Phase::Driving).
@@ -248,7 +244,6 @@ class ApproachObject : public Maneuver
     bool has_reversed_{ false };
     Point reverse_start_;
     double reverse_held_direction_{ 0.0 };
-    double reverse_distance_{ 0.0 };
 
     rclcpp::Time last_refresh_;
 

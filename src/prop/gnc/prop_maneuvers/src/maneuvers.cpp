@@ -55,9 +55,74 @@ bool Deadline::expired() const
     return (now - start_).seconds() > seconds_;
 }
 
+namespace
+{
+/// How often a maneuver re-confirms the object while driving, in node-clock seconds. 0.3 s is well under
+/// reading_max_age (5.0 s) and short enough to fire on a close-in approach at low RTF.
+constexpr double kRefreshInterval{ 0.3 };
+
+/// A route point further than this from the one in flight is worth handing to guidance again.
+constexpr double kReplanDistance{ 0.5 };
+
+/// Why a step cannot go on yet, if it cannot: no position estimate (keep waiting) or no lock (fail).
+std::optional<Status> not_ready(Context &context, Boat const &boat, char const *name)
+{
+    if (!boat.valid)
+    {
+        RCLCPP_WARN_THROTTLE(context.node->get_logger(), *context.node->get_clock(), 2000,
+                             "%s: waiting for the position estimate", name);
+        return Status::Running;
+    }
+
+    if (!context.lock.locked())
+    {
+        RCLCPP_ERROR(context.node->get_logger(), "%s: nothing locked on", name);
+        return Status::Failed;
+    }
+
+    return std::nullopt;
+}
+
+/// Re-confirm the lock if `kRefreshInterval` has passed since `last_refresh`. A failed refresh is normal
+/// (blind wedges, dropped frames); only stale() means lost. `warn_on_failure` says so while still holding a
+/// remembered point.
+void refresh_if_due(Context &context, rclcpp::Time &last_refresh, bool warn_on_failure = false)
+{
+    if ((context.node->now() - last_refresh).seconds() < kRefreshInterval)
+    {
+        return;
+    }
+    if (!context.lock.refresh() && warn_on_failure && !context.lock.stale())
+    {
+        RCLCPP_WARN_THROTTLE(context.node->get_logger(), *context.node->get_clock(), 2000,
+                             "approach: keeping the remembered point (%s)", context.lock.why().c_str());
+    }
+    last_refresh = context.node->now();
+}
+
+/// Settling ends when the boat has stopped or, if there is one, the deadline runs out.
+struct Settled
+{
+    bool stopped;
+    bool gave_up;
+
+    explicit operator bool() const
+    {
+        return stopped || gave_up;
+    }
+};
+
+Settled settle(bool stopped, std::optional<Deadline> const &deadline)
+{
+    return Settled{ stopped, deadline && deadline->expired() };
+}
+}  // namespace
+
 FaceObject::FaceObject(Context &context)
   : context_(context), deadline_(context.node, context.settings.maneuver_timeout_)
 {
+    // Guidance still publishing cmd_vel would interleave with the turn commands.
+    context_.driver.release();
 }
 
 Status FaceObject::step()
@@ -71,24 +136,9 @@ Status FaceObject::step()
     }
 
     Boat const boat = context_.boat();
-    if (!boat.valid)
+    if (auto const early = not_ready(context_, boat, "face"))
     {
-        RCLCPP_WARN_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 2000,
-                             "face: waiting for the position estimate");
-        return Status::Running;
-    }
-
-    if (!context_.lock.locked())
-    {
-        RCLCPP_ERROR(context_.node->get_logger(), "face: nothing locked on");
-        return Status::Failed;
-    }
-
-    // Guidance still publishing cmd_vel would interleave with the turn commands.
-    if (!released_)
-    {
-        context_.driver.release();
-        released_ = true;
+        return *early;
     }
 
     double const target = bearing(boat.position, context_.lock.point());
@@ -108,9 +158,8 @@ Status FaceObject::step()
         return Status::Running;
     }
 
-    bool const stopped = std::abs(boat.yaw_rate) <= context_.settings.stop_turn_rate_;
-    bool const gave_up = settle_deadline_ && settle_deadline_->expired();
-    if (!stopped && !gave_up)
+    Settled const settled = settle(std::abs(boat.yaw_rate) <= context_.settings.stop_turn_rate_, settle_deadline_);
+    if (!settled)
     {
         RCLCPP_INFO_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 1000,
                              "face: settling, %.1f deg/s", degrees(boat.yaw_rate));
@@ -128,7 +177,7 @@ Status FaceObject::step()
         return Status::Succeeded;
     }
 
-    if (gave_up)
+    if (settled.gave_up)
     {
         context_.spinner.stop();
         RCLCPP_WARN(context_.node->get_logger(),
@@ -210,26 +259,13 @@ Status CircleObject::step()
     }
 
     Boat const boat = context_.boat();
-    if (!boat.valid)
+    if (auto const early = not_ready(context_, boat, "circle"))
     {
-        RCLCPP_WARN_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 2000,
-                             "circle: waiting for the position estimate");
-        return Status::Running;
+        return *early;
     }
 
-    if (!context_.lock.locked())
-    {
-        RCLCPP_ERROR(context_.node->get_logger(), "circle: nothing locked on");
-        return Status::Failed;
-    }
-
-    // Keep the lock's timestamp fresh. A failed refresh is normal here (the
-    // buoy sits in the blind wedges for part of each leg); only stale() means lost.
-    if ((context_.node->now() - last_refresh_).seconds() >= kRefreshInterval)
-    {
-        context_.lock.refresh();
-        last_refresh_ = context_.node->now();
-    }
+    // Keep the lock's timestamp fresh; the buoy sits in the blind wedges for part of each leg.
+    refresh_if_due(context_, last_refresh_);
 
     if (context_.lock.stale())
     {
@@ -316,18 +352,27 @@ void CircleObject::start_leg(Boat const &boat)
 ApproachObject::ApproachObject(Context &context, double standoff)
   : context_(context), deadline_(context.node, context.settings.maneuver_timeout_), standoff_(standoff)
 {
+    // Phase::FaceTarget turns the boat, so guidance must not be publishing cmd_vel.
+    context_.driver.release();
 }
 
 namespace
 {
-/// The worst thing blocking the leg from `boat` to `goal`, ignoring `target`.
+/// Whether `blob` is the locked target itself. It is never its own obstacle; the margin covers clustering and
+/// the lock disagreeing on the edge.
+bool is_target_blob(Context const &context, Blob const &blob)
+{
+    return distance(blob.centre, context.lock.point()) <= context.lock.radius() + context.settings.target_blob_margin_;
+}
+
+/// The worst thing blocking the leg from `boat` to `goal`, ignoring the target.
 /// Separate from plan_route so "nothing in the way" stays distinct from "in the way and unroutable".
-DetourNeed worst_need(Context const &context, Point const &boat, Point const &goal, Point const &target)
+DetourNeed worst_need(Context const &context, Point const &boat, Point const &goal)
 {
     DetourNeed worst = DetourNeed::None;
     for (auto const &blob : context.lock.blobs())
     {
-        if (distance(blob.centre, target) <= context.lock.radius() + context.settings.target_blob_margin_)
+        if (is_target_blob(context, blob))
         {
             continue;
         }
@@ -361,7 +406,6 @@ Point ApproachObject::aim_goal(Point const &boat) const
 
 ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
 {
-    Point const target = context_.lock.point();
     Point const goal = aim_goal(boat.position);
 
     Plan plan;
@@ -375,8 +419,7 @@ ApproachObject::Plan ApproachObject::plan_route(Boat const &boat) const
 
     for (auto const &blob : context_.lock.blobs())
     {
-        // Never treat the target as its own obstacle; the margin covers clustering and lock disagreeing on the edge.
-        if (distance(blob.centre, target) <= context_.lock.radius() + context_.settings.target_blob_margin_)
+        if (is_target_blob(context_, blob))
         {
             continue;
         }
@@ -441,12 +484,21 @@ bool ApproachObject::worth_replanning(std::vector<Point> const &fresh) const
     }
     for (std::size_t i = 0; i < fresh.size(); ++i)
     {
-        if (distance(fresh[i], route_[i]) > 0.5)
+        if (distance(fresh[i], route_[i]) > kReplanDistance)
         {
             return true;
         }
     }
     return false;
+}
+
+void ApproachObject::begin_driving(Boat const &boat)
+{
+    Plan const plan = plan_route(boat);
+    route_ = plan.route;
+    commitment_ = plan.commitment;
+    context_.driver.go_to(route_);
+    phase_ = Phase::Driving;
 }
 
 Status ApproachObject::step()
@@ -462,29 +514,15 @@ Status ApproachObject::step()
     }
 
     Boat const boat = context_.boat();
-    if (!boat.valid)
+    if (auto const early = not_ready(context_, boat, "approach"))
     {
-        RCLCPP_WARN_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 2000,
-                             "approach: waiting for the position estimate");
-        return Status::Running;
-    }
-
-    if (!context_.lock.locked())
-    {
-        RCLCPP_ERROR(context_.node->get_logger(), "approach: nothing locked on");
-        return Status::Failed;
+        return *early;
     }
 
     switch (phase_)
     {
         case Phase::FaceTarget:
         {
-            if (!released_for_turn_)
-            {
-                context_.driver.release();
-                released_for_turn_ = true;
-            }
-
             if (!context_.spinner.step(boat.direction, bearing(boat.position, context_.lock.point())))
             {
                 return Status::Running;
@@ -500,28 +538,22 @@ Status ApproachObject::step()
 
             // Asked once, while stopped and pointed at the target (the only cheap moment to reverse).
             // has_reversed_ limits it to one.
-            if (!has_reversed_ &&
-                worst_need(context_, boat.position, goal, context_.lock.point()) == DetourNeed::TooCloseToSwing)
+            if (!has_reversed_ && worst_need(context_, boat.position, goal) == DetourNeed::TooCloseToSwing)
             {
                 // One thing commands the motors at a time: stop the spinner and guidance first.
                 context_.driver.release();
                 context_.spinner.stop();
                 reverse_start_ = boat.position;
                 reverse_held_direction_ = boat.direction;
-                reverse_distance_ = context_.settings.reverse_max_distance_;
                 has_reversed_ = true;
                 phase_ = Phase::BackingOff;
                 RCLCPP_INFO(context_.node->get_logger(), "approach: too close to step around it, backing off %.1f m",
-                            reverse_distance_);
+                            context_.settings.reverse_max_distance_);
                 return Status::Running;
             }
 
-            Plan const plan = plan_route(boat);
-            route_ = plan.route;
-            commitment_ = plan.commitment;
             context_.spinner.stop();
-            context_.driver.go_to(route_);
-            phase_ = Phase::Driving;
+            begin_driving(boat);
             RCLCPP_INFO(context_.node->get_logger(), "approach: %zu point route, stopping %.1f m clear", route_.size(),
                         standoff_);
             return Status::Running;
@@ -539,17 +571,14 @@ Status ApproachObject::step()
                 RCLCPP_WARN(context_.node->get_logger(),
                             "approach: cannot see behind us (%s); stopping the reverse rather than guessing",
                             context_.lock.why().c_str());
-                Plan const plan = plan_route(boat);
-                route_ = plan.route;
-                commitment_ = plan.commitment;
-                context_.driver.go_to(route_);
-                phase_ = Phase::Driving;
+                begin_driving(boat);
                 return Status::Running;
             }
 
             // Check only the water left to cover; the strip is measured from the boat's current position,
             // so passing the full distance would sweep about twice the reverse.
-            double const still_to_cover = std::max(0.0, reverse_distance_ - distance(reverse_start_, boat.position));
+            double const still_to_cover =
+                std::max(0.0, context_.settings.reverse_max_distance_ - distance(reverse_start_, boat.position));
 
             if (!clear_behind(behind_us, boat.position, boat.direction, still_to_cover,
                               context_.settings.hull_half_width_, context_.settings.hull_behind_))
@@ -557,33 +586,21 @@ Status ApproachObject::step()
                 context_.reverser.stop();
                 RCLCPP_WARN(context_.node->get_logger(), "approach: something behind us, taking the best route "
                                                          "available instead");
-                Plan const plan = plan_route(boat);
-                route_ = plan.route;
-                commitment_ = plan.commitment;
-                context_.driver.go_to(route_);
-                phase_ = Phase::Driving;
+                begin_driving(boat);
                 return Status::Running;
             }
 
             // Keep the lock fresh during the reverse (about reading_max_age long). A failed refresh is fine;
             // Phase::Driving reports a lock that is truly lost.
-            if ((context_.node->now() - last_refresh_).seconds() >= kRefreshInterval)
-            {
-                context_.lock.refresh();
-                last_refresh_ = context_.node->now();
-            }
+            refresh_if_due(context_, last_refresh_);
 
             if (context_.reverser.step(boat.position, boat.direction, reverse_start_, reverse_held_direction_,
-                                       reverse_distance_))
+                                       context_.settings.reverse_max_distance_))
             {
                 // step() already published its own zero; repeating it keeps the motors from depending on its internals.
                 context_.reverser.stop();
                 RCLCPP_INFO(context_.node->get_logger(), "approach: backed off, re-planning");
-                Plan const plan = plan_route(boat);
-                route_ = plan.route;
-                commitment_ = plan.commitment;
-                context_.driver.go_to(route_);
-                phase_ = Phase::Driving;
+                begin_driving(boat);
             }
             return Status::Running;
         }
@@ -634,15 +651,7 @@ Status ApproachObject::step()
 
             // Keep the lock fresh while driving, else stale() fires on the clock alone. One failed refresh is
             // survivable.
-            if ((context_.node->now() - last_refresh_).seconds() >= kRefreshInterval)
-            {
-                if (!context_.lock.refresh() && !context_.lock.stale())
-                {
-                    RCLCPP_WARN_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 2000,
-                                         "approach: keeping the remembered point (%s)", context_.lock.why().c_str());
-                }
-                last_refresh_ = context_.node->now();
-            }
+            refresh_if_due(context_, last_refresh_, true);
 
             // Stale: we would be driving at a memory. Stop.
             if (context_.lock.stale())
@@ -696,9 +705,8 @@ Status ApproachObject::step()
 
         case Phase::Settling:
         {
-            bool const stopped = std::abs(boat.surge) <= context_.settings.stop_speed_;
-            bool const gave_up = settle_deadline_ && settle_deadline_->expired();
-            if (!stopped && !gave_up)
+            Settled const settled = settle(std::abs(boat.surge) <= context_.settings.stop_speed_, settle_deadline_);
+            if (!settled)
             {
                 RCLCPP_INFO_THROTTLE(context_.node->get_logger(), *context_.node->get_clock(), 1000,
                                      "approach: settling, %.2f m/s", boat.surge);
@@ -712,7 +720,7 @@ Status ApproachObject::step()
             context_.driver.release();
             context_.spinner.stop();
 
-            if (gave_up)
+            if (settled.gave_up)
             {
                 // Still moving after stop_timeout: not a failure, but the number is a snapshot.
                 RCLCPP_WARN(context_.node->get_logger(),

@@ -43,13 +43,6 @@ struct Blob
     bool merged{ false };
 };
 
-/// How a point sits relative to a straight leg.
-struct Offset
-{
-    double perpendicular{ 0.0 };   ///< distance to the infinite line through a, b
-    bool within_segment{ false };  ///< closest approach falls between a and b
-};
-
 /// Wrap to [-pi, pi], both ends inclusive (std::remainder can return exactly -pi).
 double wrap_angle(double angle);
 
@@ -81,14 +74,9 @@ Point ring_corner(Point const &centre, double radius, double entry_bearing, int 
 /// standoff, so the boat never reverses to make room.
 Point standoff_point(Point const &start, Point const &target, double standoff);
 
-/// Where `p` sits relative to the leg `a` -> `b`.
-/// `perpendicular` is the distance to the infinite line, not the segment: when `within_segment` is false
-/// it understates the distance to the nearest endpoint, so do not read false as "far away".
-Offset distance_to_segment(Point const &p, Point const &a, Point const &b);
-
 /// True distance from `p` to the nearest point on the polyline through `path`, clamped at every segment end.
-/// Unlike distance_to_segment this is the distance the boat actually keeps. An empty path returns
-/// infinity; a one-point path returns the distance to that point.
+/// This is the distance the boat actually keeps. An empty path returns infinity; a one-point path returns
+/// the distance to that point.
 double distance_to_polyline(Point const &p, std::vector<Point> const &path);
 
 /// What, if anything, the boat should do about an obstacle on its leg.

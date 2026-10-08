@@ -80,6 +80,9 @@ class TargetLock
     }
 
   private:
+    /// Lock on to `blob`: remember it, stamp the time, forget any earlier failure.
+    void adopt(Blob const &blob);
+
     rclcpp::Node *node_;
     Constants const &settings_;
 

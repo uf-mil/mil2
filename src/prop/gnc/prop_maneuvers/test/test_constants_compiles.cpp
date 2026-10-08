@@ -1,9 +1,12 @@
-// Compile-and-construct check for constants.hpp. Nothing else pulls this
-// header into a real target until Task 7, so without this a break in it would
-// surface several tasks later, far from the change that caused it.
+// Construct-and-validate check for constants.hpp: the defaults, the shipped
+// maneuvers.yaml, and the guards that reject a malformed config. The programs
+// only meet these at runtime, so a bad config would otherwise surface as a
+// node that dies on the water.
 
 #include <gtest/gtest.h>
 
+#include <memory>
+#include <stdexcept>
 #include <vector>
 
 #include <rclcpp/rclcpp.hpp>

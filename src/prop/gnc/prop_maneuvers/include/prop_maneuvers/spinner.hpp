@@ -9,9 +9,7 @@
  * closes its own loop on measured turn rate, so this only has to ask for a
  * turn rate, not solve for thrust.
  *
- * The caller MUST have released the driver first. If guidance still holds
- * points it keeps publishing cmd_vel ten times a second and the two streams
- * interleave, making the boat stutter.
+ * The caller MUST have released the driver first (see driver.hpp).
  */
 
 #pragma once

@@ -33,8 +33,8 @@ void Driver::go_to(std::vector<Point> const &points)
     }
 
     plan_publisher_->publish(path);
-    RCLCPP_INFO(node_->get_logger(), "driving %zu point(s), last at (%.1f, %.1f)", points.size(),
-                points.empty() ? 0.0 : points.back().x, points.empty() ? 0.0 : points.back().y);
+    Point const last = points.empty() ? Point{} : points.back();
+    RCLCPP_INFO(node_->get_logger(), "driving %zu point(s), last at (%.1f, %.1f)", points.size(), last.x, last.y);
 }
 
 void Driver::go_to(Point const &point)

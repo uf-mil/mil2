@@ -8,7 +8,8 @@
  * publishes cmd_vel continuously while it holds any points at all, so a
  * maneuver that wants to command the motors itself MUST call release() first.
  * release() publishes an empty Path, which makes guidance return early and go
- * completely quiet.
+ * completely quiet. Skipping it leaves guidance sending "hold still" ten times
+ * a second, interleaving with direct commands and making the boat stutter.
  */
 
 #pragma once
