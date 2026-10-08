@@ -28,7 +28,7 @@
     </gazebo>
 
     <gazebo reference="${name}_link">
-      <sensor name="${name}_camera" type="rgbd_camera">
+      <sensor name="${name}_camera" type="camera">
         <update_rate>${fps}</update_rate>
         <visualize>true</visualize>
         <always_on>1</always_on>
