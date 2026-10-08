@@ -57,9 +57,16 @@ void Driver::go_to(Point const &point, std::optional<double> final_heading)
     go_to(std::vector<Point>{ point }, final_heading);
 }
 
-void Driver::turn_to(Point const &boat, double heading)
+void Driver::hold(Boat const &boat, std::optional<double> heading)
 {
-    go_to(boat, heading);
+    if (boat.valid)
+    {
+        go_to(boat.position, heading);
+    }
+    else
+    {
+        release();
+    }
 }
 
 void Driver::release()

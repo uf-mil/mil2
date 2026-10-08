@@ -37,8 +37,10 @@ class Driver
     /// Hand guidance a single point.
     void go_to(Point const &point, std::optional<double> final_heading = std::nullopt);
 
-    /// Hold `boat` and turn on the spot to `heading`.
-    void turn_to(Point const &boat, double heading);
+    /// Keep the boat where it is, so guidance keeps publishing zero speed and thruster_manager does not cut
+    /// thrust. With a heading it also turns on the spot to it and holds it; without one the heading is left
+    /// alone. Falls back to release() when there is no position estimate yet.
+    void hold(Boat const &boat, std::optional<double> heading = std::nullopt);
 
     /// Switch guidance off. Safe to call when it is already off.
     void release();

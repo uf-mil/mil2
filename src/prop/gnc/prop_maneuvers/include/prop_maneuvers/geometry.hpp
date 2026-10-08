@@ -55,6 +55,18 @@ struct Blob
     bool merged{ false };
 };
 
+/// Where the boat is and which way it points, from the position estimate.
+struct Boat
+{
+    Point position;
+    double direction{ 0.0 };
+    /// Forward speed in m/s, body frame; the quantity thruster_manager closes its loop on.
+    double surge{ 0.0 };
+    /// Turn rate in rad/s, left positive. A turn is over when the boat stops, not when the command does.
+    double yaw_rate{ 0.0 };
+    bool valid{ false };
+};
+
 /// Wrap to [-pi, pi], both ends inclusive (std::remainder can return exactly -pi).
 double wrap_angle(double angle);
 

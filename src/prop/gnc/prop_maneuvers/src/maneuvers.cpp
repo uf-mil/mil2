@@ -62,29 +62,6 @@ constexpr double kReplanDistance{ 0.5 };
 /// A heading change this big is worth handing to guidance again; smaller drift of the bearing is not.
 constexpr double kRepublishHeading{ 3.0 * M_PI / 180.0 };
 
-/// Keep the boat where it is. Unlike release(), guidance keeps publishing zero speed, so thruster_manager does not
-/// cut thrust and let the boat drift. With a heading, guidance also keeps the boat pointed that way; without one it
-/// leaves the heading alone. Falls back to release() when there is no position yet.
-void hold_station(Context &context, std::optional<double> heading = std::nullopt)
-{
-    Boat const boat = context.boat();
-    if (boat.valid)
-    {
-        if (heading)
-        {
-            context.driver.turn_to(boat.position, *heading);
-        }
-        else
-        {
-            context.driver.go_to(boat.position);
-        }
-    }
-    else
-    {
-        context.driver.release();
-    }
-}
-
 /// Why a step cannot go on yet, if it cannot: no position estimate (keep waiting) or no lock (fail).
 std::optional<Status> not_ready(Context &context, Boat const &boat, char const *name)
 {
@@ -148,7 +125,7 @@ Status FaceObject::step()
 {
     if (deadline_.expired())
     {
-        hold_station(context_);
+        context_.driver.hold(context_.boat());
         RCLCPP_ERROR(context_.node->get_logger(), "face: gave up after %.0f s", context_.settings.maneuver_timeout_);
         return Status::Failed;
     }
@@ -166,7 +143,7 @@ Status FaceObject::step()
         // Guidance does the turning; hand it the heading on entry and again only if the bearing has moved.
         if (!published_heading_ || std::abs(wrap_angle(target - *published_heading_)) > kRepublishHeading)
         {
-            context_.driver.turn_to(boat.position, target);
+            context_.driver.hold(boat, target);
             published_heading_ = target;
         }
 
@@ -196,7 +173,7 @@ Status FaceObject::step()
 
     if (std::abs(resting) <= context_.settings.point_tolerance_)
     {
-        hold_station(context_, target);
+        context_.driver.hold(context_.boat(), target);
         RCLCPP_INFO(context_.node->get_logger(), "face: pointing at (%.1f, %.1f), %.1f deg off",
                     context_.lock.point().x, context_.lock.point().y, degrees(resting));
         return Status::Succeeded;
@@ -204,7 +181,7 @@ Status FaceObject::step()
 
     if (settled.gave_up)
     {
-        hold_station(context_, target);
+        context_.driver.hold(context_.boat(), target);
         RCLCPP_WARN(context_.node->get_logger(),
                     "face: still turning at %.1f deg/s after %.0f s; reporting %.1f deg off", degrees(boat.yaw_rate),
                     context_.settings.stop_timeout_, degrees(resting));
@@ -213,7 +190,7 @@ Status FaceObject::step()
 
     if (++corrections_ > kMaxCorrections)
     {
-        hold_station(context_, target);
+        context_.driver.hold(context_.boat(), target);
         RCLCPP_WARN(context_.node->get_logger(), "face: settled %.1f deg off after %d corrections; reporting that",
                     degrees(resting), kMaxCorrections);
         return Status::Succeeded;
@@ -277,7 +254,7 @@ Status CircleObject::step()
 {
     if (deadline_.expired())
     {
-        hold_station(context_);
+        context_.driver.hold(context_.boat());
         RCLCPP_ERROR(context_.node->get_logger(), "circle: gave up after %.0f s on leg %d of %d",
                      context_.settings.maneuver_timeout_, legs_driven_, legs_);
         return Status::Failed;
@@ -294,7 +271,7 @@ Status CircleObject::step()
 
     if (context_.lock.stale())
     {
-        hold_station(context_);
+        context_.driver.hold(context_.boat());
         RCLCPP_ERROR(context_.node->get_logger(),
                      "circle: lost the buoy on leg %d of %d (%s); stopping rather than circling a memory",
                      legs_driven_ + 1, legs_, context_.lock.why().c_str());
@@ -347,7 +324,7 @@ Status CircleObject::step()
 
             if (legs_driven_ >= legs_)
             {
-                hold_station(context_);
+                context_.driver.hold(context_.boat());
                 RCLCPP_INFO(context_.node->get_logger(), "circle: finished %d of %d legs", legs_driven_, legs_);
                 return Status::Succeeded;
             }
@@ -525,7 +502,7 @@ Status ApproachObject::step()
 {
     if (deadline_.expired())
     {
-        hold_station(context_);
+        context_.driver.hold(context_.boat());
         RCLCPP_ERROR(context_.node->get_logger(), "approach: gave up after %.0f s",
                      context_.settings.maneuver_timeout_);
         return Status::Failed;
@@ -544,7 +521,7 @@ Status ApproachObject::step()
             double const target = bearing(boat.position, context_.lock.point());
             if (!published_heading_ || std::abs(wrap_angle(target - *published_heading_)) > kRepublishHeading)
             {
-                context_.driver.turn_to(boat.position, target);
+                context_.driver.hold(boat, target);
                 published_heading_ = target;
             }
 
@@ -675,7 +652,7 @@ Status ApproachObject::step()
             // Stale: we would be driving at a memory. Stop.
             if (context_.lock.stale())
             {
-                hold_station(context_);
+                context_.driver.hold(context_.boat());
                 RCLCPP_ERROR(context_.node->get_logger(), "approach: lost the object (%s); stopping",
                              context_.lock.why().c_str());
                 return Status::Failed;
@@ -735,7 +712,7 @@ Status ApproachObject::step()
             double const resting = distance(boat.position, context_.lock.point());
             double const bow = resting - context_.lock.radius() - context_.settings.hull_front_;
 
-            hold_station(context_);
+            context_.driver.hold(context_.boat());
 
             if (settled.gave_up)
             {
