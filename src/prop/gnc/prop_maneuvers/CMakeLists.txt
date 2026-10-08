@@ -29,7 +29,7 @@ set(MANEUVER_DEPS
     tf2_geometry_msgs)
 
 # ── Shared library ───────────────────────────────────────────────────────────
-add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp src/spinner.cpp)
+add_library(prop_maneuvers_lib src/geometry.cpp src/driver.cpp)
 # Split out deliberately: with four sources on one line, cmake-format wraps the
 # call onto a hanging continuation that ament_lint_cmake then rejects as "weird
 # indentation". Both tools accept this form. Do not fold it back in.

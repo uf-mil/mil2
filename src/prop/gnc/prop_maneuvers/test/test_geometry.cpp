@@ -480,3 +480,16 @@ TEST(RingCorner, ClockwiseAndAnticlockwiseMeetAgainAfterAFullLap)
         distance(ring_corner(centre, 5.0, deg(200.0), 1, 6, true), ring_corner(centre, 5.0, deg(200.0), 1, 6, false)),
         1.0);
 }
+
+TEST(YawQuaternion, MatchesTheHalfAngleFormAndIsUnitLength)
+{
+    for (double heading : { 0.0, deg(30.0), deg(90.0), deg(-135.0), M_PI })
+    {
+        YawQuaternion const q = yaw_quaternion(heading);
+        EXPECT_NEAR(q.z, std::sin(heading / 2.0), kTol);
+        EXPECT_NEAR(q.w, std::cos(heading / 2.0), kTol);
+        EXPECT_NEAR(q.z * q.z + q.w * q.w, 1.0, kTol);
+        // Recovering the yaw from z and w gives the heading back.
+        EXPECT_NEAR(wrap_angle(2.0 * std::atan2(q.z, q.w) - heading), 0.0, kTol);
+    }
+}

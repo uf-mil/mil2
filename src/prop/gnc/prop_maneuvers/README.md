@@ -13,12 +13,11 @@ Each is a library function plus a standalone program you can run and watch.
 
 The boat drives like a tank: two motors at the back, no sideways movement.
 Maneuvers run strictly one at a time so only one thing commands the motors,
-through one of three primitives:
+through one of two primitives:
 
 | | how it moves the boat | what it does |
 |---|---|---|
-| `Driver` | hands waypoints to `prop_controller`'s `guidance` on `plan` | drives forward along straight legs |
-| `Spinner` | `cmd_vel` direct | turns on the spot, does not move |
+| `Driver` | hands waypoints, and optionally a final heading, to `prop_controller`'s `guidance` on `plan` | drives forward along straight legs, and turns on the spot (a one-waypoint plan at the boat) |
 | `Reverser` | `cmd_vel` direct | backs straight up, holding heading, does not turn |
 
 `guidance` cannot back the boat up: its speed is `speed * max(0, cos(error))`,
@@ -28,13 +27,15 @@ hull through the water being avoided and taking about four times as long.
 `Reverser` exists to skip that turn and keep the target in front of the lidar
 the whole time.
 
-Releasing the driver is not optional: both `Spinner` and `Reverser` need
-`driver.release()` first (why: see `driver.hpp`).
+Releasing the driver is not optional: `Reverser` needs `driver.release()`
+first (why: see `driver.hpp`). Everywhere else a maneuver that finishes or
+fails holds station (a one-waypoint plan at the boat) rather than releasing,
+so guidance keeps publishing zero speed and thrust is not cut.
 
 `Reverser` additionally needs `clear_behind()` checked before the reverse
 starts and again on every step, because it has no sensors of its own and will
-happily back into a buoy otherwise. Unlike `Spinner`, which only turns the
-boat and cannot hit anything, `Reverser` actually moves it. The check runs on
+happily back into a buoy otherwise. Unlike a turn on the spot, which cannot hit
+anything, `Reverser` actually moves the boat. The check runs on
 live data rather than a snapshot taken before setting off — the boat can see
 straight out the back, through the gap between the pontoons, so there is
 current information to check against.

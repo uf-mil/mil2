@@ -14,7 +14,6 @@ Context::Context(rclcpp::Node *node_in, Constants const &settings_in)
   : node(node_in)
   , settings(settings_in)
   , driver(node_in, settings_in.arrive_tolerance_)
-  , spinner(node_in, settings_in.turn_gain_, settings_in.max_turn_rate_, settings_in.point_tolerance_)
   , reverser(node_in, settings_in.reverse_speed_, settings_in.turn_gain_, settings_in.max_turn_rate_)
   , lock(node_in, settings_in)
 {
@@ -63,6 +62,24 @@ constexpr double kRefreshInterval{ 0.3 };
 
 /// A route point further than this from the one in flight is worth handing to guidance again.
 constexpr double kReplanDistance{ 0.5 };
+
+/// A heading change this big is worth handing to guidance again; smaller drift of the bearing is not.
+constexpr double kRepublishHeading{ 3.0 * M_PI / 180.0 };
+
+/// Keep the boat where it is. Unlike release(), guidance keeps publishing zero speed, so thruster_manager does not
+/// cut thrust and let the boat drift. Falls back to release() when there is no position yet.
+void hold_station(Context &context)
+{
+    Boat const boat = context.boat();
+    if (boat.valid)
+    {
+        context.driver.go_to(boat.position);
+    }
+    else
+    {
+        context.driver.release();
+    }
+}
 
 /// Why a step cannot go on yet, if it cannot: no position estimate (keep waiting) or no lock (fail).
 std::optional<Status> not_ready(Context &context, Boat const &boat, char const *name)
@@ -121,16 +138,13 @@ Settled settle(bool stopped, std::optional<Deadline> const &deadline)
 FaceObject::FaceObject(Context &context)
   : context_(context), deadline_(context.node, context.settings.maneuver_timeout_)
 {
-    // Guidance still publishing cmd_vel would interleave with the turn commands.
-    context_.driver.release();
 }
 
 Status FaceObject::step()
 {
     if (deadline_.expired())
     {
-        context_.spinner.stop();
-        context_.driver.release();
+        hold_station(context_);
         RCLCPP_ERROR(context_.node->get_logger(), "face: gave up after %.0f s", context_.settings.maneuver_timeout_);
         return Status::Failed;
     }
@@ -145,7 +159,14 @@ Status FaceObject::step()
 
     if (phase_ == Phase::Turning)
     {
-        if (!context_.spinner.step(boat.direction, target))
+        // Guidance does the turning; hand it the heading on entry and again only if the bearing has moved.
+        if (!published_heading_ || std::abs(wrap_angle(target - *published_heading_)) > kRepublishHeading)
+        {
+            context_.driver.turn_to(boat.position, target);
+            published_heading_ = target;
+        }
+
+        if (std::abs(wrap_angle(target - boat.direction)) > context_.settings.point_tolerance_)
         {
             return Status::Running;
         }
@@ -171,7 +192,7 @@ Status FaceObject::step()
 
     if (std::abs(resting) <= context_.settings.point_tolerance_)
     {
-        context_.spinner.stop();
+        hold_station(context_);
         RCLCPP_INFO(context_.node->get_logger(), "face: pointing at (%.1f, %.1f), %.1f deg off",
                     context_.lock.point().x, context_.lock.point().y, degrees(resting));
         return Status::Succeeded;
@@ -179,7 +200,7 @@ Status FaceObject::step()
 
     if (settled.gave_up)
     {
-        context_.spinner.stop();
+        hold_station(context_);
         RCLCPP_WARN(context_.node->get_logger(),
                     "face: still turning at %.1f deg/s after %.0f s; reporting %.1f deg off", degrees(boat.yaw_rate),
                     context_.settings.stop_timeout_, degrees(resting));
@@ -188,7 +209,7 @@ Status FaceObject::step()
 
     if (++corrections_ > kMaxCorrections)
     {
-        context_.spinner.stop();
+        hold_station(context_);
         RCLCPP_WARN(context_.node->get_logger(), "face: settled %.1f deg off after %d corrections; reporting that",
                     degrees(resting), kMaxCorrections);
         return Status::Succeeded;
@@ -198,6 +219,7 @@ Status FaceObject::step()
     RCLCPP_INFO(context_.node->get_logger(), "face: overshot to %.1f deg, correction %d of %d", degrees(resting),
                 corrections_, kMaxCorrections);
     settle_deadline_.reset();
+    published_heading_.reset();
     phase_ = Phase::Turning;
     return Status::Running;
 }
@@ -251,8 +273,7 @@ Status CircleObject::step()
 {
     if (deadline_.expired())
     {
-        context_.spinner.stop();
-        context_.driver.release();
+        hold_station(context_);
         RCLCPP_ERROR(context_.node->get_logger(), "circle: gave up after %.0f s on leg %d of %d",
                      context_.settings.maneuver_timeout_, legs_driven_, legs_);
         return Status::Failed;
@@ -269,8 +290,7 @@ Status CircleObject::step()
 
     if (context_.lock.stale())
     {
-        context_.driver.release();
-        context_.spinner.stop();
+        hold_station(context_);
         RCLCPP_ERROR(context_.node->get_logger(),
                      "circle: lost the buoy on leg %d of %d (%s); stopping rather than circling a memory",
                      legs_driven_ + 1, legs_, context_.lock.why().c_str());
@@ -292,7 +312,6 @@ Status CircleObject::step()
             corner_ = ring_corner(context_.lock.point(), radius_, entry_bearing_, 0, legs_, counter_clockwise_);
             aim_ = aim_past(boat.position, corner_);
 
-            context_.spinner.stop();
             context_.driver.go_to(aim_);
             phase_ = Phase::DriveToEntry;
             RCLCPP_INFO(context_.node->get_logger(), "circle: running out to the ring at %.1f m", radius_);
@@ -324,8 +343,7 @@ Status CircleObject::step()
 
             if (legs_driven_ >= legs_)
             {
-                context_.driver.release();
-                context_.spinner.stop();  // release only silences guidance; this stops the boat
+                hold_station(context_);
                 RCLCPP_INFO(context_.node->get_logger(), "circle: finished %d of %d legs", legs_driven_, legs_);
                 return Status::Succeeded;
             }
@@ -505,7 +523,6 @@ Status ApproachObject::step()
 {
     if (deadline_.expired())
     {
-        context_.spinner.stop();
         context_.reverser.stop();
         context_.driver.release();
         RCLCPP_ERROR(context_.node->get_logger(), "approach: gave up after %.0f s",
@@ -523,7 +540,14 @@ Status ApproachObject::step()
     {
         case Phase::FaceTarget:
         {
-            if (!context_.spinner.step(boat.direction, bearing(boat.position, context_.lock.point())))
+            double const target = bearing(boat.position, context_.lock.point());
+            if (!published_heading_ || std::abs(wrap_angle(target - *published_heading_)) > kRepublishHeading)
+            {
+                context_.driver.turn_to(boat.position, target);
+                published_heading_ = target;
+            }
+
+            if (std::abs(wrap_angle(target - boat.direction)) > context_.settings.point_tolerance_)
             {
                 return Status::Running;
             }
@@ -540,9 +564,8 @@ Status ApproachObject::step()
             // has_reversed_ limits it to one.
             if (!has_reversed_ && worst_need(context_, boat.position, goal) == DetourNeed::TooCloseToSwing)
             {
-                // One thing commands the motors at a time: stop the spinner and guidance first.
+                // One thing commands the motors at a time: stop guidance first.
                 context_.driver.release();
-                context_.spinner.stop();
                 reverse_start_ = boat.position;
                 reverse_held_direction_ = boat.direction;
                 has_reversed_ = true;
@@ -552,7 +575,6 @@ Status ApproachObject::step()
                 return Status::Running;
             }
 
-            context_.spinner.stop();
             begin_driving(boat);
             RCLCPP_INFO(context_.node->get_logger(), "approach: %zu point route, stopping %.1f m clear", route_.size(),
                         standoff_);
@@ -656,8 +678,7 @@ Status ApproachObject::step()
             // Stale: we would be driving at a memory. Stop.
             if (context_.lock.stale())
             {
-                context_.driver.release();
-                context_.spinner.stop();
+                hold_station(context_);
                 RCLCPP_ERROR(context_.node->get_logger(), "approach: lost the object (%s); stopping",
                              context_.lock.why().c_str());
                 return Status::Failed;
@@ -717,8 +738,7 @@ Status ApproachObject::step()
             double const resting = distance(boat.position, context_.lock.point());
             double const bow = resting - context_.lock.radius() - context_.settings.hull_front_;
 
-            context_.driver.release();
-            context_.spinner.stop();
+            hold_station(context_);
 
             if (settled.gave_up)
             {

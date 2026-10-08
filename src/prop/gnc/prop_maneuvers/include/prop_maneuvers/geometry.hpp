@@ -23,6 +23,18 @@ struct Point
     double y{ 0.0 };
 };
 
+/// The z and w of a quaternion that is a pure rotation about up (x = y = 0), the form a yaw takes in a pose.
+struct YawQuaternion
+{
+    double z{ 0.0 };
+    double w{ 1.0 };
+};
+
+inline YawQuaternion yaw_quaternion(double heading)
+{
+    return YawQuaternion{ std::sin(heading / 2.0), std::cos(heading / 2.0) };
+}
+
 /// An angle range, relative to the front of the boat, that the lidar cannot
 /// see through. Radians, left positive. May wrap across directly-behind.
 struct BlindSpot

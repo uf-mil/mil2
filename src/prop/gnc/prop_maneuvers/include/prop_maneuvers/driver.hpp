@@ -4,16 +4,18 @@
  *
  *   out  plan  nav_msgs/Path, map frame, latched
  *
- * guidance drives to each point in turn and then parks on the last one. It
- * publishes cmd_vel continuously while it holds any points at all, so a
- * maneuver that wants to command the motors itself MUST call release() first.
- * release() publishes an empty Path, which makes guidance return early and go
- * completely quiet. Skipping it leaves guidance sending "hold still" ten times
- * a second, interleaving with direct commands and making the boat stutter.
+ * guidance drives to each point in turn, parks on the last one and, if that
+ * pose carries a heading, turns to it. It publishes cmd_vel continuously while
+ * it holds any points at all, so the Reverser, which commands the motors
+ * itself, MUST have release() called first. release() publishes an empty Path,
+ * which makes guidance return early and go completely quiet. Skipping it
+ * leaves guidance sending "hold still" ten times a second, interleaving with
+ * the reverser and making the boat stutter.
  */
 
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include <rclcpp/rclcpp.hpp>
@@ -30,11 +32,15 @@ class Driver
   public:
     Driver(rclcpp::Node *node, double arrive_tolerance);
 
-    /// Hand guidance a list of points to drive, in order.
-    void go_to(std::vector<Point> const &points);
+    /// Hand guidance a list of points to drive, in order. `final_heading` (radians, map frame) is where to point
+    /// once parked on the last one; without it guidance finishes on whatever heading it arrives with.
+    void go_to(std::vector<Point> const &points, std::optional<double> final_heading = std::nullopt);
 
     /// Hand guidance a single point.
-    void go_to(Point const &point);
+    void go_to(Point const &point, std::optional<double> final_heading = std::nullopt);
+
+    /// Hold `boat` and turn on the spot to `heading`.
+    void turn_to(Point const &boat, double heading);
 
     /// Switch guidance off. Safe to call when it is already off.
     void release();

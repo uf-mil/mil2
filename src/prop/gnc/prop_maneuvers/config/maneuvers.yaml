@@ -272,7 +272,7 @@
     # setting only stops a fast crossing from coasting 0.31 m after declaring.
     stop_speed: 0.03            # m/s, at or below this it counts as stopped
     # The same idea for turning, and FaceObject needs it for the same reason.
-    # Spinner stops commanding the moment the heading error is inside
+    # A turn counts as done the moment the heading error is inside
     # point_tolerance_deg, but the boat carries the turn on past that.
     #
     # Measured 2026-09-13 against ground truth: the error crossed inside 5

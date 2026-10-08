@@ -4,12 +4,11 @@
  *
  * Each maneuver is stepped on a timer and reports Running, Succeeded or
  * Failed. They share a Context holding the boat's position, the driver, the
- * spinner, the reverser and the target lock.
+ * reverser and the target lock.
  *
  * The rule every maneuver follows: only one thing commands the motors at a
- * time. Before the spinner is used, the driver is released; before the driver
- * is used, the spinner is stopped. The reverser is a third claimant on the
- * same cmd_vel topic and obeys the same rule at both ends: the driver is
+ * time. Guidance, fed through the driver, does all the driving and turning.
+ * The reverser is the one other claimant on the cmd_vel topic: the driver is
  * released before it starts, and it is stopped before anything else takes
  * over -- including when a maneuver times out part-way through a reverse.
  */
@@ -25,7 +24,6 @@
 #include "prop_maneuvers/driver.hpp"
 #include "prop_maneuvers/geometry.hpp"
 #include "prop_maneuvers/reverser.hpp"
-#include "prop_maneuvers/spinner.hpp"
 #include "prop_maneuvers/target_lock.hpp"
 
 #include <nav_msgs/msg/odometry.hpp>
@@ -66,7 +64,6 @@ class Context
     rclcpp::Node *node;
     Constants const &settings;
     Driver driver;
-    Spinner spinner;
     Reverser reverser;
     TargetLock lock;
 
@@ -99,9 +96,9 @@ class Maneuver
 };
 
 /// Hold position and turn until the front of the boat points at the lock.
-/// Spinner::step() stops commanding once the error is inside point_tolerance, but the boat coasts on past
-/// it (measured: 6.84 deg off against a 5 deg tolerance). So the turn ends, the boat is allowed to stop,
-/// and the error is re-measured at rest; a miss turns again from a standstill, which overshoots less.
+/// Guidance does the turn (a one-waypoint plan at the boat with a final heading). The boat can coast past
+/// point_tolerance (measured: 6.84 deg off against a 5 deg tolerance), so once inside it the boat is allowed to
+/// stop and the error is re-measured at rest; a miss turns again from a standstill, which overshoots less.
 class FaceObject : public Maneuver
 {
   public:
@@ -123,6 +120,9 @@ class FaceObject : public Maneuver
     Phase phase_{ Phase::Turning };
     std::optional<Deadline> settle_deadline_;
     int corrections_{ 0 };
+
+    /// Heading last handed to guidance this turn, so it is re-sent only when the bearing moves.
+    std::optional<double> published_heading_;
 };
 
 /// Go all the way round the locked object along straight legs.
@@ -246,6 +246,9 @@ class ApproachObject : public Maneuver
     double reverse_held_direction_{ 0.0 };
 
     rclcpp::Time last_refresh_;
+
+    /// Heading last handed to guidance while facing the target; re-sent only when the bearing moves.
+    std::optional<double> published_heading_;
 
     /// Started when the standoff is crossed so Settling cannot wait forever (the maneuver's own Deadline is too long).
     std::optional<Deadline> settle_deadline_;
