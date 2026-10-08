@@ -25,7 +25,7 @@
     # ─────────────────────────────────────────────────
     # Voxel-grid down-sampling (pre-clustering)
     # ─────────────────────────────────────────────────
-    voxel_leaf_size: 0.02     # [m]  leaf edge length; 0.0 disables down-sampling
+    voxel_leaf_size: 0.0    # [m]  leaf edge length; 0.0 disables down-sampling
 
     # ─────────────────────────────────────────────────
     # Euclidean cluster extraction
