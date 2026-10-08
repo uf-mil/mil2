@@ -67,8 +67,7 @@ void Driver::release()
     points_.clear();
 
     // An empty path clears guidance's waypoint list, which makes its timer
-    // return before publishing anything. This is what frees cmd_vel for the
-    // reverser. Skipping it makes the boat stutter as the two interleave.
+    // return before publishing anything, which frees cmd_vel for anything else.
     nav_msgs::msg::Path empty;
     empty.header.frame_id = "map";
     empty.header.stamp = node_->now();

@@ -3,14 +3,13 @@
  * @brief The three reusable maneuvers, as small state machines.
  *
  * Each maneuver is stepped on a timer and reports Running, Succeeded or
- * Failed. They share a Context holding the boat's position, the driver, the
- * reverser and the target lock.
+ * Failed. They share a Context holding the boat's position, the driver and the
+ * target lock.
  *
  * The rule every maneuver follows: only one thing commands the motors at a
- * time. Guidance, fed through the driver, does all the driving and turning.
- * The reverser is the one other claimant on the cmd_vel topic: the driver is
- * released before it starts, and it is stopped before anything else takes
- * over -- including when a maneuver times out part-way through a reverse.
+ * time. Guidance, fed through the driver, does all the driving, turning and
+ * reversing: a reverse is a goal straight behind the boat, which guidance backs
+ * onto rather than turning to.
  */
 
 #pragma once
@@ -23,7 +22,6 @@
 #include "prop_maneuvers/constants.hpp"
 #include "prop_maneuvers/driver.hpp"
 #include "prop_maneuvers/geometry.hpp"
-#include "prop_maneuvers/reverser.hpp"
 #include "prop_maneuvers/target_lock.hpp"
 
 #include <nav_msgs/msg/odometry.hpp>
@@ -64,7 +62,6 @@ class Context
     rclcpp::Node *node;
     Constants const &settings;
     Driver driver;
-    Reverser reverser;
     TargetLock lock;
 
   private:
@@ -239,11 +236,11 @@ class ApproachObject : public Maneuver
     std::optional<Commitment> commitment_;
 
     // Backing off. One reverse per approach; if still too close afterwards, take the best route available.
-    // Reverser keeps no state, so the start point and heading to hold are stashed here and handed back each
-    // step. Whether it is safe to keep reversing is re-read live every step.
+    // The reverse is a goal handed to guidance, so only the start and the goal are kept. Whether it is safe to
+    // keep reversing is re-read live every step.
     bool has_reversed_{ false };
     Point reverse_start_;
-    double reverse_held_direction_{ 0.0 };
+    Point reverse_goal_;
 
     rclcpp::Time last_refresh_;
 

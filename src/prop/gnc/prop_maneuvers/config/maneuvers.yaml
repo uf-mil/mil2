@@ -51,7 +51,7 @@
     #
     # WHO ACTUALLY READS THIS: only blind_spot_mask_node, which deletes these
     # angles from the SIMULATED scan so the sim resembles the real boat. No
-    # maneuver consults them when deciding anything -- the reverser's
+    # maneuver consults them when deciding anything -- the reverse's
     # blindness guard only notices that nothing came back, not that it could
     # never have seen. If obstacle handling ever needs to tell "I cannot see
     # there" from "I see nothing there", this is the setting it should read.
@@ -185,16 +185,12 @@
     # boat can see straight out the back, so this is not a blind manoeuvre --
     # but it is capped anyway, because one recovery should not become a voyage.
     #
-    # WATCH THE RATIO. A full-length reverse takes
-    # reverse_max_distance / reverse_speed seconds, and at the values below
-    # that is 2.0 / 0.4 = 5.0 s -- exactly reading_max_age. ApproachObject
-    # refreshes the lock while backing off precisely so this does not abort
-    # the approach on the clock alone, which is the same bug shape that once
-    # cost a whole drive. If you lengthen the reverse or slow it down, keep
-    # that refresh in mind, or give the ratio some real margin under
-    # reading_max_age instead of relying on it.
-    reverse_speed: 0.4          # m/s
+    # The reverse is a goal handed to guidance, which sets the speed (it slows
+    # as it closes on the goal), so a full-length reverse takes longer than
+    # reading_max_age. ApproachObject refreshes the lock while backing off so
+    # that does not abort the approach on the clock alone.
     reverse_max_distance: 2.0   # m, cap on a single reverse
+    reverse_tolerance: 0.3      # m, near enough to the goal to be done
 
     # ── Tolerances ───────────────────────────────────────────────────────
     arrive_tolerance: 1.5       # m, close enough to count as arrived

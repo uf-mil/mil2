@@ -84,8 +84,8 @@ class Constants
         target_blob_margin_ = node->declare_parameter("target_blob_margin", 1.0);
 
         // ── Reversing ─────────────────────────────────────────────────────
-        reverse_speed_ = node->declare_parameter("reverse_speed", 0.4);
         reverse_max_distance_ = node->declare_parameter("reverse_max_distance", 2.0);
+        reverse_tolerance_ = node->declare_parameter("reverse_tolerance", 0.3);
 
         // ── Tolerances ────────────────────────────────────────────────────
         arrive_tolerance_ = node->declare_parameter("arrive_tolerance", 1.5);
@@ -126,7 +126,7 @@ class Constants
     double min_gap_{ 0.0 };
     double detour_clearance_{ 0.0 };
     double target_blob_margin_{ 0.0 };
-    double reverse_speed_{ 0.0 };
+    double reverse_tolerance_{ 0.0 };
     double reverse_max_distance_{ 0.0 };
     double arrive_tolerance_{ 0.0 };
     double standoff_tolerance_{ 0.0 };

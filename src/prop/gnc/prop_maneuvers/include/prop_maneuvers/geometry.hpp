@@ -134,7 +134,7 @@ bool obstacle_ahead(Point const &boat, double travel_direction, Blob const &obst
 /// True when nothing sits in the strip the hull would sweep reversing `distance` metres from `boat`
 /// (`boat_direction` is its heading). The strip runs from base_link to `hull_behind + distance` behind it,
 /// `hull_half_width` either side; a blob intrudes when its circle touches it.
-/// Separate from Reverser, which stays dumb. Callers check before and during a reverse, on live data.
+/// Guidance has no sensors, so callers check before and during a reverse, on live data.
 bool clear_behind(std::vector<Blob> const &blobs, Point const &boat, double boat_direction, double distance_back,
                   double hull_half_width, double hull_behind);
 

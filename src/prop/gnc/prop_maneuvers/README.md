@@ -17,26 +17,20 @@ through one of two primitives:
 
 | | how it moves the boat | what it does |
 |---|---|---|
-| `Driver` | hands waypoints, and optionally a final heading, to `prop_controller`'s `guidance` on `plan` | drives forward along straight legs, and turns on the spot (a one-waypoint plan at the boat) |
-| `Reverser` | `cmd_vel` direct | backs straight up, holding heading, does not turn |
+| `Driver` | hands waypoints, and optionally a final heading, to `prop_controller`'s `guidance` on `plan` | drives forward along straight legs, turns on the spot (a one-waypoint plan at the boat), and backs onto a final point that is almost dead astern |
 
-`guidance` cannot back the boat up: its speed is `speed * max(0, cos(error))`,
-so a negative forward speed never comes out the other end. Handed a point
-behind the boat it pivots 180 degrees and drives forward instead, sweeping the
-hull through the water being avoided and taking about four times as long.
-`Reverser` exists to skip that turn and keep the target in front of the lidar
-the whole time.
+Backing away is a `Driver` goal straight behind the boat. `guidance` aims the
+stern at a final waypoint inside its `reverse_cone` of dead astern and commands
+negative speed, so the boat keeps its heading and the target stays in front of
+the lidar. Outside the cone it turns and drives forward as usual.
 
-Releasing the driver is not optional: `Reverser` needs `driver.release()`
-first (why: see `driver.hpp`). Everywhere else a maneuver that finishes or
-fails holds station (a one-waypoint plan at the boat) rather than releasing,
-so guidance keeps publishing zero speed and thrust is not cut.
+Everywhere a maneuver that finishes or fails holds station (a one-waypoint
+plan at the boat) rather than releasing, so guidance keeps publishing zero
+speed and thrust is not cut.
 
-`Reverser` additionally needs `clear_behind()` checked before the reverse
-starts and again on every step, because it has no sensors of its own and will
-happily back into a buoy otherwise. Unlike a turn on the spot, which cannot hit
-anything, `Reverser` actually moves the boat. The check runs on
-live data rather than a snapshot taken before setting off — the boat can see
+A reverse moves the boat, and `guidance` has no sensors, so `clear_behind()` is
+checked before the reverse starts and again on every step. The check runs on
+live data rather than a snapshot taken before setting off: the boat can see
 straight out the back, through the gap between the pontoons, so there is
 current information to check against.
 

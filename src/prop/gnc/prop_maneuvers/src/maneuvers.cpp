@@ -14,7 +14,6 @@ Context::Context(rclcpp::Node *node_in, Constants const &settings_in)
   : node(node_in)
   , settings(settings_in)
   , driver(node_in, settings_in.arrive_tolerance_)
-  , reverser(node_in, settings_in.reverse_speed_, settings_in.turn_gain_, settings_in.max_turn_rate_)
   , lock(node_in, settings_in)
 {
     odometry_subscription_ = node->create_subscription<nav_msgs::msg::Odometry>(
@@ -523,7 +522,8 @@ Status ApproachObject::step()
 {
     if (deadline_.expired())
     {
-        context_.reverser.stop();
+                // Hand guidance a point straight behind us. It backs onto a final waypoint that is almost dead
+                // astern instead of turning to it.
         context_.driver.release();
         RCLCPP_ERROR(context_.node->get_logger(), "approach: gave up after %.0f s",
                      context_.settings.maneuver_timeout_);
@@ -564,10 +564,11 @@ Status ApproachObject::step()
             // has_reversed_ limits it to one.
             if (!has_reversed_ && worst_need(context_, boat.position, goal) == DetourNeed::TooCloseToSwing)
             {
-                // One thing commands the motors at a time: stop guidance first.
-                context_.driver.release();
                 reverse_start_ = boat.position;
-                reverse_held_direction_ = boat.direction;
+                reverse_goal_ = { boat.position.x - context_.settings.reverse_max_distance_ * std::cos(boat.direction),
+                                  boat.position.y -
+                                      context_.settings.reverse_max_distance_ * std::sin(boat.direction) };
+                context_.driver.go_to(reverse_goal_);
                 has_reversed_ = true;
                 phase_ = Phase::BackingOff;
                 RCLCPP_INFO(context_.node->get_logger(), "approach: too close to step around it, backing off %.1f m",
@@ -583,13 +584,12 @@ Status ApproachObject::step()
 
         case Phase::BackingOff:
         {
-            // Re-checked every step: a reverse takes seconds and Reverser has no sensors. An empty blob list is
+            // Re-checked every step: a reverse takes seconds and guidance has no sensors. An empty blob list is
             // not proof the water is clear (blobs() also returns {} when the transform throws), and the locked
             // blob should always be reported, so treat empty as blind.
             std::vector<Blob> const behind_us = context_.lock.blobs();
             if (behind_us.empty())
             {
-                context_.reverser.stop();
                 RCLCPP_WARN(context_.node->get_logger(),
                             "approach: cannot see behind us (%s); stopping the reverse rather than guessing",
                             context_.lock.why().c_str());
@@ -605,7 +605,6 @@ Status ApproachObject::step()
             if (!clear_behind(behind_us, boat.position, boat.direction, still_to_cover,
                               context_.settings.hull_half_width_, context_.settings.hull_behind_))
             {
-                context_.reverser.stop();
                 RCLCPP_WARN(context_.node->get_logger(), "approach: something behind us, taking the best route "
                                                          "available instead");
                 begin_driving(boat);
@@ -616,11 +615,8 @@ Status ApproachObject::step()
             // Phase::Driving reports a lock that is truly lost.
             refresh_if_due(context_, last_refresh_);
 
-            if (context_.reverser.step(boat.position, boat.direction, reverse_start_, reverse_held_direction_,
-                                       context_.settings.reverse_max_distance_))
+            if (distance(boat.position, reverse_goal_) <= context_.settings.reverse_tolerance_)
             {
-                // step() already published its own zero; repeating it keeps the motors from depending on its internals.
-                context_.reverser.stop();
                 RCLCPP_INFO(context_.node->get_logger(), "approach: backed off, re-planning");
                 begin_driving(boat);
             }
