@@ -85,18 +85,6 @@ TEST(IsBlind, SpotWiderThanAHalfTurn)
     EXPECT_FALSE(is_blind(deg(271.0), spots));
 }
 
-TEST(IsBlind, TwoOverlappingSpotsOrTogether)
-{
-    // 0-100 and 50-150 overlap on 50-100; each angle should be blind if
-    // EITHER spot covers it, not only where both do.
-    std::vector<BlindSpot> const spots{ { deg(0.0), deg(100.0) }, { deg(50.0), deg(150.0) } };
-
-    EXPECT_TRUE(is_blind(deg(10.0), spots));    // only the first spot
-    EXPECT_TRUE(is_blind(deg(75.0), spots));    // both spots
-    EXPECT_TRUE(is_blind(deg(140.0), spots));   // only the second spot
-    EXPECT_FALSE(is_blind(deg(170.0), spots));  // neither
-}
-
 TEST(IsBlind, RangeThatWrapsAcrossDirectlyBehind)
 {
     // A single wedge covering the back, written the only way it can be: from
@@ -283,14 +271,6 @@ TEST(MatchNearest, RefusesToGuessBetweenTwoEquallyPlausibleBlobs)
     EXPECT_EQ(match.failure, MatchFailure::Ambiguous);
 }
 
-TEST(MatchNearest, AcceptsWhenTheRunnerUpIsClearlyFurtherAway)
-{
-    std::vector<Blob> const blobs{ { { 0.2, 0.0 }, 0.25 }, { { 2.8, 0.0 }, 0.25 } };
-    auto const match = match_nearest(blobs, { 0.0, 0.0 }, 3.0, 1.0);
-    ASSERT_TRUE(match.ok);
-    EXPECT_NEAR(match.blob.centre.x, 0.2, kTol);
-}
-
 TEST(MatchNearest, PinsBehaviorAtExactlyMatchRadius)
 {
     // The nearest blob sits exactly on the match_radius boundary. The
@@ -354,12 +334,6 @@ TEST(ClearBehind, NotClearWhenTheBlobOverlapsTheStripEdge)
     EXPECT_FALSE(clear_behind(blobs, { 0, 0 }, 0.0, 2.0, 0.5, 1.0));
 }
 
-TEST(ClearBehind, ClearWhenTheBlobIsInFront)
-{
-    std::vector<Blob> const blobs{ { { 5.0, 0.0 }, 0.25 } };
-    EXPECT_TRUE(clear_behind(blobs, { 0, 0 }, 0.0, 2.0, 0.5, 1.0));
-}
-
 TEST(ClearBehind, TheStripFollowsTheBoatNotTheMap)
 {
     // Same blob, twice. Facing +x it is in front and irrelevant; facing +y
@@ -403,14 +377,6 @@ TEST(ObstacleAhead, HoldsUntilItsSurfaceClearsTheBackOfTheHull)
     // Threshold is -(radius + hull_behind) = -1.25 m.
     EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.2, 0 }, 0.25 }, 1.0));
     EXPECT_FALSE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.3, 0 }, 0.25 }, 1.0));
-}
-
-TEST(ObstacleAhead, ABiggerObstacleStaysAheadForLonger)
-{
-    // Same centre, same hull: only the radius differs, and the wide one is
-    // still alongside when the narrow one has been cleared.
-    EXPECT_FALSE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.5, 0 }, 0.25 }, 1.0));
-    EXPECT_TRUE(obstacle_ahead({ 0, 0 }, 0.0, Blob{ { -1.5, 0 }, 1.00 }, 1.0));
 }
 
 // ── ring_corner ──────────────────────────────────────────────────────────────

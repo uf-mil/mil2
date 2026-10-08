@@ -12,21 +12,18 @@ Each is a library function plus a standalone program you can run and watch.
 ## How it drives
 
 The boat drives like a tank: two motors at the back, no sideways movement.
-Maneuvers run strictly one at a time so only one thing commands the motors,
-through one of two primitives:
-
-| | how it moves the boat | what it does |
-|---|---|---|
-| `Driver` | hands waypoints, and optionally a final heading, to `prop_controller`'s `guidance` on `plan` | drives forward along straight legs, turns on the spot (a one-waypoint plan at the boat), and backs onto a final point that is almost dead astern |
+Maneuvers run strictly one at a time so only one thing commands the motors:
+the `Driver`, which hands waypoints, and optionally a final heading, to
+`prop_controller`'s `guidance` on `plan`. `guidance` does the driving,
+turning (a one-waypoint plan at the boat) and reversing.
 
 Backing away is a `Driver` goal straight behind the boat. `guidance` aims the
 stern at a final waypoint inside its `reverse_cone` of dead astern and commands
 negative speed, so the boat keeps its heading and the target stays in front of
 the lidar. Outside the cone it turns and drives forward as usual.
 
-Everywhere a maneuver that finishes or fails holds station (a one-waypoint
-plan at the boat) rather than releasing, so guidance keeps publishing zero
-speed and thrust is not cut.
+A maneuver that finishes or fails holds station (a one-waypoint plan at the
+boat), so guidance keeps publishing zero speed and thrust is not cut.
 
 A reverse moves the boat, and `guidance` has no sensors, so `clear_behind()` is
 checked before the reverse starts and again on every step. The check runs on
@@ -54,25 +51,24 @@ caller's job, not this package's.
 ## How it steps around an obstacle
 
 Approach plans past an obstacle with a straddle: two waypoints, one before it
-and one after, rather than the single waypoint used before. The boat drives
-start → waypoint → goal, and a single waypoint only reaches its full sideways
-offset at the moment the boat draws level with the obstacle — the path bulges
-inward on the way there. Measured: asking for 1.25 m of clearance delivered
-only 1.05 m. Two waypoints finish the sideways move early and hold it past, so
-the clearance asked for is the clearance actually driven. Their spacing equals
+and one after, rather than a single waypoint. A single waypoint only reaches its full
+sideways offset as the boat draws level with the obstacle, so the path bulges
+inward on the way there. Two waypoints finish the sideways move early and
+hold it past, so the clearance asked for is the clearance actually driven. Their spacing equals
 the sideways offset itself, the tightest spacing that still met the number
 across 1,959 swept obstacle positions.
 
 Clearance is measured hull-to-buoy-surface, not centre-to-centre, and split
-into two numbers that used to be one:
+into two numbers:
 
-- `min_gap` (0.15 m) decides only WHETHER to step around something at all.
-- `detour_clearance` (1.0 m) is how far out the detour actually swings, once
+- `min_gap` (0.5 m) decides only WHETHER to step around something at all.
+- `detour_clearance` (0.5 m) is how far out the detour actually swings, once
   one is needed.
 
-The old number was 2.0 m from the boat's CENTRE, which was undeliverable: the
-narrowest gate in the RobotX handbook is 1.83 m between buoys, and demanding
-2 m of clearance from each one needs 4 m of room in a 1.83 m gap.
+Keep them equal, or nearly so: if the swing is larger than the trigger, the
+boat reacts only once it is already inside the room it needs. 0.5 m is a
+placeholder for testing. The narrowest gate in the RobotX handbook is 1.83 m
+between buoys, so large clearances cannot be delivered there.
 
 Two distances no amount of waypoint planning can change: the start and the
 goal, because every path begins where the boat actually is and ends where it
@@ -89,8 +85,7 @@ the lidar is physically bolted is not in that file — it lives in
 `prop_localization/urdf/prop.urdf` and reaches this code through the position
 chain at runtime.
 
-`hull_half_width` (0.5 m) and `hull_behind` (1.0 m) are ASSUMPTIONS, not
-measurements — taken from the competition size box (a USV must fit within
-2 x 1 x 1 m, handbook p88) with `base_link` assumed to sit in the middle of
-the boat. Nothing establishes that it does. Measure the real boat and replace
-both once it's available.
+`hull_half_width` (0.443 m), `hull_behind` (0.367 m) and `hull_front`
+(0.760 m) were measured on the boat on 2026-09-08. `hull_behind` is to the
+propellers, and the pontoons extend further back, so it is optimistic until
+the pontoon tails are measured.

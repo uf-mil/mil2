@@ -19,35 +19,15 @@
     # Two mirrored wedges on the SIDES, where the white antennas stand beside
     # the lidar and cast a shadow across its sweep.
     #
-    # Measured by David, 2026-09-12: each antenna is about 3-4 in across and
-    # stands 8-10 in out from the lidar's centre, at roughly the same fore-aft
-    # position. A post that size at that distance hides 2*asin(r/d) of the
-    # sweep -- 17 degrees at the slim-and-far end of those tolerances, 29 at
-    # the fat-and-near end, so about 25. Written here as the 30 degree span
-    # from 60 to 90 on each side, which rounds outwards: see the safe-direction
-    # note below.
-    #
-    # ARITHMETIC NOTE, unresolved: antennas at the SAME fore-aft position as
-    # the lidar would shadow a wedge centred on 90, that is 79 to 101, rather
-    # than one ending at 90. For the shadow to end at 90 they would have to
-    # sit about 2.3 in forward of the lidar's centre. Both are inside the slop
-    # of "approximately" and "roughly", and the difference decides whether a
-    # circling buoy goes dark before or after the halfway point of a leg. Put
-    # a tape on it if it ever matters. Widening is the safe direction: the
-    # only consumer is a simulation mask, and a wider mask makes the sim a
-    # harder test than the boat rather than an easier one.
-    #
-    # An earlier note here put these on a clock face -- blind 3:00 to 4:30 on
-    # the right, 7:30 to 9:00 on the left -- with the pontoon tips at 12 and
-    # the thrusters at 6. That was a LOCATION reference, not a claim that the
-    # pontoons block anything; the antennas were always the blocker. These
-    # numbers are the more precise version of the same measurement and
-    # supersede it.
+    # Measured 2026-09-12: each antenna is about 3-4 in across and stands
+    # 8-10 in out from the lidar's centre, at roughly its fore-aft position.
+    # That hides about 17-29 degrees of the sweep. Written as the 30 degree
+    # span 60 to 90 on each side. Widening is the safe direction: the only
+    # consumer is a simulation mask, and a wider mask makes the sim a harder
+    # test than the boat.
     #
     # The boat CAN see straight out the back: everything from 90 through 180
-    # round to -90 is clear, a 180 degree window. Do not assume otherwise --
-    # an early guess of 70 degree wedges left only a 40 degree slot behind and
-    # made reversing look far blinder than it is.
+    # round to -90 is clear, a 180 degree window.
     #
     # WHO ACTUALLY READS THIS: only blind_spot_mask_node, which deletes these
     # angles from the SIMULATED scan so the sim resembles the real boat. No
@@ -61,49 +41,25 @@
     # the position chain at runtime, so a physical move is corrected in one
     # place only.
     #
-    # How far the hull reaches from base_link. MEASURED on the boat by David,
-    # 2026-09-08, with a tape from the edge of the lidar and converted to its
-    # centre using the lidar's own 4 7/8 in diameter:
+    # How far the hull reaches from base_link, measured on the boat
+    # 2026-09-08 from the lidar's edge and converted to its centre. The lidar
+    # sits directly above base_link, so these are base_link-relative.
     #
-    #   lidar radius              2 7/16 in   0.062 m
     #   edge -> front of boat        27 1/2 in   -> centre 0.760 m
     #   edge -> side                 15    in    -> centre 0.443 m
     #   back of lidar -> propellers  12    in    -> centre 0.367 m
     #
-    # prop.urdf puts the lidar directly above base_link, so these are
-    # base_link-relative as required. Total width works out at 0.886 m, inside
-    # the 1 m the rules allow, which is a good check on the arithmetic.
-    #
-    # These replace guesses of 0.5 and 1.0 taken from the competition size box
-    # with base_link assumed to sit in the middle of the boat. It does not:
-    # it is 0.760 m from the front and 0.367 m from the propellers.
-    #
     # CAVEAT on hull_behind: 0.367 m is to the PROPELLERS, and the pontoons
-    # visibly extend further back than that in the photographs. When reversing,
-    # the rearmost point is what strikes something, so this is optimistic.
-    # Replace it with the distance to the pontoon tails when that is measured.
+    # extend further back. When reversing the rearmost point is what strikes
+    # something, so this is optimistic until the pontoon tails are measured.
     hull_half_width: 0.443  # m, base_link to the side of the hull
     hull_behind: 0.367      # m, base_link to the propellers -- see caveat above
     hull_front: 0.760       # m, base_link to the front of the boat
 
-    # MIRRORS prop_controller's hold_radius. guidance stops commanding once it
-    # is this close to its final waypoint, so a route handed over as-is leaves
-    # the boat parked up to a metre short and nothing moves it any nearer.
-    # Measured 2026-09-08: asked to stop with the bow 1.00 m off a buoy, the
-    # boat finished 2.07 m off it -- 0.24 m of that was lock error and 0.83 m
-    # was guidance simply stopping early.
-    #
-    # The approach therefore aims this much beyond where it wants to end up,
-    # so guidance's parking lands on the mark. Keep in step with
+    # MIRRORS prop_controller's hold_radius: guidance stops commanding this
+    # close to its final waypoint. The approach and circle aim this far
+    # beyond the mark so guidance's parking lands on it. Keep in step with
     # prop_controller/config/controller.yaml; nothing enforces that.
-    #
-    # Updated 2026-09-13 from 1.0 to match prop_controller moving hold_radius
-    # to 0.10 on main. The mismatch was not cosmetic: this value is what the
-    # circle aims each corner past by, and what the approach pulls its goal in
-    # by, so a stale 1.0 would have overshot every corner by 0.9 m and dragged
-    # the approach's goal a metre too close. The 2026-09-08 measurement above
-    # is from the 1.0 m era -- guidance parking 0.83 m short is not something
-    # to expect at 0.10 m.
     guidance_hold_radius: 0.10  # m
     blind_spots_deg: [60.0, 90.0, -90.0, -60.0]
     use_blind_spots: true
@@ -157,14 +113,8 @@
     #
     # min_gap is when the boat starts caring; detour_clearance is how far it
     # then swings. If the swing is larger, the boat reacts only once it is
-    # already inside the room it needs, and the start point caps what any route
-    # can achieve. Observed 2026-09-08 with min_gap 0.15 and clearance 1.00: a
-    # buoy 0.90 m off the route did not trip the 0.74 m trigger, so the boat
-    # set off straight; by the time the geometry tightened enough to react it
-    # could only manage 0.86 m, then 0.23 m as it closed. Asking for a metre
-    # bought nothing but a wrong number in the log.
-    #
-    # 0.5 m is a placeholder for testing, chosen with David 2026-09-08.
+    # already inside the room it needs, so the route cannot deliver the
+    # clearance asked for. 0.5 m is a placeholder for testing.
     #
     # NOTE on gates. The narrowest gate anywhere in the handbook is 1.83 m
     # between buoys, which after two buoy radii and this boat leaves 0.24 m
@@ -201,91 +151,36 @@
     # This one is measured against the object itself, which is what the
     # maneuver actually promises.
     standoff_tolerance: 0.3     # m
-    # How close to a ring corner the circle must actually get. Same reasoning
-    # as standoff_tolerance: arrive_tolerance asks about the goal WAYPOINT and
-    # at 1.5 m is looser than guidance's own 1.0 m hold radius, so it could
-    # report a corner reached before guidance had stopped driving. Short of a
-    # corner always means INSIDE the ring, so the error only ever goes one way
-    # and compounds. Measured 2026-09-12 before the fix: a circle asked for
-    # 6.00 m never got beyond 5.28 m and closed to 1.84 m.
-    #
-    # Reachable only because the circle now aims guidance_hold_radius past each
-    # corner; without that, nothing could close the last metre and this would
-    # hang until the timeout.
+    # How close to a ring corner the circle must actually get. Tighter than
+    # arrive_tolerance (1.5 m, looser than guidance's hold radius), because
+    # stopping short of a corner is always inside the ring and compounds.
+    # Reachable only because the circle aims guidance_hold_radius past each
+    # corner.
     corner_tolerance: 0.5       # m
     # Keep above guidance's yaw_tolerance (0.09 rad, ~5.2 deg).
     point_tolerance_deg: 6.0    # how close counts as pointing at it
 
-    # ── Settling ─────────────────────────────────────────────────────────
-    # Crossing the standoff is not the same as stopping on it. The approach
-    # used to declare success the moment it crossed and exit in the same tick,
-    # with the boat still making way, so the distance it printed described a
-    # place the boat was only passing through.
+    # Crossing the standoff is not stopping on it, so the approach holds
+    # station and waits for the boat to settle before it reports.
     #
-    # Measured 2026-09-13 against ground truth: the boat crossed at 1.58 m/s,
-    # got to 2.44 m of the buoy, and came to rest 3.29 m off -- 0.85 m further
-    # out, under power, because cmd_vel going to zero is a request to reach
-    # zero SPEED, and the PI loop in thruster_manager brakes through zero and
-    # accelerates the boat backwards. A different run of the same maneuver
-    # instead over-ran to 0.79 m from the buoy centre, which on the real hull
-    # (hull_front 0.760 m) puts the bow inside a 0.25 m buoy. Which way it goes
-    # depends on the speed it happens to be carrying.
+    # stop_speed must keep the remaining coast well inside
+    # standoff_tolerance. Surge drag gives a coast time constant of about
+    # 3 s (25 kg against 8 N per m/s), so a boat at speed v has about 3 * v
+    # metres left: 0.31 m at 0.1 m/s (over the whole 0.3 m tolerance), 0.09 m
+    # at 0.03. The quadratic drag term is ignored, so these slightly
+    # overestimate.
     #
-    # So the approach now holds station where it crossed and waits for the boat
-    # to settle before reporting. These two bound that wait.
-    #
-    # 0.1 was too loose, and the arithmetic says so. The hull is 25 kg against a
-    # linear surge drag xU of -8.0 N per m/s, so a coast decays with a time
-    # constant of 25/8 = 3.1 s and a boat at speed v still has about v * 3.1
-    # metres to run. At 0.1 m/s that is 0.31 m -- MORE than the 0.30 m
-    # standoff_tolerance the approach is judged against, so it could declare
-    # itself settled while carrying enough way to miss by more than the whole
-    # tolerance. A threshold that permits a bigger error than the spec it
-    # serves is not a guard.
-    #
-    # 0.03 m/s leaves about 0.09 m, roughly a third of the tolerance, so the
-    # distance the approach prints means something.
-    #
-    # Watch it in the logs: on 2026-09-13 a run crossed the standoff at
-    # 0.06 m/s, already under the old 0.1, so the settle phase declared on its
-    # first tick and did nothing at all. It got away with it because 0.06 m/s
-    # is slow, but that was luck about the speed it happened to carry, not the
-    # guard working.
-    #
-    # The 3.1 s ignores the quadratic term (xUabsU -15.0), which adds drag at
-    # speed, so these distances are slight over-estimates. The linear term
-    # dominates down here, which is the regime that matters.
-    #
-    # WHAT THIS DOES NOT FIX, measured against ground truth on 2026-09-13.
-    # Drift after the boat is under this threshold is 0.08 m at 0.1 and 0.09 m
-    # at 0.03 -- the model is right, and it was already small. The approach
-    # still rests 0.55-0.60 m wide of its ask either way, because drift was
-    # never the main error. That comes from ApproachObject declaring as soon as
-    # `actual <= wanted + standoff_tolerance`, which is 0.30 m BEYOND the
-    # target rather than at it, plus about 0.26 m of the lock under-reporting
-    # the buoy (radius 0.19-0.20 against a true 0.25, and a centre slightly
-    # off), which is why the maneuver prints 1.34 m where ground truth says
-    # 1.60 m. Tighten those two if you want the standoff itself to land; this
-    # setting only stops a fast crossing from coasting 0.31 m after declaring.
+    # This does not fix the approach resting wide of its ask. That comes
+    # from declaring at standoff_tolerance beyond the target and from the
+    # lock under-reporting the buoy radius.
     stop_speed: 0.03            # m/s, at or below this it counts as stopped
-    # The same idea for turning, and FaceObject needs it for the same reason.
-    # A turn counts as done the moment the heading error is inside
-    # point_tolerance_deg, but the boat carries the turn on past that.
-    #
-    # Measured 2026-09-13 against ground truth: the error crossed inside 5
-    # degrees with the boat still turning at 17 deg/s, it coasted 11.7 degrees
-    # further, and it came to rest 6.84 degrees off -- outside the tolerance it
-    # had just declared it was inside. That is 0.69 seconds of yaw coast
-    # (11.7 / 17), so a boat still turning at this 2 deg/s has about 1.4 degrees
-    # left in it, which fits inside the 5 degree tolerance with room to spare.
-    #
-    # Raising this makes the maneuver declare earlier and land further off.
+    # The same idea for turning (FaceObject): the boat carries a turn on past
+    # the point where the error is inside point_tolerance_deg. A turn still
+    # at this rate has little left in it. Raising this makes the maneuver
+    # declare earlier and land further off.
     stop_turn_rate_deg: 2.0     # deg/s, at or under this the turn is over
-    # Simulated seconds. Generous: at the hull's surge drag the coast decays
-    # with a time constant of mass/xU = 25/8 = 3.1 s, so settling takes a few
-    # seconds even with nothing driving. Expiring is not a failure -- the
-    # standoff was still reached -- so it reports what it achieved and says the
-    # boat had not finished moving.
+    # Simulated seconds. Expiring is not a failure: it reports what it
+    # achieved and says the boat had not finished moving.
     stop_timeout: 10.0          # s
 
     # ── Giving up ────────────────────────────────────────────────────────
