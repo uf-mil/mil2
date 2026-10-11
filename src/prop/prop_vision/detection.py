@@ -37,11 +37,12 @@ class Detector:
         for det in detections:
             x1, y1, x2, y2 = det["box"]
             track_id = det.get("track_id")
-            label = (
-                f'#{track_id} {det["label"]} {det["conf"]:.2f}'
-                if track_id is not None
-                else f'{det["label"]} {det["conf"]:.2f}'
-            )
+            label = f'{det["label"]} {det["conf"]:.2f}'
+            if track_id is not None:
+                label = f"#{track_id} {label}"
+            if det.get("range_m") is not None:
+                label += f' {det["range_m"]:.1f}m'
+
             cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(
                 annotated,
@@ -52,4 +53,5 @@ class Detector:
                 (0, 255, 0),
                 2,
             )
+
         return annotated
