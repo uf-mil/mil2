@@ -64,7 +64,7 @@ class ThrustAndKillNode(
         # connect to evil modem tube
         self.modem_pico: serial.Serial | None = None
 
-        self.modem_msg = "r\n"
+        self.modem_msg = "rr"
 
         port_description = ParameterDescriptor(
             type=ParameterType.PARAMETER_STRING,
@@ -199,13 +199,13 @@ class ThrustAndKillNode(
         if isinstance(packet, KillReceivePacket):
             self.get_logger().error(f"Received kill packet from thrusters: {packet}")
             if packet.set:
-                self.modem_msg = "r\n"
+                self.modem_msg = "rr"
                 if self._connect_modem() and self.modem_pico is not None:
                     self.modem_pico.write(self.modem_msg.encode("utf-8"))
                     self.modem_pico.close()
                 self.modem_pico = None
             else:
-                self.modem_msg = "g\n"
+                self.modem_msg = "gg"
                 if self._connect_modem() and self.modem_pico is not None:
                     self.modem_pico.write(self.modem_msg.encode("utf-8"))
 
@@ -219,23 +219,23 @@ class ThrustAndKillNode(
 
         if isinstance(packet, ManualReceivePacket):
             # ignore if killed!
-            if self.modem_msg == "r\n":
+            if self.modem_msg == "rr":
                 return
 
             self.get_logger().info(f"Manual status: {packet.set}")
             if packet.set:
-                self.modem_msg = "y\n"
+                self.modem_msg = "yy"
                 if self._connect_modem() and self.modem_pico is not None:
                     self.modem_pico.write(self.modem_msg.encode("utf-8"))
             else:
-                self.modem_msg = "g\n"
+                self.modem_msg = "gg"
                 if self._connect_modem() and self.modem_pico is not None:
                     self.modem_pico.write(self.modem_msg.encode("utf-8"))
 
     def _set_kill(self, request, response):
         self.get_logger().info("Received kill service request.")
         self.send_packet(KillSetPacket(True, KillStatus.SOFTWARE_REQUESTED))
-        self.modem_msg = "r\n"
+        self.modem_msg = "rr"
         if self._connect_modem() and self.modem_pico is not None:
             self.modem_pico.write(self.modem_msg.encode("utf-8"))
             self.modem_pico.close()
@@ -257,16 +257,16 @@ class ThrustAndKillNode(
                 "Thrust board heartbeat timeout! Rejecting further thruster commands.",
             )
             self.heartbeat_timedout = True
-            self.modem_msg = "r\n"
+            self.modem_msg = "rr"
             if self._connect_modem() and self.modem_pico is not None:
                 self.modem_pico.write(self.modem_msg.encode("utf-8"))
         else:
-            # msg = "y\n"
+            # msg = "y"
             if not self.heartbeat_timedout:
                 self.get_logger().debug("Thrust board heartbeat is live.")
             else:
                 self.get_logger().error("Thrust board heartbeat re-established!")
-                self.heartbeat_timedout = False
+            self.heartbeat_timedout = False
 
     def _send_temperature_request(self):
         self.send_packet(TemperaturePacketRequest())
