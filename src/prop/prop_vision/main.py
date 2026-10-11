@@ -1,10 +1,10 @@
 import cv2
 from camera import Camera
-from undistort import Undistorter
-from detection import Detector
-from tracking import Tracker
-from localization import Localizer
 from config import CAMERA_INDEX
+from detection import Detector
+from localization import Localizer
+from tracking import Tracker
+from undistort import Undistorter
 
 
 def print_estimates(tracks):
@@ -42,9 +42,9 @@ def main():
             cv2.imshow("tracking", annotated)
 
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
+            if key == ord("q"):
                 break
-            if key == ord('p'):
+            if key == ord("p"):
                 print_estimates(tracks)
     finally:
         cam.release()

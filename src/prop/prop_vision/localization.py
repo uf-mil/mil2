@@ -3,7 +3,7 @@ import statistics
 from collections import OrderedDict, deque
 
 import config
-from config import OBJECT_HEIGHTS_M, RANGE_SCALE, EDGE_MARGIN_PX
+from config import EDGE_MARGIN_PX, OBJECT_HEIGHTS_M, RANGE_SCALE
 
 SMOOTH_WINDOW = getattr(config, "SMOOTH_WINDOW", 15)
 MIN_BOX_HEIGHT_FRAC = getattr(config, "MIN_BOX_HEIGHT_FRAC", 0.016)

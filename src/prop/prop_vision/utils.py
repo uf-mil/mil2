@@ -21,6 +21,7 @@ def suppress_nested(dets, thresh=0.8):
 
 def unique_path(path):
     from pathlib import Path
+
     path = Path(path)
     if not path.exists():
         return path
