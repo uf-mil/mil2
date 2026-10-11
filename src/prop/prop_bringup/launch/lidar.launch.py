@@ -21,6 +21,13 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            # script that adds covariance
+            Node(
+                package="rf2o_cov_mapper",
+                executable="rf2o_cov_mapper",
+                name="rf2o_cov_mapper",
+                output="screen",
+            ),
             # Start lidar_mapper
             Node(
                 package="lidar_mapper",

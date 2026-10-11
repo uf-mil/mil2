@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Republish rf2o laser odometry with a usable covariance matrix.
 
 rf2o_laser_odometry leaves pose.covariance and twist.covariance filled with
