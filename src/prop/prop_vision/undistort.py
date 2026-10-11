@@ -21,31 +21,49 @@ class Undistorter:
         self.mapx = None
         self.mapy = None
         self.roi = None
+        
+        self.intrinsics = None
+       
 
     def _build_maps(self, w, h):
+        mtx = self.mtx.copy()
         if (self.calibrated_width, self.calibrated_height) != (w, h):
-            print(
-                f" calibration was done at "
-                f"{self.calibrated_width}x{self.calibrated_height}, "
-                f"but frames are {w}x{h}.",
-            )
-
+            sx = w / self.calibrated_width
+            sy = h / self.calibrated_height
+            if abs(sx - sy) > 1e-3:
+                print(f"WARNING: aspect ratio differs from calibration "
+                      f"({self.calibrated_width}x{self.calibrated_height} vs {w}x{h}).")
+            mtx[0] *= sx
+            mtx[1] *= sy
+            print(f"scaled calibration from {self.calibrated_width}x{self.calibrated_height} to {w}x{h}.")
+ 
         newcammtx, roi = cv2.getOptimalNewCameraMatrix(
-            self.mtx,
-            self.dist,
-            (w, h),
-            alpha=1,
-            newImgSize=(w, h),
-        )
+            mtx, self.dist, (w, h), alpha=1, newImgSize=(w, h))
         self.mapx, self.mapy = cv2.initUndistortRectifyMap(
-            self.mtx,
-            self.dist,
-            None,
-            newcammtx,
-            (w, h),
-            cv2.CV_32FC1,
-        )
+            mtx, self.dist, None, newcammtx, (w, h), cv2.CV_32FC1)
         self.roi = roi
+ 
+        x, y, rw, rh = roi
+        if self.crop_to_roi and (rw == 0 or rh == 0):
+            print("valid-pixel ROI is empty. not cropping.")
+            self.crop_to_roi = False
+ 
+        cx = float(newcammtx[0, 2])
+        cy = float(newcammtx[1, 2])
+        out_w, out_h = w, h
+        if self.crop_to_roi:
+            cx -= x
+            cy -= y
+            out_w, out_h = rw, rh
+ 
+        self.intrinsics = {
+            "fx": float(newcammtx[0, 0]),
+            "fy": float(newcammtx[1, 1]),
+            "cx": cx,
+            "cy": cy,
+            "width": int(out_w),
+            "height": int(out_h),
+        }
 
     def apply(self, frame):
         # returns the undistorted frame.
