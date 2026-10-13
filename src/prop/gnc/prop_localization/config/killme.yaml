@@ -54,17 +54,30 @@ ekf_global:
     base_link_frame: base_link
     world_frame: map    # map -> odom
 
-    # Feed the LOCAL ekf's output into the global ekf
-    odom0: "/odometry/filtered/local"
+    imu0: "/imu/data"
+    imu0_config: [
+      false, false, false, # x, y, z
+      true, true, true,    # roll, pitch, yaw
+      false, false, false, # vx, vy, vz
+      true, true, true,    # vroll, vpitch, vyaw
+      true, true, true     # ax, ay, az
+    ]
+    imu0_differential: false
+    imu0_relative: true
+    imu0_remove_gravitational_acceleration: true
+    gravitational_acceleration: 10.25
+    imu0_queue_size: 10
+
+    odom0: "/lidar/odom"
     odom0_config: [
-      true, true, false,   # x, y, z
-      false, false, true,  # roll, pitch, yaw
-      true, true, false,   # vx, vy, vz
-      false, false, true,  # vroll, vpitch, vyaw
+      false, false, false, # x, y, z
+      false, false, false, # roll, pitch, yaw
+      true, true, false,   # vx, vy, vz  (surface robot -> vz=false)
+      false, false, false, # vroll, vpitch, vyaw
       false, false, false  # ax, ay, az
     ]
     odom0_differential: false
-    odom0_relative: false
+    odom0_relative: true
     odom0_queue_size: 10
 
     # GPS odometry from navsat_transform
