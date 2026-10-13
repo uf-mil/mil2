@@ -37,6 +37,10 @@ planner:
     # Hard cap on remembered obstacles; past it the least-seen entry is dropped.
     capacity: 75
 
+    # A round entry with a radius up to this is reported as a buoy. The radius
+    # encloses the lidar's box, so a 1 m square footprint is 0.71 m.
+    buoy_max_radius: 1.0  # m
+
     start_enabled: false
 
     # ||| Route planning |||

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
 #include <vector>
 
 #include "prop_planner/geometry.hpp"
@@ -14,6 +15,8 @@ struct Obstacle
     int hits{ 0 };
     int misses{ 0 };     ///< consecutive frames it should have been seen and was not
     bool seen{ false };  ///< matched since the last forget_unseen
+    int track_id{ -1 };  ///< pcl_tracker's id from the latest detection matched to this entry
+    std::string label;   ///< class from upstream, e.g. red_buoy; kept once given
 };
 
 /// Fold an observation into an existing capsule.
@@ -29,7 +32,8 @@ Capsule merge_capsules(Capsule stored, Capsule observation, double gain, double 
 /// pcl_tracker drops a track five missed frames after it leaves the beam, which
 /// is right for a tracker and useless for a planner. This is the memory.
 /// Entries associate by position rather than by track ID, since those IDs do
-/// not survive an object leaving the beam and coming back.
+/// not survive an object leaving the beam and coming back. Each entry still
+/// carries the ID it was last matched under, which is the newest one.
 class ObstacleMap
 {
   public:
@@ -48,6 +52,10 @@ class ObstacleMap
         /// Consecutive unseen-but-should-have-been frames before an entry goes.
         int max_misses{ 15 };
         std::size_t capacity{ 256 };
+        /// A round entry no wider than this is a buoy rather than a dock,
+        /// shore or hull. Compared against the capsule radius, which encloses
+        /// the lidar's box, so a 1 m square footprint has a radius of 0.71 m.
+        double buoy_max_radius{ 1.0 };
     };
 
     explicit ObstacleMap(Config config) : config_(config)
@@ -55,7 +63,7 @@ class ObstacleMap
     }
 
     /// Fold one detection into the map.
-    void observe(Capsule observation);
+    void observe(Capsule observation, int track_id = -1, std::string const& label = {});
 
     /// Drop entries that were close enough to be seen and were not. Call once
     /// per frame, after that frame's observations, with the sensor's position.
@@ -69,6 +77,21 @@ class ObstacleMap
     bool is_confirmed(Obstacle const& obstacle) const
     {
         return obstacle.hits >= config_.min_hits;
+    }
+
+    bool is_buoy(Obstacle const& obstacle) const
+    {
+        return length(obstacle.shape) <= config_.extent_deadband && obstacle.shape.radius <= config_.buoy_max_radius;
+    }
+
+    /// The label something upstream gave it, or failing that what its shape says.
+    std::string classification(Obstacle const& obstacle) const
+    {
+        if (!obstacle.label.empty())
+        {
+            return obstacle.label;
+        }
+        return is_buoy(obstacle) ? "buoy" : "obstacle";
     }
 
     std::vector<Obstacle> const& all() const

@@ -23,7 +23,8 @@ namespace prop_planner
 
 // Turns what the lidar has seen into a route for guidance to follow.
 //
-//   in   tracked_markers           visualization_msgs/MarkerArray, from pcl_tracker
+//   in   tracked_markers           visualization_msgs/MarkerArray, from pcl_tracker;
+//                                 a box's text, when set, is its class (red_buoy, ...)
 //        odometry/filtered/global  nav_msgs/Odometry
 //        goal_pose                 geometry_msgs/PoseStamped, RViz's "2D Goal Pose"
 //   srv  ~/enable                  std_srvs/SetBool, start or stop the whole thing
@@ -32,8 +33,9 @@ namespace prop_planner
 //        obstacle_map              visualization_msgs/MarkerArray, the same thing drawn
 //
 // Two outputs for the map because they are for different readers. obstacles
-// carries the entries as data - one object per capsule, with its axis, extent
-// and hit count - and is what to echo or subscribe to. obstacle_map is a
+// carries the entries as data - one object per capsule, with its axis, extent,
+// hit count, pcl_tracker ID and classification - and is what to echo or
+// subscribe to. obstacle_map is a
 // rendering of those same entries for RViz, and a rendering cannot be read
 // back: a capsule draws as two caps and a body, so counting its markers counts
 // shapes rather than obstacles.

@@ -77,7 +77,7 @@ Planner::Planner()
            static_cast<int>(declare_parameter("min_hits", 3)), declare_parameter("max_radius", 5.0),
            declare_parameter("max_length", 20.0), declare_parameter("extent_deadband", 0.3),
            declare_parameter("verify_range", 10.0), static_cast<int>(declare_parameter("max_misses", 15)),
-           static_cast<std::size_t>(declare_parameter("capacity", 256)) })
+           static_cast<std::size_t>(declare_parameter("capacity", 256)), declare_parameter("buoy_max_radius", 1.0) })
   , planner_({ declare_parameter("inflation", 2.0), static_cast<int>(declare_parameter("corners_per_obstacle", 8)) })
 {
     map_frame_ = declare_parameter<std::string>("map_frame", "map");
@@ -218,7 +218,9 @@ void Planner::tracks_callback(visualization_msgs::msg::MarkerArray const& msg)
         geometry_msgs::msg::Pose pose;
         tf2::doTransform(marker.pose, pose, transform);
 
-        map_.observe(capsule_of(pose.position, marker.scale, yaw_of(pose.orientation)));
+        // A cube's text is unused by RViz, so it carries the class: empty from
+        // pcl_tracker today, red_buoy and the like once something classifies.
+        map_.observe(capsule_of(pose.position, marker.scale, yaw_of(pose.orientation)), marker.id, marker.text);
     }
 
     if (located_)
@@ -399,7 +401,8 @@ void Planner::publish_obstacles(std::vector<Obstacle> const& obstacles) const
                        confirmed ? rgba(1.0f, 0.35f, 0.05f, 0.9f) : rgba(0.6f, 0.6f, 0.6f, 0.6f), 0.6);
 
         // The hit count is what tells you whether an entry is about to be
-        // confirmed or stuck one short, so it goes where it can be read.
+        // confirmed or stuck one short, so it goes where it can be read,
+        // after the track ID and its classification.
         Point const centre = midpoint(obstacle.shape);
         visualization_msgs::msg::Marker label;
         label.header = header;
@@ -413,7 +416,8 @@ void Planner::publish_obstacles(std::vector<Obstacle> const& obstacles) const
         label.pose.orientation.w = 1.0;
         label.scale.z = 0.5;
         label.color = rgba(1.0f, 1.0f, 1.0f, 0.85f);
-        label.text = std::to_string(obstacle.hits);
+        label.text = "#" + std::to_string(obstacle.track_id) + " " + map_.classification(obstacle) + " " +
+                     std::to_string(obstacle.hits);
         markers.markers.push_back(label);
     }
 
@@ -425,7 +429,6 @@ void Planner::publish_objects(std::vector<Obstacle> const& obstacles) const
     mil_msgs::msg::PerceptionObjectArray objects;
     objects.objects.reserve(obstacles.size());
 
-    uint32_t id = 0;
     for (Obstacle const& obstacle : obstacles)
     {
         Capsule const& shape = obstacle.shape;
@@ -434,7 +437,8 @@ void Planner::publish_objects(std::vector<Obstacle> const& obstacles) const
         mil_msgs::msg::PerceptionObject object;
         object.header.frame_id = map_frame_;
         object.header.stamp = now();
-        object.id = id++;
+        object.id = static_cast<uint32_t>(obstacle.track_id);  // pcl_tracker's, the newest it matched
+        object.classification = map_.classification(obstacle);
 
         // The capsule, as an oriented extent: the pose is the middle of the
         // axis and the way it runs, scale.x is the axis length and scale.y the

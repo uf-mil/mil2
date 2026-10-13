@@ -120,7 +120,7 @@ Capsule merge_capsules(Capsule stored, Capsule observation, double gain, double 
              approach(stored.radius, observation.radius, gain) };
 }
 
-void ObstacleMap::observe(Capsule observation)
+void ObstacleMap::observe(Capsule observation, int track_id, std::string const& label)
 {
     observation = clamped(observation);
 
@@ -138,7 +138,7 @@ void ObstacleMap::observe(Capsule observation)
             Point const centre = midpoint(observation);
             observation = Capsule{ centre, centre, observation.radius };
         }
-        obstacles_.push_back(Obstacle{ observation, 1, 0, true });
+        obstacles_.push_back(Obstacle{ observation, 1, 0, true, track_id, label });
         return;
     }
 
@@ -146,6 +146,11 @@ void ObstacleMap::observe(Capsule observation)
     entry.shape = clamped(merge_capsules(entry.shape, observation, config_.position_gain, config_.extent_deadband));
     ++entry.hits;
     entry.seen = true;
+    entry.track_id = track_id;
+    if (!label.empty())
+    {
+        entry.label = label;
+    }
 }
 
 void ObstacleMap::forget_unseen(Point sensor)
