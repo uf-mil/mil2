@@ -11,12 +11,14 @@ fixed and nothing drives until you say so:
     start-controller         once the estimate has settled; holds position
     stop-controller          zero wrench, controller out of the loop
     reset-controller         zero wrench, reload gains, hold where it is now
+    start-planning           clear the obstacle map and start routing
 
 Started here:
 
     prop3              the lidar and the Infix, unless sensors:=false
     prop_localization  rf2o, map -> odom -> base_link, odometry/filtered/global
     pcd                filter, cluster and track the lidar cloud
+    prop_planner       remember what was seen, and route around it
     pid_controller     subjugator_controller_again, goal/trajectory -> cmd_wrench
 
 The thruster driver is not: it runs on the Pi, against the Navigator board.
@@ -71,6 +73,7 @@ def generate_launch_description():
                 "filter.launch.py",
                 input_topic=LaunchConfiguration("lidar_topic"),
             ),
+            include("prop_planner", "planner.launch.py"),
             include("subjugator_controller_again", "pid_controller.launch.py"),
         ],
     )

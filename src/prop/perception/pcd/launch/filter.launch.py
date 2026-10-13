@@ -21,7 +21,7 @@ def generate_launch_description():
         executable="static_transform_publisher",
         name="velodyne_to_base_link_tf",
         # Positional order: x y z roll pitch yaw frame_id child_frame_id
-        arguments=["0.0", "0.0", "0.45", "0.0", "0.0", "0.0", "base_link", "velodyne"],
+        arguments=["0.0", "0.0", "0.67", "0.0", "0.0", "0.0", "base_link", "velodyne"],
         output="screen",
     )
 

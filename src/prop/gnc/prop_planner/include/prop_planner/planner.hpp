@@ -1,0 +1,95 @@
+#pragma once
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "rclcpp/rclcpp.hpp"
+
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/quaternion.hpp"
+#include "mil_msgs/msg/perception_object_array.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "prop_planner/obstacle_map.hpp"
+#include "prop_planner/visibility_planner.hpp"
+#include "std_srvs/srv/set_bool.hpp"
+#include "tf2_ros/buffer.hpp"
+#include "tf2_ros/transform_listener.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+
+namespace prop_planner
+{
+
+// Turns what the lidar has seen into a route for guidance to follow.
+//
+//   in   tracked_markers           visualization_msgs/MarkerArray, from pcl_tracker
+//        odometry/filtered/global  nav_msgs/Odometry
+//        goal_pose                 geometry_msgs/PoseStamped, RViz's "2D Goal Pose"
+//   srv  ~/enable                  std_srvs/SetBool, start or stop the whole thing
+//   out  plan                      nav_msgs/Path, map frame, latched
+//        obstacles                 mil_msgs/PerceptionObjectArray, the map itself
+//        obstacle_map              visualization_msgs/MarkerArray, the same thing drawn
+//
+// Two outputs for the map because they are for different readers. obstacles
+// carries the entries as data - one object per capsule, with its axis, extent
+// and hit count - and is what to echo or subscribe to. obstacle_map is a
+// rendering of those same entries for RViz, and a rendering cannot be read
+// back: a capsule draws as two caps and a body, so counting its markers counts
+// shapes rather than obstacles.
+//
+// Detections are remembered in the map frame. That is the only frame here a
+// moored buoy holds still in: odom is fed by an EKF with orientation and
+// angular rates as its only inputs (prop_localization/config/ekf.yaml), so it
+// carries the hull's rotation and none of its translation.
+//
+// Replanning is on a timer rather than on every detection, and a route only
+// goes out when it differs from the last one. Guidance restarts its leg
+// tracking on each plan it receives, so republishing the same route at
+// perception rate would keep resetting the leg the boat is driving.
+class Planner : public rclcpp::Node
+{
+  public:
+    Planner();
+
+  private:
+    void tracks_callback(visualization_msgs::msg::MarkerArray const& msg);
+    void replan();
+    void publish_plan(std::vector<Point> const& route) const;
+    void publish_obstacles(std::vector<Obstacle> const& obstacles) const;
+    void publish_objects(std::vector<Obstacle> const& obstacles) const;
+
+    /// Whether the route says something new enough to interrupt guidance for.
+    bool worth_publishing(std::vector<Point> const& route) const;
+
+    std::string map_frame_;
+    double replan_threshold_;  ///< m a waypoint must move before republishing
+    double inflation_;         ///< kept only to draw what the planner avoids
+
+    ObstacleMap map_;
+    VisibilityPlanner planner_;
+
+    Point position_{};
+    bool located_{ false };
+
+    Point goal_{};
+    geometry_msgs::msg::Quaternion goal_orientation_;
+    bool has_goal_{ false };
+    bool enabled_{ true };
+
+    std::vector<Point> published_;
+
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+
+    rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr tracks_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr plan_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obstacles_pub_;
+    rclcpp::Publisher<mil_msgs::msg::PerceptionObjectArray>::SharedPtr objects_pub_;
+    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr enable_srv_;
+    rclcpp::TimerBase::SharedPtr timer_;
+};
+
+}  // namespace prop_planner

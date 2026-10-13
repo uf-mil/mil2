@@ -19,6 +19,6 @@
   <joint name="base_to_lidar" type="fixed">
     <parent link="base_link"/>
     <child link="lidar_link"/>
-    <origin xyz="0 0 0.45" rpy="0 0 0"/>
+    <origin xyz="0 0 0.67" rpy="0 0 0"/>
   </joint>
 </robot>

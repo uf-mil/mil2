@@ -88,10 +88,15 @@
       </link>
     </model>
 
-    <!-- Buoys, roughly on the square mission, for the lidar to see. -->
+    <!-- Two gates straddling the spawn heading, 10 m on a side: the near
+         pair 5.4 m out and the far pair 13 m. Both are inside the range
+         where a 0.5 m freeboard buoy still returns enough points to
+         cluster - see cluster_tolerance in pcd/config/pcd_params.yaml for
+         the arithmetic. The boat drives the y = 0 line straight between
+         them, so a goal off that centreline is what forces a detour. -->
     <model name="buoy_0">
       <static>true</static>
-      <pose>20 -3 0 0 0 0</pose>
+      <pose>12 -5 0 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
@@ -118,7 +123,7 @@
 
     <model name="buoy_1">
       <static>true</static>
-      <pose>23 20 0 0 0 0</pose>
+      <pose>12 5 0 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
@@ -145,7 +150,7 @@
 
     <model name="buoy_2">
       <static>true</static>
-      <pose>-3 23 0 0 0 0</pose>
+      <pose>2 5 0 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
@@ -172,7 +177,7 @@
 
     <model name="buoy_3">
       <static>true</static>
-      <pose>-4 -4 0 0 0 0</pose>
+      <pose>2 -5 0 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>

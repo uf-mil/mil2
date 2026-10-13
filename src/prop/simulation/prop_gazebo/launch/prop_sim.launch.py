@@ -12,6 +12,7 @@ control are the same nodes the boat runs, and come up disabled the same way:
 
     prop-start-localization
     start-controller / stop-controller / reset-controller
+    start-planning / stop-planning
 """
 
 import os
@@ -124,6 +125,16 @@ def generate_launch_description():
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     pkg_share("prop_localization", "launch", "localization.launch.py"),
+                ),
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    pkg_share("pcd", "launch", "filter.launch.py"),
+                ),
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    pkg_share("prop_planner", "launch", "planner.launch.py"),
                 ),
             ),
             IncludeLaunchDescription(

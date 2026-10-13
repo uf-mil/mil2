@@ -1,0 +1,57 @@
+---
+planner:
+  ros__parameters:
+
+    # ||| Obstacle map |||
+    merge_distance: 1.5  # m
+
+    # How much of a new detection is folded into an entry that already exists.
+    # Low, because a cluster centroid walks toward whichever face of the buoy
+    # the lidar can see, and the average of many views beats any one of them.
+    position_gain: 0.2
+
+    # Detections before an entry is worth routing around. For stuff like waves
+    min_hits: 25
+    max_radius: 5.0  # m
+    max_length: 15.0  # m
+
+    # How far past a stored end an observation has to reach before it counts as
+    # revealing more of the object rather than as noise. It is also the length
+    # below which an observation is read as round, carrying position
+    # rather than extent.
+    extent_deadband: 0.3  # m
+
+    # An entry this close should be visible, so failing to see it counts
+    # against it. It has to stay inside the range where detection actually
+    # works, not where the lidar nominally reaches: a 0.5 m freeboard buoy
+    # drops to a single ring past about 5 m and stops clearing
+    # cluster_min_points, so anything beyond that would be penalised for being
+    # invisible and dropped while still real. Raise it only alongside the
+    # clustering thresholds. 0.0 never forgets anything.
+    verify_range: 3.0  # m
+
+    # Frames an entry may go unseen, while close enough to be seen, before it
+    # is dropped. 1.5 s at 10 Hz.
+    max_misses: 25
+
+    # Hard cap on remembered obstacles; past it the least-seen entry is dropped.
+    capacity: 75
+
+    start_enabled: false
+
+    # ||| Route planning |||
+    # Added to every obstacle's radius
+    inflation: 2.0 # m
+
+    # Candidate corners sampled around each obstacle
+    corners_per_obstacle: 8
+
+    # Should change to odom when going to real
+    map_frame: "map"
+
+    # How often a new route is worked out.
+    rate: 2.0 # Hz
+
+    # A waypoint has to move at least this far before the new route is worth
+    # publishing over the old one.
+    replan_threshold: 0.5 # m
