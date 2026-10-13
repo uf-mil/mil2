@@ -1,43 +1,41 @@
+"""
+The VLP-16 on the mast: driver, point cloud, and the flattened /scan rf2o reads.
+
+    ros2 launch prop_bringup lidar.launch.py
+"""
+
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    rf2o_launch = os.path.join(
-        get_package_share_directory("rf2o_laser_odometry"),
-        "launch",
-        "rf2o_laser_odometry.launch.py",
-    )
-
-    lidar_hw_launch = os.path.join(
-        os.path.expanduser("~/mil2/src/prop/simulation/prop_gazebo/launch"),
-        "lidar_hw.launch.py",
+    calibration = os.path.join(
+        get_package_share_directory("velodyne_pointcloud"),
+        "params",
+        "VLP16db.yaml",
     )
 
     return LaunchDescription(
         [
-            # script that adds covariance
             Node(
-                package="rf2o_cov_mapper",
-                executable="rf2o_cov_mapper",
-                name="rf2o_cov_mapper",
+                package="velodyne_driver",
+                executable="velodyne_driver_node",
+                parameters=[{"device_ip": "192.168.37.51", "model": "VLP16"}],
                 output="screen",
             ),
-            # Start lidar_mapper
+            Node(
+                package="velodyne_pointcloud",
+                executable="velodyne_transform_node",
+                parameters=[{"model": "VLP16", "calibration": calibration}],
+                output="screen",
+            ),
             Node(
                 package="lidar_mapper",
                 executable="lidar_mapper",
-                name="lidar_mapper",
                 output="screen",
             ),
-            # start THE lidar lol
-            IncludeLaunchDescription(PythonLaunchDescriptionSource(lidar_hw_launch)),
-            # Start RF2O laser odometry
-            IncludeLaunchDescription(PythonLaunchDescriptionSource(rf2o_launch)),
         ],
     )

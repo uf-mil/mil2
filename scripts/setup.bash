@@ -302,6 +302,7 @@ alias reset-localization="ros2 service call /subjugator_localization/reset std_s
 alias start-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: true}"'
 alias stop-controller='ros2 service call /pid_controller/enable std_srvs/srv/SetBool "{data: false}"'
 alias reset-controller="ros2 service call /pid_controller/reset std_srvs/srv/Empty"
+alias prop-start-localization="ros2 service call /ekf_local/enable std_srvs/srv/Empty && ros2 service call /ekf_global/enable std_srvs/srv/Empty"
 
 # Launch the start-wand node, optionally choosing which mission it runs.
 # Usage: start-wand [mission_name]   (defaults to the node's built-in mission)

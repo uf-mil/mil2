@@ -1,19 +1,17 @@
 """
-Localization stack: robot_state_publisher + dual EKF + navsat_transform.
+Localization stack: robot_state_publisher + rf2o + dual EKF + navsat_transform.
 
-  ekf_local  : IMU only        -> odometry/filtered/local  + TF odom -> base_link
-  ekf_global : IMU + GPS odom  -> odometry/filtered/global + TF map  -> odom
+  rf2o       : /scan              -> /lidar/odom (via rf2o_cov_mapper)
+  ekf_local  : IMU + lidar odom   -> odometry/filtered/local  + TF odom -> base_link
+  ekf_global : local + GPS odom   -> odometry/filtered/global + TF map  -> odom
   navsat     : GPS + IMU + global odom <-> odometry/gps
 
-There is no wheel odometry on a boat, so the local EKF is dead reckoning off the
-IMU alone and only the global one is worth steering by.
-
-This launch starts no sensors. It works against the boat or against Gazebo,
-whichever is publishing /imu (sensor_msgs/Imu) and /gps_raw (NavSatFix).
+Both EKFs come up disabled, so the origin is wherever the boat sits when they
+are enabled rather than wherever it was at launch:
 
     ros2 launch prop_localization localization.launch.py
+    prop-start-localization
     ros2 topic echo /odometry/filtered/global
-    ros2 run tf2_ros tf2_echo map odom
 """
 
 import os
@@ -33,6 +31,19 @@ def generate_launch_description():
     with open(pkg_share("prop_localization", "urdf", "prop.urdf")) as urdf:
         robot_description = urdf.read()
 
+    # robot_localization advertises enable, reset, set_pose and toggle at the
+    # root, so two EKFs collide. Push each under its own node name.
+    def ekf(kind):
+        return Node(
+            package="robot_localization",
+            executable="ekf_node",
+            name=f"ekf_{kind}",
+            parameters=[config],
+            remappings=[("odometry/filtered", f"/odometry/filtered/{kind}")]
+            + [(srv, f"~/{srv}") for srv in ("enable", "reset", "set_pose", "toggle")],
+            output="screen",
+        )
+
     return LaunchDescription(
         [
             # base_link -> imu and base_link -> lidar_link, out of prop.urdf.
@@ -43,22 +54,28 @@ def generate_launch_description():
                 executable="robot_state_publisher",
                 parameters=[{"robot_description": robot_description}],
             ),
+            # publish_tf stays false: odom -> base_link belongs to ekf_local.
             Node(
-                package="robot_localization",
-                executable="ekf_node",
-                name="ekf_local",
-                parameters=[config],
-                remappings=[("odometry/filtered", "/odometry/filtered/local")],
+                package="rf2o_laser_odometry",
+                executable="rf2o_laser_odometry_node",
+                name="rf2o_laser_odometry",
+                parameters=[
+                    {
+                        "publish_tf": False,
+                        "odom_frame_id": "odom_rf2o",
+                        "init_pose_from_topic": "",
+                        "freq": 20.0,
+                    },
+                ],
                 output="screen",
             ),
             Node(
-                package="robot_localization",
-                executable="ekf_node",
-                name="ekf_global",
-                parameters=[config],
-                remappings=[("odometry/filtered", "/odometry/filtered/global")],
+                package="rf2o_cov_mapper",
+                executable="rf2o_cov_mapper",
                 output="screen",
             ),
+            ekf("local"),
+            ekf("global"),
             Node(
                 package="robot_localization",
                 executable="navsat_transform_node",

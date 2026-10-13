@@ -2,8 +2,8 @@
 # ROS-Gazebo bridge for the prop boat simulation.
 #
 # The raw sensor topics land under /sim; sim_sensors.py stamps covariance on
-# them and republishes /imu and /gps_raw, which is what the boat's own drivers
-# publish.
+# them and republishes /imu/data and /gps/fix, which is what the boat's
+# localization reads.
 
 - ros_topic_name: "/clock"
   gz_topic_name: "/clock"
@@ -26,7 +26,7 @@
 # The gpu_lidar's <topic> is lidar/scan, and gz-sensors hangs the point cloud
 # off it as lidar/scan/points. The scan is one ring flattened; the cloud is all
 # sixteen, and is what the pcd package clusters on.
-- ros_topic_name: "/lidar/scan"
+- ros_topic_name: "/scan"
   gz_topic_name: "/lidar/scan"
   ros_type_name: "sensor_msgs/msg/LaserScan"
   gz_type_name: "gz.msgs.LaserScan"

@@ -2,23 +2,23 @@
 The simulated boat, its sensors and localization, optionally under control.
 
     ros2 launch prop_gazebo prop_sim.launch.py
-    ros2 launch prop_gazebo prop_sim.launch.py control:=true mission:=square
     ros2 launch prop_gazebo prop_sim.launch.py \
         world_pkg:=navigator_gazebo world:=robotx_2024.world
     ros2 launch prop_gazebo prop_sim.launch.py rviz:=false \
         gz_args:="-s --headless-rendering"
 
 Gazebo supplies the hull and the sensors and nothing else: localization and
-control are the same nodes the boat runs, and all that differs is what is
-publishing /imu, /gps_raw and /lidar/scan, and what is listening on
-/thrusters/left and /thrusters/right.
+control are the same nodes the boat runs, and come up disabled the same way:
+
+    prop-start-localization
+    start-controller / stop-controller / reset-controller
 """
 
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -103,24 +103,6 @@ def generate_launch_description():
                 "to run without the Gazebo window.",
             ),
             DeclareLaunchArgument("rviz", default_value="true"),
-            DeclareLaunchArgument(
-                "control",
-                default_value="false",
-                description="Run the mission, guidance and thruster manager.",
-            ),
-            DeclareLaunchArgument(
-                "mission",
-                default_value="square",
-                description="Mission the controller starts on. Pass none to "
-                "come up idle and send a plan with "
-                "'ros2 run prop_controller plan.py' instead.",
-            ),
-            DeclareLaunchArgument(
-                "control_delay",
-                default_value="15.0",
-                description="Seconds to wait for localization before the "
-                "controller starts.",
-            ),
             SetParameter("use_sim_time", True),
             gz_sim,
             spawn_prop,
@@ -144,27 +126,21 @@ def generate_launch_description():
                     pkg_share("prop_localization", "launch", "localization.launch.py"),
                 ),
             ),
-            # navsat_transform takes its datum from the first fix, so the map
-            # frame ends up wherever the boat was when localization came up.
-            # Hold the controller until then, or the boat drives off first and
-            # the whole mission is offset by however far it got.
-            TimerAction(
-                period=LaunchConfiguration("control_delay"),
-                actions=[
-                    IncludeLaunchDescription(
-                        PythonLaunchDescriptionSource(
-                            pkg_share(
-                                "prop_controller",
-                                "launch",
-                                "controller.launch.py",
-                            ),
-                        ),
-                        launch_arguments={
-                            "mission": LaunchConfiguration("mission"),
-                        }.items(),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    pkg_share(
+                        "subjugator_controller_again",
+                        "launch",
+                        "pid_controller.launch.py",
                     ),
-                ],
-                condition=IfCondition(LaunchConfiguration("control")),
+                ),
+                launch_arguments={
+                    "param_file": pkg_share(
+                        "subjugator_controller_again",
+                        "config",
+                        "sim_pid_controller.yaml",
+                    ),
+                }.items(),
             ),
             Node(
                 package="rviz2",

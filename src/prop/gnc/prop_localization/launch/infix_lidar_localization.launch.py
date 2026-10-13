@@ -49,8 +49,8 @@ def generate_launch_description():
             # reads as a near perfect measurement. This stamps real values on
             # the way past and republishes as /lidar/odom.
             Node(
-                package="prop_localization",
-                executable="rf2o_covar.py",
+                package="rf2o_cov_mapper",
+                executable="rf2o_cov_mapper",
                 name="rf2o_covariance_relay",
                 parameters=[
                     {
