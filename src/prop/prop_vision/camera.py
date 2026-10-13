@@ -1,9 +1,17 @@
 import cv2
+import sys
+
+def default_backend(): 
+    if sys.platform.startswith("win"):
+        return cv2.CAP_MSMF
+    if sys.platform.startswith("linux"):
+        return cv2.CAP_V4L2
+    return cv2.CAP_ANY
 
 
 class Camera:
     # set initial camera settings for unwarp.
-    def __init__(self, index=0, width=1920, height=1080, fsp=30, backend=cv2.CAP_MSMF):
+    def __init__(self, index=0, width=1920, height=1080, fps=30, backend=default_backend()):
         self.width = width
         self.height = height
 
@@ -11,9 +19,16 @@ class Camera:
         if not self.cap.isOpened():
             raise RuntimeError(f"unable to open camera at index {index}")
 
+        mjpg = cv2.VideoWriter_fourcc(*"MJPG")
+        linux = sys.platform.startswith("linux")
+        if linux:
+            self.cap.set(cv2.CAP_PROP_FOURCC, mjpg)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
+        if not linux:
+            self.cap.set(cv2.CAP_PROP_FOURCC, mjpg)
+        self.cap.set(cv2.CAP_PROP_FPS, fps)
+
         self._check_set()
 
     def _check_set(self):
