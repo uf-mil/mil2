@@ -21,6 +21,9 @@ def generate_launch_description():
                 parameters=[
                     {
                         "publish_tf": False,
+                        "mag_bias_x": 2.1277e-5,
+                        "mag_bias_y": 1.8647e-5,
+                        "mag_bias_z": -3.4394e-5,
                     },
                 ],
             ),
