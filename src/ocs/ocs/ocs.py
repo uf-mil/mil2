@@ -11,6 +11,7 @@ from proto import (
     Heartbeat,
     RobotState,
     RunDeclaration,
+    RxCommand,
     RxCourse,
     RxReport,
     RxRequest,
@@ -113,8 +114,19 @@ class OCS(Node):
             uav_geofence=course.corners,
         )
 
-    def on_command(_client, _, msg):
-        pass
+    current_run_id = None
+
+    def on_command(self, _client, _, msg):
+        command = RxCommand()
+        command.ParseFromString(msg.payload)
+
+        if command.run_start is not None:
+            if command.run_start.declaration_seq != self.rx_run_declaration_seq:
+                print("mismatched RunStart")
+                return
+
+            self.current_run_id = command.run_start.run_id
+            # start??
 
     def loop_mav(self):
         skip = False  # 1 Hz -> 2 Hz
