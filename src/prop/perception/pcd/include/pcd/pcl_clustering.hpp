@@ -203,8 +203,10 @@ class PclClustering : public rclcpp::Node, public PcdConstants
             RCLCPP_DEBUG(get_logger(), "cluster id=%d height=%.3f footprint=%.3f ratio=%.2f", id, height, footprint,
                          footprint / std::max(height, 1e-4));
 
-            if (height <= 1e-4 || footprint / height > cluster_flatness_threshold_)
+            if (height <= 1e-4 || height >= 2 || footprint / height > cluster_flatness_threshold_)
             {
+                RCLCPP_DEBUG(get_logger(), "skipped %.3f %.3f > %.3f", height, footprint / height,
+                             cluster_flatness_threshold_);
                 continue;  // skip: neither points nor marker get published for this cluster
             }
 
@@ -238,11 +240,11 @@ class PclClustering : public rclcpp::Node, public PcdConstants
         colored.height = 1;
         colored.is_dense = true;
 
-        sensor_msgs::msg::PointCloud2 cloud_msg;
-        pcl::toROSMsg(colored, cloud_msg);
-        cloud_msg.header = header;
+        // sensor_msgs::msg::PointCloud2 cloud_msg;
+        // pcl::toROSMsg(colored, cloud_msg);
+        // cloud_msg.header = header;
 
-        pub_cloud_->publish(cloud_msg);
+        // pub_cloud_->publish(cloud_msg);
         pub_markers_->publish(markers);
 
         RCLCPP_INFO(get_logger(), "Published %zu cluster(s) with %zu colored point(s) and %zu marker(s)",

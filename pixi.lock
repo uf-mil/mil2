@@ -912,6 +912,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cairo-1.18.4-h3c89d7e_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ccache-4.14-h420ae53_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cffi-2.1.1-py312h703531f_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/cgal-6.0.1-np2py312h184c327_7.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/cgal-cpp-6.2.1-hec4b13c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/charset-normalizer-3.5.2-h1114479_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cli11-2.7.2-h54a6638_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cmake-4.4.3-hff7ac6b_0.conda
@@ -1758,6 +1760,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cairo-1.18.4-hca320e2_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ccache-4.14-h2327310_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cffi-2.1.1-py312h563f9cf_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cgal-6.0.1-np2py312h6f9a663_7.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cgal-cpp-6.2.1-hb2c21df_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cli11-2.7.2-h7ac5ae9_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cmake-4.4.3-hcbeb305_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/colcon-common-extensions-0.3.0-py312h3262aca_5.conda
@@ -4678,6 +4682,41 @@ packages:
   run_exports: {}
   size: 302937
   timestamp: 1788485303634
+- conda: https://conda.anaconda.org/conda-forge/linux-64/cgal-6.0.1-np2py312h184c327_7.conda
+  sha256: f3ea6b52c0994029dbbd62c2a519e8d4c7c88a44536152a853d02e97b664ff58
+  md5: 931cc3c0ee381e0e2637a76106ce5a31
+  depends:
+  - cgal-cpp 6.2.*
+  - python
+  - libstdcxx >=15
+  - libgcc >=15
+  - __glibc >=2.17,<3.0.a0
+  - python_abi 3.12.* *_cp312
+  - gmp >=6.3.0,<7.0a0
+  - numpy >=1.25,<3
+  - mpfr >=4.2.2,<5.0a0
+  - libboost >=1.90.0,<1.91.0a0
+  license: GPL-3.0-or-later
+  license_family: GPL
+  run_exports: {}
+  size: 9164720
+  timestamp: 1790072792338
+- conda: https://conda.anaconda.org/conda-forge/linux-64/cgal-cpp-6.2.1-hec4b13c_0.conda
+  sha256: 232ea63938c3582460c5767e118fc205963bc0d8c331885b2020ef1c5d0c83a5
+  md5: dffed0879b3f26c8654826ec1414a10c
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - eigen
+  - eigen-abi >=5.0.1.80,<5.0.1.81.0a0
+  - libboost >=1.90.0,<1.91.0a0
+  - libboost-devel
+  - libgcc >=15
+  - libstdcxx >=15
+  - mpfr >=4.2.2,<5.0a0
+  license: GPL3/LGPL3
+  run_exports: {}
+  size: 6218213
+  timestamp: 1788703317123
 - conda: https://conda.anaconda.org/conda-forge/linux-64/charset-normalizer-3.5.2-h1114479_0.conda
   noarch: python
   sha256: e4f04b45d68716fcc47c808aeacbf165f6f295fb91bd20b91aa38942b8d2cdc6
@@ -12507,6 +12546,39 @@ packages:
   run_exports: {}
   size: 325201
   timestamp: 1788485261662
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cgal-6.0.1-np2py312h6f9a663_7.conda
+  sha256: a48bb89915fe7afefbf8d4afe219504d299d0ce4d6a10b6324ac2d6edbe0526a
+  md5: 8af92e570d4eab2d56d662e897400067
+  depends:
+  - cgal-cpp 6.2.*
+  - python
+  - libstdcxx >=15
+  - libgcc >=15
+  - gmp >=6.3.0,<7.0a0
+  - mpfr >=4.2.2,<5.0a0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
+  - libboost >=1.90.0,<1.91.0a0
+  license: GPL-3.0-or-later
+  license_family: GPL
+  run_exports: {}
+  size: 8878213
+  timestamp: 1790072778214
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cgal-cpp-6.2.1-hb2c21df_0.conda
+  sha256: 6ad047abdd7407947e2d69a023ad9f3aaa45233751317cb38ad60292069c16c1
+  md5: 14c5a83b8ce38e709f1eb03890ac41a4
+  depends:
+  - eigen
+  - eigen-abi >=5.0.1.100,<5.0.1.101.0a0
+  - libboost >=1.90.0,<1.91.0a0
+  - libboost-devel
+  - libgcc >=15
+  - libstdcxx >=15
+  - mpfr >=4.2.2,<5.0a0
+  license: GPL3/LGPL3
+  run_exports: {}
+  size: 6219430
+  timestamp: 1788703264248
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cli11-2.7.2-h7ac5ae9_1.conda
   sha256: 291fb773110ad728e9558fc6fe15c36e0576ddae04f27071bb660b8a8493a477
   md5: 36f959161f12c421146115bccc834db6

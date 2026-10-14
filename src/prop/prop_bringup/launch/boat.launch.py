@@ -73,7 +73,12 @@ def generate_launch_description():
                 "filter.launch.py",
                 input_topic=LaunchConfiguration("lidar_topic"),
             ),
-            include("prop_planner", "planner.launch.py"),
+            include(
+                "prop_planner",
+                "planner.launch.py",
+                frame="odom",
+                odometry="/odometry/filtered/local",
+            ),
             include("subjugator_controller_again", "pid_controller.launch.py"),
         ],
     )

@@ -79,7 +79,7 @@ class TrajectoryFollower(Node):
         # ---- Subscribers ---------------------------------------------- #
         self.create_subscription(
             Path,
-            "/goal_trajectory",
+            "/plan",
             self._trajectory_callback,
             reliable_qos,
         )
@@ -97,7 +97,7 @@ class TrajectoryFollower(Node):
         )
 
         # ---- Publisher ------------------------------------------------ #
-        self._goal_pub = self.create_publisher(Pose, "/goal_pose", reliable_qos)
+        self._goal_pub = self.create_publisher(Pose, "/goal/trajectory", reliable_qos)
 
         # ---- Control loop timer --------------------------------------- #
         self.create_timer(1.0 / self.PUBLISH_RATE_HZ, self._control_loop)

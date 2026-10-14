@@ -46,6 +46,7 @@ ros2-imu-filter-madgwick = ">=2.1.5,<3"
 ros2-pcl-ros = ">=2.6.5,<3"
 ultralytics = ">=8.4.171,<9"
 torchvision = ">=0.28.0,<0.29"
+cgal = ">=6.0.1,<7"
 
 [activation.env]
 LIBRARY_PATH = "$CONDA_PREFIX/lib"
