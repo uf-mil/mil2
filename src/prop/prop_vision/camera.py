@@ -1,7 +1,9 @@
-import cv2
 import sys
 
-def default_backend(): 
+import cv2
+
+
+def default_backend():
     if sys.platform.startswith("win"):
         return cv2.CAP_MSMF
     if sys.platform.startswith("linux"):
@@ -11,7 +13,14 @@ def default_backend():
 
 class Camera:
     # set initial camera settings for unwarp.
-    def __init__(self, index=0, width=1920, height=1080, fps=30, backend=default_backend()):
+    def __init__(
+        self,
+        index=0,
+        width=1920,
+        height=1080,
+        fps=30,
+        backend=default_backend(),
+    ):
         self.width = width
         self.height = height
 
