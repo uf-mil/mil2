@@ -126,7 +126,17 @@ class OCS(Node):
                 return
 
             self.current_run_id = command.run_start.run_id
-            # start??
+            # TODO start??
+        elif command.assistance_request is not None:
+            if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
+                # TODO send to prop?
+                pass
+            elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
+                # TODO send to mav?
+                pass
+        elif command.readiness_confirm is not None:
+            # TODO
+            pass
 
     def loop_mav(self):
         skip = False  # 1 Hz -> 2 Hz
