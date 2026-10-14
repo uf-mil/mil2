@@ -46,7 +46,13 @@ class Detector:
                 label = f"#{track_id} {label}"
             cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(
-                annotated, label, (x1, max(y1 - 8, 0)), font, 0.5, (0, 255, 0), 2,
+                annotated,
+                label,
+                (x1, max(y1 - 8, 0)),
+                font,
+                0.5,
+                (0, 255, 0),
+                2,
             )
 
         ranged = sorted(
@@ -70,7 +76,13 @@ class Detector:
         for i, text in enumerate(lines):
             y = y0 + pad + sizes[i][1] + i * line_h
             cv2.putText(
-                annotated, text, (x0 + pad, y), font, fs, (255, 255, 255), thick,
+                annotated,
+                text,
+                (x0 + pad, y),
+                font,
+                fs,
+                (255, 255, 255),
+                thick,
             )
 
         return annotated
