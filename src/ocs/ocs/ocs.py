@@ -4,6 +4,7 @@ import paho.mqtt.client as mqtt
 import pymavlink.mavutil
 import rclpy
 from mil_msgs.msg import AcousticPingerConfig
+from mil_msgs.msg import Heartbeat as RosHeartbeat
 from paho.mqtt.enums import CallbackAPIVersion
 from proto import (
     FlightPhase,
@@ -18,7 +19,6 @@ from proto import (
     VehicleType,
 )
 from rclpy.node import Node
-from std_msgs.msg import Empty
 
 
 class OCS(Node):
@@ -32,7 +32,7 @@ class OCS(Node):
             "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_BG00HS6A-if00-port0",
         )
 
-        self.create_subscription(Empty, "/heartbeats", self.on_heartbeat, 10)
+        self.create_subscription(RosHeartbeat, "/heartbeats", self.on_heartbeat, 10)
 
         self.acoustic_frequency_config_publisher = self.create_publisher(
             AcousticPingerConfig,
@@ -80,7 +80,7 @@ class OCS(Node):
 
     rx_report_seqs = defaultdict(int)
 
-    def rx_report(self, *, vehicle_id, **kwargs):
+    def rx_heartbeat(self, *, vehicle_id, **kwargs):
         rep = RxReport(
             team_id=self.get_parameter("team_id").get_parameter_value().string_value,
             vehicle_id=vehicle_id,
@@ -123,7 +123,7 @@ class OCS(Node):
             skip = not skip
             if skip:
                 continue
-            self.rx_report(
+            self.rx_heartbeat(
                 vehicle_id="UAV",
                 state=RobotState.STATE_AUTO,
                 current_task=RxTask.TASK_NONE,
@@ -134,7 +134,7 @@ class OCS(Node):
     # todo - implement heartbeats on boat and sub
     # sub heartbeats through acoustic modem
     def on_heartbeat(self, msg):
-        self.rx_report(
+        self.rx_heartbeat(
             vehicle_id=msg.vehicle_type,
             state=RobotState[f"STATE_{msg.state}"],
             current_task=RxTask[f"TASK_{msg.task}"],
