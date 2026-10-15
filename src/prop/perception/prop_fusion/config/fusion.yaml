@@ -1,0 +1,23 @@
+---
+fusion:
+  ros__parameters:
+
+    # How far apart a camera frame and the latest lidar frame can be and still
+    # be compared. Tracks are in odom, which does not move with the hull, so
+    # this only has to cover the lidar's own period and some lag.
+    max_age: 0.5  # s
+
+    # How far in bearing a detection may sit outside a track's projection and
+    # still be that track. Mostly it absorbs error in the camera's measured
+    # mount; at 8 m, 3 deg is 0.4 m, about a buoy's width.
+    bearing_tolerance: 3.0  # deg
+
+    # Summed detection confidence the leading class needs over the next before
+    # a track takes it. About three good frames, so one misclassified frame
+    # cannot label a track and a red/green flicker leaves it unlabelled.
+    vote_margin: 2.0
+
+    # Draw the tracks onto the image on fusion/debug_image. The first thing to
+    # look at after moving the camera: the yellow boxes should sit on the
+    # buoys.
+    debug_image: false

@@ -219,7 +219,7 @@ void Planner::tracks_callback(visualization_msgs::msg::MarkerArray const& msg)
         tf2::doTransform(marker.pose, pose, transform);
 
         // A cube's text is unused by RViz, so it carries the class: empty from
-        // pcl_tracker today, red_buoy and the like once something classifies.
+        // pcl_tracker, red_buoy and the like once prop_fusion has labelled it.
         map_.observe(capsule_of(pose.position, marker.scale, yaw_of(pose.orientation)), marker.id, marker.text);
     }
 

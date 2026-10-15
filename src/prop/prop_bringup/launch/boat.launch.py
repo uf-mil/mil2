@@ -18,6 +18,7 @@ Started here:
     prop3              the lidar and the Infix, unless sensors:=false
     prop_localization  rf2o, map -> odom -> base_link, odometry/filtered/global
     pcd                filter, cluster and track the lidar cloud
+    prop_fusion        label those tracks with what the camera classifies
     prop_planner       remember what was seen, and route around it
     pid_controller     subjugator_controller_again, goal/trajectory -> cmd_wrench
 
@@ -73,11 +74,13 @@ def generate_launch_description():
                 "filter.launch.py",
                 input_topic=LaunchConfiguration("lidar_topic"),
             ),
+            include("prop_fusion", "fusion.launch.py"),
             include(
                 "prop_planner",
                 "planner.launch.py",
                 frame="odom",
                 odometry="/odometry/filtered/local",
+                tracks="classified_markers",
             ),
             include("subjugator_controller_again", "pid_controller.launch.py"),
         ],

@@ -21,4 +21,23 @@
     <child link="lidar_link"/>
     <origin xyz="0 0 0.67" rpy="0 0 0"/>
   </joint>
+
+  <link name="camera_link"/>
+  <link name="camera_optical_frame"/>
+
+  <!-- TODO measure: a stand-in until the camera's mount is. prop_fusion
+       projects the lidar's tracks through it, so yaw here is a bearing error
+       on every label. -->
+  <joint name="base_to_camera" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="0 0 0.5" rpy="0 0 0"/>
+  </joint>
+
+  <!-- z forward, x right, y down: the frame image pixels are in. -->
+  <joint name="camera_to_optical" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_optical_frame"/>
+    <origin xyz="0 0 0" rpy="-1.5707963267948966 0 -1.5707963267948966"/>
+  </joint>
 </robot>

@@ -59,6 +59,13 @@ def generate_launch_description():
                 "translation source, or buoys drift through it at hull speed.",
             ),
             DeclareLaunchArgument(
+                "tracks",
+                default_value="tracked_markers",
+                description="Lidar tracks to map. classified_markers when "
+                "prop_fusion is running, so the map carries the camera's "
+                "classes.",
+            ),
+            DeclareLaunchArgument(
                 "use_sim_time",
                 default_value="false",
                 description="True under Gazebo. Detections are transformed at "
@@ -81,7 +88,10 @@ def generate_launch_description():
                     pkg_share("prop_planner", "config", "planner.yaml"),
                     {"map_frame": LaunchConfiguration("frame")},
                 ],
-                remappings=[("odometry", LaunchConfiguration("odometry"))],
+                remappings=[
+                    ("odometry", LaunchConfiguration("odometry")),
+                    ("tracked_markers", LaunchConfiguration("tracks")),
+                ],
                 output="screen",
             ),
         ],
