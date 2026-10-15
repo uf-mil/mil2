@@ -39,6 +39,17 @@ alias fd="fdfind"
 alias sonar-socat="sdgps connect-sonar-raw-tcp 192.168.37.61 2006 ! filter-sonar-raw-samples --highpass 15e3 --lowpass 45e3 --notch 40e3 ! extract-robosub-pings ! robosub-ping-solver ! listen-robosub-ping-solution-tcp 2007"
 alias kill="ros2 service call /kill std_srvs/srv/Empty && stop-controller"
 alias unkill="ros2 service call /unkill std_srvs/srv/Empty"
+
+dvl_on() {
+	echo '{"command":"set_config","parameters":{"acoustic_enabled":true}}' | nc 192.168.194.95 16171 | grep success -m 1
+}
+dvl_off() {
+	echo '{"command":"set_config","parameters":{"acoustic_enabled":false}}' | nc 192.168.194.95 16171 | grep success -m 1
+}
+
+alias lidar_on="curl 'http://192.168.37.51/cgi/setting' -d rpm=600 -d laser=on"
+alias lidar_off="curl 'http://192.168.37.51/cgi/setting' -d rpm=0 -d laser=off"
+
 # potentially borrowed from forrest
 autopush() {
 	git push origin +"${1:-HEAD}":refs/heads/autopush-"$USER"-"$(uuidgen --random | cut -c1-8)"-citmp
