@@ -1,61 +1,55 @@
 #!/usr/bin/env python3
-
 import threading
 
 import rclpy
 from geometry_msgs.msg import Pose
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 
 class TrajectoryDebugSim(Node):
-
     ARRIVAL_DELAY_SEC = 3.0
 
     def __init__(self):
         super().__init__("trajectory_debug_sim")
-
         reliable_qos = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.VOLATILE,
             depth=10,
         )
-
         self._current_pose = Pose()
         self._lock = threading.Lock()
 
         self.create_subscription(
-            Pose,
-            "/goal_pose",
-            self._goal_pose_callback,
+            Path,
+            "/plan",
+            self._plan_callback,
             reliable_qos,
         )
-
         self._odom_pub = self.create_publisher(
             Odometry,
             "/odometry/filtered/local",
             reliable_qos,
         )
-
-        # Publish current pose at a steady rate so the follower node
-        # always has fresh odometry to work with
         self.create_timer(0.05, self._publish_odom)
-
         self.get_logger().info("TrajectoryDebugSim started.")
 
-    def _goal_pose_callback(self, msg: Pose) -> None:
+    def _plan_callback(self, msg: Path) -> None:
+        if not msg.poses:
+            self.get_logger().warn("Received empty path, ignoring.")
+            return
         self.get_logger().info(
-            f"Goal received ({msg.position.x:.2f}, {msg.position.y:.2f}). "
-            f"Simulating {self.ARRIVAL_DELAY_SEC}s travel time...",
+            f"Received path with {len(msg.poses)} waypoints. " f"Simulating travel...",
         )
-        # Fire a one-shot timer — when it fires, snap the robot to the goal
-        self.create_timer(
-            self.ARRIVAL_DELAY_SEC,
-            self._make_arrival_callback(msg),
-        )
+        self._schedule_waypoints(list(msg.poses), 0)
 
-    def _make_arrival_callback(self, goal: Pose):
+    def _schedule_waypoints(self, poses, index):
+        if index >= len(poses):
+            self.get_logger().info("All waypoints reached.")
+            return
+
+        goal = poses[index].pose
         fired = {"done": False}
 
         def _callback():
@@ -65,10 +59,12 @@ class TrajectoryDebugSim(Node):
             with self._lock:
                 self._current_pose = goal
             self.get_logger().info(
-                f"Arrived at ({goal.position.x:.2f}, {goal.position.y:.2f}).",
+                f"Arrived at waypoint {index + 1}/{len(poses)} "
+                f"({goal.position.x:.2f}, {goal.position.y:.2f}).",
             )
+            self._schedule_waypoints(poses, index + 1)
 
-        return _callback
+        self.create_timer(self.ARRIVAL_DELAY_SEC, _callback)
 
     def _publish_odom(self) -> None:
         msg = Odometry()

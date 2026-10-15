@@ -112,6 +112,22 @@ class TrajectoryFollower(Node):
     # ================================================================== #
     #  Callbacks
     # ================================================================== #
+    def _publish_goal(self, x: float, y: float, yaw: float) -> None:
+        """Publish a goal pose, but only if it differs from the last one sent."""
+        KEY_ROUND = 2  # round to cm / ~0.01 rad to avoid float noise
+        key = (round(x, KEY_ROUND), round(y, KEY_ROUND), round(yaw, KEY_ROUND))
+        if key == getattr(self, "_last_goal_key", None):
+            return
+        self._last_goal_key = key
+        goal = Pose()
+        goal.position.x = x
+        goal.position.y = y
+        goal.position.z = 0.0
+        goal.orientation = quaternion_from_yaw(yaw)
+        self._goal_pub.publish(goal)
+        self.get_logger().info(
+            f"Published goal ({x:.2f}, {y:.2f}, yaw={math.degrees(yaw):.1f}°)",
+        )
 
     def _trajectory_callback(self, msg: Path) -> None:
         """A new path replaces the current one: the planner only republishes
@@ -189,23 +205,15 @@ class TrajectoryFollower(Node):
                     f"Switching to drive phase.",
                 )
                 self._phase = "drive"
+                self._publish_goal(robot_x, robot_y, desired_yaw)
             else:
-                # Publish a rotation-only goal at the robot's current position
-                rotate_goal = Pose()
-                rotate_goal.position.x = robot_x
-                rotate_goal.position.y = robot_y
-                rotate_goal.position.z = 0.0
-                rotate_goal.orientation = quaternion_from_yaw(desired_yaw)
-                self._goal_pub.publish(rotate_goal)
-                return
+                self._publish_goal(robot_x, robot_y, desired_yaw)
+            return
 
         # ---- DRIVE phase ---------------------------------------------- #
         if self._phase == "drive":
             final = self._waypoint_index == len(self._waypoints) - 1
 
-            # The last waypoint is held, not finished. The latch has room to
-            # drift before it lets go, or noise at its edge hands the boat
-            # straight back to chasing the bearing.
             holding = self._hold_yaw is not None
             if final and dist <= self.GOAL_XY_TOLERANCE * (2.0 if holding else 1.0):
                 if not holding:
@@ -213,23 +221,21 @@ class TrajectoryFollower(Node):
                         self._final_yaw if self._final_yaw is not None else robot_yaw
                     )
                     self.get_logger().info("Holding station on the final waypoint.")
-                desired_yaw = self._hold_yaw
+                    self._publish_goal(
+                        target.position.x,
+                        target.position.y,
+                        self._hold_yaw,
+                    )
+                else:
+                    self._finish_path()
+                return
             else:
                 self._hold_yaw = None
-                # Aim whichever end is nearer: past the point the stern faces
-                # it and the boat backs up instead of turning round, which is
-                # what made it orbit the waypoint.
                 desired_yaw = robot_yaw + math.remainder(
                     desired_yaw - robot_yaw,
                     math.pi,
                 )
-
-            drive_goal = Pose()
-            drive_goal.position.x = target.position.x
-            drive_goal.position.y = target.position.y
-            drive_goal.position.z = 0.0
-            drive_goal.orientation = quaternion_from_yaw(desired_yaw)
-            self._goal_pub.publish(drive_goal)
+                self._publish_goal(target.position.x, target.position.y, desired_yaw)
 
             if not final and dist <= self.GOAL_XY_TOLERANCE:
                 self.get_logger().info(
