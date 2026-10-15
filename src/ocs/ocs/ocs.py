@@ -9,6 +9,8 @@ from paho.mqtt.enums import CallbackAPIVersion
 from proto import (
     FlightPhase,
     Heartbeat,
+    LatLng,
+    PipelineSurveyReport,
     RobotState,
     RunDeclaration,
     RxCommand,
@@ -34,6 +36,12 @@ class OCS(Node):
         )
 
         self.create_subscription(RosHeartbeat, "/heartbeats", self.on_heartbeat, 10)
+        self.create_subscription(
+            PipelineSurveyReport,
+            "/pipeline_survey_report_received",
+            self.on_pipeline_survey_report,
+            10,
+        )
 
         self.acoustic_frequency_config_publisher = self.create_publisher(
             AcousticPingerConfig,
@@ -153,14 +161,32 @@ class OCS(Node):
                 flight_phase=FlightPhase.FLIGHT_PHASE_GROUNDED,
             )
 
-    # todo - implement heartbeats on boat and sub
-    # sub heartbeats through acoustic modem
     def on_heartbeat(self, msg):
         self.rx_heartbeat(
             vehicle_id=msg.vehicle_type,
             state=RobotState[f"STATE_{msg.state}"],
             current_task=RxTask[f"TASK_{msg.task}"],
             vehicle_type=VehicleType[f"TYPE_{msg.vehicle_type}"],
+        )
+
+    def on_pipeline_survey_report(self, msg):
+        rep = RxReport(
+            team_id=self.get_parameter("team_id").get_parameter_value().string_value,
+            vehicle_id="USV",
+            seq=self.rx_report_seqs["USV"],
+            pipeline_survey=PipelineSurveyReport(
+                active_buoy_position=LatLng(
+                    latitude=msg.active_buoy_position.y,
+                    longitude=msg.active_buoy_position.x,
+                ),
+                segments=[s.status for s in msg.segments],
+            ),
+        )
+        rep.sent_at.GetCurrentTime()
+        self.rx_report_seqs["USV"] += 1
+        self.client.publish(
+            "robocommand/robotx/USV/report",
+            rep.SerializeToString(),
         )
 
 
