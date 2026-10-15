@@ -44,7 +44,7 @@ class TrajectoryFollower(Node):
     # ------------------------------------------------------------------ #
     #  Tunable parameters
     # ------------------------------------------------------------------ #
-    GOAL_XY_TOLERANCE = 0.15  # metres  consider a waypoint reached
+    GOAL_XY_TOLERANCE = 0.5  # metres  consider a waypoint reached
     GOAL_YAW_TOLERANCE = 0.15  # radians  consider heading aligned
     PUBLISH_RATE_HZ = 10.0  # how often we re-publish the current goal
 
@@ -64,6 +64,11 @@ class TrajectoryFollower(Node):
         # Phase per waypoint: "rotate" → face the next waypoint first,
         #                     "drive"  → move to the waypoint
         self._phase: str = "idle"  # "idle" | "rotate" | "drive"
+
+        # Heading to finish on (None: any), and the one held on the final
+        # waypoint (None: not holding)
+        self._final_yaw: float | None = None
+        self._hold_yaw: float | None = None
 
         # Latest odometry in the odom frame (used for progress checks)
         self._odom_local: Odometry | None = None
@@ -109,9 +114,12 @@ class TrajectoryFollower(Node):
     # ================================================================== #
 
     def _trajectory_callback(self, msg: Path) -> None:
-        """Queue incoming paths; never discard a path that is in progress."""
+        """A new path replaces the current one: the planner only republishes
+        when the route has changed, so the old one is stale."""
         with self._lock:
+            self._path_queue.clear()
             self._path_queue.append(deepcopy(msg))
+            self._phase = "idle"
             self.get_logger().info(
                 f"Received path with {len(msg.poses)} poses. "
                 f"Queue depth: {len(self._path_queue)}",
@@ -143,7 +151,7 @@ class TrajectoryFollower(Node):
             └─ heading aligned   → drive
           drive
             └─ position reached  → next waypoint → rotate
-                                 → no more waypoints → next queued path / idle
+                                 → final waypoint    → hold station on it
         """
         # ---- Nothing to do -------------------------------------------- #
         if self._phase == "idle":
@@ -169,6 +177,7 @@ class TrajectoryFollower(Node):
         # ---- Desired heading toward the current waypoint -------------- #
         dx = target.position.x - robot_x
         dy = target.position.y - robot_y
+        dist = math.hypot(dx, dy)
         desired_yaw = math.atan2(dy, dx)
 
         # ---- ROTATE phase --------------------------------------------- #
@@ -192,9 +201,29 @@ class TrajectoryFollower(Node):
 
         # ---- DRIVE phase ---------------------------------------------- #
         if self._phase == "drive":
-            dist = math.hypot(dx, dy)
+            final = self._waypoint_index == len(self._waypoints) - 1
 
-            # Publish drive goal with orientation already facing the target
+            # The last waypoint is held, not finished. The latch has room to
+            # drift before it lets go, or noise at its edge hands the boat
+            # straight back to chasing the bearing.
+            holding = self._hold_yaw is not None
+            if final and dist <= self.GOAL_XY_TOLERANCE * (2.0 if holding else 1.0):
+                if not holding:
+                    self._hold_yaw = (
+                        self._final_yaw if self._final_yaw is not None else robot_yaw
+                    )
+                    self.get_logger().info("Holding station on the final waypoint.")
+                desired_yaw = self._hold_yaw
+            else:
+                self._hold_yaw = None
+                # Aim whichever end is nearer: past the point the stern faces
+                # it and the boat backs up instead of turning round, which is
+                # what made it orbit the waypoint.
+                desired_yaw = robot_yaw + math.remainder(
+                    desired_yaw - robot_yaw,
+                    math.pi,
+                )
+
             drive_goal = Pose()
             drive_goal.position.x = target.position.x
             drive_goal.position.y = target.position.y
@@ -202,18 +231,13 @@ class TrajectoryFollower(Node):
             drive_goal.orientation = quaternion_from_yaw(desired_yaw)
             self._goal_pub.publish(drive_goal)
 
-            if dist <= self.GOAL_XY_TOLERANCE:
+            if not final and dist <= self.GOAL_XY_TOLERANCE:
                 self.get_logger().info(
                     f"Reached waypoint {self._waypoint_index + 1}/"
                     f"{len(self._waypoints)}.",
                 )
                 self._waypoint_index += 1
-
-                if self._waypoint_index >= len(self._waypoints):
-                    self._finish_path()
-                else:
-                    # Begin rotation toward the next waypoint
-                    self._phase = "rotate"
+                self._phase = "rotate"
 
     # ================================================================== #
     #  Helpers
@@ -225,6 +249,13 @@ class TrajectoryFollower(Node):
 
         self._waypoints = [deepcopy(ps.pose) for ps in path.poses if path.poses]
         self._waypoint_index = 0
+
+        # Only the last pose's orientation means anything; a zero quaternion
+        # asks for no particular heading.
+        q = path.poses[-1].pose.orientation if path.poses else Quaternion()
+        has_heading = math.hypot(q.x, q.y, q.z, q.w) > 1e-6
+        self._final_yaw = yaw_from_quaternion(q) if has_heading else None
+        self._hold_yaw = None
 
         if not self._waypoints:
             self.get_logger().warn("Received empty path — skipping.")
