@@ -218,7 +218,7 @@ else
 		torch torchvision
 fi
 
-sudo pip3 install --ignore-installed typing_extensions # preinstalled
+sudo pip3 install --ignore-installed packaging typing_extensions # preinstalled
 sudo pip3 install -r requirements.txt
 
 cat <<EOF
@@ -318,13 +318,23 @@ mil_user_setup_init_colcon() {
 
 # llvm stuff
 llvm() {
-	wget https://apt.llvm.org/llvm.sh
-	chmod +x llvm.sh
-	sudo ./llvm.sh 20
-	sudo apt install -y \
+	# kisak-mesa has shipped its own llvm 20 builds, which outrank apt.llvm.org's
+	# and break clang's exact libllvm dependency when the two get mixed. Prefer
+	# apt.llvm.org and let apt swap out any kisak builds already installed.
+	sudo tee /etc/apt/preferences.d/apt-llvm-org <<EOF >/dev/null
+Package: *
+Pin: origin apt.llvm.org
+Pin-Priority: 1001
+EOF
+	sudo wget -qO /etc/apt/trusted.gpg.d/apt.llvm.org.asc https://apt.llvm.org/llvm-snapshot.gpg.key
+	sudo add-apt-repository -y "deb https://apt.llvm.org/$CODENAME/ llvm-toolchain-$CODENAME-20 main"
+	sudo apt install -y --allow-downgrades \
+		clang-20 \
+		clangd-20 \
+		lld-20 \
+		lldb-20 \
 		clang-format-20 \
 		clang-tidy-20
-	rm llvm.sh
 }
 
 hadolint() {
