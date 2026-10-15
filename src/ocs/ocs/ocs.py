@@ -1,7 +1,9 @@
 import http.server
+import json
 import os
 import socketserver
 from collections import defaultdict
+from functools import partial
 from pathlib import Path
 
 import paho.mqtt.client as mqtt
@@ -32,8 +34,22 @@ DASHBOARD_DIR = Path(__file__).parent / "dashboard" / "dist"
 
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, status_handler, *args, **kwargs):
+        self.status_handler = status_handler
         super().__init__(*args, directory=DASHBOARD_DIR, **kwargs)
+
+    def do_GET(self):
+        if self.path.startswith("/api/status"):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+
+            status = self.status_handler()
+            status_json = json.dumps(status)
+
+            self.wfile.write(str.encode(status_json))
+        else:
+            super().do_GET()
 
 
 class OCS(Node):
@@ -187,8 +203,12 @@ class OCS(Node):
 
         port = self.get_parameter("dashboard_port").get_parameter_value().integer_value
 
-        with socketserver.TCPServer(("", port), DashboardHandler) as httpd:
+        handler_class = partial(DashboardHandler, self.get_status)
+        with socketserver.TCPServer(("", port), handler_class) as httpd:
             httpd.serve_forever()
+
+    def get_status(self):
+        return {"robocommand": True}
 
     def on_heartbeat(self, msg):
         self.rx_heartbeat(
