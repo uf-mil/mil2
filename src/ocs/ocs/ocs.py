@@ -136,7 +136,12 @@ class OCS(Node):
 
     def on_course(self, _client, _, msg):
         course = RxCourse()
-        course.ParseFromString(msg.payload)
+
+        try:
+            course.ParseFromString(msg.payload)
+        except Exception:
+            print("failed to parse command protobuf")
+            return
 
         config = AcousticPingerConfig()
         config.frequency = course.pinger_freq_hz
@@ -157,7 +162,12 @@ class OCS(Node):
 
     def on_command(self, _client, _, msg):
         command = RxCommand()
-        command.ParseFromString(msg.payload)
+
+        try:
+            command.ParseFromString(msg.payload)
+        except Exception:
+            print("failed to parse command payload")
+            return
 
         if command.run_start is not None:
             if command.run_start.declaration_seq != self.rx_run_declaration_seq:
