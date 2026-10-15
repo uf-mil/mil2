@@ -318,6 +318,13 @@ mil_user_setup_init_colcon() {
 
 # llvm stuff
 llvm() {
+	# kisak-mesa ships a libllvm20 that outranks apt.llvm.org's, but clang-20
+	# needs the exact libllvm20 from apt.llvm.org
+	sudo tee /etc/apt/preferences.d/apt-llvm-org <<EOF >/dev/null
+Package: *
+Pin: origin apt.llvm.org
+Pin-Priority: 1001
+EOF
 	wget https://apt.llvm.org/llvm.sh
 	chmod +x llvm.sh
 	sudo ./llvm.sh 20
