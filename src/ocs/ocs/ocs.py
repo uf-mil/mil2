@@ -208,7 +208,7 @@ class OCS(Node):
             httpd.serve_forever()
 
     def get_status(self):
-        return {"robocommand": True}
+        return {"robocommand": self.client.is_connected()}
 
     def on_heartbeat(self, msg):
         self.rx_heartbeat(
