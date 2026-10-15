@@ -11,11 +11,16 @@ def default_backend():
     return cv2.CAP_ANY
 
 
+def parse_source(value):
+    # "2" -> index 2, anything else is a device path like /dev/v4l/by-id/...
+    return int(value) if str(value).isdigit() else value
+
+
 class Camera:
     # set initial camera settings for unwarp.
     def __init__(
         self,
-        index=0,
+        source=0,
         width=1920,
         height=1080,
         fps=30,
@@ -24,9 +29,9 @@ class Camera:
         self.width = width
         self.height = height
 
-        self.cap = cv2.VideoCapture(index, backend)
+        self.cap = cv2.VideoCapture(source, backend)
         if not self.cap.isOpened():
-            raise RuntimeError(f"unable to open camera at index {index}")
+            raise RuntimeError(f"unable to open camera {source}")
 
         mjpg = cv2.VideoWriter_fourcc(*"MJPG")
         linux = sys.platform.startswith("linux")
@@ -58,3 +63,22 @@ class Camera:
 
     def release(self):
         self.cap.release()
+
+
+if __name__ == "__main__":
+    # raw feed, no detection: python3 camera.py [index or device path]
+    from config import CAMERA_INDEX
+
+    cam = Camera(parse_source(sys.argv[1]) if len(sys.argv) > 1 else CAMERA_INDEX)
+    try:
+        while True:
+            ret, frame = cam.read()
+            if not ret:
+                print("can't receive frame (stream end?).")
+                break
+            cv2.imshow("camera", frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+    finally:
+        cam.release()
+        cv2.destroyAllWindows()

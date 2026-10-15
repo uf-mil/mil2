@@ -1,5 +1,7 @@
+import sys
+
 import cv2
-from camera import Camera
+from camera import Camera, parse_source
 from config import CAMERA_INDEX
 from detection import Detector
 from localization import Localizer
@@ -20,7 +22,8 @@ def print_estimates(tracks):
 
 
 def main():
-    cam = Camera(index=CAMERA_INDEX, width=1920, height=1080)
+    source = parse_source(sys.argv[1]) if len(sys.argv) > 1 else CAMERA_INDEX
+    cam = Camera(source, width=1920, height=1080)
     undistorter = Undistorter("camera_params.json")
     detector = Detector("models/best.pt")
     tracker = Tracker(detector.model)
