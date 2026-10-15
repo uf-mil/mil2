@@ -218,7 +218,7 @@ else
 		torch torchvision
 fi
 
-sudo pip3 install --ignore-installed typing_extensions # preinstalled
+sudo pip3 install --ignore-installed packaging typing_extensions # preinstalled
 sudo pip3 install -r requirements.txt
 
 cat <<EOF
