@@ -1,19 +1,48 @@
+import sys
+
 import cv2
+
+
+def default_backend():
+    if sys.platform.startswith("win"):
+        return cv2.CAP_MSMF
+    if sys.platform.startswith("linux"):
+        return cv2.CAP_V4L2
+    return cv2.CAP_ANY
+
+
+def parse_source(value):
+    # "2" -> index 2, anything else is a device path like /dev/v4l/by-id/...
+    return int(value) if str(value).isdigit() else value
 
 
 class Camera:
     # set initial camera settings for unwarp.
-    def __init__(self, index=0, width=1920, height=1080, fsp=30):
+    def __init__(
+        self,
+        source=0,
+        width=1920,
+        height=1080,
+        fps=30,
+        backend=default_backend(),
+    ):
         self.width = width
         self.height = height
 
-        self.cap = cv2.VideoCapture(index)
+        self.cap = cv2.VideoCapture(source, backend)
         if not self.cap.isOpened():
-            raise RuntimeError(f"unable to open camera at index {index}")
+            raise RuntimeError(f"unable to open camera {source}")
 
+        mjpg = cv2.VideoWriter_fourcc(*"MJPG")
+        linux = sys.platform.startswith("linux")
+        if linux:
+            self.cap.set(cv2.CAP_PROP_FOURCC, mjpg)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
+        if not linux:
+            self.cap.set(cv2.CAP_PROP_FOURCC, mjpg)
+        self.cap.set(cv2.CAP_PROP_FPS, fps)
+
         self._check_set()
 
     def _check_set(self):
@@ -34,3 +63,22 @@ class Camera:
 
     def release(self):
         self.cap.release()
+
+
+if __name__ == "__main__":
+    # raw feed, no detection: python3 camera.py [index or device path]
+    from config import CAMERA_INDEX
+
+    cam = Camera(parse_source(sys.argv[1]) if len(sys.argv) > 1 else CAMERA_INDEX)
+    try:
+        while True:
+            ret, frame = cam.read()
+            if not ret:
+                print("can't receive frame (stream end?).")
+                break
+            cv2.imshow("camera", frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+    finally:
+        cam.release()
+        cv2.destroyAllWindows()
