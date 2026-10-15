@@ -1,12 +1,18 @@
+import http.server
+import os
+import socketserver
 from collections import defaultdict
+from pathlib import Path
 
 import paho.mqtt.client as mqtt
-import pymavlink.mavutil
 import rclpy
 from mil_msgs.msg import AcousticPingerConfig
 from mil_msgs.msg import Heartbeat as RosHeartbeat
+from mil_msgs.msg import PipelineSurveyReport as RosPipelineSurveyReport
 from paho.mqtt.enums import CallbackAPIVersion
-from proto import (
+from rclpy.node import Node
+
+from ocs.proto import (
     FlightPhase,
     Heartbeat,
     LatLng,
@@ -21,7 +27,13 @@ from proto import (
     TaskTier,
     VehicleType,
 )
-from rclpy.node import Node
+
+DASHBOARD_DIR = Path(__file__).parent / "dashboard" / "dist"
+
+
+class DashboardHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=DASHBOARD_DIR, **kwargs)
 
 
 class OCS(Node):
@@ -34,10 +46,11 @@ class OCS(Node):
             "mavlink_port",
             "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_BG00HS6A-if00-port0",
         )
+        self.declare_parameter("dashboard_port", 3000)
 
         self.create_subscription(RosHeartbeat, "/heartbeats", self.on_heartbeat, 10)
         self.create_subscription(
-            PipelineSurveyReport,
+            RosPipelineSurveyReport,
             "/pipeline_survey_report_received",
             self.on_pipeline_survey_report,
             10,
@@ -56,23 +69,25 @@ class OCS(Node):
             f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/command",
         )
 
-        self.client.message_callback.add("robocommand/robotx/course", self.on_course)
-        self.client.message_callback.add(
+        self.client.message_callback_add("robocommand/robotx/course", self.on_course)
+        self.client.message_callback_add(
             f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/command",
             self.on_command,
         )
 
-        self.client.connect(
-            self.get_parameter("host").get_parameter_value().string_value,
-        )
-        self.client.loop_start()
+        # self.client.connect(
+        #     self.get_parameter("host").get_parameter_value().string_value,
+        # )
+        # self.client.loop_start()
 
-        self.mavconn = pymavlink.mavutil.mavlink_connection(
-            self.get_parameter("mavlink_port").get_parameter_value().string_value,
-            baud=57600,
-        )
+        # self.mavconn = pymavlink.mavutil.mavlink_connection(
+        #     self.get_parameter("mavlink_port").get_parameter_value().string_value,
+        #     baud=57600,
+        # )
 
         self.rx_report_seqs = {}
+
+        self.start_dashboard()
 
     def rx_run_declaration(self, **kwargs):
         req = RxRequest(
@@ -160,6 +175,20 @@ class OCS(Node):
                 vehicle_type=VehicleType.TYPE_UAV,
                 flight_phase=FlightPhase.FLIGHT_PHASE_GROUNDED,
             )
+
+    def start_dashboard(self):
+        if not os.path.exists(DASHBOARD_DIR):
+            print(
+                f"Error: Directory '{DASHBOARD_DIR}' not found. Run 'npm run build' first.",
+            )
+            exit(1)
+
+        socketserver.TCPServer.allow_reuse_address = True
+
+        port = self.get_parameter("dashboard_port").get_parameter_value().integer_value
+
+        with socketserver.TCPServer(("", port), DashboardHandler) as httpd:
+            httpd.serve_forever()
 
     def on_heartbeat(self, msg):
         self.rx_heartbeat(
