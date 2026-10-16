@@ -28,7 +28,7 @@ planner:
     # cluster_min_points, so anything beyond that would be penalised for being
     # invisible and dropped while still real. Raise it only alongside the
     # clustering thresholds. 0.0 never forgets anything.
-    verify_range: 3.0  # m
+    verify_range: 1.0  # m
 
     # Frames an entry may go unseen, while close enough to be seen, before it
     # is dropped. 1.5 s at 10 Hz.
@@ -45,7 +45,7 @@ planner:
 
     # ||| Route planning |||
     # Added to every obstacle's radius
-    inflation: 2.0 # m
+    inflation: 1.0 # m
 
     # Candidate corners sampled around each obstacle
     corners_per_obstacle: 8

@@ -1,7 +1,7 @@
 # how to send the emergency coords
 """
 ros2 topic pub --once /latlon_goal/coordinate geographic_msgs/msg/GeoPose \
-  "{pose: {position: {latitude: 29.6481, longitude: -82.3438, altitude: 0.0}}}"
+  "{position: {latitude: 29.6481, longitude: -82.3438, altitude: 0.0}}"
 """
 # your coords will vary — get them from the map frame like so:
 """
@@ -39,6 +39,7 @@ class LatLonGoalNode(Node):
     IDLE = "IDLE"
     NAVIGATING = "NAVIGATING"
     HOLDING = "HOLDING"
+    RETURNING = "RETURNING"
 
     ARRIVAL_THRESHOLD = 0.7  # metres (euclidean)
     DRIFT_THRESHOLD = 0.7    # metres — re-issue goal if drift exceeds this
@@ -50,11 +51,13 @@ class LatLonGoalNode(Node):
         self._state_lock = threading.Lock()
 
         self._map_goal_pose: PoseStamped | None = None
-        self._map_goal_pose_lock = threading.Lock()  # FIX #3
+        self._map_goal_pose_lock = threading.Lock()
 
-        # FIX #2 — move class-level attributes into __init__
         self._last_published_odom_goal: PoseStamped | None = None
         self._latest_global_odom: Odometry | None = None
+
+        # Snapshot of where the boat was when the emergency goal was first received
+        self._return_pose: PoseStamped | None = None
 
         cb = ReentrantCallbackGroup()
 
@@ -70,7 +73,6 @@ class LatLonGoalNode(Node):
             callback_group=cb,
         )
 
-        # FIX #5 — actually subscribe to the emergency coord topic
         self.create_subscription(
             GeoPose,
             "latlon_goal/coordinate",
@@ -97,7 +99,7 @@ class LatLonGoalNode(Node):
         self.get_logger().info("LatLonGoalNode ready.")
 
     # ------------------------------------------------------------------
-    # Coordinate topic callback — this is the emergency entry point
+    # Coordinate topic callback — emergency entry point
     # ------------------------------------------------------------------
     def _coordinate_cb(self, msg: GeoPose):
         lat = msg.position.latitude
@@ -109,11 +111,27 @@ class LatLonGoalNode(Node):
         self.send_latlon_goal(lat, lon, alt)
 
     # ------------------------------------------------------------------
-    # Public entry point — call this to command a lat/lon goal
+    # Public entry point
     # ------------------------------------------------------------------
     def send_latlon_goal(self, lat: float, lon: float, alt: float = 0.0):
         self.get_logger().info(f"New lat/lon goal received: {lat}, {lon}, alt={alt}")
+
+        # Snapshot current position so we can return here on all-clear.
+        # Only snapshot if we're not already mid-return (avoids overwriting
+        # the original position if someone sends a second emergency goal)
         with self._state_lock:
+            if self._state not in (self.RETURNING,):
+                self._return_pose = self._current_pose()
+                if self._return_pose is not None:
+                    self.get_logger().info(
+                        f"Return pose saved: "
+                        f"({self._return_pose.pose.position.x:.2f}, "
+                        f"{self._return_pose.pose.position.y:.2f})"
+                    )
+                else:
+                    self.get_logger().warn(
+                        "No odometry available yet — return pose not saved."
+                    )
             self._state = self.NAVIGATING
 
         threading.Thread(
@@ -149,7 +167,8 @@ class LatLonGoalNode(Node):
 
         while rclpy.ok():
             with self._state_lock:
-                if self._state != self.NAVIGATING:
+                current_state = self._state
+                if current_state not in (self.NAVIGATING, self.RETURNING):
                     return
 
             current = self._current_pose()
@@ -168,14 +187,20 @@ class LatLonGoalNode(Node):
             self.get_logger().debug(f"Distance to goal: {dist:.3f} m")
 
             if dist <= self.ARRIVAL_THRESHOLD:
-                self.get_logger().info(
-                    f"Arrived at goal (dist={dist:.2f} m). Entering HOLDING state."
-                )
                 with self._state_lock:
-                    self._state = self.HOLDING
+                    if self._state == self.RETURNING:
+                        self.get_logger().info(
+                            f"Returned to original position (dist={dist:.2f} m). IDLE."
+                        )
+                        self._state = self.IDLE
+                    else:
+                        self.get_logger().info(
+                            f"Arrived at goal (dist={dist:.2f} m). Entering HOLDING state."
+                        )
+                        self._state = self.HOLDING
                 return
 
-            # FIX #3 — pass a copy so _map_to_odom doesn't mutate the stored goal
+            # Drift correction
             odom_goal = self._map_to_odom(_copy_pose_stamped(goal_map))
             if odom_goal is not None:
                 drift = self._distance_between_poses(
@@ -199,12 +224,9 @@ class LatLonGoalNode(Node):
             return None
 
         req = FromLL.Request()
-        # FIX — respect altitude
         req.ll_point = GeoPoint(latitude=lat, longitude=lon, altitude=alt)
         future = self._from_ll_client.call_async(req)
 
-        # FIX #1 — don't call rclpy.spin_until_future_complete inside a running executor.
-        # Busy-wait instead; we're already on a daemon thread.
         timeout = 10.0
         start = self.get_clock().now()
         while not future.done():
@@ -212,7 +234,7 @@ class LatLonGoalNode(Node):
             if elapsed > timeout:
                 self.get_logger().error("/fromLL timed out.")
                 return None
-            threading.Event().wait(0.05)  # yield for 50 ms
+            threading.Event().wait(0.05)
 
         if future.result() is None:
             self.get_logger().error("/fromLL returned no result.")
@@ -239,7 +261,7 @@ class LatLonGoalNode(Node):
             return None
 
     def _publish_goal_in_odom(self, map_pose: PoseStamped) -> bool:
-        odom_pose = self._map_to_odom(_copy_pose_stamped(map_pose))  # FIX #3 — copy
+        odom_pose = self._map_to_odom(_copy_pose_stamped(map_pose))
         if odom_pose is None:
             self.get_logger().error("Cannot transform goal to odom frame — aborting.")
             with self._state_lock:
@@ -263,7 +285,6 @@ class LatLonGoalNode(Node):
         odom = self._latest_global_odom
         if odom is None:
             return None
-        # FIX #4 — verify we're in map frame; warn loudly if not
         if odom.header.frame_id != "map":
             self.get_logger().warn(
                 f"Global odom frame is '{odom.header.frame_id}', expected 'map' — "
@@ -297,12 +318,29 @@ class LatLonGoalNode(Node):
     def _all_clear_cb(self, request, response):
         with self._state_lock:
             prev = self._state
-            self._state = self.IDLE
-        with self._map_goal_pose_lock:
-            self._map_goal_pose = None
-        self.get_logger().info(
-            f"All-clear received (was in {prev} state). Resuming normal ops."
-        )
+            return_pose = self._return_pose
+
+        if return_pose is not None:
+            self.get_logger().info(
+                f"All-clear received (was {prev}). Returning to "
+                f"({return_pose.pose.position.x:.2f}, {return_pose.pose.position.y:.2f})."
+            )
+            with self._map_goal_pose_lock:
+                self._map_goal_pose = _copy_pose_stamped(return_pose)
+            with self._state_lock:
+                self._state = self.RETURNING
+            self._publish_goal_in_odom(return_pose)
+            # Spin up the arrival loop for the return leg
+            threading.Thread(target=self._arrival_loop, daemon=True).start()
+        else:
+            self.get_logger().warn(
+                f"All-clear received (was {prev}) but no return pose was saved — going IDLE."
+            )
+            with self._state_lock:
+                self._state = self.IDLE
+            with self._map_goal_pose_lock:
+                self._map_goal_pose = None
+
         return response
 
 
@@ -310,7 +348,6 @@ class LatLonGoalNode(Node):
 # Utility
 # ------------------------------------------------------------------
 def _copy_pose_stamped(ps: PoseStamped) -> PoseStamped:
-    """Shallow-enough copy for our purposes — avoids mutating the stored goal."""
     copy = PoseStamped()
     copy.header.frame_id = ps.header.frame_id
     copy.header.stamp.sec = ps.header.stamp.sec
