@@ -22,7 +22,7 @@ namespace pcd
 enum class ImuFacing : int
 {
     AsLabelled = 1,
-    TurnedAround = -1,  ///< mounted 180 deg about Z from its frame_id
+    TurnedAround = -1,
 };
 
 /**
@@ -164,27 +164,21 @@ class PcdConstants
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 
     // ── Water-surface rejection ──────────────────────────────────────────────
-    /// Height above the water [m] below which a return is water.
     double min_height_above_water_{
         kDefaultMinHeightAboveWater
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
-    /// Height above the water [m] above which a return is sky or mast noise.
     double max_height_above_water_{
         kDefaultMaxHeightAboveWater
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
-    /// Lidar height above the water [m] when the hull is level.
     double lidar_height_{
         kDefaultLidarHeight
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
-    /// IMU whose orientation gives the water plane's tilt in the lidar frame.
     std::string imu_topic_{
         "/imu/data"
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
-    /// Which way the IMU faces relative to its messages' frame_id.
     ImuFacing imu_facing_{
         ImuFacing::AsLabelled
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
-    /// IMU orientation older than this [s] relative to a cloud is not trusted.
     double max_imu_age_{
         kDefaultMaxImuAge
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)

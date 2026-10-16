@@ -14,20 +14,16 @@
     # ─────────────────────────────────────────────────
     # Water-surface rejection
     # ─────────────────────────────────────────────────
-    # Measured from the water plane, not along the lidar's Z: the hull pitches
-    # underway, which lifts water a few metres ahead past any fixed
-    # sensor-frame cut. The plane's tilt comes from the IMU orientation, not
-    # from odom TF, because the EKFs run two_d_mode and report a level hull.
-    min_height_above_water: 0.15  # [m]  below this is water
-    max_height_above_water: 10.0  # [m]  above this is sky or mast noise
-    lidar_height: 0.67            # [m]  lidar above the waterline, level
+    # Heights are levelled with the IMU, since the hull pitches underway.
+    # Not via odom TF: the EKFs run two_d_mode, so odom is always level.
+    min_height_above_water: 0.15  # [m]
+    max_height_above_water: 10.0  # [m]
+    lidar_height: 0.67            # [m] above the waterline
     imu_topic: "/imu/data"
-    # 1: the IMU's axes match the frame_id its messages carry.
-    # -1: it is turned 180 deg from that frame. The real bridge stamps
-    # "base_link" though prop.urdf mounts the IMU turned around; flip this if
-    # the cut lets water through ahead only when pitched.
+    # -1 if the IMU is turned 180 deg from its messages' frame_id. The real
+    # bridge says "base_link" though prop.urdf mounts it turned; unverified.
     imu_facing: 1
-    max_imu_age: 0.5              # [s]  older orientation -> assume level
+    max_imu_age: 0.5              # [s]
 
     # ─────────────────────────────────────────────────
     # Voxel-grid down-sampling (pre-clustering)

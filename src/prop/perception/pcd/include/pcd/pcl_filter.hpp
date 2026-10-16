@@ -165,8 +165,6 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         return out;
     }
 
-    /// World up in the lidar frame, from the latest IMU orientation. Falls back
-    /// to the lidar's own Z, which is only right while the hull is level.
     tf2::Vector3 up_in_lidar(std_msgs::msg::Header const &cloud) const
     {
         tf2::Vector3 const level{ 0.0, 0.0, 1.0 };
@@ -211,7 +209,6 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         }
     }
 
-    /// Keep returns between min and max height above the water plane.
     pcl::PointCloud<pcl::PointXYZ>::Ptr apply_height_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in,
                                                             std_msgs::msg::Header const &cloud) const
     {

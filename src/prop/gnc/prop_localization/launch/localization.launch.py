@@ -56,10 +56,7 @@ def generate_launch_description():
                 executable="robot_state_publisher",
                 parameters=[{"robot_description": robot_description}],
             ),
-            # rf2o matches the shape of one scan against the next. Water moves
-            # with the boat, so with it left in, rf2o reads the boat as
-            # stopped. Keep only what sticks up out of the water, in the
-            # lidar's own frame, and out to the full range rf2o can use.
+            # Water moves with the boat, so rf2o reads the boat as stopped unless it is removed.
             Node(
                 package="pcd",
                 executable="pcl_filter_node",
