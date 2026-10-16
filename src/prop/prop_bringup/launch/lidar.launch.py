@@ -1,5 +1,6 @@
 """
-The VLP-16 on the mast: driver, point cloud, and the flattened /scan rf2o reads.
+The VLP-16 on the mast: driver and point cloud. localization.launch.py
+flattens the cloud into the scan rf2o reads.
 
     ros2 launch prop_bringup lidar.launch.py
 """
@@ -30,11 +31,6 @@ def generate_launch_description():
                 package="velodyne_pointcloud",
                 executable="velodyne_transform_node",
                 parameters=[{"model": "VLP16", "calibration": calibration}],
-                output="screen",
-            ),
-            Node(
-                package="lidar_mapper",
-                executable="lidar_mapper",
                 output="screen",
             ),
         ],

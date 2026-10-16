@@ -1,7 +1,8 @@
 """
 Localization stack: robot_state_publisher + rf2o + dual EKF + navsat_transform.
 
-  rf2o       : /scan              -> /lidar/odom (via rf2o_cov_mapper)
+  scan       : /velodyne_points   -> /lidar/above_water_scan (pcl_filter, lidar_mapper)
+  rf2o       : above-water scan   -> /lidar/odom (via rf2o_cov_mapper)
   ekf_local  : IMU + lidar odom   -> odometry/filtered/local  + TF odom -> base_link
   ekf_global : local + GPS odom   -> odometry/filtered/global + TF map  -> odom
   navsat     : GPS + IMU + global odom <-> odometry/gps
@@ -27,6 +28,7 @@ def pkg_share(pkg, *path):
 
 def generate_launch_description():
     config = pkg_share("prop_localization", "config", "killme.yaml")
+    pcd_params = pkg_share("pcd", "config", "pcd_params.yaml")
 
     with open(pkg_share("prop_localization", "urdf", "prop.urdf")) as urdf:
         robot_description = urdf.read()
@@ -54,6 +56,27 @@ def generate_launch_description():
                 executable="robot_state_publisher",
                 parameters=[{"robot_description": robot_description}],
             ),
+            # rf2o matches the shape of one scan against the next. Water moves
+            # with the boat, so with it left in, rf2o reads the boat as
+            # stopped. Keep only what sticks up out of the water, in the
+            # lidar's own frame, and out to the full range rf2o can use.
+            Node(
+                package="pcd",
+                executable="pcl_filter_node",
+                name="scan_filter",
+                parameters=[pcd_params, {"target_frame": "", "max_distance": 30.0}],
+                remappings=[("filtered_cloud", "/lidar/above_water_cloud")],
+                output="screen",
+            ),
+            Node(
+                package="lidar_mapper",
+                executable="lidar_mapper",
+                remappings=[
+                    ("velodyne_points", "/lidar/above_water_cloud"),
+                    ("scan", "/lidar/above_water_scan"),
+                ],
+                output="screen",
+            ),
             # publish_tf stays false: odom -> base_link belongs to ekf_local.
             Node(
                 package="rf2o_laser_odometry",
@@ -61,6 +84,7 @@ def generate_launch_description():
                 name="rf2o_laser_odometry",
                 parameters=[
                     {
+                        "laser_scan_topic": "/lidar/above_water_scan",
                         "publish_tf": False,
                         "odom_frame_id": "odom_rf2o",
                         "init_pose_from_topic": "",
