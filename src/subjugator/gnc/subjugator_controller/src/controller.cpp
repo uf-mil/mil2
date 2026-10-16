@@ -117,9 +117,6 @@ void PIDController::control_loop()
         Eigen::Matrix<double, 6, 1> errors = Eigen::Matrix<double, 6, 1>::Zero();
         std::array<double, 6> commands = { 0 };
 
-        // compute position error
-        errors(Eigen::seq(0, 2)) = last_goal_trajectory_(Eigen::seq(0, 2)) - last_odom_(Eigen::seq(0, 2));
-
         // compute orientation error
         Eigen::Quaterniond goal_quat = Eigen::Quaterniond(last_goal_trajectory_(6), last_goal_trajectory_(3),
                                                           last_goal_trajectory_(4), last_goal_trajectory_(5));
@@ -133,6 +130,9 @@ void PIDController::control_loop()
         double pitch = atan2(-dcm(2, 0), sqrt(dcm(2, 1) * dcm(2, 1) + dcm(2, 2) * dcm(2, 2)));
         double yaw = atan2(dcm(1, 0), dcm(0, 0));
         errors(Eigen::seq(3, 5)) = Eigen::Vector3d(roll, pitch, yaw);
+
+        // compute position error
+        errors(Eigen::seq(0, 2)) = odom_quat * (last_goal_trajectory_(Eigen::seq(0, 2)) - last_odom_(Eigen::seq(0, 2)));
 
         // apply PID control to errors
         for (size_t i = 0; i < pid_vec_.size(); i++)
@@ -173,27 +173,13 @@ void PIDController::control_loop()
 
 void PIDController::publish_commands(std::array<double, 6> const &commands)
 {
-    // Get the current orientation from odometry (should be w, x, y, z)
-    Eigen::Quaterniond odom_quat(last_odom_[6], last_odom_[3], last_odom_[4], last_odom_[5]);
-    Eigen::Matrix3d rotation_matrix = odom_quat.toRotationMatrix();
-
-    // Force and torque in odom frame
-    Eigen::Vector3d force_odom(commands[0], commands[1], commands[2]);
-    Eigen::Vector3d torque_odom(commands[3], commands[4], commands[5]);
-
-    // Rotate forces and torques to base_link frame
-    Eigen::Vector3d force_base_link =
-        rotation_matrix.transpose() * force_odom;  // use transpose to inverse the rotation
-    Eigen::Vector3d torque_base_link =
-        rotation_matrix.transpose() * torque_odom;  // TODO the transpose might be bad... not sure yet
-
     auto msg = geometry_msgs::msg::Wrench();
-    msg.force.x = force_base_link.x();
-    msg.force.y = force_base_link.y();
-    msg.force.z = force_base_link.z();
-    msg.torque.x = torque_base_link.x();
-    msg.torque.y = torque_base_link.y();
-    msg.torque.z = torque_base_link.z();
+    msg.force.x = commands[0];
+    msg.force.y = commands[1];
+    msg.force.z = commands[2];
+    msg.torque.x = commands[3];
+    msg.torque.y = commands[4];
+    msg.torque.z = commands[5];
 
     pub_cmd_wrench_->publish(msg);
 }
