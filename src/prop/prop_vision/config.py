@@ -1,0 +1,8 @@
+CAMERA_INDEX = 1
+
+OBJECT_HEIGHTS_M = {
+    "buoy": 0.3302,
+}
+
+RANGE_SCALE = 1.0
+EDGE_MARGIN_PX = 5
