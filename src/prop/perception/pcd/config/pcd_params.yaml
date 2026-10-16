@@ -12,15 +12,16 @@
     max_distance: 10.0       # [m]  reject points farther than this
 
     # ─────────────────────────────────────────────────
-    # Water-surface rejection (Z / height filter)
+    # Water-surface rejection
     # ─────────────────────────────────────────────────
-    # Points whose Z coordinate is below this threshold are assumed
-    # to be water returns and are discarded.  Set relative to the
-    # sensor frame (negative = below the lidar).
-    water_z_min: -0.6      # [m]  lower bound — reject water below this Z
-
-    # Upper Z bound (optional sky/mast crop).  Set very large to disable.
-    water_z_max: 10.0        # [m]  upper bound — reject sky noise above this Z
+    # Measured from the water plane, not along the lidar's Z: the hull pitches
+    # underway, which lifts water a few metres ahead past any fixed
+    # sensor-frame cut. The plane's tilt comes from the IMU orientation, not
+    # from odom TF, because the EKFs run two_d_mode and report a level hull.
+    min_height_above_water: 0.15  # [m]  below this is water
+    max_height_above_water: 10.0  # [m]  above this is sky or mast noise
+    lidar_height: 0.67            # [m]  lidar above the waterline, level
+    imu_topic: "/imu/data"
 
     # ─────────────────────────────────────────────────
     # Voxel-grid down-sampling (pre-clustering)

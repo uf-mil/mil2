@@ -7,18 +7,18 @@
  *
  * Filter pipeline (applied in order):
  *   1. Radial distance pass-through  — rejects points outside [min_distance, max_distance].
- *   2. Z-height pass-through         — rejects water returns below water_z_min and
- *                                      sky noise above water_z_max.
+ *   2. Height above the water plane  — rejects water and sky; the plane is
+ *                                      levelled with the IMU orientation.
  *   3. Voxel-grid down-sample        — reduces density before clustering (optional).
  *   4. TF transform                  — reprojects the filtered cloud from velodyne
  *                                      frame into target_frame (odom) so that
  *                                      downstream clustering and tracking work in
- *                                      a stable global frame.
+ *                                      a stable global frame. An empty
+ *                                      target_frame keeps the sensor frame.
  */
 
 #pragma once
 
-#include <pcl/filters/passthrough.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -31,7 +31,11 @@
 
 #include "pcd/pcd_constants.hpp"
 
+#include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2/LinearMath/Quaternion.hpp>
+#include <tf2/LinearMath/Vector3.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_ros/buffer.hpp>
 #include <tf2_ros/transform_listener.hpp>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.hpp>
@@ -58,13 +62,17 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
             input_topic_, rclcpp::SensorDataQoS(), std::bind(&PclFilter::cloud_cb, this, std::placeholders::_1));
 
+        imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(imu_topic_, rclcpp::SensorDataQoS(),
+                                                              [this](sensor_msgs::msg::Imu::ConstSharedPtr const msg)
+                                                              { imu_ = msg; });
+
         pub_ = create_publisher<sensor_msgs::msg::PointCloud2>("filtered_cloud", rclcpp::QoS(1));
 
         RCLCPP_INFO(get_logger(),
                     "pcl_filter started — topic='%s'  dist=[%.2f, %.2f] m  "
-                    "z=[%.2f, %.2f] m  voxel=%.3f m  target_frame='%s'",
-                    input_topic_.c_str(), min_distance_, max_distance_, water_z_min_, water_z_max_, voxel_leaf_size_,
-                    target_frame_.c_str());
+                    "height above water=[%.2f, %.2f] m  voxel=%.3f m  target_frame='%s'",
+                    input_topic_.c_str(), min_distance_, max_distance_, min_height_above_water_,
+                    max_height_above_water_, voxel_leaf_size_, target_frame_.c_str());
     }
 
   private:
@@ -83,7 +91,7 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         }
 
         auto filtered = apply_distance_filter(cloud);
-        filtered = apply_z_filter(filtered);
+        filtered = apply_height_filter(filtered, msg->header.frame_id);
         filtered = apply_voxel(filtered);
 
         if (filtered->empty())
@@ -98,13 +106,19 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         pcl::toROSMsg(*filtered, filtered_msg);
         filtered_msg.header = msg->header;
 
+        if (target_frame_.empty())
+        {
+            pub_->publish(filtered_msg);
+            return;
+        }
+
         // Transform from velodyne frame into target_frame (odom).
         sensor_msgs::msg::PointCloud2 out_msg;
         try
         {
             out_msg = tf_buffer_->transform(filtered_msg, target_frame_, tf2::durationFromSec(0.1));
         }
-        catch (tf2::TransformException const& ex)
+        catch (tf2::TransformException const &ex)
         {
             try
             {
@@ -112,7 +126,7 @@ class PclFilter : public rclcpp::Node, public PcdConstants
                 filtered_msg.header.stamp = rclcpp::Time(0, 0, RCL_ROS_TIME);
                 out_msg = tf_buffer_->transform(filtered_msg, target_frame_, tf2::durationFromSec(0.0));
             }
-            catch (tf2::TransformException const& ex2)
+            catch (tf2::TransformException const &ex2)
             {
                 RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
                                      "TF transform '%s'→'%s' failed: %s — dropping cloud", msg->header.frame_id.c_str(),
@@ -132,11 +146,11 @@ class PclFilter : public rclcpp::Node, public PcdConstants
      * Computes the Euclidean distance of each point from the sensor origin and
      * discards those outside [min_distance_, max_distance_].
      */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_distance_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const& in) const
+    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_distance_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in) const
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr out(new pcl::PointCloud<pcl::PointXYZ>);
         out->reserve(in->size());
-        for (auto const& pt : *in)
+        for (auto const &pt : *in)
         {
             double const r = std::sqrt(static_cast<double>(pt.x) * pt.x + static_cast<double>(pt.y) * pt.y +
                                        static_cast<double>(pt.z) * pt.z);
@@ -151,21 +165,51 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         return out;
     }
 
-    /**
-     * @brief Z-height pass-through filter (rejects water returns and sky noise).
-     *
-     * Keeps points with  water_z_min_ <= z <= water_z_max_.
-     * All points below water_z_min_ are treated as water-surface reflections
-     * and are discarded.
-     */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_z_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const& in) const
+    /// World up in the lidar frame, from the latest IMU orientation. Falls back
+    /// to the lidar's own Z, which is only right while the hull is level.
+    tf2::Vector3 up_in_lidar(std::string const &lidar_frame) const
     {
+        if (!imu_)
+        {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000, "no IMU on %s yet, assuming the hull is level",
+                                 imu_topic_.c_str());
+            return { 0.0, 0.0, 1.0 };
+        }
+        try
+        {
+            auto const mount = tf_buffer_->lookupTransform(lidar_frame, imu_->header.frame_id, tf2::TimePointZero);
+            tf2::Quaternion imu_in_world, imu_in_lidar;
+            tf2::fromMsg(imu_->orientation, imu_in_world);
+            tf2::fromMsg(mount.transform.rotation, imu_in_lidar);
+            tf2::Vector3 const up_in_imu = tf2::quatRotate(imu_in_world.inverse(), tf2::Vector3(0.0, 0.0, 1.0));
+            return tf2::quatRotate(imu_in_lidar, up_in_imu);
+        }
+        catch (tf2::TransformException const &ex)
+        {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000, "no %s -> %s, assuming the hull is level: %s",
+                                 imu_->header.frame_id.c_str(), lidar_frame.c_str(), ex.what());
+            return { 0.0, 0.0, 1.0 };
+        }
+    }
+
+    /// Keep returns between min and max height above the water plane.
+    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_height_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in,
+                                                            std::string const &lidar_frame) const
+    {
+        tf2::Vector3 const up = up_in_lidar(lidar_frame);
         pcl::PointCloud<pcl::PointXYZ>::Ptr out(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PassThrough<pcl::PointXYZ> pass;
-        pass.setInputCloud(in);
-        pass.setFilterFieldName("z");
-        pass.setFilterLimits(static_cast<float>(water_z_min_), static_cast<float>(water_z_max_));
-        pass.filter(*out);
+        out->reserve(in->size());
+        for (auto const &pt : *in)
+        {
+            double const height = pt.x * up.x() + pt.y * up.y() + pt.z * up.z() + lidar_height_;
+            if (height >= min_height_above_water_ && height <= max_height_above_water_)
+            {
+                out->push_back(pt);
+            }
+        }
+        out->width = static_cast<uint32_t>(out->size());
+        out->height = 1;
+        out->is_dense = true;
         return out;
     }
 
@@ -174,7 +218,7 @@ class PclFilter : public rclcpp::Node, public PcdConstants
      *
      * Skipped when voxel_leaf_size_ <= 0.
      */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_voxel(pcl::PointCloud<pcl::PointXYZ>::Ptr const& in) const
+    pcl::PointCloud<pcl::PointXYZ>::Ptr apply_voxel(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in) const
     {
         if (voxel_leaf_size_ <= 0.0)
         {
@@ -193,6 +237,8 @@ class PclFilter : public rclcpp::Node, public PcdConstants
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
+    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+    sensor_msgs::msg::Imu::ConstSharedPtr imu_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_;
 };
 

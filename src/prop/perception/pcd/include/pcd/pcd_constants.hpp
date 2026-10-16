@@ -40,8 +40,9 @@ class PcdConstants
     // ── Default parameter values (named constants to avoid magic numbers) ────
     static constexpr double kDefaultMinDistance = 0.5;
     static constexpr double kDefaultMaxDistance = 30.0;
-    static constexpr double kDefaultWaterZMin = -0.5;
-    static constexpr double kDefaultWaterZMax = 10.0;
+    static constexpr double kDefaultMinHeightAboveWater = 0.15;
+    static constexpr double kDefaultMaxHeightAboveWater = 10.0;
+    static constexpr double kDefaultLidarHeight = 0.67;
     static constexpr double kDefaultVoxelLeafSize = 0.1;
     static constexpr double kDefaultClusterTolerance = 0.5;
     static constexpr int kDefaultClusterMinPoints = 20;
@@ -68,8 +69,10 @@ class PcdConstants
         node->declare_parameter("max_distance", kDefaultMaxDistance);
 
         // ── Water-surface / height rejection ────────────────────────────────
-        node->declare_parameter("water_z_min", kDefaultWaterZMin);
-        node->declare_parameter("water_z_max", kDefaultWaterZMax);
+        node->declare_parameter("min_height_above_water", kDefaultMinHeightAboveWater);
+        node->declare_parameter("max_height_above_water", kDefaultMaxHeightAboveWater);
+        node->declare_parameter("lidar_height", kDefaultLidarHeight);
+        node->declare_parameter<std::string>("imu_topic", "/imu/data");
 
         // ── Voxel-grid down-sampling ─────────────────────────────────────────
         node->declare_parameter("voxel_leaf_size", kDefaultVoxelLeafSize);
@@ -109,8 +112,10 @@ class PcdConstants
         // Read them all back into member variables.
         min_distance_ = node->get_parameter("min_distance").as_double();
         max_distance_ = node->get_parameter("max_distance").as_double();
-        water_z_min_ = node->get_parameter("water_z_min").as_double();
-        water_z_max_ = node->get_parameter("water_z_max").as_double();
+        min_height_above_water_ = node->get_parameter("min_height_above_water").as_double();
+        max_height_above_water_ = node->get_parameter("max_height_above_water").as_double();
+        lidar_height_ = node->get_parameter("lidar_height").as_double();
+        imu_topic_ = node->get_parameter("imu_topic").as_string();
         voxel_leaf_size_ = node->get_parameter("voxel_leaf_size").as_double();
         cluster_tolerance_ = node->get_parameter("cluster_tolerance").as_double();
         cluster_min_points_ = static_cast<int>(node->get_parameter("cluster_min_points").as_int());
@@ -141,13 +146,21 @@ class PcdConstants
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 
     // ── Water-surface rejection ──────────────────────────────────────────────
-    /// Lower Z bound [m]. Points below this are treated as water returns.
-    double water_z_min_{
-        kDefaultWaterZMin
+    /// Height above the water [m] below which a return is water.
+    double min_height_above_water_{
+        kDefaultMinHeightAboveWater
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
-    /// Upper Z bound [m]. Points above this are treated as sky / mast noise.
-    double water_z_max_{
-        kDefaultWaterZMax
+    /// Height above the water [m] above which a return is sky or mast noise.
+    double max_height_above_water_{
+        kDefaultMaxHeightAboveWater
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    /// Lidar height above the water [m] when the hull is level.
+    double lidar_height_{
+        kDefaultLidarHeight
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    /// IMU whose orientation gives the water plane's tilt in the lidar frame.
+    std::string imu_topic_{
+        "/imu/data"
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 
     // ── Voxel-grid down-sampling ─────────────────────────────────────────────
