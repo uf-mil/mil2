@@ -33,3 +33,12 @@ def test_sideways_speed_is_measured_across_the_earlier_heading():
         odom(0, 1, math.pi / 2),
         0.5,
     ) == pytest.approx(0.0)
+
+
+def test_straight_ahead_while_turning_is_not_sideways():
+    # Turning 0.2 rad, the boat travels along the chord at the mid-step heading.
+    step = (math.cos(0.1), math.sin(0.1))
+    assert sideways_speed(odom(0, 0, 0.0), odom(*step, 0.2), 0.1) == pytest.approx(
+        0.0,
+        abs=1e-9,
+    )

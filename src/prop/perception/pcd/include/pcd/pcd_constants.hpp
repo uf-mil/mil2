@@ -10,12 +10,20 @@
 
 #pragma once
 
+#include <stdexcept>
 #include <string>
 
 #include <rclcpp/node.hpp>
 
 namespace pcd
 {
+
+/// Which way the IMU's x/y axes point relative to the frame its messages are stamped with.
+enum class ImuFacing : int
+{
+    AsLabelled = 1,
+    TurnedAround = -1,  ///< mounted 180 deg about Z from its frame_id
+};
 
 /**
  * @class PcdConstants
@@ -43,6 +51,7 @@ class PcdConstants
     static constexpr double kDefaultMinHeightAboveWater = 0.15;
     static constexpr double kDefaultMaxHeightAboveWater = 10.0;
     static constexpr double kDefaultLidarHeight = 0.67;
+    static constexpr double kDefaultMaxImuAge = 0.5;
     static constexpr double kDefaultVoxelLeafSize = 0.1;
     static constexpr double kDefaultClusterTolerance = 0.5;
     static constexpr int kDefaultClusterMinPoints = 20;
@@ -73,6 +82,8 @@ class PcdConstants
         node->declare_parameter("max_height_above_water", kDefaultMaxHeightAboveWater);
         node->declare_parameter("lidar_height", kDefaultLidarHeight);
         node->declare_parameter<std::string>("imu_topic", "/imu/data");
+        node->declare_parameter("imu_facing", static_cast<int>(ImuFacing::AsLabelled));
+        node->declare_parameter("max_imu_age", kDefaultMaxImuAge);
 
         // ── Voxel-grid down-sampling ─────────────────────────────────────────
         node->declare_parameter("voxel_leaf_size", kDefaultVoxelLeafSize);
@@ -116,6 +127,13 @@ class PcdConstants
         max_height_above_water_ = node->get_parameter("max_height_above_water").as_double();
         lidar_height_ = node->get_parameter("lidar_height").as_double();
         imu_topic_ = node->get_parameter("imu_topic").as_string();
+        auto const facing = node->get_parameter("imu_facing").as_int();
+        if (facing != 1 && facing != -1)
+        {
+            throw std::invalid_argument("imu_facing must be 1 or -1");
+        }
+        imu_facing_ = static_cast<ImuFacing>(facing);
+        max_imu_age_ = node->get_parameter("max_imu_age").as_double();
         voxel_leaf_size_ = node->get_parameter("voxel_leaf_size").as_double();
         cluster_tolerance_ = node->get_parameter("cluster_tolerance").as_double();
         cluster_min_points_ = static_cast<int>(node->get_parameter("cluster_min_points").as_int());
@@ -161,6 +179,14 @@ class PcdConstants
     /// IMU whose orientation gives the water plane's tilt in the lidar frame.
     std::string imu_topic_{
         "/imu/data"
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    /// Which way the IMU faces relative to its messages' frame_id.
+    ImuFacing imu_facing_{
+        ImuFacing::AsLabelled
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    /// IMU orientation older than this [s] relative to a cloud is not trusted.
+    double max_imu_age_{
+        kDefaultMaxImuAge
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 
     // ── Voxel-grid down-sampling ─────────────────────────────────────────────

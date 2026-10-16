@@ -91,7 +91,7 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         }
 
         auto filtered = apply_distance_filter(cloud);
-        filtered = apply_height_filter(filtered, msg->header.frame_id);
+        filtered = apply_height_filter(filtered, msg->header);
         filtered = apply_voxel(filtered);
 
         if (filtered->empty())
@@ -167,36 +167,55 @@ class PclFilter : public rclcpp::Node, public PcdConstants
 
     /// World up in the lidar frame, from the latest IMU orientation. Falls back
     /// to the lidar's own Z, which is only right while the hull is level.
-    tf2::Vector3 up_in_lidar(std::string const &lidar_frame) const
+    tf2::Vector3 up_in_lidar(std_msgs::msg::Header const &cloud) const
     {
+        tf2::Vector3 const level{ 0.0, 0.0, 1.0 };
         if (!imu_)
         {
             RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000, "no IMU on %s yet, assuming the hull is level",
                                  imu_topic_.c_str());
-            return { 0.0, 0.0, 1.0 };
+            return level;
+        }
+        double const age = std::abs((rclcpp::Time(cloud.stamp) - rclcpp::Time(imu_->header.stamp)).seconds());
+        if (age > max_imu_age_)
+        {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+                                 "IMU orientation is %.2f s from the cloud, assuming the hull is level", age);
+            return level;
+        }
+        tf2::Quaternion imu_in_world;
+        tf2::fromMsg(imu_->orientation, imu_in_world);
+        // An IMU without orientation sends zeros, which would zero every height and pass all the water.
+        if (std::abs(imu_in_world.length() - 1.0) > 0.1)
+        {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+                                 "IMU orientation is not a rotation, assuming the hull is level");
+            return level;
         }
         try
         {
-            auto const mount = tf_buffer_->lookupTransform(lidar_frame, imu_->header.frame_id, tf2::TimePointZero);
-            tf2::Quaternion imu_in_world, imu_in_lidar;
-            tf2::fromMsg(imu_->orientation, imu_in_world);
+            auto const mount = tf_buffer_->lookupTransform(cloud.frame_id, imu_->header.frame_id, tf2::TimePointZero);
+            tf2::Quaternion imu_in_lidar;
             tf2::fromMsg(mount.transform.rotation, imu_in_lidar);
-            tf2::Vector3 const up_in_imu = tf2::quatRotate(imu_in_world.inverse(), tf2::Vector3(0.0, 0.0, 1.0));
+            tf2::Vector3 up_in_imu = tf2::quatRotate(imu_in_world.normalized().inverse(), level);
+            double const facing = static_cast<double>(static_cast<int>(imu_facing_));
+            up_in_imu.setX(facing * up_in_imu.x());
+            up_in_imu.setY(facing * up_in_imu.y());
             return tf2::quatRotate(imu_in_lidar, up_in_imu);
         }
         catch (tf2::TransformException const &ex)
         {
             RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000, "no %s -> %s, assuming the hull is level: %s",
-                                 imu_->header.frame_id.c_str(), lidar_frame.c_str(), ex.what());
-            return { 0.0, 0.0, 1.0 };
+                                 imu_->header.frame_id.c_str(), cloud.frame_id.c_str(), ex.what());
+            return level;
         }
     }
 
     /// Keep returns between min and max height above the water plane.
     pcl::PointCloud<pcl::PointXYZ>::Ptr apply_height_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in,
-                                                            std::string const &lidar_frame) const
+                                                            std_msgs::msg::Header const &cloud) const
     {
-        tf2::Vector3 const up = up_in_lidar(lidar_frame);
+        tf2::Vector3 const up = up_in_lidar(cloud);
         pcl::PointCloud<pcl::PointXYZ>::Ptr out(new pcl::PointCloud<pcl::PointXYZ>);
         out->reserve(in->size());
         for (auto const &pt : *in)

@@ -19,6 +19,7 @@ import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
 
 # Indices of the diagonal in a 6x6 row-major covariance array.
@@ -47,15 +48,16 @@ def yaw_of(msg: Odometry) -> float:
 
 
 def sideways_speed(previous: Odometry, current: Odometry, dt: float) -> float:
-    """Sideways speed [m/s] between two poses, in the frame of the earlier one."""
+    """Sideways speed [m/s] between two poses, across the mid-step heading."""
     dx = current.pose.pose.position.x - previous.pose.pose.position.x
     dy = current.pose.pose.position.y - previous.pose.pose.position.y
-    yaw = yaw_of(previous)
+    turn = yaw_of(current) - yaw_of(previous)
+    yaw = yaw_of(previous) + math.atan2(math.sin(turn), math.cos(turn)) / 2
     return (-math.sin(yaw) * dx + math.cos(yaw) * dy) / dt
 
 
-def stamp_seconds(msg) -> float:
-    return msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+def stamp_ns(msg) -> int:
+    return Time.from_msg(msg.header.stamp).nanoseconds
 
 
 class Rf2oCovarianceRelay(Node):
@@ -83,6 +85,9 @@ class Rf2oCovarianceRelay(Node):
         )
         self.declare_parameter("full_trust_beams", 50)
         self.declare_parameter("min_beams", 10)
+        # The scan stops entirely when nothing is above the water, and rf2o then
+        # matches the next scan against one from however long ago.
+        self.declare_parameter("max_scan_gap", 0.5)
 
         # Optional: rewrite frame ids so rf2o's own "odom" frame does not
         # collide with the frame the EKF owns. Leave empty to pass through.
@@ -96,10 +101,11 @@ class Rf2oCovarianceRelay(Node):
         )
         self._full_trust_beams = self.get_parameter("full_trust_beams").value
         self._min_beams = self.get_parameter("min_beams").value
+        self._max_scan_gap = self.get_parameter("max_scan_gap").value
         self._frame_id = self.get_parameter("frame_id").value
         self._child_frame_id = self.get_parameter("child_frame_id").value
 
-        self._beams_by_stamp: dict[float, int] = {}
+        self._beams_by_stamp: dict[int, int] = {}
         self._previous: Odometry | None = None
 
         out_topic = self.get_parameter("output_topic").value
@@ -120,7 +126,7 @@ class Rf2oCovarianceRelay(Node):
         )
 
     def _on_scan(self, scan: LaserScan) -> None:
-        self._beams_by_stamp[stamp_seconds(scan)] = beam_count(scan)
+        self._beams_by_stamp[stamp_ns(scan)] = beam_count(scan)
         while len(self._beams_by_stamp) > SCANS_KEPT:
             del self._beams_by_stamp[next(iter(self._beams_by_stamp))]
 
@@ -128,17 +134,20 @@ class Rf2oCovarianceRelay(Node):
         previous, self._previous = self._previous, msg
         if previous is None:
             return
-        dt = stamp_seconds(msg) - stamp_seconds(previous)
+        dt = (stamp_ns(msg) - stamp_ns(previous)) * 1e-9
         # rf2o republishes its last estimate, old stamp and all, when no new scan was matched.
-        if dt <= 0.0:
+        if not 0.0 < dt <= self._max_scan_gap:
             return
-        beams = self._beams_by_stamp.get(stamp_seconds(msg))
-        if beams is None:
-            self.get_logger().warn(
+        # rf2o's estimate comes from matching this scan against the previous one,
+        # so it is only as good as the sparser of the two.
+        pair = [self._beams_by_stamp.get(stamp_ns(m)) for m in (previous, msg)]
+        if None in pair:
+            self.get_logger().warning(
                 "no scan matches this odometry stamp, dropping it",
                 throttle_duration_sec=5.0,
             )
             return
+        beams = min(pair)
         if beams < self._min_beams:
             return
 

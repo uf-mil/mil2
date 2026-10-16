@@ -64,7 +64,10 @@ def generate_launch_description():
                 package="pcd",
                 executable="pcl_filter_node",
                 name="scan_filter",
-                parameters=[pcd_params, {"target_frame": "", "max_distance": 30.0}],
+                parameters=[
+                    pcd_params,
+                    {"target_frame": "", "max_distance": 30.0, "voxel_leaf_size": 0.0},
+                ],
                 remappings=[("filtered_cloud", "/lidar/above_water_cloud")],
                 output="screen",
             ),
