@@ -127,6 +127,7 @@ jobs:
           )
           cd "$GITHUB_WORKSPACE"
           tidy "${ALL_CHANGES[@]}"
+          --extra-arg=-fno-openmp --extra-arg=-U_OPENMP
       - name: Run colcon tests
         run: |
           export HOME=$GITHUB_WORKSPACE/.. # Temporary fix for setup scripts
