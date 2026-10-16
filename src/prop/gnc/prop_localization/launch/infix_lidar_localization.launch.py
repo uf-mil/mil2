@@ -11,6 +11,7 @@ def pkg_share(package: str, *parts: str) -> str:
 
 def generate_launch_description():
     config = pkg_share("prop_localization", "config", "ekf.yaml")
+    pcd_params = pkg_share("pcd", "config", "pcd_params.yaml")
 
     with open(pkg_share("prop_localization", "urdf", "prop.urdf")) as urdf:
         robot_description = urdf.read()
@@ -25,6 +26,25 @@ def generate_launch_description():
                 executable="robot_state_publisher",
                 parameters=[{"robot_description": robot_description}],
             ),
+            # Same above-water scan as localization.launch.py: with the water
+            # left in, rf2o reads the boat as stopped.
+            Node(
+                package="pcd",
+                executable="pcl_filter_node",
+                name="scan_filter",
+                parameters=[pcd_params, {"target_frame": "", "max_distance": 30.0}],
+                remappings=[("filtered_cloud", "/lidar/above_water_cloud")],
+                output="screen",
+            ),
+            Node(
+                package="lidar_mapper",
+                executable="lidar_mapper",
+                remappings=[
+                    ("velodyne_points", "/lidar/above_water_cloud"),
+                    ("scan", "/lidar/above_water_scan"),
+                ],
+                output="screen",
+            ),
             # Lidar odometry. publish_tf must stay false -- rf2o defaults to
             # broadcasting odom -> base_link itself, which would collide with
             # ekf_local.
@@ -34,7 +54,7 @@ def generate_launch_description():
                 name="rf2o_laser_odometry",
                 parameters=[
                     {
-                        "laser_scan_topic": "/scan",
+                        "laser_scan_topic": "/lidar/above_water_scan",
                         "odom_topic": "/odom_rf2o",
                         "publish_tf": False,
                         "base_frame_id": "base_link",
