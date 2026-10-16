@@ -135,7 +135,7 @@ class Rf2oCovarianceRelay(Node):
         if previous is None:
             return
         dt = (stamp_ns(msg) - stamp_ns(previous)) * 1e-9
-        # rf2o republishes its last estimate, old stamp and all, when no new scan was matched.
+        # When a scan match fails, rf2o still publishes: the previous estimate, with its stamp.
         if not 0.0 < dt <= self._max_scan_gap:
             return
         # rf2o's estimate comes from matching this scan against the previous one,

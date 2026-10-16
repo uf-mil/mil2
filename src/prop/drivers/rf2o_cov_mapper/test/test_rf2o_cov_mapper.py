@@ -21,7 +21,7 @@ def test_beam_count_ignores_missing_and_out_of_range_returns():
     assert beam_count(scan) == 2
 
 
-def test_sideways_speed_is_measured_across_the_earlier_heading():
+def test_sideways_speed_is_measured_across_the_heading():
     # Facing +y, a step of -1 m in x is a step to the boat's left (+y in ROS).
     assert sideways_speed(
         odom(0, 0, math.pi / 2),
