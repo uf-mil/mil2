@@ -1,0 +1,187 @@
+---
+# Settings for the prop_maneuvers blocks. Every tunable lives here and nowhere
+# else; constants.hpp declares them and is the only thing that reads them.
+#
+# Angles are DEGREES in this file and are converted to radians on load.
+# They are measured from the front of the boat, with LEFT counting as positive:
+#     0    straight ahead
+#   +90    directly left
+#  +/-180  directly behind
+#   -90    directly right
+
+/**:
+  ros__parameters:
+
+    # ── Hull and sensor geometry ─────────────────────────────────────────
+    # CHANGE THESE IF THE LIDAR MOVES.
+    #
+    # Ranges the lidar cannot see through, as a flat list of from, to pairs.
+    # Two mirrored wedges on the SIDES, where the white antennas stand beside
+    # the lidar and cast a shadow across its sweep.
+    #
+    # Measured 2026-09-12: each antenna is about 3-4 in across and stands
+    # 8-10 in out from the lidar's centre, at roughly its fore-aft position.
+    # That hides about 17-29 degrees of the sweep. Written as the 30 degree
+    # span 60 to 90 on each side. Widening is the safe direction: the only
+    # consumer is a simulation mask, and a wider mask makes the sim a harder
+    # test than the boat.
+    #
+    # The boat CAN see straight out the back: everything from 90 through 180
+    # round to -90 is clear, a 180 degree window.
+    #
+    # WHO ACTUALLY READS THIS: only blind_spot_mask_node, which deletes these
+    # angles from the SIMULATED scan so the sim resembles the real boat. No
+    # maneuver consults them when deciding anything -- the reverse's
+    # blindness guard only notices that nothing came back, not that it could
+    # never have seen. If obstacle handling ever needs to tell "I cannot see
+    # there" from "I see nothing there", this is the setting it should read.
+    #
+    # NOTE: where the lidar is physically bolted is deliberately NOT here. It
+    # lives in prop_localization/urdf/prop.urdf and reaches this code through
+    # the position chain at runtime, so a physical move is corrected in one
+    # place only.
+    #
+    # How far the hull reaches from base_link, measured on the boat
+    # 2026-09-08 from the lidar's edge and converted to its centre. The lidar
+    # sits directly above base_link, so these are base_link-relative.
+    #
+    #   edge -> front of boat        27 1/2 in   -> centre 0.760 m
+    #   edge -> side                 15    in    -> centre 0.443 m
+    #   back of lidar -> propellers  12    in    -> centre 0.367 m
+    #
+    # CAVEAT on hull_behind: 0.367 m is to the PROPELLERS, and the pontoons
+    # extend further back. When reversing the rearmost point is what strikes
+    # something, so this is optimistic until the pontoon tails are measured.
+    hull_half_width: 0.443  # m, base_link to the side of the hull
+    hull_behind: 0.367      # m, base_link to the propellers -- see caveat above
+    hull_front: 0.760       # m, base_link to the front of the boat
+
+    # MIRRORS prop_controller's hold_radius: guidance stops commanding this
+    # close to its final waypoint. The approach and circle aim this far
+    # beyond the mark so guidance's parking lands on it. Keep in step with
+    # prop_controller/config/controller.yaml; nothing enforces that.
+    guidance_hold_radius: 0.10  # m
+    blind_spots_deg: [60.0, 90.0, -90.0, -60.0]
+    use_blind_spots: true
+
+    # ── Acquiring the target ─────────────────────────────────────────────
+    # Used when no rough position is given and the block must pick the blob
+    # "in front" of the boat by itself.
+    acquire_cone_deg: 45.0      # half-angle of the forward cone
+    acquire_max_range: 30.0     # m, ignore blobs further out than this
+
+    # ── Matching a blob to the remembered point ──────────────────────────
+    # Biggest thing we will believe is one object. The clustering normally
+    # reports a 0.25 m buoy as about 0.18 m, but it occasionally merges
+    # returns while the boat is moving: on 2026-09-07 it briefly reported a
+    # radius of 9.3 m, which inflated the approach's standoff from 3.2 m to
+    # 12.3 m and let it declare arrival while still 4.2 m out. Clamped rather
+    # than rejected, because a too-big object should still be avoided -- it
+    # just should not be trusted to size a standoff.
+    max_object_radius: 1.5  # m
+    # Two different jobs, deliberately two numbers.
+    #
+    # match_radius is for FINDING an object near a rough position the caller
+    # supplied. Three metres of slack is right there -- the hint is a guess.
+    match_radius: 3.0     # m, further than this from the prediction is a miss
+    # refresh_max_jump is for TRACKING one we are already locked onto. The
+    # buoys are bolted to the seabed: between refreshes a fifth of a second
+    # apart, the remembered point should move by measurement noise and the
+    # boat's own position error, nothing more. Sharing match_radius let a
+    # phantom cluster 2.63 m away capture the lock mid-manoeuvre and hand the
+    # approach a target that was not there.
+    refresh_max_jump: 1.0  # m
+    ambiguous_margin: 1.0  # m, two candidates closer than this is ambiguous
+    reading_max_age: 5.0  # s, a lock older than this counts as stale
+
+    # ── Distances ────────────────────────────────────────────────────────
+    circle_radius: 6.0       # m, how far out to circle
+    circle_legs: 4           # 4 gives the diamond; raise it if blind spots bite
+    circle_counter_clockwise: true
+    # Water left between the FRONT OF THE BOAT and the object's surface.
+    #
+    # Measured from the bow, not from base_link. base_link is the lidar, which
+    # sits 0.760 m back from the bow, so a standoff measured there would leave
+    # far less real clearance than it appears to promise: 1.0 m from base_link
+    # would put the bow 0.24 m off the buoy. Same trap as measuring obstacle
+    # clearance from the boat's centre instead of its hull.
+    approach_standoff: 1.0   # m, bow to the object's surface
+
+    # Both measured HULL to buoy SURFACE, so they mean what you would picture.
+    #
+    # min_gap and detour_clearance MUST BE KEPT EQUAL, or nearly so.
+    #
+    # min_gap is when the boat starts caring; detour_clearance is how far it
+    # then swings. If the swing is larger, the boat reacts only once it is
+    # already inside the room it needs, so the route cannot deliver the
+    # clearance asked for. 0.5 m is a placeholder for testing.
+    #
+    # NOTE on gates. The narrowest gate anywhere in the handbook is 1.83 m
+    # between buoys, which after two buoy radii and this boat leaves 0.24 m
+    # either side -- so min_gap above 0.242 m makes the boat try to detour
+    # around a gate it is meant to drive through. That 1.83 m comes from the
+    # PROOF OF READINESS course, which teams build themselves; the mission
+    # course spacing is not published anywhere (the buoy field in sections
+    # 3.3.x is described in words only). If a run ever does need threading
+    # between close buoys, drop both numbers together, and note that a gate
+    # really wants a behaviour that aims at the midpoint rather than obstacle
+    # avoidance at all.
+    min_gap: 0.5
+    detour_clearance: 0.5
+    target_blob_margin: 1.0
+
+    # ── Reversing ────────────────────────────────────────────────────────
+    # Used only to back away from something too close to swing around. The
+    # boat can see straight out the back, so this is not a blind manoeuvre --
+    # but it is capped anyway, because one recovery should not become a voyage.
+    #
+    # The reverse is a goal handed to guidance, which sets the speed (it slows
+    # as it closes on the goal), so a full-length reverse takes longer than
+    # reading_max_age. ApproachObject refreshes the lock while backing off so
+    # that does not abort the approach on the clock alone.
+    reverse_max_distance: 2.0   # m, cap on a single reverse
+    reverse_tolerance: 0.3      # m, near enough to the goal to be done
+
+    # ── Tolerances ───────────────────────────────────────────────────────
+    arrive_tolerance: 1.5       # m, close enough to count as arrived
+    # How close to the requested standoff the approach must actually get.
+    # Deliberately much tighter than arrive_tolerance: that one asks whether
+    # the boat is near the goal WAYPOINT, which at 1.5 m against a 3.0 m
+    # standoff let the approach stop half a standoff short and report success.
+    # This one is measured against the object itself, which is what the
+    # maneuver actually promises.
+    standoff_tolerance: 0.3     # m
+    # How close to a ring corner the circle must actually get. Tighter than
+    # arrive_tolerance (1.5 m, looser than guidance's hold radius), because
+    # stopping short of a corner is always inside the ring and compounds.
+    # Reachable only because the circle aims guidance_hold_radius past each
+    # corner.
+    corner_tolerance: 0.5       # m
+    # Keep above guidance's yaw_tolerance (0.09 rad, ~5.2 deg).
+    point_tolerance_deg: 6.0    # how close counts as pointing at it
+
+    # Crossing the standoff is not stopping on it, so the approach holds
+    # station and waits for the boat to settle before it reports.
+    #
+    # stop_speed must keep the remaining coast well inside
+    # standoff_tolerance. Surge drag gives a coast time constant of about
+    # 3 s (25 kg against 8 N per m/s), so a boat at speed v has about 3 * v
+    # metres left: 0.31 m at 0.1 m/s (over the whole 0.3 m tolerance), 0.09 m
+    # at 0.03. The quadratic drag term is ignored, so these slightly
+    # overestimate.
+    #
+    # This does not fix the approach resting wide of its ask. That comes
+    # from declaring at standoff_tolerance beyond the target and from the
+    # lock under-reporting the buoy radius.
+    stop_speed: 0.03            # m/s, at or below this it counts as stopped
+    # The same idea for turning (FaceObject): the boat carries a turn on past
+    # the point where the error is inside point_tolerance_deg. A turn still
+    # at this rate has little left in it. Raising this makes the maneuver
+    # declare earlier and land further off.
+    stop_turn_rate_deg: 2.0     # deg/s, at or under this the turn is over
+    # Simulated seconds. Expiring is not a failure: it reports what it
+    # achieved and says the boat had not finished moving.
+    stop_timeout: 10.0          # s
+
+    # ── Giving up ────────────────────────────────────────────────────────
+    maneuver_timeout: 300.0     # s of SIMULATED time before a maneuver fails
