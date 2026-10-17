@@ -18,6 +18,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 
 
@@ -27,6 +29,12 @@ def pkg_share(pkg, *path):
 
 def generate_launch_description():
     config = pkg_share("prop_localization", "config", "killme.yaml")
+    tf_override = PathJoinSubstitution(
+        [
+            pkg_share("prop_localization", "config"),
+            ["publish_tf_", LaunchConfiguration("publish_tf"), ".yaml"],
+        ],
+    )
 
     with open(pkg_share("prop_localization", "urdf", "prop.urdf")) as urdf:
         robot_description = urdf.read()
@@ -38,7 +46,10 @@ def generate_launch_description():
             package="robot_localization",
             executable="ekf_node",
             name=f"ekf_{kind}",
-            parameters=[config],
+            # The override is a second file, after the config, with its own
+            # ekf_local and ekf_global entries: rcl takes the last word in
+            # order, and a -p from ros_arguments lands before the files.
+            parameters=[config, tf_override],
             remappings=[("odometry/filtered", f"/odometry/filtered/{kind}")]
             + [(srv, f"~/{srv}") for srv in ("enable", "reset", "set_pose", "toggle")],
             output="screen",
@@ -46,6 +57,13 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "publish_tf",
+                default_value="true",
+                choices=["true", "false"],
+                description="Let the EKFs own map -> odom -> base_link. False "
+                "when something else does, as the sim does on ground truth.",
+            ),
             # base_link -> imu and base_link -> lidar_link, out of prop.urdf.
             # The EKFs need the first one to rotate the IMU out of its 180
             # degree mounting.

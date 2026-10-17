@@ -50,7 +50,8 @@ add_custom_target(expand_models ALL DEPENDS ${generated_models})
 install(DIRECTORY config launch models worlds DESTINATION share/${PROJECT_NAME})
 
 install(PROGRAMS scripts/sim_thrusters.py scripts/sim_sensors.py
-        DESTINATION lib/${PROJECT_NAME})
+                 scripts/sim_autostart.py scripts/sim_truth_tf.py
+                 scripts/step_response.py DESTINATION lib/${PROJECT_NAME})
 
 ament_environment_hooks(
   "${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.dsv.in")

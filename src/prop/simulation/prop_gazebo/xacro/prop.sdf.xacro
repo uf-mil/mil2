@@ -3,8 +3,8 @@
   The prop boat. Generated into models/prop/model.sdf at build time; edit this
   file, not that one.
 
-  Differential thrust from two aft thrusters, floating on the
-  water plane the world's buoyancy plugin defines at z = 0.
+  Differential thrust from two aft thrusters and sway from a bow thruster,
+  floating on the water plane the world's buoyancy plugin defines at z = 0.
 
   Sensors are mounted where prop_localization/urdf/prop.urdf says they are, and
   publish the same topics the hardware does, so nothing downstream can tell the
@@ -16,9 +16,9 @@
 
   Numbers that also live elsewhere:
     the M200's 55.21 N ahead / 27.56 N astern and 0.27305 m off the
-    centreline (a 0.5461 m span) -> max_force_pos, max_force_neg and thruster_y in
-    prop_controller/config/controller.yaml, and the same three on
-    sim_thrusters.py.
+    centreline (a 0.5461 m span), and the bow T200's 51.5 N / 40.2 N at 16 V,
+    0.4 m ahead of the centre of mass -> the thruster_mapper block in
+    prop_controller/config/controller.yaml, and the same on sim_thrusters.py.
 -->
 <sdf version="1.9" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:include filename="components/vlp16_lidar.xacro"/>
@@ -96,6 +96,21 @@
 
       <visual name="right_thruster_visual">
         <pose>-0.52 -0.27305 -0.15 0 1.5707963 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.16</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.2 0.2 0.2 1</ambient>
+          <diffuse>0.2 0.2 0.2 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- The bow thruster, across the hull just aft of the stem. -->
+      <visual name="bow_thruster_visual">
+        <pose>0.4 0 -0.15 1.5707963 0 0</pose>
         <geometry>
           <cylinder>
             <length>0.16</length>
@@ -206,8 +221,12 @@
       <thruster_y>0.27305</thruster_y>
       <max_force_pos>55.21</max_force_pos>
       <max_force_neg>27.56</max_force_neg>
+      <bow_x>0.4</bow_x>
+      <bow_force_pos>51.5</bow_force_pos>
+      <bow_force_neg>40.2</bow_force_neg>
       <topic_left>/prop/thrust/left</topic_left>
       <topic_right>/prop/thrust/right</topic_right>
+      <topic_bow>/prop/thrust/bow</topic_bow>
     </plugin>
 
     <!-- Damping against the water. Surge is cheap, sway is not: the hull slides

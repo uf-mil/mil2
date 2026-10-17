@@ -1,0 +1,8 @@
+---
+# The default: the EKFs own map -> odom -> base_link. See publish_tf_false.yaml.
+ekf_local:
+  ros__parameters:
+    publish_tf: true
+ekf_global:
+  ros__parameters:
+    publish_tf: true

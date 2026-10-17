@@ -1,11 +1,20 @@
 ---
+# Gains for the Gazebo boat (prop_gazebo), tuned against ground truth with
+# step_response.py: surge settles in 3.3 s and yaw in 3.2 s with under 3 %
+# overshoot; sway takes 7.5 s because hull drag caps it near 0.4 m/s whatever
+# the gains. Surge, sway and yaw are all a boat has, so z, roll and pitch stay
+# zero.
+#
+# The integral limits are tight on purpose. control_toolbox clamps the I term
+# at imax, and whatever winds up during a step stays until it unwinds at ki
+# per metre-second; at imax 10 N that left the boat parked 0.15 m past every
+# goal. 2 N is 0.07 m at kp 30, enough for a light breeze and no more.
 /pid_controller:
   ros__parameters:
-    # vector indices correspond to x,y,z position,
-    # then roll,pitch,yaw orientation gains
-    kp: [80.0, 30.0, 45.0, 65.0, 35.0, 30.0]
-    ki: [0.0, 0.0, 1.6, 2.5, 0.0, 1.0]
-    kd: [135.0, 0.0, 2.0, 10.0, 0.0, 5.0]
-    imax: [0.0, 0.0, 5.0, 10.0, 0.0, 6.0]
-    imin: [0.0, 0.0, -5.0, -10.0, 0.0, -6.0]
+    # x, y, z, roll, pitch, yaw
+    kp: [30.0, 40.0, 0.0, 0.0, 0.0, 25.0]
+    ki: [0.5, 0.5, 0.0, 0.0, 0.0, 0.3]
+    kd: [30.0, 10.0, 0.0, 0.0, 0.0, 3.0]
+    imax: [2.0, 2.0, 0.0, 0.0, 0.0, 0.5]
+    imin: [-2.0, -2.0, 0.0, 0.0, 0.0, -0.5]
     antiwindup: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
