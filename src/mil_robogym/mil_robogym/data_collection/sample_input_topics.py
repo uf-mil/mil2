@@ -42,20 +42,6 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
     return deduped
 
 
-def _resolve_topics_in_graph(
-    topics: list[str],
-    *,
-    timeout_s: float,
-    operation: str,
-) -> list[str]:
-    resolved_topics = resolve_topics_in_graph(
-        topics,
-        timeout_s=timeout_s,
-        operation=operation,
-    )
-    return [resolved_topic for resolved_topic, _topic_types in resolved_topics.values()]
-
-
 def resolve_topic_message_types(
     topics: list[str],
     *,
@@ -86,9 +72,15 @@ def _collect_topic_messages_once_via_subscriptions(
     topics: list[str],
     *,
     timeout_s: float,
-) -> list[Any]:
+    topic_message_types: dict[str, str] | None = None,
+) -> tuple[dict[str, Any], list[str]]:
     """
     Collect one live message per topic via temporary ROS 2 subscriptions.
+
+    Returns:
+      Tuple of:
+        - mapping from resolved topic name to parsed message payload
+        - list of topics that never produced a message before timeout
     """
     try:
         import rclpy
@@ -125,23 +117,30 @@ def _collect_topic_messages_once_via_subscriptions(
         executor.add_node(node)
 
         type_lookup: dict[str, str] = {}
-        type_deadline = time.monotonic() + timeout_s
-        while time.monotonic() < type_deadline:
-            topics_and_types = dict(node.get_topic_names_and_types())
-            for topic in unique_topics:
-                if topic in type_lookup:
-                    continue
-                topic_types = topics_and_types.get(topic)
-                if topic_types:
-                    type_lookup[topic] = topic_types[0]
+        if topic_message_types is None:
+            type_deadline = time.monotonic() + timeout_s
+            while time.monotonic() < type_deadline:
+                topics_and_types = dict(node.get_topic_names_and_types())
+                for topic in unique_topics:
+                    if topic in type_lookup:
+                        continue
+                    topic_types = topics_and_types.get(topic)
+                    if topic_types:
+                        type_lookup[topic] = topic_types[0]
 
-            if len(type_lookup) == len(unique_topics):
-                break
+                if len(type_lookup) == len(unique_topics):
+                    break
 
-            remaining = type_deadline - time.monotonic()
-            if remaining <= 0:
-                break
-            executor.spin_once(timeout_sec=min(0.1, remaining))
+                remaining = type_deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                executor.spin_once(timeout_sec=min(0.1, remaining))
+        else:
+            type_lookup = {
+                topic: topic_message_types[topic]
+                for topic in unique_topics
+                if topic_message_types.get(topic)
+            }
 
         unresolved = [topic for topic in unique_topics if topic not in type_lookup]
         if unresolved:
@@ -188,12 +187,7 @@ def _collect_topic_messages_once_via_subscriptions(
         missing_topics = [
             topic for topic in unique_topics if topic not in received_messages
         ]
-        if missing_topics:
-            raise RuntimeError(
-                f"Timed out after {timeout_s}s while collecting topic messages for: {missing_topics}",
-            )
-
-        return [received_messages[topic] for topic in ordered_topics]
+        return received_messages, missing_topics
     finally:
         if executor is not None and node is not None:
             executor.remove_node(node)
@@ -250,6 +244,34 @@ def sample_topics(
     return sampled_topics
 
 
+def collect_resolved_topic_payloads_once(
+    topics: list[str],
+    *,
+    timeout_s: float = 2.0,
+    topic_message_types: dict[str, str] | None = None,
+) -> tuple[dict[str, Any], list[str]]:
+    """
+    Collect one live ROS 2 message from each already-resolved topic.
+
+    Returns:
+      Tuple of:
+        - mapping from resolved topic name to parsed message payload
+        - list of resolved topics that remained silent during the timeout
+    """
+    if timeout_s <= 0:
+        raise ValueError("timeout_s must be positive.")
+
+    selected_topics = list(topics)
+    if not selected_topics:
+        return {}, []
+
+    return _collect_topic_messages_once_via_subscriptions(
+        selected_topics,
+        timeout_s=timeout_s,
+        topic_message_types=topic_message_types,
+    )
+
+
 def collect_topic_payloads_once(
     topics: list[str],
     *,
@@ -267,15 +289,26 @@ def collect_topic_payloads_once(
     selected_topics = list(topics)
     if not selected_topics:
         return []
-    resolved_topics = _resolve_topics_in_graph(
+    resolved_topics = resolve_topics_in_graph(
         selected_topics,
         timeout_s=timeout_s,
         operation="collect topic payloads",
     )
-    return _collect_topic_messages_once_via_subscriptions(
-        resolved_topics,
+    resolved_topic_names = [resolved_topics[topic][0] for topic in selected_topics]
+    resolved_message_types = {
+        resolved_topic: topic_types[0]
+        for resolved_topic, topic_types in resolved_topics.values()
+    }
+    received_messages, silent_topics = collect_resolved_topic_payloads_once(
+        resolved_topic_names,
         timeout_s=timeout_s,
+        topic_message_types=resolved_message_types,
     )
+    if silent_topics:
+        raise RuntimeError(
+            f"Timed out after {timeout_s}s while collecting topic messages for: {silent_topics}",
+        )
+    return [received_messages[topic] for topic in resolved_topic_names]
 
 
 def numerical_headers_from_topic_subtopics(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -39,7 +40,7 @@ class CNNEncoder(nn.Module):
         if any(value <= 0 for value in std):
             raise ValueError("std values must be positive.")
 
-        self.latent_dim = latent_dim
+        self.output_dim = latent_dim
         self.resize_shape = tuple(int(size) for size in resize_shape)
 
         self.register_buffer(
@@ -66,7 +67,9 @@ class CNNEncoder(nn.Module):
 
     def _prepare_input(self, image: torch.Tensor) -> torch.Tensor:
         if not isinstance(image, torch.Tensor):
-            raise TypeError("image must be a torch.Tensor.")
+            raise TypeError(
+                f"image must be a torch.Tensor. Instead got type: {type(image)}",
+            )
 
         if image.ndim == 3:
             if image.shape[0] not in (1, 3) and image.shape[-1] in (1, 3):
@@ -91,10 +94,11 @@ class CNNEncoder(nn.Module):
                 "image channel dimension must be 1 or 3 in CHW/BCHW layout.",
             )
 
+        target_device = self.mean.device
         if image.dtype == torch.uint8:
-            image = image.to(dtype=torch.float32) / 255.0
+            image = image.to(device=target_device, dtype=torch.float32) / 255.0
         else:
-            image = image.to(dtype=torch.float32)
+            image = image.to(device=target_device, dtype=torch.float32)
 
         image = F.interpolate(
             image,
@@ -105,7 +109,43 @@ class CNNEncoder(nn.Module):
         image = (image - self.mean) / self.std
         return image
 
-    def forward(self, image: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        image: np.ndarray | list[np.ndarray] | torch.Tensor,
+    ) -> torch.Tensor:
+        tensor_input = isinstance(image, torch.Tensor)
+        if not tensor_input:
+            image = torch.as_tensor(np.asarray(image))
+
+        if (
+            image.ndim == 3
+            and image.shape[-1] in (1, 3)
+            and image.shape[0]
+            not in (
+                1,
+                3,
+            )
+        ):
+            if tensor_input:
+                raise ValueError(
+                    "image must be in CHW/BCHW layout, not HWC/BHWC layout.",
+                )
+            image = image.permute(2, 0, 1)
+        elif (
+            image.ndim == 4
+            and image.shape[-1] in (1, 3)
+            and image.shape[1]
+            not in (
+                1,
+                3,
+            )
+        ):
+            if tensor_input:
+                raise ValueError(
+                    "image must be in CHW/BCHW layout, not HWC/BHWC layout.",
+                )
+            image = image.permute(0, 3, 1, 2)
+
         image = self._prepare_input(image)
         features = self.backbone(image)
         pooled = self.pool(features).flatten(start_dim=1)

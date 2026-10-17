@@ -47,44 +47,108 @@ class DeepSet(nn.Module):
             nn.Linear(hidden_dim, self.output_dim),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: list | torch.Tensor) -> torch.Tensor:
         """
         Forward function for deepset class.
 
-        x: tensor of a single unordered set or tensor of a batch of unordered sets
+        Supported input layouts:
+          - ``[m, n]`` tensor for a single set of ``m`` objects
+          - ``[b, m, n]`` tensor for a batch of ``b`` sets
+          - raw Python objects representing a single set or batch of sets
 
         b: batch size
         m: number of objects in each unordered set
         n: feature size of object determined by convert_object_to_tensor
         """
-        # Single input
-        if x.dim() == 2:  # [m, n]
-            if x.size(-1) != self.input_dim:
-                raise ValueError(
-                    f"Object feature dimension '{x.size(-1)}' does not match expected input_dim '{self.input_dim}'",
+        target_device = self._target_device()
+
+        if isinstance(x, torch.Tensor):
+            return self._forward_tensor_input(
+                x.to(device=target_device, dtype=torch.float32),
+            )
+
+        if len(x) == 0:
+            return self._forward_empty_input(target_device)
+
+        is_batch = isinstance(x[0], (list, tuple))
+
+        if not is_batch:
+            x_transformed = [
+                self.convert_object_to_tensor(obj).to(device=target_device) for obj in x
+            ]
+            x = torch.stack(x_transformed).to(
+                device=target_device,
+                dtype=torch.float32,
+            )
+            return self._forward_tensor_input(x)
+
+        batch_tensors = []
+
+        for subset in x:
+            if len(subset) == 0:
+                empty = torch.zeros(self.input_dim, device=target_device)
+                batch_tensors.append(empty.unsqueeze(0))
+                continue
+
+            transformed = [
+                self.convert_object_to_tensor(obj).to(device=target_device)
+                for obj in subset
+            ]
+            subset_tensor = torch.stack(transformed).to(
+                device=target_device,
+                dtype=torch.float32,
+            )
+            batch_tensors.append(subset_tensor)
+
+        max_m = max(t.size(0) for t in batch_tensors)
+
+        padded_batch = []
+        for tensor in batch_tensors:
+            if tensor.size(0) < max_m:
+                pad = torch.zeros(
+                    max_m - tensor.size(0),
+                    self.input_dim,
+                    device=target_device,
                 )
-            embedded = self.nested_network(x)  # [m, embed_dim]
-            pooled = embedded.sum(dim=0)  # [embed_dim]
-            out = self.outer_network(pooled)  # [output_dim]
+                tensor = torch.cat([tensor, pad], dim=0)
+            padded_batch.append(tensor)
+
+        x = torch.stack(padded_batch).to(device=target_device, dtype=torch.float32)
+        return self._forward_tensor_input(x)
+
+    def _forward_empty_input(self, device: torch.device) -> torch.Tensor:
+        pooled = torch.zeros(
+            self.nested_network[-2].out_features,
+            device=device,
+        )
+        out = self.outer_network(pooled)
+        return out.view(self.output_shape)
+
+    def _forward_tensor_input(self, x: torch.Tensor) -> torch.Tensor:
+        if x.ndim not in (2, 3):
+            raise ValueError("x must have shape [m, n] or [b, m, n].")
+
+        if x.size(-1) != self.input_dim:
+            raise ValueError(
+                f"Object feature dimension '{x.size(-1)}' does not match expected input_dim '{self.input_dim}'",
+            )
+
+        if x.ndim == 2:
+            embedded = self.nested_network(x)
+            pooled = embedded.sum(dim=0)
+            out = self.outer_network(pooled)
             return out.view(self.output_shape)
 
-        # Batched inputs
-        if x.dim() == 3:  # [b, m, n]
-            if x.size(-1) != self.input_dim:
-                raise ValueError(
-                    f"Object feature dimension '{x.size(-1)}' does not match expected input_dim '{self.input_dim}'",
-                )
-            embedded = self.nested_network(x)  # [b, m, embed_dim]
-            pooled = embedded.sum(dim=1)  # [b, embed_dim]
-            out = self.outer_network(pooled)  # [b, output_dim]
-            return out.view(x.size(0), *self.output_shape)
+        embedded = self.nested_network(x)
+        pooled = embedded.sum(dim=1)
+        out = self.outer_network(pooled)
+        return out.view(x.size(0), *self.output_shape)
 
-        raise ValueError("forward expects x with shape [m, n] or [b, m, n]")
+    def _target_device(self) -> torch.device:
+        return next(self.parameters()).device
 
     def convert_object_to_tensor(self, obj: any) -> torch.Tensor:
-        """
-        obj
-        """
+        """Convert a nested Python object into a flat numeric tensor."""
         flattened_values = []
         stack = [obj]
         seen_ids = set()
@@ -105,9 +169,9 @@ class DeepSet(nn.Module):
                 continue
 
             if isinstance(curr_obj, str):
-                raise TypeError(
-                    "String values are not supported by convert_object_to_tensor",
-                )
+                # Text metadata (for example YOLO class labels) is excluded from the
+                # numeric embedding space instead of failing preprocessing.
+                continue
 
             # Object id for reference objects, check if seen before to skip
             obj_id = id(curr_obj)

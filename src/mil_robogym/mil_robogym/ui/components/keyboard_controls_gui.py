@@ -86,7 +86,7 @@ class KeyboardControlsGUI:
     def __init__(
         self,
         root: tk.Widget,
-        on_close_callback: Callable[[], None],
+        on_close_callback: Callable[[], None] | None = None,
     ) -> None:
         """
         Initialize the teleoperation GUI.
@@ -95,7 +95,7 @@ class KeyboardControlsGUI:
             root: Root tkinter widget.
             on_close_callback: Function called when the window is closed.
         """
-        self.on_close_callback: Callable[[], None] = on_close_callback
+        self.on_close_callback: Callable[[], None] | None = on_close_callback
         self.node: TeleopNode = TeleopNode()
 
         self.root: tk.Toplevel = tk.Toplevel(root)
@@ -212,5 +212,6 @@ class KeyboardControlsGUI:
         """
         Close with event.
         """
-        self.on_close_callback()
+        if self.on_close_callback:
+            self.on_close_callback()
         self.hide()

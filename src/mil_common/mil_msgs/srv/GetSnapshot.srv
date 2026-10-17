@@ -1,2 +1,5 @@
+string 			demo_path # Location to store non-numerical data
 ---
-string data # JSON
+string 			data # JSON
+string[]		image_topics
+sensor_msgs/Image[]	image_data

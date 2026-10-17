@@ -7,6 +7,8 @@ from typing import Any, Mapping, cast
 import numpy as np
 import yaml
 
+from mil_robogym.vairl.observation_preprocessor import ObservationPreprocessor
+
 from .filesystem import get_training_project_dir_path
 from .types import RoboGymProjectYaml, RoboGymTrainingYaml
 
@@ -20,6 +22,7 @@ class SavedAgentHandle:
     agent_dir: Path
     config_path: Path
     model_path: Path
+    preprocessor_path: Path | None
     metrics_csv_path: Path | None
     model_file_name: str
     num_demos: int
@@ -38,20 +41,32 @@ class LoadedAgent:
     handle: SavedAgentHandle
     model: Any
     input_size: int
+    encoded_input_size: int
     output_size: int
+    preprocessor: ObservationPreprocessor | None = None
 
     def predict(
         self,
-        observation: np.ndarray | list[float],
+        observation: np.ndarray | list[object],
         *,
         deterministic: bool = True,
     ) -> np.ndarray:
-        observation_array = np.asarray(observation, dtype=np.float32)
-        expected_shape = (self.input_size,)
-        if observation_array.shape != expected_shape:
+        if self.preprocessor is not None:
+            observation_array = self.preprocessor.encode_state(observation)
+        else:
+            observation_array = np.asarray(observation, dtype=np.float32)
+            expected_shape = (self.input_size,)
+            if observation_array.shape != expected_shape:
+                raise ValueError(
+                    "Saved agent observation shape does not match the expected size: "
+                    f"{observation_array.shape} != {expected_shape}",
+                )
+
+        expected_encoded_shape = (self.encoded_input_size,)
+        if observation_array.shape != expected_encoded_shape:
             raise ValueError(
-                "Saved agent observation shape does not match the expected size: "
-                f"{observation_array.shape} != {expected_shape}",
+                "Saved agent encoded observation shape does not match the expected size: "
+                f"{observation_array.shape} != {expected_encoded_shape}",
             )
 
         action, _state = self.model.predict(
@@ -112,6 +127,20 @@ def load_saved_agent(project: Mapping[str, Any], agent_name: str) -> SavedAgentH
         value=agent_cfg_raw.get("model_file"),
     )
     _validate_relative_agent_path(model_file_name)
+    preprocessor_file_raw = agent_cfg_raw.get("preprocessor_file")
+    if preprocessor_file_raw is None:
+        preprocessor_path = None
+    else:
+        preprocessor_file_name = _coerce_non_empty_string(
+            field_name="robogym_agent.preprocessor_file",
+            value=preprocessor_file_raw,
+        )
+        _validate_relative_agent_path(preprocessor_file_name)
+        preprocessor_path = agent_dir / preprocessor_file_name
+        if not preprocessor_path.is_file():
+            raise FileNotFoundError(
+                f"Saved preprocessor file does not exist: {preprocessor_path}",
+            )
 
     checkpoint_episode_raw = agent_cfg_raw.get("checkpoint_episode")
     checkpoint_episode = (
@@ -147,6 +176,7 @@ def load_saved_agent(project: Mapping[str, Any], agent_name: str) -> SavedAgentH
         agent_dir=agent_dir,
         config_path=config_path,
         model_path=model_path,
+        preprocessor_path=preprocessor_path,
         metrics_csv_path=metrics_csv_path,
         model_file_name=model_file_name,
         num_demos=num_demos,
@@ -158,15 +188,35 @@ def load_saved_agent(project: Mapping[str, Any], agent_name: str) -> SavedAgentH
 def load_saved_agent_model(project: Mapping[str, Any], agent_name: str) -> LoadedAgent:
     """Load a saved agent and return a callable predictor wrapper."""
     handle = load_saved_agent(project, agent_name)
-    input_size = _resolve_input_size(project)
     model = _load_policy_model(handle.model_path)
+    encoded_input_size = _resolve_model_input_size(project, model)
+    preprocessor = (
+        ObservationPreprocessor.load(handle.preprocessor_path)
+        if handle.preprocessor_path is not None
+        else None
+    )
+    if (
+        preprocessor is not None
+        and preprocessor.encoded_input_size != encoded_input_size
+    ):
+        raise ValueError(
+            "Saved agent preprocessor output size does not match the policy input size: "
+            f"{preprocessor.encoded_input_size} != {encoded_input_size}",
+        )
+    input_size = (
+        preprocessor.raw_input_size
+        if preprocessor is not None
+        else _resolve_input_size(project)
+    )
     output_size = _resolve_output_size(project, model)
 
     return LoadedAgent(
         handle=handle,
         model=model,
         input_size=input_size,
+        encoded_input_size=encoded_input_size,
         output_size=output_size,
+        preprocessor=preprocessor,
     )
 
 
@@ -195,10 +245,12 @@ def _coerce_int(*, field_name: str, value: object) -> int:
         raise ValueError(f"{field_name} must be an int.") from e
 
 
-def _validate_relative_agent_path(model_file_name: str) -> None:
-    path = Path(model_file_name)
+def _validate_relative_agent_path(path_value: str) -> None:
+    path = Path(path_value)
     if path.is_absolute() or ".." in path.parts:
-        raise ValueError("robogym_agent.model_file must stay inside the agent folder.")
+        raise ValueError(
+            "Saved agent artifact paths must stay inside the agent folder.",
+        )
 
 
 def _read_yaml_mapping(config_path: Path) -> dict[str, object]:
@@ -259,6 +311,20 @@ def _resolve_output_size(project: Mapping[str, Any], model: Any) -> int:
     raise ValueError(
         "Unable to determine saved agent output size from the model or tensor_spec.",
     )
+
+
+def _resolve_model_input_size(project: Mapping[str, Any], model: Any) -> int:
+    observation_space = getattr(model, "observation_space", None)
+    observation_shape = getattr(observation_space, "shape", None)
+    if (
+        isinstance(observation_shape, tuple)
+        and len(observation_shape) == 1
+        and isinstance(observation_shape[0], (int, np.integer))
+        and int(observation_shape[0]) > 0
+    ):
+        return int(observation_shape[0])
+
+    return _resolve_input_size(project)
 
 
 def _require_tensor_spec(project: Mapping[str, Any]) -> Mapping[str, Any]:

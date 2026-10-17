@@ -6,6 +6,7 @@ import pytest
 
 from mil_robogym.data_collection.ros_graph import (
     get_topic_names,
+    query_topics_in_graph,
     resolve_topics_in_graph,
 )
 from mil_robogym.data_collection.sample_input_topics import (
@@ -117,6 +118,34 @@ def test_resolve_topics_in_graph_raises_when_topic_missing(
             timeout_s=0.1,
             operation="collect topic payloads",
         )
+
+
+def test_query_topics_in_graph_returns_partial_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    fake_query = _install_fake_query(
+        monkeypatch,
+        [
+            [("/clock", ["rosgraph_msgs/msg/Clock"])],
+            [("/ping", ["std_msgs/msg/Float64"])],
+        ],
+    )
+    monkeypatch.setattr(
+        "mil_robogym.data_collection.ros_graph.time.monotonic",
+        _SteppingClock(step_s=0.05),
+    )
+
+    resolution = query_topics_in_graph(
+        ["/ping", "/missing"],
+        timeout_s=0.2,
+    )
+
+    assert resolution.resolved_topics == {
+        "/ping": ("/ping", ["std_msgs/msg/Float64"]),
+    }
+    assert resolution.missing_topics == ["/missing"]
+    assert resolution.type_unresolved_topics == []
+    assert fake_query.spin_calls
 
 
 def test_resolve_topic_message_types_uses_first_reported_type(

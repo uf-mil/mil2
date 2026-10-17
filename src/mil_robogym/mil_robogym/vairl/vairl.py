@@ -1,5 +1,8 @@
+from collections.abc import Sequence
+
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from imitation.algorithms.adversarial.airl import AIRL
@@ -28,6 +31,7 @@ class VAIRL(AIRL):
         i_c: float = I_C,
         beta_step_size: float = BETA_STEP_SIZE,
         disc_lr: float = DISCRIMINATOR_LEARNING_RATE,
+        extra_disc_modules: Sequence[nn.Module] | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -47,8 +51,20 @@ class VAIRL(AIRL):
         self.device = getattr(gen_algo, "device", torch.device("cpu"))
         self.vairl_reward_net.to(self.device)
 
+        disc_params = []
+        seen_param_ids: set[int] = set()
+        for module in (self.vairl_reward_net, *(extra_disc_modules or ())):
+            module.to(self.device)
+            for parameter in module.parameters():
+                if not parameter.requires_grad:
+                    continue
+                if id(parameter) in seen_param_ids:
+                    continue
+                seen_param_ids.add(id(parameter))
+                disc_params.append(parameter)
+
         self._vairl_disc_opt = optim.Adam(
-            self.vairl_reward_net.parameters(),
+            disc_params,
             lr=disc_lr,
         )
 
@@ -65,17 +81,25 @@ class VAIRL(AIRL):
             )
 
         def to_torch(x):
+            if isinstance(x, torch.Tensor):
+                return x.to(device=self.device, dtype=torch.float32)
             return torch.as_tensor(x, dtype=torch.float32, device=self.device)
+
+        def to_column_torch(x):
+            tensor = to_torch(x)
+            if tensor.ndim == 1:
+                tensor = tensor.unsqueeze(1)
+            return tensor
 
         obs_e = to_torch(expert_samples["obs"])
         acts_e = to_torch(expert_samples["acts"])
         next_obs_e = to_torch(expert_samples["next_obs"])
-        dones_e = to_torch(expert_samples["dones"]).unsqueeze(1)
+        dones_e = to_column_torch(expert_samples["dones"])
 
         obs_g = to_torch(gen_samples["obs"])
         acts_g = to_torch(gen_samples["acts"])
         next_obs_g = to_torch(gen_samples["next_obs"])
-        dones_g = to_torch(gen_samples["dones"]).unsqueeze(1)
+        dones_g = to_column_torch(gen_samples["dones"])
 
         f_e, stats_e = self.vairl_reward_net.forward_with_stats(
             obs_e,

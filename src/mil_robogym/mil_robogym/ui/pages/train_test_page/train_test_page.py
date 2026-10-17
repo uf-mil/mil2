@@ -92,7 +92,7 @@ class TrainTestPage(tk.Frame):
         )
         self._load_selected_agent_metrics()
 
-        self.controller.set_context(project, preferred_agent_name)
+        self.controller.set_context(project, self.selected_agent_name)
 
     def _refresh_history(
         self,

@@ -29,14 +29,15 @@ def flatten_value(value: object, prefix: str, out: dict[str, object]) -> None:
             flatten_value(value[key], child_prefix, out)
         return
 
-    if isinstance(value, list):
-        if not value and prefix:
-            out[prefix] = []
-            return
-        for index, item in enumerate(value):
-            child_prefix = f"{prefix}[{index}]" if prefix else f"[{index}]"
-            flatten_value(item, child_prefix, out)
-        return
+    # NOTE: Treat lists as unordered sets
+    # if isinstance(value, list):
+    #    if not value and prefix:
+    #        out[prefix] = []
+    #        return
+    #    for index, item in enumerate(value):
+    #        child_prefix = f"{prefix}[{index}]" if prefix else f"[{index}]"
+    #        flatten_value(item, child_prefix, out)
+    #    return
 
     if prefix:
         out[prefix] = value
