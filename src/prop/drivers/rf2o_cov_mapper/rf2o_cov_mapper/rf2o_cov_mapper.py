@@ -3,11 +3,15 @@
 rf2o publishes all-zero covariance, which robot_localization treats as near
 perfect, and its internal estimate is far too small and ignores sparse scans.
 It also publishes vy = 0 though its pose includes sideways motion.
+
+Every rf2o reading, relayed or dropped, gets a report on trust_topic: one topic
+to record when checking the relay on the boat.
 """
 
 import math
 
 import rclpy
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -49,6 +53,24 @@ def stamp_ns(msg) -> int:
     return Time.from_msg(msg.header.stamp).nanoseconds
 
 
+def verdict(dt, beams, min_beams, full_trust_beams, max_scan_gap) -> str:
+    """Why a reading is dropped, or which trust tier it gets.
+
+    beams holds the counts of the two scans rf2o matched; None if one was not seen.
+    """
+    # When a scan match fails, rf2o still publishes: the previous estimate, with its stamp.
+    if dt <= 0.0:
+        return "dropped: repeated stamp"
+    if dt > max_scan_gap:
+        return f"dropped: {dt:.1f} s since the last reading"
+    if None in beams:
+        return "dropped: no matching scan"
+    # rf2o's estimate comes from matching two scans, so it is only as good as the sparser one.
+    if min(beams) < min_beams:
+        return "dropped: too few beams"
+    return "full trust" if min(beams) >= full_trust_beams else "low trust"
+
+
 class Rf2oCovarianceRelay(Node):
     def __init__(self) -> None:
         super().__init__("rf2o_covariance_relay")
@@ -56,6 +78,7 @@ class Rf2oCovarianceRelay(Node):
         self.declare_parameter("input_topic", "/odom_rf2o")
         self.declare_parameter("output_topic", "/lidar/odom")
         self.declare_parameter("scan_topic", "/lidar/above_water_scan")
+        self.declare_parameter("trust_topic", "/lidar/odom_trust")
 
         # Order: x, y, z, roll, pitch, yaw
         self.declare_parameter(
@@ -100,6 +123,11 @@ class Rf2oCovarianceRelay(Node):
         scan_topic = self.get_parameter("scan_topic").value
 
         self._pub = self.create_publisher(Odometry, out_topic, 10)
+        self._trust_pub = self.create_publisher(
+            DiagnosticStatus,
+            self.get_parameter("trust_topic").value,
+            10,
+        )
         self.create_subscription(
             LaserScan,
             scan_topic,
@@ -122,27 +150,26 @@ class Rf2oCovarianceRelay(Node):
         if previous is None:
             return
         dt = (stamp_ns(msg) - stamp_ns(previous)) * 1e-9
-        # When a scan match fails, rf2o still publishes: the previous estimate, with its stamp.
-        if not 0.0 < dt <= self._max_scan_gap:
-            return
-        # rf2o's estimate comes from matching this scan against the previous one,
-        # so it is only as good as the sparser of the two.
-        pair = [self._beams_by_stamp.get(stamp_ns(m)) for m in (previous, msg)]
-        if None in pair:
-            self.get_logger().warning(
-                "no scan matches this odometry stamp, dropping it",
-                throttle_duration_sec=5.0,
-            )
-            return
-        beams = min(pair)
-        if beams < self._min_beams:
+        beams = [self._beams_by_stamp.get(stamp_ns(m)) for m in (previous, msg)]
+        result = verdict(
+            dt,
+            beams,
+            self._min_beams,
+            self._full_trust_beams,
+            self._max_scan_gap,
+        )
+        if result.startswith("dropped"):
+            if result == "dropped: no matching scan":
+                self.get_logger().warning(
+                    "no scan matches this odometry stamp, dropping it",
+                    throttle_duration_sec=5.0,
+                )
+            self._report(msg, beams, result, sd=None)
             return
 
         msg.twist.twist.linear.y = sideways_speed(previous, msg, dt)
         twist_var = (
-            self._twist_var
-            if beams >= self._full_trust_beams
-            else self._sparse_twist_var
+            self._twist_var if result == "full trust" else self._sparse_twist_var
         )
         for slot, variance in zip(DIAGONAL, self._pose_var):
             msg.pose.covariance[slot] = variance
@@ -155,6 +182,30 @@ class Rf2oCovarianceRelay(Node):
             msg.child_frame_id = self._child_frame_id
 
         self._pub.publish(msg)
+        self._report(msg, beams, result, sd=math.sqrt(twist_var[0]))
+
+    def _report(self, msg: Odometry, beams, result: str, sd: float | None) -> None:
+        values = {
+            "stamp": f"{stamp_ns(msg) * 1e-9:.3f}",
+            "beams_previous": str(beams[0]),
+            "beams_current": str(beams[1]),
+            "vx": f"{msg.twist.twist.linear.x:.3f}",
+            "vy": f"{msg.twist.twist.linear.y:.3f}",
+            "wz": f"{msg.twist.twist.angular.z:.3f}",
+            "speed_sd": "none" if sd is None else f"{sd:.3f}",
+        }
+        self._trust_pub.publish(
+            DiagnosticStatus(
+                level=(
+                    DiagnosticStatus.OK
+                    if result == "full trust"
+                    else DiagnosticStatus.WARN
+                ),
+                name="rf2o relay",
+                message=result,
+                values=[KeyValue(key=k, value=v) for k, v in values.items()],
+            ),
+        )
 
 
 def main() -> None:
