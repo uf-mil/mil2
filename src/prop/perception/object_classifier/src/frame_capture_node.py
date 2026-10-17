@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # read opencv stream and publish as a ros msg
 import os
 
@@ -5,9 +6,9 @@ import rclpy
 from ament_index_python.packages import get_package_share_directory
 from camera import Camera, parse_source
 from cv_bridge import CvBridge
-from image_transport_py import ImageTransport
 from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.node import Node
+from sensor_msgs.msg import Image
 from utils import load_config
 
 
@@ -16,7 +17,9 @@ class FrameCaptureNode(Node):
         super().__init__("frame_capture_node")
 
         default_config = os.path.join(
-            get_package_share_directory("object_classifier"), "config", "cam.yaml"
+            get_package_share_directory("object_classifier"),
+            "config",
+            "cam.yaml",
         )
         self.declare_parameter("config_file", default_config)
         cfg = load_config(self.get_parameter("config_file").value)
@@ -44,11 +47,7 @@ class FrameCaptureNode(Node):
             fps=fps,
         )
 
-  
-        self.image_transport = ImageTransport(
-            "frame_capture_it", image_transport="compressed"
-        )
-        self.img_pub = self.image_transport.advertise("camera/img_raw", 10)
+        self.img_pub = self.create_publisher(Image, "image_raw", 10)
 
         self.bridge = CvBridge()
         self.timer = self.create_timer(1.0 / fps, self.publish_image)

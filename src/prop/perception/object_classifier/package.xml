@@ -12,7 +12,6 @@
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>compressed_image_transport</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
-  <exec_depend>image_transport_py</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>python3-opencv</exec_depend>
