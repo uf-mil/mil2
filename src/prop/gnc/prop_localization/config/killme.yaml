@@ -37,6 +37,8 @@ ekf_local:
     odom0_differential: false
     odom0_relative: true
     odom0_queue_size: 10
+    # Rejects rf2o readings more than 3 sigma from the EKF's estimate.
+    odom0_twist_rejection_threshold: 3.0
 
     disabled_at_startup: true
 
@@ -79,6 +81,8 @@ ekf_global:
     odom0_differential: false
     odom0_relative: true
     odom0_queue_size: 10
+    # Rejects rf2o readings more than 3 sigma from the EKF's estimate.
+    odom0_twist_rejection_threshold: 3.0
 
     # GPS odometry from navsat_transform
     odom1: "/odometry/gps"

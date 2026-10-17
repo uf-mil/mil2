@@ -10,12 +10,20 @@
 
 #pragma once
 
+#include <stdexcept>
 #include <string>
 
 #include <rclcpp/node.hpp>
 
 namespace pcd
 {
+
+/// Which way the IMU's x/y axes point relative to the frame its messages are stamped with.
+enum class ImuFacing : int
+{
+    AsLabelled = 1,
+    TurnedAround = -1,
+};
 
 /**
  * @class PcdConstants
@@ -40,8 +48,10 @@ class PcdConstants
     // ── Default parameter values (named constants to avoid magic numbers) ────
     static constexpr double kDefaultMinDistance = 0.5;
     static constexpr double kDefaultMaxDistance = 30.0;
-    static constexpr double kDefaultWaterZMin = -0.5;
-    static constexpr double kDefaultWaterZMax = 10.0;
+    static constexpr double kDefaultMinHeightAboveWater = 0.15;
+    static constexpr double kDefaultMaxHeightAboveWater = 10.0;
+    static constexpr double kDefaultLidarHeight = 0.67;
+    static constexpr double kDefaultMaxImuAge = 0.5;
     static constexpr double kDefaultVoxelLeafSize = 0.1;
     static constexpr double kDefaultClusterTolerance = 0.5;
     static constexpr int kDefaultClusterMinPoints = 20;
@@ -68,8 +78,12 @@ class PcdConstants
         node->declare_parameter("max_distance", kDefaultMaxDistance);
 
         // ── Water-surface / height rejection ────────────────────────────────
-        node->declare_parameter("water_z_min", kDefaultWaterZMin);
-        node->declare_parameter("water_z_max", kDefaultWaterZMax);
+        node->declare_parameter("min_height_above_water", kDefaultMinHeightAboveWater);
+        node->declare_parameter("max_height_above_water", kDefaultMaxHeightAboveWater);
+        node->declare_parameter("lidar_height", kDefaultLidarHeight);
+        node->declare_parameter<std::string>("imu_topic", "/imu/data");
+        node->declare_parameter("imu_facing", static_cast<int>(ImuFacing::AsLabelled));
+        node->declare_parameter("max_imu_age", kDefaultMaxImuAge);
 
         // ── Voxel-grid down-sampling ─────────────────────────────────────────
         node->declare_parameter("voxel_leaf_size", kDefaultVoxelLeafSize);
@@ -109,8 +123,17 @@ class PcdConstants
         // Read them all back into member variables.
         min_distance_ = node->get_parameter("min_distance").as_double();
         max_distance_ = node->get_parameter("max_distance").as_double();
-        water_z_min_ = node->get_parameter("water_z_min").as_double();
-        water_z_max_ = node->get_parameter("water_z_max").as_double();
+        min_height_above_water_ = node->get_parameter("min_height_above_water").as_double();
+        max_height_above_water_ = node->get_parameter("max_height_above_water").as_double();
+        lidar_height_ = node->get_parameter("lidar_height").as_double();
+        imu_topic_ = node->get_parameter("imu_topic").as_string();
+        auto const facing = node->get_parameter("imu_facing").as_int();
+        if (facing != 1 && facing != -1)
+        {
+            throw std::invalid_argument("imu_facing must be 1 or -1");
+        }
+        imu_facing_ = static_cast<ImuFacing>(facing);
+        max_imu_age_ = node->get_parameter("max_imu_age").as_double();
         voxel_leaf_size_ = node->get_parameter("voxel_leaf_size").as_double();
         cluster_tolerance_ = node->get_parameter("cluster_tolerance").as_double();
         cluster_min_points_ = static_cast<int>(node->get_parameter("cluster_min_points").as_int());
@@ -141,13 +164,23 @@ class PcdConstants
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 
     // ── Water-surface rejection ──────────────────────────────────────────────
-    /// Lower Z bound [m]. Points below this are treated as water returns.
-    double water_z_min_{
-        kDefaultWaterZMin
+    double min_height_above_water_{
+        kDefaultMinHeightAboveWater
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
-    /// Upper Z bound [m]. Points above this are treated as sky / mast noise.
-    double water_z_max_{
-        kDefaultWaterZMax
+    double max_height_above_water_{
+        kDefaultMaxHeightAboveWater
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    double lidar_height_{
+        kDefaultLidarHeight
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    std::string imu_topic_{
+        "/imu/data"
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    ImuFacing imu_facing_{
+        ImuFacing::AsLabelled
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    double max_imu_age_{
+        kDefaultMaxImuAge
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
 
     // ── Voxel-grid down-sampling ─────────────────────────────────────────────
