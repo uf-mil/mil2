@@ -51,6 +51,8 @@ class TrajectoryFollower(Node):
     def __init__(self):
         super().__init__("trajectory_follower")
 
+        self._rotate_origin: tuple[float, float] | None = None
+
         # ---- state ---------------------------------------------------- #
         self._lock = threading.Lock()
 
@@ -160,18 +162,22 @@ class TrajectoryFollower(Node):
         """
         State machine (called at PUBLISH_RATE_HZ):
 
-          idle
+        idle
             └─ new path in queue → load waypoints → rotate (face wp[0])
-          rotate
+        rotate
             └─ heading aligned   → drive
-          drive
+        drive
             └─ position reached  → next waypoint → rotate
-                                 → final waypoint    → hold station on it
+                                → final waypoint    → hold station on it
         """
         # ---- Nothing to do -------------------------------------------- #
         if self._phase == "idle":
             if not self._path_queue:
                 return
+            if self._odom_local is None:
+                return
+            robot_pose = self._odom_local.pose.pose
+            self._rotate_origin = (robot_pose.position.x, robot_pose.position.y)
             self._load_next_path()
 
         # ---- Need odometry to proceed --------------------------------- #
@@ -184,7 +190,7 @@ class TrajectoryFollower(Node):
         robot_yaw = yaw_from_quaternion(robot_pose.orientation)
 
         if self._waypoint_index >= len(self._waypoints):
-            self._finish_path()
+            self._finish_path(robot_x, robot_y)
             return
 
         target: Pose = self._waypoints[self._waypoint_index]
@@ -204,9 +210,8 @@ class TrajectoryFollower(Node):
                     f"Switching to drive phase.",
                 )
                 self._phase = "drive"
-                self._publish_goal(robot_x, robot_y, desired_yaw)
-            else:
-                self._publish_goal(robot_x, robot_y, desired_yaw)
+            ox, oy = self._rotate_origin
+            self._publish_goal(ox, oy, desired_yaw)
             return
 
         # ---- DRIVE phase ---------------------------------------------- #
@@ -218,7 +223,7 @@ class TrajectoryFollower(Node):
                 self._publish_goal(target.position.x, target.position.y, hold_yaw)
                 yaw_err = abs(angle_difference(hold_yaw, robot_yaw))
                 if yaw_err <= self.GOAL_YAW_TOLERANCE:
-                    self._finish_path()
+                    self._finish_path(robot_x, robot_y)
                 return
             else:
                 desired_yaw = robot_yaw + math.remainder(
@@ -233,6 +238,7 @@ class TrajectoryFollower(Node):
                     f"{len(self._waypoints)}.",
                 )
                 self._waypoint_index += 1
+                self._rotate_origin = (robot_x, robot_y)
                 self._phase = "rotate"
 
     # ================================================================== #
@@ -263,18 +269,17 @@ class TrajectoryFollower(Node):
         )
         self._phase = "rotate"
 
-    def _finish_path(self) -> None:
-        """Called when all waypoints in the current path have been reached."""
+    def _finish_path(self, robot_x: float, robot_y: float) -> None:
         self.get_logger().info("Path complete.")
         self._waypoints = []
         self._waypoint_index = 0
 
         if self._path_queue:
+            self._rotate_origin = (robot_x, robot_y)
             self._load_next_path()
         else:
             self._phase = "idle"
             self.get_logger().info("All paths complete. Idling.")
-
 
 # ======================================================================= #
 #  Entry point
