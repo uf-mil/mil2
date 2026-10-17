@@ -130,3 +130,15 @@ class KillReceivePacket(Packet, class_id=0x02, subclass_id=0x04, payload_format=
 
     set: bool
     status: KillStatus
+
+
+@dataclass
+class ManualReceivePacket(Packet, class_id=0x02, subclass_id=0x07, payload_format="<b"):
+    """
+    Packet sent by thrust board to indicate manual/autonomous mode
+
+    Attributes:
+        set (bool): Whether manual is set (true) or unset (false)
+    """
+
+    set: bool
