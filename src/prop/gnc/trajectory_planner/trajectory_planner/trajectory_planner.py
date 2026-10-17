@@ -68,7 +68,6 @@ class TrajectoryFollower(Node):
         # Heading to finish on (None: any), and the one held on the final
         # waypoint (None: not holding)
         self._final_yaw: float | None = None
-        self._hold_yaw: float | None = None
 
         # Latest odometry in the odom frame (used for progress checks)
         self._odom_local: Odometry | None = None
@@ -214,23 +213,14 @@ class TrajectoryFollower(Node):
         if self._phase == "drive":
             final = self._waypoint_index == len(self._waypoints) - 1
 
-            holding = self._hold_yaw is not None
-            if final and dist <= self.GOAL_XY_TOLERANCE * (2.0 if holding else 1.0):
-                if not holding:
-                    self._hold_yaw = (
-                        self._final_yaw if self._final_yaw is not None else robot_yaw
-                    )
-                    self.get_logger().info("Holding station on the final waypoint.")
-                    self._publish_goal(
-                        target.position.x,
-                        target.position.y,
-                        self._hold_yaw,
-                    )
-                else:
+            if final and dist <= self.GOAL_XY_TOLERANCE:
+                hold_yaw = self._final_yaw if self._final_yaw is not None else robot_yaw
+                self._publish_goal(target.position.x, target.position.y, hold_yaw)
+                yaw_err = abs(angle_difference(hold_yaw, robot_yaw))
+                if yaw_err <= self.GOAL_YAW_TOLERANCE:
                     self._finish_path()
                 return
             else:
-                self._hold_yaw = None
                 desired_yaw = robot_yaw + math.remainder(
                     desired_yaw - robot_yaw,
                     math.pi,
@@ -261,7 +251,6 @@ class TrajectoryFollower(Node):
         q = path.poses[-1].pose.orientation if path.poses else Quaternion()
         has_heading = math.hypot(q.x, q.y, q.z, q.w) > 1e-6
         self._final_yaw = yaw_from_quaternion(q) if has_heading else None
-        self._hold_yaw = None
 
         if not self._waypoints:
             self.get_logger().warn("Received empty path — skipping.")
