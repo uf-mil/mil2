@@ -8,8 +8,8 @@ occupancy_grid:
     size: 80.0  # m, the window's edge; it follows the boat
 
     # Closer than this is the hull and mast; farther, too sparse to trust.
-    min_range: 1.0  # m
-    max_range: 12.0  # m
+    min_range: 0.55  # m
+    max_range: 10.0  # m
 
     # Height band kept, relative to the lidar in a level frame (the IMU's
     # roll and pitch are taken out first). Below is water, above is nothing
@@ -19,7 +19,7 @@ occupancy_grid:
 
     # Evidence per frame, on a 0..100 scale: a cell that is hit gains this,
     # a cell within verify_range that is not loses this.
-    hit_gain: 25
+    hit_gain: 30
     miss_loss: 10
 
     # Within this range anything real is seen every frame, so going unseen
@@ -38,12 +38,12 @@ planner:
     # Never driven inside: half the beam (0.3 m) plus a margin, around every
     # solid cell. A 6 ft gate leaves 0.7 m a side past the buoys, so there is
     # not much room to grow this; the clearance cost below does the centring.
-    lethal_radius: 0.6  # m
+    lethal_radius: 0.54  # m
 
     # Out to this a route pays extra for passing close, so it centres itself
     # between a gate's buoys. clearance_weight is the extra per metre at the
     # margin's edge, falling to nothing at clearance.
-    clearance: 2.0  # m
+    clearance: 1.0  # m
     clearance_weight: 2.0
 
     rate: 2.0  # Hz
