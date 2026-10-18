@@ -12,7 +12,7 @@
   <depend>prop_bringup</depend>
   <depend>rf2o_cov_mapper</depend>
   <depend>rf2o_laser_odometry</depend>
-
+  <depend>yolo_ros</depend>
   <export>
     <build_type>ament_cmake</build_type>
   </export>

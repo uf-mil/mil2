@@ -25,6 +25,7 @@ def main():
     source = parse_source(sys.argv[1]) if len(sys.argv) > 1 else CAMERA_INDEX
     cam = Camera(source, width=1920, height=1080)
     undistorter = Undistorter("camera_params.json")
+    # detector = Detector("/home/prop3/buoy_buoy10-13.pt")
     detector = Detector("models/best.pt")
     tracker = Tracker(detector.model)
     localizer = Localizer()

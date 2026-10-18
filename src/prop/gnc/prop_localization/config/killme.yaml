@@ -38,7 +38,7 @@ ekf_local:
     odom0_relative: true
     odom0_queue_size: 10
 
-    disabled_at_startup: true
+    disabled_at_startup: false
 
 # ============================================================
 # GLOBAL EKF: GPS-anchored estimate  (map -> odom)
@@ -93,7 +93,7 @@ ekf_global:
     odom1_relative: false
     odom1_queue_size: 10
 
-    disabled_at_startup: true
+    disabled_at_startup: false
 
 # ============================================================
 # NAVSAT TRANSFORM: GPS fix -> odometry in map frame

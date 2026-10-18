@@ -1,4 +1,4 @@
-CAMERA_INDEX = 1
+CAMERA_INDEX = 0
 
 OBJECT_HEIGHTS_M = {
     "buoy": 0.3302,
