@@ -7,6 +7,7 @@ from functools import partial
 from pathlib import Path
 
 import paho.mqtt.client as mqtt
+import pymavlink.mavutil as mavutil
 import rclpy
 from mil_msgs.msg import AcousticPingerConfig
 from mil_msgs.msg import Heartbeat as RosHeartbeat
@@ -91,15 +92,15 @@ class OCS(Node):
             self.on_command,
         )
 
-        # self.client.connect(
-        #     self.get_parameter("host").get_parameter_value().string_value,
-        # )
-        # self.client.loop_start()
+        self.client.connect(
+            self.get_parameter("host").get_parameter_value().string_value,
+        )
+        self.client.loop_start()
 
-        # self.mavconn = pymavlink.mavutil.mavlink_connection(
-        #     self.get_parameter("mavlink_port").get_parameter_value().string_value,
-        #     baud=57600,
-        # )
+        self.mavconn = mavutil.mavlink_connection(
+            self.get_parameter("mavlink_port").get_parameter_value().string_value,
+            baud=57600,
+        )
 
         self.rx_report_seqs = {}
 
@@ -181,11 +182,36 @@ class OCS(Node):
                 # TODO send to prop?
                 pass
             elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
-                # TODO send to mav?
-                pass
+                self.mavconn.mav.command_long_send(
+                    self.mavconn.target_system,
+                    self.mavconn.target_component,
+                    mavutil.mavlink.MAV_CMD_USER_4,
+                    0,
+                    4,
+                    command.position.latitude,
+                    command.position.longitude,
+                    10,  # 10 meters above? idk
+                    0,
+                    0,
+                    0,
+                )
         elif command.readiness_confirm is not None:
-            # TODO
-            pass
+            if command.readiness_confirm.vehicle_id == "USV":
+                # TODO send to prop
+                pass
+            elif command.readiness_confirm.vehicle_id == "UAV":
+                self.mavconn.mav.command_long_send(
+                    self.mavconn.target_system,
+                    self.mavconn.target_component,
+                    mavutil.mavlink.MAV_CMD_USER_4,
+                    5,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                )
 
     def loop_mav(self):
         skip = False  # 1 Hz -> 2 Hz
