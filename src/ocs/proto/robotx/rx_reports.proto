@@ -1,0 +1,170 @@
+edition = "2024";
+
+package robocommand.robotx.v1;
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+import "robotx/rx_common.proto";
+
+/**
+ * RxReport is published by the team's Operator Control Station (OCS) to
+ * RoboCommand, on behalf of a vehicle in the team's SoS. The vehicle itself
+ * does not connect to RoboCommand — vehicle_id identifies which vehicle a
+ * report is about, not the publisher.
+ * team_id:    unique team identifier (e.g. RNRX, from Team Handbook)
+ * vehicle_id: vehicle this report is attributed to (e.g. USV1, UUV1, UAV1)
+ * seq:        monotonically increasing sequence count, scoped per vehicle
+ *             (each vehicle's reports keep their own counter; not shared
+ *             across the team, regardless of how the OCS relays them)
+ * sent_at:    timestamp of message transmission
+ * body:       one of the task report messages
+ *
+ * MQTT topic: robocommand/robotx/<team_id>/<vehicle_id>/report
+ */
+message RxReport
+{
+    string team_id = 1;
+    string vehicle_id = 2;
+    uint32 seq = 3;
+    google.protobuf.Timestamp sent_at = 4;
+
+    oneof body
+    {
+        Heartbeat heartbeat = 10;
+        SafePassageReport safe_passage = 11;             // Task 1
+        PipelineSurveyReport pipeline_survey = 12;       // Task 2
+        ResourceDeliveryRequest resource_delivery = 13;  // Task 2 Adv/Disruptive, Task 3 Adv/Disruptive
+        DockingReport docking = 14;                      // Task 3
+        FirefightingReport firefighting = 15;            // Task 3
+        IncidentAck incident_ack = 16;                   // Task 4
+        ReadinessReport readiness = 17;                  // Task 4
+    }
+}
+
+/**
+ * Periodic heartbeat from any vehicle.
+ * altitude_hae_m: altitude (height above elipsoid) in meters
+ * current_task: used to track vehicle tasking for course activation
+ * vehicle_type: class of this vehicle (USV/UUV/UAV)
+ */
+message Heartbeat
+{
+    robocommand.common.v1.RobotState state = 1;
+    robocommand.common.v1.LatLng position = 2;
+    float spd_mps = 3;
+    float heading_deg = 4;
+    float roll_deg = 5;
+    float pitch_deg = 6;
+    float altitude_hae_m = 7;
+    float depth_m = 8;  // UUV only
+    RxTask current_task = 9;
+    VehicleType vehicle_type = 10;
+    FlightPhase flight_phase = 11;  // UAV only
+}
+
+/**
+ * Task 1: Safe Passage — single detected buoy with its beacon state and position.
+ */
+message BuoyDetection
+{
+    robocommand.common.v1.LatLng position = 1;
+    BeaconState state = 2;
+}
+
+/**
+ * Task 1: Safe Passage — report all detected beacons and the identified entry/exit points.
+ * Sent by USV/UUV (Core) or UAV (Advanced/Disruptive) to RoboCommand.
+ * Captures the full buoy field as currently mapped; teams resend this
+ * message whenever their detection updates. Applies at all tiers, but
+ * resending matters most at Disruptive, since buoy colors can change in
+ * real time.
+ * entry_position: location of the FLASHING_BLUE (entry) buoy
+ * exit_position:  location of the STEADY_BLUE (exit) buoy
+ * buoys:          all detected buoys with their beacon states
+ */
+message SafePassageReport
+{
+    robocommand.common.v1.LatLng entry_position = 1;
+    robocommand.common.v1.LatLng exit_position = 2;
+    repeated BuoyDetection buoys = 3;
+}
+
+/**
+ * Task 2: Infrastructure Survey and Repair — UUV pipeline survey result.
+ * Sent once, after the UUV completes both the survey and (Advanced tier)
+ * the repair — it can't transmit while submerged, so this typically isn't
+ * sent until it surfaces. Its receipt satisfies the Advanced tier's task
+ * completion report; segments reflect the pipeline as surveyed, not any
+ * post-repair state.
+ * active_buoy_position: location of the active (GREEN) buoy, the pinger end
+ *                       the segments are ordered from
+ * segments: pipeline segment statuses in order starting from the active (GREEN) buoy end
+ */
+message PipelineSurveyReport
+{
+    robocommand.common.v1.LatLng active_buoy_position = 1;
+    repeated PipelineSegmentStatus segments = 2;
+}
+
+/**
+ * Task 2 Advanced/Disruptive, Task 3 Advanced/Disruptive
+ * Reports a resource delivery request to RoboCommand after observing a flashing light signal.
+ * Sent by whichever vehicle reads the LED code. The UAV separately sends this
+ * same message, echoing the same resource_color and delivery_circle_color,
+ * when it starts the delivery.
+ *
+ * task: which task this delivery request applies to
+ * resource_color:  specific tin color required (Disruptive tier only;
+ *                  Color.COLOR_ANY = any tin acceptable, Advanced tier)
+ * delivery_circle_color: color of the platform circle the resource should be delivered to
+ *
+ * Field order matches the flash signal order: resource color flashes first,
+ * then delivery circle color.
+ */
+message ResourceDeliveryRequest
+{
+    RxTask task = 1;
+    Color resource_color = 2;
+    Color delivery_circle_color = 3;
+}
+
+/**
+ * Task 3: Coordinated Logistics — report successful docking in the safe (GREEN) bay.
+ * This also signals readiness for tasking; RC activates that bay's window
+ * light on receipt.
+ * bay_id: bay number (1–3) the vehicle docked in
+ */
+message DockingReport
+{
+    uint32 bay_id = 1;
+}
+
+/**
+ * Task 3: Coordinated Logistics (all tiers) — report successful firefighting
+ * (window light changed RED -> GREEN).
+ * window_id: window number where firefighting was completed
+ */
+message FirefightingReport
+{
+    uint32 window_id = 1;
+}
+
+/**
+ * Task 4: Dynamic Incident Response — acknowledge receipt of a RoboCommand command.
+ * Used to acknowledge AssistanceRequest, KeepOutZone, and AllClear (Core/Advanced).
+ * command_seq: seq field of the RxCommand being acknowledged
+ */
+message IncidentAck
+{
+    uint32 command_seq = 1;
+}
+
+/**
+ * Task 4: Dynamic Incident Response — vehicle is on station and ready for further tasking.
+ * Sent after transiting to the requested position from an AssistanceRequest.
+ * command_seq: seq of the original AssistanceRequest command
+ */
+message ReadinessReport
+{
+    uint32 command_seq = 1;
+}

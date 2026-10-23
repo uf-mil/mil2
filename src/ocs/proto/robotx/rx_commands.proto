@@ -1,0 +1,116 @@
+edition = "2024";
+
+package robocommand.robotx.v1;
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+import "robotx/rx_common.proto";
+
+/**
+ * RxCommand is published by RoboCommand to the team's Operator Control
+ * Station (OCS) — RoboCommand does not connect to a vehicle directly. The
+ * OCS is responsible for routing the command to the vehicle(s) it targets,
+ * over the team's own internal communications.
+ * team_id:    target team identifier
+ * seq:        monotonically increasing sequence count
+ * sent_at:    timestamp of message transmission
+ * vehicle_id: optional. Type-addressed command bodies (AssistanceRequest,
+ *             KeepOutZone, AllClear, MovingObjectAlert) target every vehicle
+ *             of the named type(s) when unset — true for every 2026 team,
+ *             since each type has exactly one vehicle. If a future season
+ *             allows multiple vehicles per type, set this to address only
+ *             one of them.
+ * body:       one of the command messages
+ *
+ * MQTT topic: robocommand/robotx/<team_id>/command
+ */
+message RxCommand
+{
+    string team_id = 1;
+    uint32 seq = 2;
+    google.protobuf.Timestamp sent_at = 3;
+    string vehicle_id = 4;
+
+    oneof body
+    {
+        RunStart run_start = 10;                     // Pre-run: official run clock start
+        AssistanceRequest assistance_request = 11;   // Task 4 Core
+        KeepOutZone keep_out_zone = 12;              // Task 4 Advanced
+        AllClear all_clear = 13;                     // Task 4 Advanced
+        MovingObjectAlert moving_object_alert = 14;  // Task 4 Disruptive
+        ReadinessConfirm readiness_confirm = 15;     // Task 4: response to ReadinessReport
+    }
+}
+
+/**
+ * Official run start signal — sent by RoboCommand when the run clock begins.
+ * Issued in response to a RunDeclaration from the team, once its uav_geofence
+ * has been validated against the RxCourse boundary.
+ * declaration_seq: seq of the RunDeclaration this start corresponds to
+ * run_id: identifier for the run being started
+ */
+message RunStart
+{
+    uint32 declaration_seq = 1;
+    uint32 run_id = 2;
+}
+
+/**
+ * Task 4 Core: Request a specific vehicle type to transit to a position and loiter.
+ * Vehicle must acknowledge via IncidentAck, transit, then send ReadinessReport.
+ */
+message AssistanceRequest
+{
+    robocommand.common.v1.LatLng position = 1;
+    VehicleType vehicle_type = 2;
+}
+
+/**
+ * Task 4 Core: Confirms RoboCommand received the vehicle's ReadinessReport
+ * and clears the vehicle to return to normal operations.
+ * report_seq:  seq field of the RxReport that carried the ReadinessReport
+ * vehicle_id:  vehicle whose ReadinessReport is being confirmed (RxReport.seq
+ *              is per-vehicle, so report_seq alone cannot disambiguate)
+ */
+message ReadinessConfirm
+{
+    uint32 report_seq = 1;
+    string vehicle_id = 2;
+}
+
+/**
+ * Task 4 Advanced: Static keep-out zone representing a detected hazard.
+ * Vehicles of the specified type must acknowledge via IncidentAck and
+ * avoid the area until an AllClear is received.
+ * radius_m: keep-out radius in meters from center
+ */
+message KeepOutZone
+{
+    robocommand.common.v1.LatLng center = 1;
+    float radius_m = 2;
+    VehicleType vehicle_type = 3;
+}
+
+/**
+ * Task 4 Advanced: Clears a previously issued KeepOutZone.
+ * Vehicles of the specified type must acknowledge via IncidentAck, then
+ * may resume normal operations.
+ */
+message AllClear
+{
+    VehicleType vehicle_type = 1;
+}
+
+/**
+ * Task 4 Disruptive: Alert for a moving surface object in the operational area.
+ * All vehicles of the affected types must stay beyond 10m of this object.
+ * Fields specified by handbook §3.3.5: GPS location, heading, speed, affected
+ * vehicle types.
+ */
+message MovingObjectAlert
+{
+    robocommand.common.v1.LatLng position = 1;
+    float heading_deg = 2;
+    float speed_mps = 3;
+    repeated VehicleType affected_vehicle_types = 4;
+}
