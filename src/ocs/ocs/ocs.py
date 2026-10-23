@@ -1,7 +1,9 @@
+import datetime
 import http.server
 import json
 import os
 import socketserver
+import threading
 from collections import defaultdict
 from functools import partial
 from pathlib import Path
@@ -97,14 +99,13 @@ class OCS(Node):
         )
         self.client.loop_start()
 
-        self.mavconn = mavutil.mavlink_connection(
-            self.get_parameter("mavlink_port").get_parameter_value().string_value,
-            baud=57600,
-        )
+        # self.mavconn = mavutil.mavlink_connection(
+        #     self.get_parameter("mavlink_port").get_parameter_value().string_value,
+        #     baud=57600,
+        # )
 
-        self.rx_report_seqs = {}
-
-        self.start_dashboard()
+        web_thread = threading.Thread(target=self.start_dashboard)
+        web_thread.start()
 
     def rx_run_declaration(self, **kwargs):
         req = RxRequest(
@@ -120,6 +121,7 @@ class OCS(Node):
         )
 
     rx_report_seqs = defaultdict(int)
+    latest_heartbeats = {}
 
     def rx_heartbeat(self, *, vehicle_id, **kwargs):
         rep = RxReport(
@@ -134,6 +136,10 @@ class OCS(Node):
             f"robocommand/robotx/{vehicle_id}/report",
             rep.SerializeToString(),
         )
+        self.latest_heartbeats[vehicle_id] = {
+            "sent_at": datetime.datetime.now().isoformat(),
+            **kwargs,
+        }
 
     def on_course(self, _client, _, msg):
         course = RxCourse()
@@ -244,14 +250,19 @@ class OCS(Node):
             httpd.serve_forever()
 
     def get_status(self):
-        return {"robocommand": self.client.is_connected()}
+        return {
+            "robocommand": self.client.is_connected(),
+            "subjugatorHeartbeat": self.latest_heartbeats.get("UUV"),
+            "propagatorHeartbeat": self.latest_heartbeats.get("USV"),
+            "investigatorHeartbeat": self.latest_heartbeats.get("UAV"),
+        }
 
     def on_heartbeat(self, msg):
         self.rx_heartbeat(
-            vehicle_id=msg.vehicle_type,
-            state=RobotState[f"STATE_{msg.state}"],
-            current_task=RxTask[f"TASK_{msg.task}"],
-            vehicle_type=VehicleType[f"TYPE_{msg.vehicle_type}"],
+            vehicle_id=msg.type,
+            state=RobotState.Value(f"STATE_{msg.state}"),
+            current_task=RxTask.Value(f"TASK_{msg.task}"),
+            vehicle_type=VehicleType.Value(f"TYPE_{msg.type}"),
         )
 
     def on_pipeline_survey_report(self, msg):
