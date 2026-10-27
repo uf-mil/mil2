@@ -49,7 +49,7 @@ add_custom_target(expand_models ALL DEPENDS ${generated_models})
 # models/ carries the model.config files; model.sdf is installed above.
 install(DIRECTORY config launch models worlds DESTINATION share/${PROJECT_NAME})
 
-install(PROGRAMS scripts/sim_thrusters.py scripts/sim_sensors.py
+install(PROGRAMS scripts/sim_thrusters.py scripts/sim_sensors.py scripts/docking_evaluator.py
         DESTINATION lib/${PROJECT_NAME})
 
 ament_environment_hooks(

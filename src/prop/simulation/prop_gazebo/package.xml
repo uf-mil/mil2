@@ -13,6 +13,11 @@
   <depend>gz_plugin_vendor</depend>
   <depend>gz_sim_vendor</depend>
 
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>prop_missions</exec_depend>
+  <exec_depend>prop_controller</exec_depend>
+  <exec_depend>prop_localization</exec_depend>
   <exec_depend>navigator_gazebo</exec_depend>
   <exec_depend>ros2launch</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>

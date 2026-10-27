@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>prop_vision</name>
+  <version>0.0.0</version>
+  <description>Vision and sensor-fusion helpers for the Prop vehicle.</description>
+  <maintainer email="software@mil.ufl.edu">UF MIL</maintainer>
+  <license>TODO: License declaration</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>
