@@ -28,7 +28,7 @@ def identifier(value):
 class Exchange:
     """One run per mission process. Restart creates a fresh replay boundary."""
 
-    def __init__(self, vehicle_id="prop", ack_timeout=15.0):
+    def __init__(self, vehicle_id="USV", ack_timeout=15.0):
         if not identifier(vehicle_id) or not math.isfinite(ack_timeout) or ack_timeout <= 0:
             raise ValueError("invalid vehicle ID or acknowledgement timeout")
         self.vehicle_id = vehicle_id

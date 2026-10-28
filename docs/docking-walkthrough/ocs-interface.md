@@ -20,18 +20,21 @@ volatile with depth 10.
 Every message contains:
 
 ```json
-{"version":1,"kind":"...","vehicle_id":"prop","session_id":"...","run_id":"..."}
+{"version":1,"kind":"...","vehicle_id":"USV","session_id":"...","run_id":"..."}
 ```
 
 Identifiers are nonempty strings of at most 128 characters. The mission creates
 a new random `session_id` each time it starts. The OCS must learn it from current
 status rather than store it between mission processes. Before START, `run_id` is
-`null`; the OCS assigns it in START.
+`null`; the OCS supplies the official RunStart `run_id` as a decimal string in
+START (for example, official integer `42` becomes JSON string `"42"`). All later
+messages must use that same string. The default `vehicle_id` is `USV`, matching
+the OCS branch's run declaration and report identity; it remains configurable.
 
 START adds `command_id` and `action`:
 
 ```json
-{"version":1,"kind":"command","vehicle_id":"prop","session_id":"CURRENT_SESSION","run_id":"CURRENT_RUN","command_id":"UNIQUE_COMMAND","action":"START"}
+{"version":1,"kind":"command","vehicle_id":"USV","session_id":"CURRENT_SESSION","run_id":"42","command_id":"UNIQUE_COMMAND","action":"START"}
 ```
 
 CANCEL has the same shape with `action: "CANCEL"`. The OCS should retry an
@@ -42,14 +45,14 @@ START cannot launch an aborted attempt.
 After docking, the boat sends and retries an immutable result:
 
 ```json
-{"version":1,"kind":"docking_result","vehicle_id":"prop","session_id":"CURRENT_SESSION","run_id":"CURRENT_RUN","event_id":"UNIQUE_EVENT","bay_number":2,"completed_at":123.4,"clock":"ros"}
+{"version":1,"kind":"docking_result","vehicle_id":"USV","session_id":"CURRENT_SESSION","run_id":"42","event_id":"UNIQUE_EVENT","bay_number":2,"completed_at":123.4,"clock":"ros"}
 ```
 
 The OCS validates and durably accepts that event, converts `bay_number` to the
-official `RxReport.docking.bay_id`, and then returns:
+official `RxReport.docking.bay_id` without renumbering, and then returns:
 
 ```json
-{"version":1,"kind":"receipt","vehicle_id":"prop","session_id":"CURRENT_SESSION","run_id":"CURRENT_RUN","event_id":"UNIQUE_EVENT","status":"RECEIVED"}
+{"version":1,"kind":"receipt","vehicle_id":"USV","session_id":"CURRENT_SESSION","run_id":"42","event_id":"UNIQUE_EVENT","status":"RECEIVED"}
 ```
 
 `RECEIVED` means the internal OCS accepted responsibility for the event. It does
@@ -78,6 +81,47 @@ vehicle telemetry, per-vehicle report sequencing, official UTC timestamps,
 MQTT delivery/reconnects, and operator status. The boat-side mission does not
 implement active position hold while waiting, emergency stop, retreat, water
 delivery, or official scoring confirmation.
+
+## Confirmed bay numbering
+
+The vehicle reports bays 1, 2, 3 from left to right when facing into the dock
+from the water. This matches Section 3.3.4, page 81 of the
+[official RobotX 2026 handbook (23 October 2026)](https://robonation.org/app/uploads/sites/2/2026/10/RobotX-2026_Team-Handbook-20261023.pdf#page=81).
+Perception owns this numbering; OCS copies `bay_number` directly to `bay_id`.
+
+## OCS teammate handoff
+
+Reviewed against `ocs-configuration` commit `cf169184`. That branch provides
+ROS-to-MQTT/protobuf infrastructure but does not implement these docking topics.
+Changing the boat's identity alone does not make the integration operational.
+The following work remains on the OCS side; no OCS implementation is changed here:
+
+1. Subscribe to status and results with the topic/QoS contract above. Learn the
+   current session from status before issuing commands.
+2. Validate official RunStart against the sent declaration, retain its run ID,
+   and issue START only when Task 3 is selected. Official run start alone must
+   not automatically select docking. Generate a command ID and reuse it on retries.
+3. Route operator/task cancellation to CANCEL for the current session and run.
+4. Validate and durably queue results, deduplicate identical events, reject
+   conflicting event contents, and return matching RECEIVED receipts. Repeated
+   results must get another receipt without creating another logical report.
+5. Build `RxReport` with the configured team ID, vehicle ID `USV`, the shared
+   per-vehicle report sequence, current UTC `sent_at`, and
+   `docking=DockingReport(bay_id=bay_number)`. For the current `UFLO`/`USV`
+   configuration the schema's report topic is
+   `robocommand/robotx/UFLO/USV/report`. Internal session/event IDs remain OCS
+   bookkeeping; the official docking payload only carries `bay_id`.
+6. Expose docking and receipt state to the operator, including timeout/failure,
+   and coordinate restarting the mission process before another attempt.
+
+Existing OCS blockers observed in that revision:
+
+- Initialize declaration sequencing and compare RunStart with the sequence
+  actually sent, rather than the next incremented sequence.
+- Dispatch protobuf commands with `WhichOneof("body")` or `HasField`, rather
+  than testing submessages with `is not None`.
+- Establish MQTT subscriptions after connection and restore them on reconnect.
+- Include the team ID in report topics as required by the checked-in schema.
 
 ## Simulation
 

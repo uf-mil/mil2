@@ -57,6 +57,19 @@ def test_retry_identical_event_and_validate_receipt():
     assert e.result == event
 
 
+def test_official_run_id_string_survives_result_and_receipt():
+    exchange = Exchange()
+    command = dict(start(exchange), vehicle_id="USV", run_id="42")
+    assert exchange.command(dict(command, run_id=42)) == "REJECTED"
+    assert exchange.command(command) == "STARTED"
+    exchange.complete(3, 10)
+    result = exchange.outgoing(10)
+    assert result["vehicle_id"] == "USV"
+    assert result["run_id"] == "42"
+    assert result["bay_number"] == 3
+    assert exchange.acknowledge(receipt(exchange), 11)
+
+
 def test_missing_or_late_receipt_is_not_success():
     e = Exchange(ack_timeout=3)
     e.command(start(e))
@@ -122,7 +135,7 @@ def test_mock_deduplicates_and_reacks_retries():
 
 
 def test_mock_waits_for_initialized_clock_and_full_delay():
-    node = Mock(vehicle_id="prop", command=None, last_status=None,
+    node = Mock(vehicle_id="USV", command=None, last_status=None,
                 first_seen=None, auto_start=True, start_delay=3.0)
     e = Exchange()
     status = String(data=json.dumps(dict(e.envelope("status"), state="WAIT_START")))

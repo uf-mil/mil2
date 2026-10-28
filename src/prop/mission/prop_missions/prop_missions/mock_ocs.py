@@ -15,7 +15,7 @@ from prop_missions.ocs_protocol import decode, identifier
 class MockOCS(Node):
     def __init__(self):
         super().__init__("mock_ocs")
-        self.vehicle_id = self.declare_parameter("vehicle_id", "prop").value
+        self.vehicle_id = self.declare_parameter("vehicle_id", "USV").value
         self.start_delay = self.declare_parameter("start_delay", 3.0).value
         self.drop_receipts = self.declare_parameter("drop_receipts", 0).value
         self.auto_start = self.declare_parameter("auto_start", True).value

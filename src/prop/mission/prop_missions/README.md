@@ -59,3 +59,10 @@ MQTT/protobuf communication, heartbeats, and water delivery are outside this
 vehicle-side package.
 
 See [internal OCS interface](../../../../docs/docking-walkthrough/ocs-interface.md) for topics, messages, lifecycle, and simulation options.
+
+The mission and simulation mock default to vehicle ID `USV`, matching the OCS
+configuration. Internal run IDs carry the official numeric run ID as a string.
+Bay numbers are 1–3 from left to right facing the dock, matching the official
+handbook; OCS forwards them unchanged. The interface document includes the
+remaining OCS adapter work for the OCS teammate. Until that adapter exists, the
+real mission remains in `WAIT_START`.

@@ -50,7 +50,7 @@ class DockingMission(Node):
         super().__init__("docking_mission")
         self.target = "green"
         self.exchange = Exchange(
-            self.declare_parameter("vehicle_id", "prop").value,
+            self.declare_parameter("vehicle_id", "USV").value,
             self.declare_parameter("ack_timeout", 15.0).value,
         )
         self.ocs_status = self.create_publisher(String, "/dock/ocs/status", 10)

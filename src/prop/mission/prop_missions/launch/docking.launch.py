@@ -12,7 +12,7 @@ def generate_launch_description():
         [
             DeclareLaunchArgument("timeout", default_value="240.0"),
             DeclareLaunchArgument("use_sim_time", default_value="false"),
-            DeclareLaunchArgument("vehicle_id", default_value="prop"),
+            DeclareLaunchArgument("vehicle_id", default_value="USV"),
             DeclareLaunchArgument("ack_timeout", default_value="15.0"),
             DeclareLaunchArgument("sensor_timeout", default_value="1.0"),
             Node(
