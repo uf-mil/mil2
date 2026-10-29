@@ -14,8 +14,35 @@ from std_msgs.msg import String
 # Dock frame of prop_docking.world; bay 1 is leftmost facing the dock (+y).
 BAY_Y = (2.0296, 0.0, -2.0296)
 FINGER_Y = (3.0443, 1.0148, -1.0148, -3.0443)
-# Deck front (x = 11.0) minus the mission's 1.25 m goal offset from the wall.
-GOAL_X = 9.75
+# Building face (x = 11.13), the wall the lidar fits, minus the mission's 1.25 m goal offset.
+GOAL_X = 9.88
+HULL_HALF_LENGTH = 0.5
+HULL_HALF_WIDTH = 0.3
+
+
+def hull_gap(x, y, heading, boxes):
+    """Smallest distance in metres from the rectangular hull to any box; 0 when they touch."""
+    c, s = math.cos(heading), math.sin(heading)
+    steps = [i / 10 for i in range(-10, 11)]
+    outline = [
+        (u * HULL_HALF_LENGTH, v * HULL_HALF_WIDTH) for u in steps for v in (-1, 1)
+    ]
+    outline += [
+        (u * HULL_HALF_LENGTH, v * HULL_HALF_WIDTH) for u in (-1, 1) for v in steps
+    ]
+    for xmin, xmax, ymin, ymax in boxes:
+        for bx in (xmin, xmax):
+            for by in (ymin, ymax):
+                u = c * (bx - x) + s * (by - y)
+                v = -s * (bx - x) + c * (by - y)
+                if abs(u) < HULL_HALF_LENGTH and abs(v) < HULL_HALF_WIDTH:
+                    return 0.0
+    return min(
+        math.hypot(max(xmin - px, 0, px - xmax), max(ymin - py, 0, py - ymax))
+        for u, v in outline
+        for px, py in [(x + c * u - s * v, y + s * u + c * v)]
+        for xmin, xmax, ymin, ymax in boxes
+    )
 
 
 class Evaluator(Node):
@@ -157,22 +184,18 @@ class Evaluator(Node):
             c * (p.x - self.dx) + s * (p.y - self.dy),
             -s * (p.x - self.dx) + c * (p.y - self.dy),
         )
-        radius = math.hypot(0.5, 0.3)
-        rectangles = [(11.0, 12.0, -3.298, 3.298)] + [
-            (9.0, 11.0, yy - 0.2537, yy + 0.2537) for yy in FINGER_Y
-        ]
-        clearance = min(
-            math.hypot(max(xmin - x, 0, x - xmax), max(ymin - y, 0, y - ymax)) - radius
-            for xmin, xmax, ymin, ymax in rectangles
-        )
-        self.minimum_clearance = min(self.minimum_clearance, clearance)
-        if clearance < 0:
-            self.finish(False, "dock clearance violated")
-            return
         heading = math.atan2(
             2 * (q.w * q.z + q.x * q.y),
             1 - 2 * (q.y * q.y + q.z * q.z),
         )
+        rectangles = [(11.0, 12.0, -3.298, 3.298)] + [
+            (9.0, 11.0, yy - 0.2537, yy + 0.2537) for yy in FINGER_Y
+        ]
+        clearance = hull_gap(x, y, heading - self.yaw, rectangles)
+        self.minimum_clearance = min(self.minimum_clearance, clearance)
+        if clearance <= 0:
+            self.finish(False, "dock clearance violated")
+            return
         good = (
             self.state == "DOCKED"
             and math.hypot(x - GOAL_X, y - self.goal_y) < 0.3
