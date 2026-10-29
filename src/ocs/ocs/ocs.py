@@ -19,6 +19,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 from ocs.proto import (
+    DockingReport,
     FlightPhase,
     Heartbeat,
     LatLng,
@@ -85,6 +86,12 @@ class OCS(Node):
         self.dock_ocs_command_publisher = self.create_publisher(
             String,
             "/dock/ocs/command",
+            10,
+        )
+        self.create_subscription(
+            String,
+            "/dock/ocs/result",
+            self.on_dock_ocs_result,
             10,
         )
 
@@ -280,7 +287,7 @@ class OCS(Node):
         rep = RxReport(
             team_id=self.get_parameter("team_id").get_parameter_value().string_value,
             vehicle_id="USV",
-            seq=self.rx_report_seqs["USV"],
+            seq=self.rx_report_seqs["UUV"],
             pipeline_survey=PipelineSurveyReport(
                 active_buoy_position=LatLng(
                     latitude=msg.active_buoy_position.y,
@@ -289,6 +296,21 @@ class OCS(Node):
                 segments=[s.status for s in msg.segments],
             ),
         )
+        rep.sent_at.GetCurrentTime()
+        self.rx_report_seqs["UUV"] += 1
+        self.client.publish(
+            "robocommand/robotx/UUV/report",
+            rep.SerializeToString(),
+        )
+
+    def on_dock_ocs_result(self, msg):
+        rep = RxReport(
+            team_id=self.get_parameter("team_id").get_parameter_value().string_value,
+            vehicle_id="USV",
+            seq=self.rx_report_seqs["USV"],
+            docking=DockingReport(bay_id=json.loads(msg)["bay_number"]),
+        )
+
         rep.sent_at.GetCurrentTime()
         self.rx_report_seqs["USV"] += 1
         self.client.publish(
