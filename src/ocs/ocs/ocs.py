@@ -22,6 +22,7 @@ from ocs.proto import (
     DockingReport,
     FlightPhase,
     Heartbeat,
+    IncidentAck,
     LatLng,
     PipelineSurveyReport,
     RobotState,
@@ -155,6 +156,20 @@ class OCS(Node):
             **kwargs,
         }
 
+    def rx_incident_ack(self, vehicle_id, command_seq):
+        rep = RxReport(
+            team_id=self.get_parameter("team_id").get_parameter_value().string_value,
+            vehicle_id=vehicle_id,
+            seq=self.rx_report_seqs[vehicle_id],
+            incident_ack=IncidentAck(command_seq=command_seq),
+        )
+        rep.sent_at.GetCurrentTime()
+        self.rx_report_seqs[vehicle_id] += 1
+        self.client.publish(
+            f"robocommand/robotx/{vehicle_id}/report",
+            rep.SerializeToString(),
+        )
+
     def on_course(self, _client, _, msg):
         course = RxCourse()
 
@@ -204,6 +219,7 @@ class OCS(Node):
         elif command.assistance_request is not None:
             if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
                 # TODO send to prop?
+                self.rx_incident_ack("USV", command.seq)
                 pass
             elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
                 self.mavconn.mav.command_long_send(
@@ -222,6 +238,7 @@ class OCS(Node):
         elif command.keep_out_zone is not None:
             if command.keep_out_zone.vehicle_type == VehicleType.TYPE_USV:
                 # TODO send to prop?
+                self.rx_incident_ack("USV", command.seq)
                 pass
             elif command.keep_out_zone.vehicle_type == VehicleType.TYPE_UAV:
                 self.mavconn.mav.command_long_send(
@@ -237,6 +254,7 @@ class OCS(Node):
                     0,
                     0,
                 )
+                self.rx_incident_ack("UAV", command.seq)
         elif command.readiness_confirm is not None:
             if command.readiness_confirm.vehicle_id == "USV":
                 # TODO send to prop
@@ -258,6 +276,7 @@ class OCS(Node):
         elif command.all_clear is not None:
             if command.all_clear.vehicle_type == VehicleType.TYPE_USV:
                 # TODO send to prop
+                self.rx_incident_ack("USV", command.seq)
                 pass
             elif command.all_clear.vehicle_type == VehicleType.TYPE_UAV:
                 self.mavconn.mav.command_long_send(
@@ -273,6 +292,7 @@ class OCS(Node):
                     0,
                     0,
                 )
+                self.rx_incident_ack("UAV", command.seq)
 
     def loop_mav(self):
         skip = False  # 1 Hz -> 2 Hz
