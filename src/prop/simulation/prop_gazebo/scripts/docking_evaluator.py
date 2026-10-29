@@ -188,9 +188,11 @@ class Evaluator(Node):
             2 * (q.w * q.z + q.x * q.y),
             1 - 2 * (q.y * q.y + q.z * q.z),
         )
-        rectangles = [(11.0, 12.0, -3.298, 3.298)] + [
-            (9.0, 11.0, yy - 0.2537, yy + 0.2537) for yy in FINGER_Y
-        ]
+        rectangles = (
+            [(11.0, 12.0, -3.298, 3.298)]
+            + [(9.0, 11.0, yy - 0.2537, yy + 0.2537) for yy in FINGER_Y]
+            + [(5.4, 7.4, 3.1, 5.1), (3.5, 5.5, -5.0, -3.0)]
+        )
         clearance = hull_gap(x, y, heading - self.yaw, rectangles)
         self.minimum_clearance = min(self.minimum_clearance, clearance)
         if clearance <= 0:

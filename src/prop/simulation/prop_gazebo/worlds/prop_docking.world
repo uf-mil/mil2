@@ -315,5 +315,134 @@
         </visual>
       </link>
     </model>
+    <!-- Delivery platforms (handbook p64): #CCCED0 grey, #E8282B / #0072CE / #089404 circles.
+         B sits 4 m right of the dock centre line, not on it as in the map,
+         so the boat's straight run to a bay never crosses it. -->
+    <model name="platform_a">
+      <static>true</static>
+      <pose>6.4 4.1 0.05 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>2 2 0.3</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="deck">
+          <geometry>
+            <box>
+              <size>2 2 0.3</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.80 0.81 0.82 1</ambient>
+            <diffuse>0.80 0.81 0.82 1</diffuse>
+          </material>
+        </visual>
+        <visual name="red_circle">
+          <pose>0.45 0.45 0.155 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.325</radius>
+              <length>0.01</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.91 0.16 0.17 1</ambient>
+            <diffuse>0.91 0.16 0.17 1</diffuse>
+          </material>
+        </visual>
+        <visual name="blue_circle">
+          <pose>0.45 -0.45 0.155 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.325</radius>
+              <length>0.01</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.0 0.45 0.81 1</ambient>
+            <diffuse>0.0 0.45 0.81 1</diffuse>
+          </material>
+        </visual>
+        <visual name="green_circle">
+          <pose>-0.45 0 0.155 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.325</radius>
+              <length>0.01</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.03 0.58 0.02 1</ambient>
+            <diffuse>0.03 0.58 0.02 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+    <model name="platform_b">
+      <static>true</static>
+      <pose>4.5 -4.0 0.05 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>2 2 0.3</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="deck">
+          <geometry>
+            <box>
+              <size>2 2 0.3</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.80 0.81 0.82 1</ambient>
+            <diffuse>0.80 0.81 0.82 1</diffuse>
+          </material>
+        </visual>
+        <visual name="red_circle">
+          <pose>0.45 0.45 0.155 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.325</radius>
+              <length>0.01</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.91 0.16 0.17 1</ambient>
+            <diffuse>0.91 0.16 0.17 1</diffuse>
+          </material>
+        </visual>
+        <visual name="blue_circle">
+          <pose>0.45 -0.45 0.155 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.325</radius>
+              <length>0.01</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.0 0.45 0.81 1</ambient>
+            <diffuse>0.0 0.45 0.81 1</diffuse>
+          </material>
+        </visual>
+        <visual name="green_circle">
+          <pose>-0.45 0 0.155 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.325</radius>
+              <length>0.01</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.03 0.58 0.02 1</ambient>
+            <diffuse>0.03 0.58 0.02 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
   </world>
 </sdf>
