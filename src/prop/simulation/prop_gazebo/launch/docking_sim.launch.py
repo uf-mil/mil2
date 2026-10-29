@@ -78,7 +78,9 @@ def launch_trial(context):
                 "dock_y": dy,
                 "dock_yaw": yaw,
                 "colors": colors,
-                "timeout": float(value("timeout")) + float(value("ocs_start_delay")) + 25.0,
+                "timeout": float(value("timeout"))
+                + float(value("ocs_start_delay"))
+                + 25.0,
                 "seed": int(value("seed")),
             },
         ],
@@ -147,9 +149,13 @@ def launch_trial(context):
                     package="prop_missions",
                     executable="mock_ocs",
                     condition=IfCondition(LaunchConfiguration("mock_ocs")),
-                    parameters=[{"use_sim_time": True,
-                                 "start_delay": float(value("ocs_start_delay")),
-                                 "drop_receipts": int(value("ocs_drop_receipts"))}],
+                    parameters=[
+                        {
+                            "use_sim_time": True,
+                            "start_delay": float(value("ocs_start_delay")),
+                            "drop_receipts": int(value("ocs_drop_receipts")),
+                        },
+                    ],
                     output="screen",
                 ),
                 evaluator,

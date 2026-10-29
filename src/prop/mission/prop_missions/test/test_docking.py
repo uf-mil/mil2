@@ -7,8 +7,8 @@ from unittest.mock import Mock
 
 import numpy as np
 from nav_msgs.msg import Odometry
-from prop_vision.dock_perception import color_centers, detect_bay
 from prop_missions.docking_mission import DockingMission, settled
+from prop_vision.dock_perception import color_centers, detect_bay
 
 
 def scene(yaw=0.0, offset=(0.0, 0.0), colors=("red", "green", "red")):
@@ -27,7 +27,7 @@ def scene(yaw=0.0, offset=(0.0, 0.0), colors=("red", "green", "red")):
     pixels = {}
     for color, p in zip(colors, beacons):
         pixels.setdefault(color, []).append(
-            320 - 310 * (p[1] - camera[1]) / (p[0] - camera[0])
+            320 - 310 * (p[1] - camera[1]) / (p[0] - camera[0]),
         )
     return points, pixels, camera, rotation
 
@@ -105,7 +105,9 @@ class PerceptionTests(unittest.TestCase):
         for color, positions in pixels.items():
             for position in positions:
                 x = round(position)
-                image[30:60, x-3:x+4] = [0, 255, 0] if color == "green" else [255, 0, 0]
+                image[30:60, x - 3 : x + 4] = (
+                    [0, 255, 0] if color == "green" else [255, 0, 0]
+                )
         bay = detect_bay(points, color_centers(image), 310, 320, camera, 0)
         self.assertIsNotNone(bay)
         np.testing.assert_allclose(bay.goal, [10.5, 0], atol=0.16)

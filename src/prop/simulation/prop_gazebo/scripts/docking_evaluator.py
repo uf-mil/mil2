@@ -6,10 +6,10 @@ import math
 
 import rclpy
 from nav_msgs.msg import Odometry
+from prop_missions.ocs_protocol import decode
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from std_msgs.msg import String
-from prop_missions.ocs_protocol import decode
 
 
 class Evaluator(Node):
@@ -35,7 +35,9 @@ class Evaluator(Node):
         self.create_subscription(String, "/dock/ocs/result", self.result_message, 10)
         self.create_subscription(String, "/dock/ocs/receipt", self.receipt_message, 10)
         self.create_subscription(
-            String, "/dock/ocs/command", self.command_message,
+            String,
+            "/dock/ocs/command",
+            self.command_message,
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
         )
         self.start = None
@@ -45,7 +47,10 @@ class Evaluator(Node):
         self.result = None
         self.minimum_clearance = float("inf")
         self.create_subscription(
-            Odometry, "/sim/ground_truth", lambda msg: setattr(self, "truth", msg), 10,
+            Odometry,
+            "/sim/ground_truth",
+            lambda msg: setattr(self, "truth", msg),
+            10,
         )
         self.create_subscription(
             String,
@@ -87,16 +92,29 @@ class Evaluator(Node):
             self.start_command = msg
 
     def exchange_complete(self):
-        messages = [self.ocs_state, self.docking_result, self.ocs_receipt, self.start_command]
+        messages = [
+            self.ocs_state,
+            self.docking_result,
+            self.ocs_receipt,
+            self.start_command,
+        ]
         if not all(messages):
             return False
         status, result, receipt, command = messages
         return (
             self.wait_session == status["session_id"]
-            and all(all(m.get(k) == status.get(k) for k in ("vehicle_id", "session_id", "run_id")) for m in messages)
+            and all(
+                all(
+                    m.get(k) == status.get(k)
+                    for k in ("vehicle_id", "session_id", "run_id")
+                )
+                for m in messages
+            )
             and bool(status.get("run_id"))
             and status.get("receipt") == receipt.get("status") == "RECEIVED"
-            and status.get("event_id") == result.get("event_id") == receipt.get("event_id")
+            and status.get("event_id")
+            == result.get("event_id")
+            == receipt.get("event_id")
             and bool(result.get("event_id"))
             and result.get("bay_number") == self.colors.index("green") + 1
         )
@@ -146,7 +164,8 @@ class Evaluator(Node):
             self.finish(False, "dock clearance violated")
             return
         heading = math.atan2(
-            2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z),
+            2 * (q.w * q.z + q.x * q.y),
+            1 - 2 * (q.y * q.y + q.z * q.z),
         )
         good = (
             self.state == "DOCKED"
@@ -160,12 +179,17 @@ class Evaluator(Node):
             self.get_logger().info(
                 f"VERIFY: physical={good} exchange={self.exchange_complete()} "
                 f"wait_seen={bool(self.wait_session)} start_seen={bool(self.start_command)} "
-                f"result_seen={bool(self.docking_result)} receipt_seen={bool(self.ocs_receipt)}"
+                f"result_seen={bool(self.docking_result)} receipt_seen={bool(self.ocs_receipt)}",
             )
         self.since = (now if self.since is None else self.since) if good else None
-        if self.since is not None and now - self.since >= 3 and self.exchange_complete():
+        if (
+            self.since is not None
+            and now - self.since >= 3
+            and self.exchange_complete()
+        ):
             self.finish(
-                True, f"green bay {self.colors.index('green') + 1} verified; WAIT_START -> docking -> report -> receipt verified",
+                True,
+                f"green bay {self.colors.index('green') + 1} verified; WAIT_START -> docking -> report -> receipt verified",
             )
 
 

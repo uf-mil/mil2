@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version='1.0' encoding='utf-8' ?>
 <sdf version="1.9">
   <world name="prop_docking">
     <physics name="default_physics" type="ode">
@@ -16,8 +16,14 @@
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics" />
-    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands" />
-    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster" />
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands"
+    />
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster"
+    />
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors" />
     <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu" />
     <plugin filename="gz-sim-navsat-system" name="gz::sim::systems::NavSat" />
