@@ -11,6 +11,12 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from std_msgs.msg import String
 
+# Dock frame of prop_docking.world; bay 1 is leftmost facing the dock (+y).
+BAY_Y = (2.0296, 0.0, -2.0296)
+FINGER_Y = (3.0443, 1.0148, -1.0148, -3.0443)
+# Deck front (x = 11.0) minus the mission's 1.25 m goal offset from the wall.
+GOAL_X = 9.75
+
 
 class Evaluator(Node):
     def __init__(self):
@@ -24,7 +30,7 @@ class Evaluator(Node):
         self.target = "green"
         self.timeout = self.declare_parameter("timeout", 240.0).value
         seed = self.declare_parameter("seed", 1).value
-        self.goal_y = [3.0, 0.0, -3.0][self.colors.index(self.target)]
+        self.goal_y = BAY_Y[self.colors.index(self.target)]
         self.ocs_state = None
         self.docking_result = None
         self.ocs_receipt = None
@@ -152,8 +158,8 @@ class Evaluator(Node):
             -s * (p.x - self.dx) + c * (p.y - self.dy),
         )
         radius = math.hypot(0.5, 0.3)
-        rectangles = [(11.75, 12.25, -5, 5)] + [
-            (8, 12, yy - 0.2, yy + 0.2) for yy in (-4.5, -1.5, 1.5, 4.5)
+        rectangles = [(11.0, 12.0, -3.298, 3.298)] + [
+            (9.0, 11.0, yy - 0.2537, yy + 0.2537) for yy in FINGER_Y
         ]
         clearance = min(
             math.hypot(max(xmin - x, 0, x - xmax), max(ymin - y, 0, y - ymax)) - radius
@@ -169,7 +175,7 @@ class Evaluator(Node):
         )
         good = (
             self.state == "DOCKED"
-            and math.hypot(x - 10.5, y - self.goal_y) < 0.3
+            and math.hypot(x - GOAL_X, y - self.goal_y) < 0.3
             and abs(math.remainder(heading - self.yaw, 2 * math.pi)) < 0.12
             and math.hypot(v.linear.x, v.linear.y) < 0.08
             and abs(v.angular.z) < 0.05

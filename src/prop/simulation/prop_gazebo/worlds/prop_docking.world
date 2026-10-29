@@ -68,21 +68,24 @@
         </visual>
       </link>
     </model>
-    <model name="back">
+    <!-- RobotX 2026 build guide: 0.5 m dock cubes, 13 x 2 main deck, four 1 x 4 fingers. -->
+    <model name="dock">
       <static>true</static>
-      <pose>12 0 0.3 0 0 0</pose>
+      <pose>0 0 0 0 0 0</pose>
       <link name="link">
-        <collision name="collision">
+        <collision name="deck_collision">
+          <pose>11.5 0 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>0.5 10 0.6</size>
+              <size>1.0 6.596 0.6</size>
             </box>
           </geometry>
         </collision>
-        <visual name="visual">
+        <visual name="deck_visual">
+          <pose>11.5 0 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>0.5 10 0.6</size>
+              <size>1.0 6.596 0.6</size>
             </box>
           </geometry>
           <material>
@@ -90,23 +93,19 @@
             <diffuse>0.6 0.5 0.4 1</diffuse>
           </material>
         </visual>
-      </link>
-    </model>
-    <model name="finger_0">
-      <static>true</static>
-      <pose>10 -4.5 0.3 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
+        <collision name="finger_0_collision">
+          <pose>10.0 3.0443 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4 0.4 0.6</size>
+              <size>2.0 0.5074 0.6</size>
             </box>
           </geometry>
         </collision>
-        <visual name="visual">
+        <visual name="finger_0_visual">
+          <pose>10.0 3.0443 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4 0.4 0.6</size>
+              <size>2.0 0.5074 0.6</size>
             </box>
           </geometry>
           <material>
@@ -114,23 +113,19 @@
             <diffuse>0.6 0.5 0.4 1</diffuse>
           </material>
         </visual>
-      </link>
-    </model>
-    <model name="finger_1">
-      <static>true</static>
-      <pose>10 -1.5 0.3 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
+        <collision name="finger_1_collision">
+          <pose>10.0 1.0148 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4 0.4 0.6</size>
+              <size>2.0 0.5074 0.6</size>
             </box>
           </geometry>
         </collision>
-        <visual name="visual">
+        <visual name="finger_1_visual">
+          <pose>10.0 1.0148 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4 0.4 0.6</size>
+              <size>2.0 0.5074 0.6</size>
             </box>
           </geometry>
           <material>
@@ -138,23 +133,19 @@
             <diffuse>0.6 0.5 0.4 1</diffuse>
           </material>
         </visual>
-      </link>
-    </model>
-    <model name="finger_2">
-      <static>true</static>
-      <pose>10 1.5 0.3 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
+        <collision name="finger_2_collision">
+          <pose>10.0 -1.0148 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4 0.4 0.6</size>
+              <size>2.0 0.5074 0.6</size>
             </box>
           </geometry>
         </collision>
-        <visual name="visual">
+        <visual name="finger_2_visual">
+          <pose>10.0 -1.0148 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4 0.4 0.6</size>
+              <size>2.0 0.5074 0.6</size>
             </box>
           </geometry>
           <material>
@@ -162,100 +153,164 @@
             <diffuse>0.6 0.5 0.4 1</diffuse>
           </material>
         </visual>
-      </link>
-    </model>
-    <model name="finger_3">
-      <static>true</static>
-      <pose>10 4.5 0.3 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
+        <collision name="finger_3_collision">
+          <pose>10.0 -3.0443 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4 0.4 0.6</size>
+              <size>2.0 0.5074 0.6</size>
             </box>
           </geometry>
         </collision>
-        <visual name="visual">
+        <visual name="finger_3_visual">
+          <pose>10.0 -3.0443 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4 0.4 0.6</size>
+              <size>2.0 0.5074 0.6</size>
             </box>
           </geometry>
           <material>
             <ambient>0.6 0.5 0.4 1</ambient>
             <diffuse>0.6 0.5 0.4 1</diffuse>
+          </material>
+        </visual>
+        <!-- Building front sits one indicator diameter back from the deck edge:
+             a solid box cannot have the real 160 mm notch the indicator stands in. -->
+        <collision name="building_1_collision">
+          <pose>11.505 2.0296 1.1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.75 1.0 1.0</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="building_1_visual">
+          <pose>11.505 2.0296 1.1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.75 1.0 1.0</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.9 0.9 0.9 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
+          </material>
+        </visual>
+        <collision name="building_2_collision">
+          <pose>11.505 0 1.1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.75 1.0 1.0</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="building_2_visual">
+          <pose>11.505 0 1.1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.75 1.0 1.0</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.9 0.9 0.9 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
+          </material>
+        </visual>
+        <collision name="building_3_collision">
+          <pose>11.505 -2.0296 1.1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.75 1.0 1.0</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="building_3_visual">
+          <pose>11.505 -2.0296 1.1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.75 1.0 1.0</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.9 0.9 0.9 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
           </material>
         </visual>
       </link>
     </model>
     <model name="indicator_0">
       <static>true</static>
-      <pose>11.7 3 0.3 0 0 0</pose>
+      <pose>11.066 2.0296 0.6645 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
-            <box>
-              <size>0.2 0.2 0.6</size>
-            </box>
+            <cylinder>
+              <radius>0.064</radius>
+              <length>0.129</length>
+            </cylinder>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
-            <box>
-              <size>0.2 0.2 0.6</size>
-            </box>
+            <cylinder>
+              <radius>0.064</radius>
+              <length>0.129</length>
+            </cylinder>
           </geometry>
           <material>
-            <ambient>0 1 0 1</ambient>
-            <diffuse>0 1 0 1</diffuse>
+            <ambient>0.18 0.37 0.20 1</ambient>
+            <diffuse>0.18 0.37 0.20 1</diffuse>
           </material>
         </visual>
       </link>
     </model>
     <model name="indicator_1">
       <static>true</static>
-      <pose>11.7 0 0.3 0 0 0</pose>
+      <pose>11.072 0 0.66 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
-            <box>
-              <size>0.2 0.2 0.6</size>
-            </box>
+            <cylinder>
+              <radius>0.058</radius>
+              <length>0.120</length>
+            </cylinder>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
-            <box>
-              <size>0.2 0.2 0.6</size>
-            </box>
+            <cylinder>
+              <radius>0.058</radius>
+              <length>0.120</length>
+            </cylinder>
           </geometry>
           <material>
-            <ambient>1 0 0 1</ambient>
-            <diffuse>1 0 0 1</diffuse>
+            <ambient>0.53 0.09 0.04 1</ambient>
+            <diffuse>0.53 0.09 0.04 1</diffuse>
           </material>
         </visual>
       </link>
     </model>
     <model name="indicator_2">
       <static>true</static>
-      <pose>11.7 -3 0.3 0 0 0</pose>
+      <pose>11.072 -2.0296 0.66 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
-            <box>
-              <size>0.2 0.2 0.6</size>
-            </box>
+            <cylinder>
+              <radius>0.058</radius>
+              <length>0.120</length>
+            </cylinder>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
-            <box>
-              <size>0.2 0.2 0.6</size>
-            </box>
+            <cylinder>
+              <radius>0.058</radius>
+              <length>0.120</length>
+            </cylinder>
           </geometry>
           <material>
-            <ambient>1 0 0 1</ambient>
-            <diffuse>1 0 0 1</diffuse>
+            <ambient>0.53 0.09 0.04 1</ambient>
+            <diffuse>0.53 0.09 0.04 1</diffuse>
           </material>
         </visual>
       </link>
