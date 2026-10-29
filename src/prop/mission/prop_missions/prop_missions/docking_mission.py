@@ -300,7 +300,7 @@ class DockingMission(Node):
                 self.confirmations = 0
                 if now - self.last_log > 5:
                     self.get_logger().info(
-                        f"SEARCH: {len(points)} LiDAR points; visible colors {list(sample[1])}; waiting for supported bay geometry",
+                        f"SEARCH: {len(points)} LiDAR points; visible colors { {color: len(xs) for color, xs in sample[1].items()} }; waiting for supported bay geometry",
                     )
                     self.last_log = now
                 return
