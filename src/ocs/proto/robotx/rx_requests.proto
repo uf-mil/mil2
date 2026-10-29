@@ -34,7 +34,12 @@ message RxRequest
  * uav_geofence: corners of the geofence from the UAV
  *   The first and last points must be the same
  *   This is requested by Garuda Robotics to ensure geofences are configured properly
- *   Validated against the RxCourse boundary before RunStart is sent
+ *   Every point must lie within the RxCourse corners or its uav_transit_area;
+ *   otherwise the declaration is refused
+ * uav_geofence_max_altitude_hae_m: max altitude of the UAV geofence, in meters HAE
+ *   Required with a UAV: above 0 and at most the competition's maximum UAV altitude
+ * uav_pilot_callsign: the UAV pilot for this run, by their call sign in
+ *   MyDroneFleets: their first name + UAPL number
  */
 message RunDeclaration
 {
@@ -44,4 +49,6 @@ message RunDeclaration
     robocommand.common.v1.TaskTier task3_tier = 4;  // Coordinated Logistics
     robocommand.common.v1.TaskTier task4_tier = 5;  // Dynamic Incident Response
     repeated robocommand.common.v1.LatLng uav_geofence = 6;
+    double uav_geofence_max_altitude_hae_m = 7;
+    string uav_pilot_callsign = 8;
 }

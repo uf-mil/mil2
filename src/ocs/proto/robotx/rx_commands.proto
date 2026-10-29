@@ -44,8 +44,9 @@ message RxCommand
 
 /**
  * Official run start signal — sent by RoboCommand when the run clock begins.
- * Issued in response to a RunDeclaration from the team, once its uav_geofence
- * has been validated against the RxCourse boundary.
+ * Issued in response to an accepted RunDeclaration from the team, once every
+ * declared vehicle reports STATE_AUTO and nothing holds the start: with a UAV,
+ * Garuda's clearance of its flight; and the course manager's approval.
  * declaration_seq: seq of the RunDeclaration this start corresponds to
  * run_id: identifier for the run being started
  */
@@ -103,9 +104,12 @@ message AllClear
 
 /**
  * Task 4 Disruptive: Alert for a moving surface object in the operational area.
- * All vehicles of the affected types must stay beyond 10m of this object.
+ * All vehicles of the affected types must stay beyond keep_out_radius_m of
+ * this object.
  * Fields specified by handbook §3.3.5: GPS location, heading, speed, affected
  * vehicle types.
+ * keep_out_radius_m: keep-out radius in meters around the object's position
+ *   (5 m by default)
  */
 message MovingObjectAlert
 {
@@ -113,4 +117,5 @@ message MovingObjectAlert
     float heading_deg = 2;
     float speed_mps = 3;
     repeated VehicleType affected_vehicle_types = 4;
+    float keep_out_radius_m = 5;
 }

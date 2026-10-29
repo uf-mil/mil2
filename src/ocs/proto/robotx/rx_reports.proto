@@ -43,9 +43,12 @@ message RxReport
 
 /**
  * Periodic heartbeat from any vehicle.
- * altitude_hae_m: altitude (height above elipsoid) in meters
+ * altitude_hae_m: altitude (height above ellipsoid) in meters
  * current_task: used to track vehicle tasking for course activation
  * vehicle_type: class of this vehicle (USV/UUV/UAV)
+ * uav_registration: UAV only — which registered aircraft this is: its CAAS
+ *   registration number. May be left empty by a team with only one drone
+ *   registered.
  */
 message Heartbeat
 {
@@ -60,6 +63,7 @@ message Heartbeat
     RxTask current_task = 9;
     VehicleType vehicle_type = 10;
     FlightPhase flight_phase = 11;  // UAV only
+    string uav_registration = 12;   // UAV only
 }
 
 /**
@@ -142,7 +146,7 @@ message DockingReport
 /**
  * Task 3: Coordinated Logistics (all tiers) — report successful firefighting
  * (window light changed RED -> GREEN).
- * window_id: window number where firefighting was completed
+ * window_id: window where firefighting was completed — 1 = upper, 2 = lower
  */
 message FirefightingReport
 {

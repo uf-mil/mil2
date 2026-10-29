@@ -19,6 +19,14 @@ import "common.proto";
  *   The first and last points will be the same
  * sent_at:        timestamp when this configuration was published
  *
+ * Where a declared UAV's geofence (RunDeclaration.uav_geofence) may be —
+ * RoboCommand refuses a declaration whose geofence breaks this:
+ * uav_transit_area: ordered lat/lng vertices of the area a UAV may also use
+ *   beyond the course boundary — Garuda's transit area for this course
+ *   (takeoff, landing and the way to and from the course). Closed like
+ *   corners. Every point of the geofence must lie within corners or within
+ *   this. Empty: within corners alone.
+ *
  * MQTT topic: robocommand/robotx/course  (retained, RC → OCS)
  */
 message RxCourse
@@ -27,4 +35,5 @@ message RxCourse
     uint32 pinger_freq_hz = 2;
     repeated robocommand.common.v1.LatLng corners = 3;
     google.protobuf.Timestamp sent_at = 4;
+    repeated robocommand.common.v1.LatLng uav_transit_area = 5;
 }
