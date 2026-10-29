@@ -16,6 +16,7 @@ from mil_msgs.msg import Heartbeat as RosHeartbeat
 from mil_msgs.msg import PipelineSurveyReport as RosPipelineSurveyReport
 from paho.mqtt.enums import CallbackAPIVersion
 from rclpy.node import Node
+from std_msgs.msg import String
 
 from ocs.proto import (
     FlightPhase,
@@ -78,6 +79,12 @@ class OCS(Node):
         self.acoustic_frequency_config_publisher = self.create_publisher(
             AcousticPingerConfig,
             "/acoustic_frequency_config_sending",
+            10,
+        )
+
+        self.dock_ocs_command_publisher = self.create_publisher(
+            String,
+            "/dock/ocs/command",
             10,
         )
 
@@ -182,7 +189,11 @@ class OCS(Node):
                 return
 
             self.current_run_id = command.run_start.run_id
-            # TODO start??
+
+            # TODO sub start?
+            self.dock_ocs_command_publisher.publish("START")
+            # TODO drone start?
+
         elif command.assistance_request is not None:
             if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
                 # TODO send to prop?
