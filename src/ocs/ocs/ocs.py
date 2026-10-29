@@ -219,6 +219,24 @@ class OCS(Node):
                     0,
                     0,
                 )
+        elif command.keep_out_zone is not None:
+            if command.keep_out_zone.vehicle_type == VehicleType.TYPE_USV:
+                # TODO send to prop?
+                pass
+            elif command.keep_out_zone.vehicle_type == VehicleType.TYPE_UAV:
+                self.mavconn.mav.command_long_send(
+                    self.mavconn.target_system,
+                    self.mavconn.target_component,
+                    mavutil.mavlink.MAV_CMD_USER_4,
+                    0,
+                    8,
+                    command.center.latitude,
+                    command.center.longitude,
+                    command.radius_m,
+                    0,
+                    0,
+                    0,
+                )
         elif command.readiness_confirm is not None:
             if command.readiness_confirm.vehicle_id == "USV":
                 # TODO send to prop
@@ -228,7 +246,26 @@ class OCS(Node):
                     self.mavconn.target_system,
                     self.mavconn.target_component,
                     mavutil.mavlink.MAV_CMD_USER_4,
+                    0,
                     5,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                )
+        elif command.all_clear is not None:
+            if command.all_clear.vehicle_type == VehicleType.TYPE_USV:
+                # TODO send to prop
+                pass
+            elif command.all_clear.vehicle_type == VehicleType.TYPE_UAV:
+                self.mavconn.mav.command_long_send(
+                    self.mavconn.target_system,
+                    self.mavconn.target_component,
+                    mavutil.mavlink.MAV_CMD_USER_4,
+                    0,
+                    9,
                     0,
                     0,
                     0,
