@@ -154,9 +154,14 @@ class IndicatorShapeTests(unittest.TestCase):
         image[20:32, 30:42] = RENDER_GREEN
         self.assertEqual(color_centers(image), {"green": [35.5]})
 
-    def test_thin_green_strip_is_rejected(self):
+    def test_shaded_real_indicator_green_is_found(self):
         image = np.zeros((60, 80, 3), np.uint8)
-        image[20:24, 10:50] = PLATFORM_GREEN
+        image[20:32, 30:42] = [28, 56, 31]
+        self.assertEqual(color_centers(image), {"green": [35.5]})
+
+    def test_tall_green_bar_is_rejected(self):
+        image = np.zeros((60, 80, 3), np.uint8)
+        image[10:50, 30:34] = PLATFORM_GREEN
         self.assertEqual(color_centers(image), {})
 
     def test_hollow_green_outline_is_rejected(self):

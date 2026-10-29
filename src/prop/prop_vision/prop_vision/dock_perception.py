@@ -29,14 +29,14 @@ def color_centers(rgb):
     """Return a list of horizontal centroids per indicator color, including repeats."""
     hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
     h, s, v = cv2.split(hsv)
-    # The real indicator's green fins are dark: saturation ~125 in the handbook render.
+    # The real indicator's green fins are dark: saturation ~125, brightness ~65 in shade.
     masks = {
-        "red": ((h < 10) | (h > 170)) & (s > 160),
-        "green": (h > 40) & (h < 85) & (s > 80),
+        "red": ((h < 10) | (h > 170)) & (s > 160) & (v > 70),
+        "green": (h > 40) & (h < 85) & (s > 80) & (v > 40),
     }
     centers = {}
     for color, hue in masks.items():
-        mask = (hue & (v > 70)).astype(np.uint8)
+        mask = hue.astype(np.uint8)
         count, _, stats, centroids = cv2.connectedComponentsWithStats(mask)
         blobs = [i for i in range(1, count) if indicator_shaped(stats[i])]
         if blobs:
