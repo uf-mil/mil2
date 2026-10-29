@@ -29,22 +29,32 @@ def color_centers(rgb):
     """Return a list of horizontal centroids per indicator color, including repeats."""
     hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
     h, s, v = cv2.split(hsv)
+    # The real indicator's green fins are dark: saturation ~125 in the handbook render.
     masks = {
-        "red": (h < 10) | (h > 170),
-        "green": (h > 40) & (h < 85),
+        "red": ((h < 10) | (h > 170)) & (s > 160),
+        "green": (h > 40) & (h < 85) & (s > 80),
     }
     centers = {}
     for color, hue in masks.items():
-        mask = (hue & (s > 160) & (v > 70)).astype(np.uint8)
+        mask = (hue & (v > 70)).astype(np.uint8)
         count, _, stats, centroids = cv2.connectedComponentsWithStats(mask)
-        blobs = [
-            i
-            for i in range(1, count)
-            if stats[i, cv2.CC_STAT_AREA] >= 8 and stats[i, cv2.CC_STAT_HEIGHT] >= 3
-        ]
+        blobs = [i for i in range(1, count) if indicator_shaped(stats[i])]
         if blobs:
             centers[color] = sorted(float(centroids[i, 0]) for i in blobs)
     return centers
+
+
+def indicator_shaped(stat):
+    """True for a side-on indicator: about as tall as wide and filling its box."""
+    width = stat[cv2.CC_STAT_WIDTH]
+    height = stat[cv2.CC_STAT_HEIGHT]
+    area = stat[cv2.CC_STAT_AREA]
+    return (
+        area >= 8
+        and height >= 3
+        and 0.5 <= height / width <= 2.0
+        and area >= 0.6 * width * height
+    )
 
 
 def lines(points):

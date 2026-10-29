@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+import cv2
 import numpy as np
 from nav_msgs.msg import Odometry
 from prop_missions.docking_mission import DockingMission, settled
@@ -88,12 +89,12 @@ class PerceptionTests(unittest.TestCase):
 
     def test_repeated_red_indicators_and_ambiguous_green(self):
         image = np.zeros((120, 180, 3), np.uint8)
-        image[30:60, 20:30] = [255, 0, 0]
-        image[30:60, 80:90] = [0, 255, 0]
-        image[30:60, 140:150] = [255, 0, 0]
+        image[30:40, 20:30] = [255, 0, 0]
+        image[30:40, 80:90] = [0, 255, 0]
+        image[30:40, 140:150] = [255, 0, 0]
         pixels = color_centers(image)
         self.assertEqual(pixels, {"red": [24.5, 144.5], "green": [84.5]})
-        image[80:100, 140:150] = [0, 255, 0]
+        image[80:90, 140:150] = [0, 255, 0]
         pixels = color_centers(image)
         self.assertEqual(len(pixels["green"]), 2)
         points, _, camera, _ = scene()
@@ -105,7 +106,7 @@ class PerceptionTests(unittest.TestCase):
         for color, positions in pixels.items():
             for position in positions:
                 x = round(position)
-                image[30:60, x - 3 : x + 4] = (
+                image[30:37, x - 3 : x + 4] = (
                     [0, 255, 0] if color == "green" else [255, 0, 0]
                 )
         bay = detect_bay(points, color_centers(image), 310, 320, camera, 0)
@@ -139,6 +140,35 @@ class PerceptionTests(unittest.TestCase):
         self.assertFalse(settled(msg, np.array([0.0, 0.0]), 0.3))
         msg.twist.twist.linear.x = 0.2
         self.assertFalse(settled(msg, np.array([0.0, 0.0]), 0.0))
+
+
+# Median RGB of the green indicator in the handbook render; the real green is dark.
+RENDER_GREEN = [46, 94, 51]
+# Handbook delivery-platform circle colour #089404.
+PLATFORM_GREEN = [8, 148, 4]
+
+
+class IndicatorShapeTests(unittest.TestCase):
+    def test_dark_real_indicator_green_is_found(self):
+        image = np.zeros((60, 80, 3), np.uint8)
+        image[20:32, 30:42] = RENDER_GREEN
+        self.assertEqual(color_centers(image), {"green": [35.5]})
+
+    def test_thin_green_strip_is_rejected(self):
+        image = np.zeros((60, 80, 3), np.uint8)
+        image[20:24, 10:50] = PLATFORM_GREEN
+        self.assertEqual(color_centers(image), {})
+
+    def test_hollow_green_outline_is_rejected(self):
+        image = np.zeros((60, 80, 3), np.uint8)
+        image[10:30, 10:30] = PLATFORM_GREEN
+        image[12:28, 12:28] = 0
+        self.assertEqual(color_centers(image), {})
+
+    def test_flat_platform_circle_is_rejected(self):
+        image = np.zeros((60, 120, 3), np.uint8)
+        cv2.ellipse(image, (60, 30), (40, 4), 0, 0, 360, PLATFORM_GREEN, -1)
+        self.assertEqual(color_centers(image), {})
 
 
 if __name__ == "__main__":
