@@ -96,6 +96,12 @@ class OCS(Node):
             10,
         )
 
+        self.sub_mission_publisher = self.create_publisher(
+            String,
+            "/mission_sending",
+            10,
+        )
+
         self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
         self.client.subscribe("robocommand/robotx/course")
@@ -212,7 +218,7 @@ class OCS(Node):
 
             self.current_run_id = command.run_start.run_id
 
-            # TODO sub start?
+            self.sub_mission_publisher.publish("PingerSurveyMission")
             self.dock_ocs_command_publisher.publish("START")
             # TODO drone start?
 
