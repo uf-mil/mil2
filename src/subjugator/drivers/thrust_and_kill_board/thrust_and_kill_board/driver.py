@@ -126,6 +126,8 @@ class ThrustAndKillNode(
             10,
         )
 
+        self.kill_messages = self.create_publisher(String, "thruster_kill", 10)
+
         self.temperatures_pub = self.create_publisher(
             Temperature,
             "sub9_temp",
@@ -204,10 +206,12 @@ class ThrustAndKillNode(
                     self.modem_pico.write(self.modem_msg.encode("utf-8"))
                     self.modem_pico.close()
                 self.modem_pico = None
+                self.kill_messages.publish("kill")
             else:
                 self.modem_msg = "gg"
                 if self._connect_modem() and self.modem_pico is not None:
                     self.modem_pico.write(self.modem_msg.encode("utf-8"))
+                self.kill_messages.publish("unkill")
 
         if isinstance(packet, TemperaturePacketRecieve):
             msg = Temperature()

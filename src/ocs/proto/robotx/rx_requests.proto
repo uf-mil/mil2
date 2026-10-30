@@ -1,0 +1,54 @@
+edition = "2024";
+
+package robocommand.robotx.v1;
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+/**
+ * RxRequest is sent from the team (not a specific vehicle) to the RoboCommand server.
+ * team_id: unique team identifier (e.g. RNRX)
+ * seq:     monotonically increasing sequence count
+ * sent_at: timestamp of message transmission
+ * body:    one of the request messages
+ *
+ * MQTT topic: robocommand/robotx/<team_id>/request
+ */
+message RxRequest
+{
+    string team_id = 1;
+    uint32 seq = 2;
+    google.protobuf.Timestamp sent_at = 3;
+
+    oneof body
+    {
+        RunDeclaration run_declaration = 10;
+    }
+}
+
+/**
+ * Pre-run declaration — sent once before the run begins.
+ * vehicle_ids: all vehicles participating in this run
+ * task1_tier through task4_tier: tier the team is attempting for each task
+ *   TIER_NONE means the team is not attempting that task
+ * uav_geofence: corners of the geofence from the UAV
+ *   The first and last points must be the same
+ *   This is requested by Garuda Robotics to ensure geofences are configured properly
+ *   Every point must lie within the RxCourse corners or its uav_transit_area;
+ *   otherwise the declaration is refused
+ * uav_geofence_max_altitude_hae_m: max altitude of the UAV geofence, in meters HAE
+ *   Required with a UAV: above 0 and at most the competition's maximum UAV altitude
+ * uav_pilot_callsign: the UAV pilot for this run, by their call sign in
+ *   MyDroneFleets: their first name + UAPL number
+ */
+message RunDeclaration
+{
+    repeated string vehicle_ids = 1;
+    robocommand.common.v1.TaskTier task1_tier = 2;  // Safe Passage
+    robocommand.common.v1.TaskTier task2_tier = 3;  // Infrastructure Survey & Repair
+    robocommand.common.v1.TaskTier task3_tier = 4;  // Coordinated Logistics
+    robocommand.common.v1.TaskTier task4_tier = 5;  // Dynamic Incident Response
+    repeated robocommand.common.v1.LatLng uav_geofence = 6;
+    double uav_geofence_max_altitude_hae_m = 7;
+    string uav_pilot_callsign = 8;
+}

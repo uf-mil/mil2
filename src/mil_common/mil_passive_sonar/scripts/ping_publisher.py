@@ -7,7 +7,7 @@ import numpy as np
 import rclpy
 import transforms3d
 from geometry_msgs.msg import PoseStamped
-from mil_msgs.msg import ProcessedPing
+from mil_msgs.msg import AcousticPingerConfig, ProcessedPing
 
 
 def main():
@@ -15,11 +15,20 @@ def main():
     PORT = 2007
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        node.declare_parameter("pinger_frequency", 35_000)
+
         pub = node.create_publisher(ProcessedPing, "hydrophones/solved", 10)
         pose_pub = node.create_publisher(PoseStamped, "hydrophones/pose", 10)
         s.connect((HOST, PORT))
         node.get_logger().info(
             f"\nping_publisher connected to {HOST}:{PORT}, forwarding TCP messages to {pub.topic_name}...",
+        )
+
+        node.create_subscription(
+            AcousticPingerConfig,
+            "acoustic_pinger_config_received",
+            set_pinger_frequency,
+            1,
         )
 
         # Need to ignore the first 2 JSON Parse Errors (nothing wrong)
@@ -49,26 +58,31 @@ def main():
                 ping_msg.frequency = int(json_data["frequency_Hz"])
                 ping_msg.origin_distance_m = float(json_data["origin_distance_m"])
 
-                if not 33_000 <= ping_msg.frequency <= 37_000:
+                pinger_frequency = (
+                    node.get_parameter("pinger_frequency")
+                    .get_parameter_value()
+                    .integer_value
+                )
+
+                if abs(pinger_frequency - ping_msg.frequency) > 2_500:
                     continue
 
                 pub.publish(ping_msg)
 
-                if True:  # 25_000 <= ping_msg.frequency <= 35_000:
-                    pose_msg = PoseStamped()
-                    pose_msg.header.frame_id = "base_link"
-                    # calculate quaternion
-                    vec = np.array([x, y, z])
-                    left = np.cross(np.array([0, 0, 1]), vec)
-                    up = np.cross(vec, left)
+                pose_msg = PoseStamped()
+                pose_msg.header.frame_id = "base_link"
+                # calculate quaternion
+                vec = np.array([x, y, z])
+                left = np.cross(np.array([0, 0, 1]), vec)
+                up = np.cross(vec, left)
 
-                    mat = np.array([vec, left, up]).T
-                    quat = transforms3d.quaternions.mat2quat(mat)
-                    pose_msg.pose.orientation.w = quat[0]
-                    pose_msg.pose.orientation.x = quat[1]
-                    pose_msg.pose.orientation.y = quat[2]
-                    pose_msg.pose.orientation.z = quat[3]
-                    pose_pub.publish(pose_msg)
+                mat = np.array([vec, left, up]).T
+                quat = transforms3d.quaternions.mat2quat(mat)
+                pose_msg.pose.orientation.w = quat[0]
+                pose_msg.pose.orientation.x = quat[1]
+                pose_msg.pose.orientation.y = quat[2]
+                pose_msg.pose.orientation.z = quat[3]
+                pose_pub.publish(pose_msg)
             except json.JSONDecodeError as e:
                 parse_error_count += 1
                 # ignore first two (normal behavior)
@@ -76,6 +90,15 @@ def main():
                     node.get_logger().error(f"JSONDecodeError: {e}")
             except KeyError as e:
                 node.get_logger().error(f"Key Error: {e}")
+
+
+def set_pinger_frequency(msg):
+    frequency_parameter = rclpy.parameter.Parameter(
+        "pinger_frequency",
+        rclpy.parameter.Parameter.Type.INTEGER,
+        msg.frequency,
+    )
+    node.set_parameters([frequency_parameter])
 
 
 if __name__ == "__main__":

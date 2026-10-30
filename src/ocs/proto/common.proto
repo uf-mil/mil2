@@ -1,0 +1,39 @@
+edition = "2024";
+
+package robocommand.common.v1;
+
+/**
+ * Latitude and Longitude in decimal degrees.
+ * Latitude in the range -90.0 to +90.0
+ * Longitude in the range -180.0 to +180.0
+ */
+message LatLng
+{
+    double latitude = 1;
+    double longitude = 2;
+}
+
+enum RobotState
+{
+    STATE_UNKNOWN = 0;
+    STATE_KILLED = 1;
+    STATE_MANUAL = 2;
+    STATE_AUTO = 3;
+}
+
+/**
+ * Competition tier for a given task attempt.
+ * Declared in RunDeclaration before the run begins.
+ * TIER_NONE:       team is not attempting this task
+ * TIER_CORE:       base task requirements only
+ * TIER_ADVANCED:   core + advanced requirements
+ * TIER_DISRUPTIVE: core + advanced + disruptive requirements
+ */
+enum TaskTier
+{
+    TIER_UNKNOWN = 0;
+    TIER_NONE = 1;
+    TIER_CORE = 2;
+    TIER_ADVANCED = 3;
+    TIER_DISRUPTIVE = 4;
+}

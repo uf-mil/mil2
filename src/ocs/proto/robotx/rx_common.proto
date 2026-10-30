@@ -1,0 +1,91 @@
+edition = "2024";
+
+package robocommand.robotx.v1;
+
+/**
+ * TASK_UNKNOWN: field unset or unparsed — not a stand-down signal
+ * TASK_NONE:    deliberately idle / not attempting any task
+ *
+ * Heartbeat.current_task is the authoritative signal for beginning or
+ * standing down a task attempt: RC treats a transition into a task value
+ * as the start of an attempt, and a transition to TASK_NONE as standing
+ * down. TASK_UNKNOWN must never be read as standing down, since it can
+ * also appear transiently during a mode change or on a dropped field.
+ */
+enum RxTask
+{
+    TASK_UNKNOWN = 0;
+    TASK_NONE = 1;
+    TASK_SAFE_PASSAGE = 2;           // Task 1
+    TASK_INFRA_SURVEY_REPAIR = 3;    // Task 2
+    TASK_COORDINATED_LOGISTICS = 4;  // Task 3
+    TASK_DYNAMIC_INCIDENT = 5;       // Task 4
+}
+
+/**
+ * Class of uncrewed system.
+ * A UUV is always TYPE_UUV, even while surfaced — type reflects vehicle
+ * class, not current depth.
+ */
+enum VehicleType
+{
+    TYPE_UNKNOWN = 0;
+    TYPE_USV = 1;
+    TYPE_UUV = 2;
+    TYPE_UAV = 3;
+}
+
+/**
+ * Task 1: Safe Passage
+ * LED beacon states on buoys in the transit field.
+ * Flashing lights cycle 1s on / 1s off.
+ *
+ * FLASHING_RED   -> pass on starboard side
+ * FLASHING_GREEN -> pass on port side
+ * FLASHING_BLUE  -> safe entry point
+ * STEADY_BLUE    -> safe exit point
+ * OFF            -> not part of safe route
+ */
+enum BeaconState
+{
+    BEACON_STATE_UNKNOWN = 0;
+    BEACON_STATE_OFF = 1;
+    BEACON_STATE_FLASHING_RED = 2;
+    BEACON_STATE_FLASHING_GREEN = 3;
+    BEACON_STATE_FLASHING_BLUE = 4;
+    BEACON_STATE_STEADY_BLUE = 5;
+}
+
+/**
+ * Task 2: Infrastructure Survey and Repair
+ * Status of each pipeline segment, reported in order from the active (GREEN) buoy end.
+ */
+enum PipelineSegmentStatus
+{
+    PIPELINE_SEGMENT_UNKNOWN = 0;
+    PIPELINE_SEGMENT_INTACT = 1;   // GREEN light
+    PIPELINE_SEGMENT_DAMAGED = 2;  // RED light
+}
+
+/**
+ * UAV flight phase. Only meaningful when VehicleType == TYPE_UAV.
+ * All other vehicles should leave this at FLIGHT_PHASE_UNKNOWN.
+ */
+enum FlightPhase
+{
+    FLIGHT_PHASE_UNKNOWN = 0;
+    FLIGHT_PHASE_GROUNDED = 1;  // On the ground / not airborne
+    FLIGHT_PHASE_AIRBORNE = 2;  // In flight
+}
+
+/**
+ * Tasks 2 & 3: Color for tins and delivery circles (RED, GREEN, BLUE).
+ */
+enum Color
+{
+    COLOR_UNKNOWN = 0;
+    COLOR_RED = 1;
+    COLOR_GREEN = 2;
+    COLOR_BLUE = 3;
+    COLOR_ANY = 4;
+}
