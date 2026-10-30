@@ -79,6 +79,12 @@ def generate_launch_description():
         remappings=[("/mission_received", "/mission")],
     )
 
+    mission_planner = Node(
+        package="mission_planner",
+        executable="mission_planner_node",
+        output="both",
+    )
+
     return LaunchDescription(
         [
             new_depth,
@@ -89,5 +95,6 @@ def generate_launch_description():
             thrust_launch,
             subjugator_setup,
             acoustic_modem,
+            mission_planner,
         ],
     )
