@@ -24,7 +24,7 @@ int main(int argc, char** argv)
     ctx->node = node;
 
     node->declare_parameter<std::string>("mission", "SonarFollowerTest");
-    std::string mission_to_run = node->get_parameter("mission").as_string();
+    std::string param_mission = node->get_parameter("mission").as_string();
 
     node->declare_parameter<std::string>("detections_topic", "/yolo/detections");
     node->declare_parameter<std::string>("tracking_topic", "/yolo/tracking");
@@ -39,6 +39,12 @@ int main(int argc, char** argv)
                                                                            std::scoped_lock lk(ctx->odom_mx);
                                                                            ctx->latest_odom = *msg;
                                                                        });
+    ctx->mission_sub = node->create_subscription<std_msgs::msg::String>("/mission", 10,
+                                                                        [ctx](std_msgs::msg::String::SharedPtr msg)
+                                                                        {
+                                                                            std::scoped_lock lk(ctx->mission_mx);
+                                                                            ctx->mission = *msg;
+                                                                        });
 
     RCLCPP_INFO(node->get_logger(), "Subscribing to YOLO detections on '%s' and tracking on '%s'",
                 detections_topic.c_str(), tracking_topic.c_str());
@@ -82,6 +88,32 @@ int main(int argc, char** argv)
     ctx->controller_enable_client = node->create_client<std_srvs::srv::SetBool>("/pid_controller/enable", 10);
     ctx->raw_effort_pub = node->create_publisher<subjugator_msgs::msg::ThrusterEfforts>("/thruster_efforts", 10);
 
+    std::string mission_to_run;
+
+    // Wait for mission from topic if not provided in params
+    if (!param_mission.empty())
+    {
+        mission_to_run = param_mission;
+    }
+    else
+    {
+        RCLCPP_INFO(node->get_logger(), "Waiting for mission...");
+        rclcpp::Rate wait_rate(10.0);
+        while (rclcpp::ok())
+        {
+            rclcpp::spin_some(node);
+            {
+                std::scoped_lock lk(ctx->odom_mx);
+                if (ctx->mission.has_value())
+                {
+                    mission_to_run = ctx->mission.value().data;
+                    break;
+                }
+            }
+            wait_rate.sleep();
+        }
+    }
+
     // Wait for odometry before starting mission
     RCLCPP_INFO(node->get_logger(), "Waiting for odometry...");
     rclcpp::Rate wait_rate(10.0);
@@ -98,6 +130,8 @@ int main(int argc, char** argv)
         }
         wait_rate.sleep();
     }
+
+    RCLCPP_INFO(node->get_logger(), ("Running mission '" + mission_to_run + '\'').c_str());
 
     // Load all tree models from installed xml
     std::string const pkg_share = ament_index_cpp::get_package_share_directory("mission_planner");

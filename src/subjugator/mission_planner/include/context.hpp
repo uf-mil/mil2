@@ -29,6 +29,7 @@ struct Context
     rclcpp::Publisher<subjugator_msgs::msg::ThrusterEfforts>::SharedPtr raw_effort_pub;  // no mutex since im lazy and
                                                                                          // no-one else using this rn :P
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr mission_sub;
     rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr detections_sub;
     rclcpp::Subscription<yolo_msgs::msg::DetectionArray>::SharedPtr tracking_sub;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub;
@@ -47,6 +48,9 @@ struct Context
 
     std::mutex last_goal_mx;
     std::optional<geometry_msgs::msg::Pose> last_goal;
+
+    std::mutex mission_mx;
+    std::optional<std_msgs::msg::String> mission;
 
     // Raw per-frame YOLO detections (/yolo/detections).
     std::mutex detections_mx;
