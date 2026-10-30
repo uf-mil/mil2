@@ -18,7 +18,7 @@ import acoustic_pinger_config_pb2 as acoustic__pinger__config__pb2
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b"\n\x11mil_message.proto\x12\x12mil_acoustic_modem\x1a\x1cpipeline_survey_report.proto\x1a\x0fheartbeat.proto\x1a\x1c\x61\x63oustic_pinger_config.proto\"\x92\x02\n\nMilMessage\x12\x30\n\x04type\x18\x01 \x01(\x0e\x32\".mil_acoustic_modem.MilMessageType\x12\x32\n\theartbeat\x18\x02 \x01(\x0b\x32\x1d.mil_acoustic_modem.HeartbeatH\x00\x12J\n\x16pipeline_survey_report\x18\x03 \x01(\x0b\x32(.mil_acoustic_modem.PipelineSurveyReportH\x00\x12J\n\x16\x61\x63oustic_pinger_config\x18\x04 \x01(\x0b\x32(.mil_acoustic_modem.AcousticPingerConfigH\x00\x42\x06\n\x04\x62ody*\x8a\x01\n\x0eMilMessageType\x12\x1e\n\x1aMIL_MESSAGE_TYPE_HEARTBEAT\x10\x00\x12+\n'MIL_MESSAGE_TYPE_PIPELINE_SURVEY_REPORT\x10\x01\x12+\n'MIL_MESSAGE_TYPE_ACOUSTIC_PINGER_CONFIG\x10\x02\x62\x06proto3"
+    b"\n\x11mil_message.proto\x12\x12mil_acoustic_modem\x1a\x1cpipeline_survey_report.proto\x1a\x0fheartbeat.proto\x1a\x1c\x61\x63oustic_pinger_config.proto\"\xa5\x02\n\nMilMessage\x12\x30\n\x04type\x18\x01 \x01(\x0e\x32\".mil_acoustic_modem.MilMessageType\x12\x32\n\theartbeat\x18\x02 \x01(\x0b\x32\x1d.mil_acoustic_modem.HeartbeatH\x00\x12J\n\x16pipeline_survey_report\x18\x03 \x01(\x0b\x32(.mil_acoustic_modem.PipelineSurveyReportH\x00\x12J\n\x16\x61\x63oustic_pinger_config\x18\x04 \x01(\x0b\x32(.mil_acoustic_modem.AcousticPingerConfigH\x00\x12\x11\n\x07mission\x18\x05 \x01(\tH\x00\x42\x06\n\x04\x62ody*\xa8\x01\n\x0eMilMessageType\x12\x1e\n\x1aMIL_MESSAGE_TYPE_HEARTBEAT\x10\x00\x12+\n'MIL_MESSAGE_TYPE_PIPELINE_SURVEY_REPORT\x10\x01\x12+\n'MIL_MESSAGE_TYPE_ACOUSTIC_PINGER_CONFIG\x10\x02\x12\x1c\n\x18MIL_MESSAGE_TYPE_MISSION\x10\x03\x62\x06proto3"
 )
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
@@ -26,8 +26,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "mil_message_pb2", globals()
 if _descriptor._USE_C_DESCRIPTORS == False:
 
     DESCRIPTOR._options = None
-    _MILMESSAGETYPE._serialized_start = 396
-    _MILMESSAGETYPE._serialized_end = 534
+    _MILMESSAGETYPE._serialized_start = 415
+    _MILMESSAGETYPE._serialized_end = 583
     _MILMESSAGE._serialized_start = 119
-    _MILMESSAGE._serialized_end = 393
+    _MILMESSAGE._serialized_end = 412
 # @@protoc_insertion_point(module_scope)

@@ -76,6 +76,7 @@ def generate_launch_description():
         package="mil_acoustic_modem",
         executable="mil_acoustic_modem",
         output="both",
+        remappings=[("/mission_received", "/mission")],
     )
 
     return LaunchDescription(

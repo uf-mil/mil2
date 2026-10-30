@@ -12,6 +12,7 @@ from mil_msgs.msg import (
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
+from std_msgs.msg import String
 
 from mil_acoustic_modem.hardware_modem_interface import HardwareModemInterface
 from mil_acoustic_modem.protobuf import (
@@ -68,10 +69,20 @@ class AcousticModem(Node):
             5,
         )
 
-        self.acoustic_pinger_config_subscriber = self.create_subscriber(
+        self.acoustic_pinger_config_subscriber = self.create_subscription(
             AcousticPingerConfig,
             "acoustic_pinger_config_sending",
             self.send_acoustic_pinger_config,
+            10,
+            callback_group=self.sub_group,
+        )
+
+        self.mission_publisher = self.create_publisher(String, "mission_received", 5)
+
+        self.mission_subscriber = self.create_subscription(
+            String,
+            "mission_sending",
+            self.send_mission,
             10,
             callback_group=self.sub_group,
         )
@@ -195,6 +206,8 @@ class AcousticModem(Node):
                 config_msg.frequency = body.frequency
 
                 self.acoustic_pinger_config_publisher.publish(config_msg)
+            case mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_MISSION:
+                self.mission_publisher.publish(parsed_mil_message.mission)
 
     def send_pipeline_survey_report(self, msg):
         report_protobuf = pipeline_survey_report_pb2.PipelineSurveyReport()
@@ -243,6 +256,15 @@ class AcousticModem(Node):
             mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_ACOUSTIC_PINGER_CONFIG
         )
         mil_protobuf.acoustic_pinger_config = config_protobuf
+
+        protobuf_string = mil_protobuf.SerializeToString()
+
+        self.modem.send_im(protobuf_string)
+
+    def send_mission(self, msg):
+        mil_protobuf = mil_message_pb2.MilMessage()
+        mil_protobuf.type = mil_message_pb2.MilMessageType.MIL_MESSAGE_TYPE_MISSION
+        mil_protobuf.mission = msg
 
         protobuf_string = mil_protobuf.SerializeToString()
 
