@@ -11,12 +11,14 @@ from pathlib import Path
 import paho.mqtt.client as mqtt
 import pymavlink.mavutil as mavutil
 import rclpy
+from geographic_msgs.msg import GeoPoint, GeoPose
 from mil_msgs.msg import AcousticPingerConfig
 from mil_msgs.msg import Heartbeat as RosHeartbeat
 from mil_msgs.msg import PipelineSurveyReport as RosPipelineSurveyReport
 from paho.mqtt.enums import CallbackAPIVersion
 from rclpy.node import Node
 from std_msgs.msg import String
+from std_srvs.srv import Empty
 
 from ocs.proto import (
     DockingReport,
@@ -101,6 +103,14 @@ class OCS(Node):
             "/mission_sending",
             10,
         )
+
+        self.prop_emergency_publisher = self.create_publisher(
+            GeoPose,
+            "/latlon_goal/coordinate",
+            10,
+        )
+
+        self.prop_all_clear_client = self.create_client(Empty, "/latlon_goal/all_clear")
 
         self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
@@ -219,14 +229,21 @@ class OCS(Node):
             self.current_run_id = command.run_start.run_id
 
             self.sub_mission_publisher.publish("PingerSurveyMission")
+            # TODO probably want to start prop on task 1 before 3 here
             self.dock_ocs_command_publisher.publish("START")
             # TODO drone start?
 
         elif command.assistance_request is not None:
             if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
-                # TODO send to prop?
+                msg = GeoPose()
+
+                point = GeoPoint()
+                point.latitude = command.position.latitude
+                point.longitude = command.position.longitude
+
+                msg.point = point
+                self.prop_emergency_publisher.publish(msg)
                 self.rx_incident_ack("USV", command.seq)
-                pass
             elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
                 self.mavconn.mav.command_long_send(
                     self.mavconn.target_system,
@@ -243,9 +260,8 @@ class OCS(Node):
                 )
         elif command.keep_out_zone is not None:
             if command.keep_out_zone.vehicle_type == VehicleType.TYPE_USV:
-                # TODO send to prop?
+                # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
-                pass
             elif command.keep_out_zone.vehicle_type == VehicleType.TYPE_UAV:
                 self.mavconn.mav.command_long_send(
                     self.mavconn.target_system,
@@ -263,8 +279,8 @@ class OCS(Node):
                 self.rx_incident_ack("UAV", command.seq)
         elif command.readiness_confirm is not None:
             if command.readiness_confirm.vehicle_id == "USV":
-                # TODO send to prop
-                pass
+                req = Empty.Request()
+                self.prop_all_clear_client.call_async(req)
             elif command.readiness_confirm.vehicle_id == "UAV":
                 self.mavconn.mav.command_long_send(
                     self.mavconn.target_system,
@@ -281,9 +297,8 @@ class OCS(Node):
                 )
         elif command.all_clear is not None:
             if command.all_clear.vehicle_type == VehicleType.TYPE_USV:
-                # TODO send to prop
+                # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
-                pass
             elif command.all_clear.vehicle_type == VehicleType.TYPE_UAV:
                 self.mavconn.mav.command_long_send(
                     self.mavconn.target_system,
