@@ -4,6 +4,7 @@ import rclpy
 from mil_msgs.msg import Heartbeat, Point2D
 from nav_msgs.msg import Odometry
 from rcl_interfaces.srv import GetParameters
+from std_msgs.msg import String
 from tf_transformations import euler_from_quaternion
 
 
@@ -24,12 +25,20 @@ class SubHeartbeat(rclpy.Node):
             1,
         )
 
+        self.kill_subscriber = self.create_subscription(
+            String,
+            "/thruster_kill",
+            self.kill_callback,
+            1,
+        )
+
         self.mission_parameter_service_client = self.create_client(
             GetParameters,
             "/mission_planner/get_parameters",
         )
 
         self.latest_odometry = Odometry()
+        self.latest_kill_status = "kill"
 
         self.timer = self.create_timer(0.5, self.request_heartbeat)
 
@@ -49,7 +58,7 @@ class SubHeartbeat(rclpy.Node):
             self.get_logger().warn("could not fetch current mission")
 
         heartbeat = Heartbeat()
-        heartbeat.state = "AUTO"  # TODO
+        heartbeat.state = "KILLED" if self.latest_kill_status == "kill" else "AUTO"
 
         position = Point2D()
         position.x = self.latest_odometry.pose.pose.position.x
@@ -85,6 +94,9 @@ class SubHeartbeat(rclpy.Node):
 
     def odometry_callback(self, msg):
         self.latest_odometry = msg
+
+    def kill_callback(self, msg):
+        self.latest_kill_status = msg
 
 
 def main():
