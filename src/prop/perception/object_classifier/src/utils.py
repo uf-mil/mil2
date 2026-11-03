@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import yaml
 
 CAM_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "cam.yaml"
@@ -6,7 +7,19 @@ CAM_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "cam.yaml"
 
 def load_config(path=CAM_CONFIG_PATH):
     with open(path) as f:
-        return yaml.safe_load(f)
+        cfg = yaml.safe_load(f)
+
+    for value in cfg.values():
+        if isinstance(value, dict) and "ros__parameters" in value:
+            cfg = value["ros__parameters"]
+            break
+
+    mtx = cfg.get("camera_matrix")
+    if isinstance(mtx, dict):
+        rows, cols, data = mtx["rows"], mtx["cols"], mtx["data"]
+        cfg["camera_matrix"] = [data[r * cols : (r + 1) * cols] for r in range(rows)]
+
+    return cfg
 
 
 def suppress_nested(dets, thresh=0.8):
