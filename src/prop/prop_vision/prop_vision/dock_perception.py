@@ -133,11 +133,21 @@ def detect_bay(points, pixels, fx, cx, camera, yaw):
             hits.append(hit)
         if len(hits) != 3:
             continue
-        finger_segments = [
-            (c, d, pts)
-            for c, d, pts in segments
-            if abs(d @ inward) > 0.98 and np.ptp(pts @ inward) > 1.0
-        ]
+        finger_segments = []
+        for _, direction, pts in segments:
+            if abs(direction @ inward) <= 0.98:
+                continue
+            # RANSAC fits infinite lines: a delivery platform can share a
+            # finger's side face. Keep disconnected surfaces separate so a
+            # platform cannot move the inferred dock entrance towards us.
+            ordered = pts[np.argsort(pts @ inward)]
+            groups = np.split(
+                ordered,
+                np.flatnonzero(np.diff(ordered @ inward) > 0.5) + 1,
+            )
+            for group in groups:
+                if len(group) >= 8 and np.ptp(group @ inward) > 1.0:
+                    finger_segments.append((group.mean(axis=0), direction, group))
         beacon_s = hits[0] @ lateral
         left = [
             (c @ lateral, pts)
@@ -157,7 +167,9 @@ def detect_bay(points, pixels, fx, cx, camera, yaw):
         if not 1.5 < width < 5:
             continue
         entrance = min(np.min(hp @ inward), np.min(lp @ inward))
-        if not 2 < wall - entrance < 8:
+        # Two-metre fingers have shorter observed sides when their front cap
+        # occludes the first returns. Allow that loss without assuming a map.
+        if not 1.5 < wall - entrance < 8:
             continue
         # A side face can be hidden behind a finger. Its visible opposite
         # face would bias the bay center by half the finger thickness. Measure

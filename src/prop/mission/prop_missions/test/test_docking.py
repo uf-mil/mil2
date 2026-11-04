@@ -12,19 +12,31 @@ from prop_missions.docking_mission import DockingMission, settled
 from prop_vision.dock_perception import color_centers, detect_bay
 
 
-def scene(yaw=0.0, offset=(0.0, 0.0), colors=("red", "green", "red")):
+def scene(
+    yaw=0.0,
+    offset=(0.0, 0.0),
+    colors=("red", "green", "red"),
+    compact=False,
+):
     rng = np.random.default_rng(12)
-    points = [[11.75, y] for y in np.linspace(-4.5, 4.5, 180)]
-    for y in (-4.5, -1.5, 1.5, 4.5):
-        for side in (-0.2, 0.2):
-            points += [[x, y + side] for x in np.linspace(8, 11.75, 80)]
-        points += [[8, yy] for yy in np.linspace(y - 0.2, y + 0.2, 12)]
+    wall, entrance = (11.0, 9.0) if compact else (11.75, 8.0)
+    spacing, half_finger = (2.0296, 0.2537) if compact else (3.0, 0.2)
+    points = [[wall, y] for y in np.linspace(-1.5 * spacing, 1.5 * spacing, 180)]
+    for y in np.array((-1.5, -0.5, 0.5, 1.5)) * spacing:
+        for side in (-half_finger, half_finger):
+            points += [[x, y + side] for x in np.linspace(entrance, wall, 80)]
+        points += [
+            [entrance, yy] for yy in np.linspace(y - half_finger, y + half_finger, 12)
+        ]
     c, s = math.cos(yaw), math.sin(yaw)
     rotation = np.array([[c, -s], [s, c]])
     points = np.array(points) @ rotation.T + offset
     points += rng.normal(0, 0.008, points.shape)
     camera = np.array([0.1, 0.0])
-    beacons = np.array([[11.6, y] for y in (3, 0, -3)]) @ rotation.T + offset
+    beacons = (
+        np.array([[wall - 0.15, y] for y in (spacing, 0, -spacing)]) @ rotation.T
+        + offset
+    )
     pixels = {}
     for color, p in zip(colors, beacons):
         pixels.setdefault(color, []).append(
@@ -34,6 +46,43 @@ def scene(yaw=0.0, offset=(0.0, 0.0), colors=("red", "green", "red")):
 
 
 class PerceptionTests(unittest.TestCase):
+    def test_two_metre_fingers_in_each_bay(self):
+        for index in range(3):
+            colors = ["red"] * 3
+            colors[index] = "green"
+            points, pixels, camera, rotation = scene(
+                yaw=0.08,
+                offset=(0.4, 1.0),
+                colors=colors,
+                compact=True,
+            )
+            with self.subTest(bay=index + 1):
+                bay = detect_bay(points, pixels, 310, 320, camera, 0)
+                self.assertIsNotNone(bay)
+                expected = rotation @ np.array([9.75, (1 - index) * 2.0296]) + [
+                    0.4,
+                    1.0,
+                ]
+                np.testing.assert_allclose(bay.goal, expected, atol=0.16)
+                self.assertEqual(bay.number, index + 1)
+
+    def test_recorded_platform_collinear_with_finger(self):
+        # Seed 1 of the compact dock: RANSAC combines a platform and a finger.
+        data = np.load(Path(__file__).parent / "data" / "dock_with_platform.npz")
+        bay = detect_bay(
+            data["points"],
+            {"red": list(data["red"]), "green": list(data["green"])},
+            float(data["fx"]),
+            float(data["cx"]),
+            data["camera"],
+            float(data["yaw"]),
+        )
+        self.assertIsNotNone(bay)
+        self.assertEqual(bay.number, 1)
+        # Independent world pose: translation (0.4031, 1.0423), yaw 0.07913.
+        np.testing.assert_allclose(bay.goal, [10.091, 3.847], atol=0.16)
+        self.assertGreater(bay.entrance, 9.0)
+
     def test_translated_rotated_reordered_bays(self):
         for yaw, offset, colors in [
             (0.12, (2, -1), ("green", "red", "red")),

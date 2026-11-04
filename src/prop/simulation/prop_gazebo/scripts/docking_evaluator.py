@@ -55,6 +55,7 @@ class Evaluator(Node):
             self.declare_parameter("colors", ["red", "red", "green"]).value,
         )
         self.target = "green"
+        self.vehicle_id = self.declare_parameter("vehicle_id", "USV").value
         self.timeout = self.declare_parameter("timeout", 240.0).value
         seed = self.declare_parameter("seed", 1).value
         self.goal_y = BAY_Y[self.colors.index(self.target)]
@@ -104,7 +105,7 @@ class Evaluator(Node):
 
     def exchange_status(self, message):
         msg = decode(message.data)
-        if msg and msg["kind"] == "status" and msg["vehicle_id"] == "prop":
+        if msg and msg["kind"] == "status" and msg["vehicle_id"] == self.vehicle_id:
             self.ocs_state = msg
             if msg.get("state") == "WAIT_START":
                 self.wait_session = msg["session_id"]
