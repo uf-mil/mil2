@@ -116,9 +116,17 @@
         <update_rate>10</update_rate>
         <always_on>1</always_on>
         <camera>
-          <horizontal_fov>1.6</horizontal_fov>
-          <image><width>640</width><height>480</height><format>R8G8B8</format></image>
-          <clip><near>0.1</near><far>60</far></clip>
+          <!-- Real boat camera: fx 832.7 px at 1920 px wide. -->
+          <horizontal_fov>1.712</horizontal_fov>
+          <image>
+            <width>1280</width>
+            <height>720</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>60</far>
+          </clip>
           <camera_info_topic>/camera/camera_info</camera_info_topic>
         </camera>
       </sensor>

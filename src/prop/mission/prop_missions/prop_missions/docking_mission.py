@@ -56,7 +56,9 @@ class DockingMission(Node):
         self.ocs_status = self.create_publisher(String, "/dock/ocs/status", 10)
         self.ocs_result = self.create_publisher(String, "/dock/ocs/result", 10)
         self.create_subscription(
-            String, "/dock/ocs/command", self.command,
+            String,
+            "/dock/ocs/command",
+            self.command,
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
         )
         self.create_subscription(String, "/dock/ocs/receipt", self.receipt, 10)
@@ -119,16 +121,23 @@ class DockingMission(Node):
 
     def receipt(self, message):
         if self.exchange.acknowledge(decode(message.data), self.seconds()):
-            self.report("RECEIVED: OCS acknowledged docking event (not official scoring)")
+            self.report(
+                "RECEIVED: OCS acknowledged docking event (not official scoring)",
+            )
 
     def exchange_tick(self):
         outgoing = self.exchange.outgoing(self.seconds())
         if outgoing is not None:
             self.ocs_result.publish(String(data=json.dumps(outgoing)))
-        msg = dict(self.exchange.envelope("status"), state=self.state,
-                   receipt=self.exchange.receipt, paused=self.paused,
-                   sent_at=self.seconds(), clock="ros",
-                   event_id=self.exchange.result["event_id"] if self.exchange.result else None)
+        msg = dict(
+            self.exchange.envelope("status"),
+            state=self.state,
+            receipt=self.exchange.receipt,
+            paused=self.paused,
+            sent_at=self.seconds(),
+            clock="ros",
+            event_id=self.exchange.result["event_id"] if self.exchange.result else None,
+        )
         self.ocs_status.publish(String(data=json.dumps(msg)))
 
     def seconds(self):
@@ -291,7 +300,7 @@ class DockingMission(Node):
                 self.confirmations = 0
                 if now - self.last_log > 5:
                     self.get_logger().info(
-                        f"SEARCH: {len(points)} LiDAR points; visible colors {list(sample[1])}; waiting for supported bay geometry",
+                        f"SEARCH: {len(points)} LiDAR points; visible colors { {color: len(xs) for color, xs in sample[1].items()} }; waiting for supported bay geometry",
                     )
                     self.last_log = now
                 return

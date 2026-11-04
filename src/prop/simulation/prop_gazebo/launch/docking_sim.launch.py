@@ -23,6 +23,15 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
+# RobotX colour indicator: green fins 128 x 129 mm, red fins 116 x 120 mm;
+# colours are the median RGB of the handbook render.
+INDICATORS = {
+    "green": (0.064, 0.129, "0.18 0.37 0.20 1"),
+    "red": (0.058, 0.120, "0.53 0.09 0.04 1"),
+}
+BUILDING_FACE_X = 11.13
+DECK_TOP_Z = 0.6
+
 
 def launch_trial(context):
     def value(name):
@@ -41,25 +50,24 @@ def launch_trial(context):
     tree = ET.parse(os.path.join(share, "worlds", "prop_docking.world"))
     world = tree.getroot().find("world")
     world.find("physics/real_time_factor").text = value("real_time_factor")
-    color_rgb = {"red": "1 0 0 1", "green": "0 1 0 1"}
     for model in world.findall("model"):
         if model.get("name") == "water":
             continue
         original = model.find("pose").text.split()
         x, y, z = map(float, original[:3])
         if model.get("name").startswith("indicator_"):
-            index = {3.0: 0, 0.0: 1, -3.0: 2}[y]
+            index = int(model.get("name").split("_")[1])
             color = colors[index]
+            radius, length, rgba = INDICATORS[color]
             model.set("name", "beacon_" + str(index))
-            z = 0.65
-            for size in model.findall(".//box/size"):
-                size.text = "0.2 0.5 0.7"
+            x, z = BUILDING_FACE_X - radius, DECK_TOP_Z + length / 2
+            for cylinder in model.findall(".//cylinder"):
+                cylinder.find("radius").text = str(radius)
+                cylinder.find("length").text = str(length)
             for material in model.findall(".//material"):
                 for tag in ("ambient", "diffuse"):
                     material.find(tag).text = (
-                        "0.4 0.4 0.4 1"
-                        if color == value("hide_color")
-                        else color_rgb[color]
+                        "0.4 0.4 0.4 1" if color == value("hide_color") else rgba
                     )
         wx = dx + math.cos(yaw) * x - math.sin(yaw) * y
         wy = dy + math.sin(yaw) * x + math.cos(yaw) * y
@@ -78,7 +86,9 @@ def launch_trial(context):
                 "dock_y": dy,
                 "dock_yaw": yaw,
                 "colors": colors,
-                "timeout": float(value("timeout")) + float(value("ocs_start_delay")) + 25.0,
+                "timeout": float(value("timeout"))
+                + float(value("ocs_start_delay"))
+                + 25.0,
                 "seed": int(value("seed")),
             },
         ],
@@ -147,9 +157,13 @@ def launch_trial(context):
                     package="prop_missions",
                     executable="mock_ocs",
                     condition=IfCondition(LaunchConfiguration("mock_ocs")),
-                    parameters=[{"use_sim_time": True,
-                                 "start_delay": float(value("ocs_start_delay")),
-                                 "drop_receipts": int(value("ocs_drop_receipts"))}],
+                    parameters=[
+                        {
+                            "use_sim_time": True,
+                            "start_delay": float(value("ocs_start_delay")),
+                            "drop_receipts": int(value("ocs_drop_receipts")),
+                        },
+                    ],
                     output="screen",
                 ),
                 evaluator,

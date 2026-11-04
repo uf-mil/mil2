@@ -29,22 +29,33 @@ def color_centers(rgb):
     """Return a list of horizontal centroids per indicator color, including repeats."""
     hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
     h, s, v = cv2.split(hsv)
+    # The real indicator's green fins are dark: saturation ~125, brightness ~65 in shade,
+    # and light washes them out further (Gazebo renders them at saturation 78).
     masks = {
-        "red": (h < 10) | (h > 170),
-        "green": (h > 40) & (h < 85),
+        "red": ((h < 10) | (h > 170)) & (s > 160) & (v > 70),
+        "green": (h > 40) & (h < 85) & (s > 60) & (v > 40),
     }
     centers = {}
     for color, hue in masks.items():
-        mask = (hue & (s > 160) & (v > 70)).astype(np.uint8)
+        mask = hue.astype(np.uint8)
         count, _, stats, centroids = cv2.connectedComponentsWithStats(mask)
-        blobs = [
-            i
-            for i in range(1, count)
-            if stats[i, cv2.CC_STAT_AREA] >= 8 and stats[i, cv2.CC_STAT_HEIGHT] >= 3
-        ]
+        blobs = [i for i in range(1, count) if indicator_shaped(stats[i])]
         if blobs:
             centers[color] = sorted(float(centroids[i, 0]) for i in blobs)
     return centers
+
+
+def indicator_shaped(stat):
+    """True for a side-on indicator: about as tall as wide and filling its box."""
+    width = stat[cv2.CC_STAT_WIDTH]
+    height = stat[cv2.CC_STAT_HEIGHT]
+    area = stat[cv2.CC_STAT_AREA]
+    return (
+        area >= 8
+        and height >= 3
+        and 0.5 <= height / width <= 2.0
+        and area >= 0.6 * width * height
+    )
 
 
 def lines(points):
@@ -122,11 +133,21 @@ def detect_bay(points, pixels, fx, cx, camera, yaw):
             hits.append(hit)
         if len(hits) != 3:
             continue
-        finger_segments = [
-            (c, d, pts)
-            for c, d, pts in segments
-            if abs(d @ inward) > 0.98 and np.ptp(pts @ inward) > 1.0
-        ]
+        finger_segments = []
+        for _, direction, pts in segments:
+            if abs(direction @ inward) <= 0.98:
+                continue
+            # RANSAC fits infinite lines: a delivery platform can share a
+            # finger's side face. Keep disconnected surfaces separate so a
+            # platform cannot move the inferred dock entrance towards us.
+            ordered = pts[np.argsort(pts @ inward)]
+            groups = np.split(
+                ordered,
+                np.flatnonzero(np.diff(ordered @ inward) > 0.5) + 1,
+            )
+            for group in groups:
+                if len(group) >= 8 and np.ptp(group @ inward) > 1.0:
+                    finger_segments.append((group.mean(axis=0), direction, group))
         beacon_s = hits[0] @ lateral
         left = [
             (c @ lateral, pts)
@@ -146,7 +167,9 @@ def detect_bay(points, pixels, fx, cx, camera, yaw):
         if not 1.5 < width < 5:
             continue
         entrance = min(np.min(hp @ inward), np.min(lp @ inward))
-        if not 2 < wall - entrance < 8:
+        # Two-metre fingers have shorter observed sides when their front cap
+        # occludes the first returns. Allow that loss without assuming a map.
+        if not 1.5 < wall - entrance < 8:
             continue
         # A side face can be hidden behind a finger. Its visible opposite
         # face would bias the bay center by half the finger thickness. Measure

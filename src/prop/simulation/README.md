@@ -32,9 +32,11 @@ two red indicators reproducibly. The mission always selects green; `bay` is no
 longer a launch argument.
 
 The launch generates a temporary world and gives the fixture layout **only**
-to `docking_evaluator.py`. The actual geometry dimensions are synthetic, not
-competition measurements. The boat starts at the origin; the dock starts in
-its field of view. There is no open-water search behavior yet.
+to `docking_evaluator.py`. The fixture uses 2 m fingers, approximately 1.52 m
+bay openings, small red/green indicators, and two delivery platforms. These
+are simplified boxes and cylinders, not a validated replica of the physical
+course. The boat starts at the origin; the dock starts in its field of view.
+There is no open-water search behavior yet.
 
 Headless test, shutting down when the evaluator finishes:
 
@@ -67,7 +69,8 @@ prototype limitations, see [the mission README](../mission/prop_missions/README.
    same-color blobs. Require one green and two red indicators at acquisition. CameraInfo supplies the image projection.
 2. Match image and LiDAR timestamps to estimated odometry. Project LiDAR returns
    into the map, filtering water and sky heights.
-3. Fit wall and finger segments with RANSAC. Check that all three camera beacon
+3. Fit wall and finger segments with RANSAC, separating disconnected surfaces
+   so a collinear delivery platform cannot extend a finger. Check that all three camera beacon
    rays intersect supported LiDAR geometry. Measure entrance inner edges from
    finger front caps, avoiding bias from an occluded side face.
 4. Require three consistent bay estimates, then compute a staging point 2 m
@@ -96,13 +99,15 @@ does not implement a controlled retreat or emergency braking maneuver.
 The evaluator alone subscribes to `/sim/ground_truth`. It checks the physical
 bay corresponding to the green indicator, position, heading, low linear/angular
 speed, and a three-second dwell after the mission reports `DOCKED`. Throughout
-the run it checks dock clearance using a conservative circle enclosing the hull.
+the run it checks dock and platform clearance using the oriented 1.0 by 0.6 m
+hull rectangle, sampling its perimeter and checking enclosed obstacle corners.
 This is a geometric clearance check, not contact-sensor instrumentation. A PASS
 certifies the measured dwell, not indefinite station keeping.
 
 Offline tests include reordered/rotated/translated layouts, ambiguous or missing
 color, missing geometry, stale-data stopping, and a recorded Gazebo snapshot
-with a sparsely observed, partially occluded finger:
+with a sparsely observed, partially occluded finger, plus compact-dock layouts
+and a recorded platform/finger collinearity regression:
 
 ```sh
 source /opt/ros/jazzy/setup.bash
@@ -110,17 +115,18 @@ source install/setup.bash
 colcon test --packages-select prop_missions --event-handlers console_direct+
 ```
 
-Run the two positive cases and a hidden-beacon negative case sequentially:
+Run three positive cases (one per green-bay position) and two hidden-indicator
+negative cases sequentially:
 
 ```sh
 python3 scripts/test_docking_sim.py
 ```
 
-This runner uses independent ROS domains (100–102 by default, override with
+This runner uses independent ROS domains (100–104 by default, override with
 `DOCKING_TEST_DOMAIN_BASE`) and unique Gazebo partitions. It saves logs in a
 printed temporary directory, checks evaluator output rather than trusting the
-launch exit code, and returns nonzero on failure. The negative case hides green
-and must time out without ever commanding an approach:
+launch exit code, and returns nonzero on failure. The negative cases hide green
+or red and must time out without ever commanding an approach:
 
 ```sh
 bash scripts/run_docking_sim.bash seed:=4 hide_color:=green timeout:=30.0

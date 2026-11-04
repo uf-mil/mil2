@@ -8,13 +8,13 @@ DOCKING_REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH
 source /opt/ros/jazzy/setup.bash
 for docking_package in prop_vision prop_missions prop_localization prop_controller prop_gazebo; do
-    docking_setup="$DOCKING_REPO/install/$docking_package/share/$docking_package/package.bash"
-    if [[ ! -f "$docking_setup" ]]; then
-        echo "Missing $docking_package. Build with:" >&2
-        echo "colcon build --packages-select prop_vision prop_missions prop_localization prop_controller prop_gazebo --symlink-install" >&2
-        exit 1
-    fi
-    source "$docking_setup"
+	docking_setup="$DOCKING_REPO/install/$docking_package/share/$docking_package/package.bash"
+	if [[ ! -f $docking_setup ]]; then
+		echo "Missing $docking_package. Build with:" >&2
+		echo "colcon build --packages-select prop_vision prop_missions prop_localization prop_controller prop_gazebo --symlink-install" >&2
+		exit 1
+	fi
+	source "$docking_setup"
 done
 export AMENT_PREFIX_PATH="$DOCKING_REPO/install/prop_vision:$DOCKING_REPO/install/prop_missions:$DOCKING_REPO/install/prop_gazebo:$DOCKING_REPO/install/prop_controller:$DOCKING_REPO/install/prop_localization:/opt/ros/jazzy"
 # scripts/setup.bash selects Zenoh/domain 37 for the vehicle. Keep this

@@ -15,7 +15,9 @@ def main():
     cases = [
         ("green_seed_1", 1, "none"),
         ("green_seed_3", 3, "none"),
+        ("green_seed_4", 4, "none"),
         ("hidden_green", 4, "green"),
+        ("hidden_red", 4, "red"),
     ]
     success = True
     for index, (name, seed, hidden) in enumerate(cases):
