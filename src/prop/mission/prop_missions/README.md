@@ -58,11 +58,14 @@ observations, and retries a docking event until receipt or timeout. A simulation
 MQTT/protobuf communication, heartbeats, and water delivery are outside this
 vehicle-side package.
 
-See [internal OCS interface](../../../../docs/docking-walkthrough/ocs-interface.md) for topics, messages, lifecycle, and simulation options.
+The internal exchange uses `/dock/ocs/command`, `/dock/ocs/status`,
+`/dock/ocs/result`, and `/dock/ocs/receipt`, with versioned JSON envelopes in
+`std_msgs/String`. See [the simulation README](../../simulation/README.md) for
+the mock peer, receipt retries, and end-to-end tests.
 
 The mission and simulation mock default to vehicle ID `USV`, matching the OCS
 configuration. Internal run IDs carry the official numeric run ID as a string.
 Bay numbers are 1–3 from left to right facing the dock, matching the official
-handbook; OCS forwards them unchanged. The interface document includes the
-remaining OCS adapter work for the OCS teammate. Until that adapter exists, the
-real mission remains in `WAIT_START`.
+handbook; OCS forwards them unchanged. The OCS adapter must translate the
+official start/cancel commands and docking reports into this internal exchange.
+Until that adapter exists, the real mission remains in `WAIT_START`.

@@ -69,8 +69,9 @@ prototype limitations, see [the mission README](../mission/prop_missions/README.
    same-color blobs. Require one green and two red indicators at acquisition. CameraInfo supplies the image projection.
 2. Match image and LiDAR timestamps to estimated odometry. Project LiDAR returns
    into the map, filtering water and sky heights.
-3. Fit wall and finger segments with RANSAC, separating disconnected surfaces
-   so a collinear delivery platform cannot extend a finger. Check that all three camera beacon
+3. Fit walls with RANSAC, then use their orientation to find sparse perpendicular
+   finger faces. Separate disconnected surfaces so a collinear delivery platform
+   cannot extend a finger. Check that all three camera beacon
    rays intersect supported LiDAR geometry. Measure entrance inner edges from
    finger front caps, avoiding bias from an occluded side face.
 4. Require three consistent bay estimates, then compute a staging point 2 m
@@ -106,8 +107,8 @@ certifies the measured dwell, not indefinite station keeping.
 
 Offline tests include reordered/rotated/translated layouts, ambiguous or missing
 color, missing geometry, stale-data stopping, and a recorded Gazebo snapshot
-with a sparsely observed, partially occluded finger, plus compact-dock layouts
-and a recorded platform/finger collinearity regression:
+with a sparsely observed, partially occluded finger, plus compact-dock layouts,
+sparse inner faces, and a recorded platform/finger collinearity regression:
 
 ```sh
 source /opt/ros/jazzy/setup.bash
@@ -158,4 +159,5 @@ and the complete internal exchange before PASS. No RoboCommand connection exists
 Use `ocs_drop_receipts:=2` to exercise retries, `ocs_start_delay:=10.0` to extend
 the wait, or `mock_ocs:=false` to wait for an external internal-protocol peer.
 The regression runner drops the first two receipts in its positive cases.
-See [the interface contract](../../../docs/docking-walkthrough/ocs-interface.md).
+See [the mission README](../mission/prop_missions/README.md) for the vehicle-side
+interface and remaining OCS integration work.

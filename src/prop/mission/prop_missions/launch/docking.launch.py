@@ -21,23 +21,28 @@ def generate_launch_description():
                 parameters=[
                     {
                         "vehicle_id": ParameterValue(
-                            LaunchConfiguration("vehicle_id"), value_type=str
+                            LaunchConfiguration("vehicle_id"),
+                            value_type=str,
                         ),
                         "ack_timeout": ParameterValue(
-                            LaunchConfiguration("ack_timeout"), value_type=float
+                            LaunchConfiguration("ack_timeout"),
+                            value_type=float,
                         ),
                         "sensor_timeout": ParameterValue(
-                            LaunchConfiguration("sensor_timeout"), value_type=float
+                            LaunchConfiguration("sensor_timeout"),
+                            value_type=float,
                         ),
                         "timeout": ParameterValue(
-                            LaunchConfiguration("timeout"), value_type=float
+                            LaunchConfiguration("timeout"),
+                            value_type=float,
                         ),
                         "use_sim_time": ParameterValue(
-                            LaunchConfiguration("use_sim_time"), value_type=bool
+                            LaunchConfiguration("use_sim_time"),
+                            value_type=bool,
                         ),
-                    }
+                    },
                 ],
                 output="screen",
             ),
-        ]
+        ],
     )

@@ -46,7 +46,11 @@ def generate_launch_description():
             pkg_share("ros_gz_sim", "launch", "gz_sim.launch.py"),
         ),
         launch_arguments={
-            "gz_args": [LaunchConfiguration("world_path"), " -r ", LaunchConfiguration("gz_args")],
+            "gz_args": [
+                LaunchConfiguration("world_path"),
+                " -r ",
+                LaunchConfiguration("gz_args"),
+            ],
         }.items(),
     )
 

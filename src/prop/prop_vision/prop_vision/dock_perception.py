@@ -94,6 +94,41 @@ def ray(pixel, fx, cx, yaw):
     return np.array([[c, -s], [s, c]]) @ local
 
 
+def finger_sides(points, inward, wall):
+    """Find sparse perpendicular faces connected to the supported back wall."""
+    lateral = np.array([-inward[1], inward[0]])
+    depth = points @ inward
+    remaining = points[(depth < wall - 0.15) & (depth > wall - 8)]
+    result = []
+    while len(remaining) >= 3:
+        positions = remaining @ lateral
+        # Once the wall orientation is known, a finger has just one unknown:
+        # its lateral offset. This retains nearly head-on faces with too few
+        # returns for the unconstrained wall RANSAC.
+        masks = np.abs(positions[:, None] - positions) < 0.055
+        mask = masks[np.argmax(masks.sum(axis=1))]
+        if mask.sum() < 3:
+            break
+        support = remaining[mask]
+        remaining = remaining[~mask]
+        ordered = support[np.argsort(support @ inward)]
+        # Sparse faces can have metre-scale sample spacing. A larger gap
+        # separates platforms from fingers, even when their sides align.
+        groups = np.split(
+            ordered,
+            np.flatnonzero(np.diff(ordered @ inward) > 1.0) + 1,
+        )
+        for group in groups:
+            distances = group @ inward
+            if (
+                len(group) >= 3
+                and np.ptp(distances) > 1.0
+                and wall - distances.max() < 1.0
+            ):
+                result.append((float(np.mean(group @ lateral)), group))
+    return result
+
+
 def detect_bay(points, pixels, fx, cx, camera, yaw):
     """Fit back wall + dividing fingers; intersect RGB rays with LiDAR wall.
 
@@ -133,31 +168,13 @@ def detect_bay(points, pixels, fx, cx, camera, yaw):
             hits.append(hit)
         if len(hits) != 3:
             continue
-        finger_segments = []
-        for _, direction, pts in segments:
-            if abs(direction @ inward) <= 0.98:
-                continue
-            # RANSAC fits infinite lines: a delivery platform can share a
-            # finger's side face. Keep disconnected surfaces separate so a
-            # platform cannot move the inferred dock entrance towards us.
-            ordered = pts[np.argsort(pts @ inward)]
-            groups = np.split(
-                ordered,
-                np.flatnonzero(np.diff(ordered @ inward) > 0.5) + 1,
-            )
-            for group in groups:
-                if len(group) >= 8 and np.ptp(group @ inward) > 1.0:
-                    finger_segments.append((group.mean(axis=0), direction, group))
+        finger_segments = finger_sides(points, inward, wall)
         beacon_s = hits[0] @ lateral
         left = [
-            (c @ lateral, pts)
-            for c, _, pts in finger_segments
-            if c @ lateral > beacon_s + 0.4
+            (offset, pts) for offset, pts in finger_segments if offset > beacon_s + 0.4
         ]
         right = [
-            (c @ lateral, pts)
-            for c, _, pts in finger_segments
-            if c @ lateral < beacon_s - 0.4
+            (offset, pts) for offset, pts in finger_segments if offset < beacon_s - 0.4
         ]
         if not left or not right:
             continue

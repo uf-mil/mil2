@@ -20,6 +20,10 @@ setup(
     description="Sensor-driven docking mission for the prop boat.",
     license="TODO: License declaration",
     extras_require={"test": ["pytest"]},
-    entry_points={"console_scripts": ["docking_mission = prop_missions.docking_mission:main",
-                                       "mock_ocs = prop_missions.mock_ocs:main"]},
+    entry_points={
+        "console_scripts": [
+            "docking_mission = prop_missions.docking_mission:main",
+            "mock_ocs = prop_missions.mock_ocs:main",
+        ],
+    },
 )

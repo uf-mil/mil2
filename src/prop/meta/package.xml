@@ -8,9 +8,9 @@
   <maintainer email="a@a.com">Dean</maintainer>
 
   <depend>pcd</depend>
+  <depend>prop_gazebo</depend>
   <depend>prop_missions</depend>
   <depend>prop_vision</depend>
-  <depend>prop_gazebo</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

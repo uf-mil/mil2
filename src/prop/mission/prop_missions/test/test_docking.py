@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from nav_msgs.msg import Odometry
 from prop_missions.docking_mission import DockingMission, settled
-from prop_vision.dock_perception import color_centers, detect_bay
+from prop_vision.dock_perception import color_centers, detect_bay, finger_sides
 
 
 def scene(
@@ -82,6 +82,25 @@ class PerceptionTests(unittest.TestCase):
         # Independent world pose: translation (0.4031, 1.0423), yaw 0.07913.
         np.testing.assert_allclose(bay.goal, [10.091, 3.847], atol=0.16)
         self.assertGreater(bay.entrance, 9.0)
+
+    def test_recorded_sparse_compact_finger(self):
+        # Seed 3: the near-head-on inner face has only four distinct returns.
+        data = np.load(Path(__file__).parent / "data" / "sparse_compact_dock.npz")
+        bay = detect_bay(
+            data["points"],
+            {"red": list(data["red"]), "green": list(data["green"])},
+            float(data["fx"]),
+            float(data["cx"]),
+            data["camera"],
+            float(data["yaw"]),
+        )
+        self.assertIsNotNone(bay)
+        self.assertEqual(bay.number, 3)
+        np.testing.assert_allclose(bay.goal, [10.507, -2.281], atol=0.16)
+
+    def test_disconnected_platform_is_not_a_finger(self):
+        platform = np.column_stack((np.linspace(4, 6, 20), np.ones(20)))
+        self.assertEqual(finger_sides(platform, np.array([1.0, 0.0]), 11.0), [])
 
     def test_translated_rotated_reordered_bays(self):
         for yaw, offset, colors in [

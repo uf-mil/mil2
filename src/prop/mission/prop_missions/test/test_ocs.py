@@ -4,18 +4,25 @@ import json
 from unittest.mock import Mock
 
 import pytest
-from prop_missions.ocs_protocol import Exchange, decode
 from prop_missions.docking_mission import DockingMission
 from prop_missions.mock_ocs import MockOCS
+from prop_missions.ocs_protocol import Exchange, decode
 from std_msgs.msg import String
 
 
 def start(exchange, **changes):
-    return dict(exchange.envelope("command"), **dict(run_id="run-1", command_id="start-1", action="START", **changes))
+    return dict(
+        exchange.envelope("command"),
+        **dict(run_id="run-1", command_id="start-1", action="START", **changes),
+    )
 
 
 def receipt(exchange, **changes):
-    msg = dict(exchange.envelope("receipt"), event_id=exchange.result["event_id"], status="RECEIVED")
+    msg = dict(
+        exchange.envelope("receipt"),
+        event_id=exchange.result["event_id"],
+        status="RECEIVED",
+    )
     msg.update(changes)
     return msg
 
@@ -48,7 +55,13 @@ def test_retry_identical_event_and_validate_receipt():
     assert event["bay_number"] == 2
     assert e.outgoing(10.5) is None
     assert e.outgoing(11) == event
-    for changes in [{"run_id": "old"}, {"session_id": "old"}, {"event_id": "wrong"}, {"vehicle_id": "other"}, {"status": "SENT"}]:
+    for changes in [
+        {"run_id": "old"},
+        {"session_id": "old"},
+        {"event_id": "wrong"},
+        {"vehicle_id": "other"},
+        {"status": "SENT"},
+    ]:
         assert not e.acknowledge(receipt(e, **changes), 11)
     assert e.acknowledge(receipt(e), 12)
     assert e.outgoing(13) is None
@@ -101,7 +114,10 @@ def test_cancel_before_start_closes_only_addressed_session():
     assert e.command(dict(cancel, run_id="different")) == "REJECTED"
 
 
-@pytest.mark.parametrize("raw", ["bad", "[]", "null", "{}", '{"version":true}', '{"version":2}'])
+@pytest.mark.parametrize(
+    "raw",
+    ["bad", "[]", "null", "{}", '{"version":true}', '{"version":2}'],
+)
 def test_malformed_messages(raw):
     assert decode(raw) is None
     assert Exchange().command(decode(raw)) == "REJECTED"
@@ -135,8 +151,14 @@ def test_mock_deduplicates_and_reacks_retries():
 
 
 def test_mock_waits_for_initialized_clock_and_full_delay():
-    node = Mock(vehicle_id="USV", command=None, last_status=None,
-                first_seen=None, auto_start=True, start_delay=3.0)
+    node = Mock(
+        vehicle_id="USV",
+        command=None,
+        last_status=None,
+        first_seen=None,
+        auto_start=True,
+        start_delay=3.0,
+    )
     e = Exchange()
     status = String(data=json.dumps(dict(e.envelope("status"), state="WAIT_START")))
     node.now.return_value = 0.0
