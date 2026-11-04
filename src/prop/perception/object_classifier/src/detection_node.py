@@ -25,7 +25,7 @@ class DetectionNode(Node):
             "cam.yaml",
         )
         self.declare_parameter("config_file", default_config)
-        self.declare_parameter("model_path", "")
+        self.declare_parameter("model_path", os.path.expanduser("~/buoy_buoy10-13.pt"))
         self.declare_parameter("conf", 0.25)
         self.declare_parameter("image_topic", "camera/img_raw")
 
@@ -48,6 +48,7 @@ class DetectionNode(Node):
         self.img_publisher = self.create_publisher(Image, "camera/detections/image", 10)
 
         qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
+
         self.create_subscription(
             Image,
             self.get_parameter("image_topic").value,
