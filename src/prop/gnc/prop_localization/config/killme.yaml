@@ -18,8 +18,10 @@ ekf_local:
       true, true, true,    # roll, pitch, yaw
       false, false, false, # vx, vy, vz
       true, true, true,    # vroll, vpitch, vyaw
-      true, true, true     # ax, ay, az
+      false, false, false  # ax, ay, az
     ]
+    # No accelerations: robot_localization takes a turn's pull (speed x
+    # turn rate) as sideways acceleration and invents sideways speed.
     imu0_differential: false
     imu0_relative: true
     imu0_remove_gravitational_acceleration: true
@@ -62,8 +64,10 @@ ekf_global:
       true, true, true,    # roll, pitch, yaw
       false, false, false, # vx, vy, vz
       true, true, true,    # vroll, vpitch, vyaw
-      true, true, true     # ax, ay, az
+      false, false, false  # ax, ay, az
     ]
+    # No accelerations: robot_localization takes a turn's pull (speed x
+    # turn rate) as sideways acceleration and invents sideways speed.
     imu0_differential: false
     imu0_relative: true
     imu0_remove_gravitational_acceleration: true
