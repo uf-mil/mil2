@@ -29,10 +29,11 @@ def color_centers(rgb):
     """Return a list of horizontal centroids per indicator color, including repeats."""
     hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
     h, s, v = cv2.split(hsv)
-    # The real indicator's green fins are dark: saturation ~125, brightness ~65 in shade.
+    # The real indicator's green fins are dark: saturation ~125, brightness ~65 in shade,
+    # and light washes them out further (Gazebo renders them at saturation 78).
     masks = {
         "red": ((h < 10) | (h > 170)) & (s > 160) & (v > 70),
-        "green": (h > 40) & (h < 85) & (s > 80) & (v > 40),
+        "green": (h > 40) & (h < 85) & (s > 60) & (v > 40),
     }
     centers = {}
     for color, hue in masks.items():

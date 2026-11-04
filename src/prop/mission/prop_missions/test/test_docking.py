@@ -159,6 +159,12 @@ class IndicatorShapeTests(unittest.TestCase):
         image[20:32, 30:42] = [28, 56, 31]
         self.assertEqual(color_centers(image), {"green": [35.5]})
 
+    def test_washed_out_indicator_green_is_found(self):
+        # Gazebo's lighting renders the indicator at this colour, saturation 78.
+        image = np.zeros((60, 80, 3), np.uint8)
+        image[20:32, 30:42] = [52, 75, 55]
+        self.assertEqual(color_centers(image), {"green": [35.5]})
+
     def test_tall_green_bar_is_rejected(self):
         image = np.zeros((60, 80, 3), np.uint8)
         image[10:50, 30:34] = PLATFORM_GREEN
