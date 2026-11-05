@@ -5,6 +5,7 @@ import math
 import os
 import socketserver
 import threading
+import time
 from collections import defaultdict
 from functools import partial
 from pathlib import Path
@@ -13,6 +14,8 @@ import paho.mqtt.client as mqtt
 import pymavlink.mavutil as mavutil
 import rclpy
 from geographic_msgs.msg import GeoPoint, GeoPose
+from google.protobuf.json_format import MessageToDict
+from google.protobuf.message import Message
 from mil_msgs.msg import AcousticPingerConfig
 from mil_msgs.msg import Heartbeat as RosHeartbeat
 from mil_msgs.msg import PipelineSurveyReport as RosPipelineSurveyReport
@@ -47,7 +50,7 @@ TARGET_MAV_TYPES = {
     "GLOBAL_POSITION_INT",
     "ATTITUDE",
     "SYS_STATUS",
-    "EXTENDED_SYS_STATUS",
+    "EXTENDED_SYS_STATE",
 }
 
 TEAM_CODE = "UFLO"
@@ -66,11 +69,16 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
             status = self.status_handler()
-            status_json = json.dumps(status)
+            status_json = json.dumps(status, default=self.json_default)
 
             self.wfile.write(str.encode(status_json))
         else:
             super().do_GET()
+
+    def json_default(self, o):
+        if isinstance(o, Message):
+            return MessageToDict(o)
+        raise TypeError(f"{type(o).__name__} is not JSON serializable")
 
 
 class OCS(Node):
@@ -143,12 +151,12 @@ class OCS(Node):
         )
         self.client.loop_start()
 
-        # self.mavconn = mavutil.mavlink_connection(
-        #     self.get_parameter("mavlink_port").get_parameter_value().string_value,
-        #     baud=57600,
-        # )
+        self.mavconn = mavutil.mavlink_connection(
+            self.get_parameter("mavlink_port").get_parameter_value().string_value,
+            baud=57600,
+        )
 
-        mav_thread = threading.Thread(target=self.loop_mav).start()
+        mav_thread = threading.Thread(target=self.loop_mav)
         mav_thread.start()
 
         web_thread = threading.Thread(target=self.start_dashboard)
@@ -338,15 +346,16 @@ class OCS(Node):
         mode_map = mavutil.mode_mapping_bynumber(mavlink.MAV_TYPE_QUADROTOR)
 
         self.mavconn.wait_heartbeat()
+        print("Got initial mavlink heartbeat")
 
         # TODO retry if no ack
         for TARGET in TARGET_MAV_TYPES:
-            self.mavconn.command_long_send(
+            self.mavconn.mav.command_long_send(
                 self.mavconn.target_system,
                 self.mavconn.target_component,
                 mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
                 0,
-                mavlink[f"MAVLINK_MSG_ID_{TARGET}"],
+                getattr(mavlink, f"MAVLINK_MSG_ID_{TARGET}"),
                 500_000,  # 2hz in microseconds
                 0,
                 0,
@@ -367,13 +376,13 @@ class OCS(Node):
                 if msg_type in TARGET_MAV_TYPES:
                     latest_messages[msg_type] = msg
 
-            latest_heartbeat = latest_messages["HEARTBEAT"]
+            latest_heartbeat = latest_messages.get("HEARTBEAT")
             if latest_heartbeat is None:
                 state = RobotState.STATE_KILLED
             else:
                 armed = latest_heartbeat.base_mode & mavlink.MAV_MODE_FLAG_SAFETY_ARMED
 
-                if armed:
+                if not armed:
                     state = RobotState.STATE_KILLED
                 else:
                     mode = mode_map.get(latest_heartbeat.custom_mode)
@@ -384,7 +393,7 @@ class OCS(Node):
                     else:
                         state = RobotState.STATE_UNKNOWN
 
-            latest_e_sys = latest_messages["EXTENDED_SYS_STATUS"]
+            latest_e_sys = latest_messages.get("EXTENDED_SYS_STATUS")
             if latest_e_sys is None:
                 flight_phase = FlightPhase.FLIGHT_PHASE_GROUNDED
             else:
@@ -400,7 +409,7 @@ class OCS(Node):
                     case _:
                         flight_phase = FlightPhase.FLIGHT_PHASE_UNKNOWN
 
-            latest_global_pos = latest_messages["GLOBAL_POSITION_INT"]
+            latest_global_pos = latest_messages.get("GLOBAL_POSITION_INT")
             if latest_global_pos is None:
                 altitude = 0
                 position = None
@@ -423,7 +432,7 @@ class OCS(Node):
 
                 heading = latest_global_pos.hdg / 100.0  # cdeg -> deg
 
-            latest_attitude = latest_messages["ATTITUDE"]
+            latest_attitude = latest_messages.get("ATTITUDE")
             if latest_attitude is None:
                 roll = 0
                 pitch = 0
@@ -443,8 +452,10 @@ class OCS(Node):
                 roll_deg=roll,
                 pitch_deg=pitch,
                 altitude_hae_m=altitude,
-                registration=f"{TEAM_CODE}-{CAAS_NUMBER}",
+                uav_registration=f"{TEAM_CODE}-{CAAS_NUMBER}",
             )
+
+            time.sleep(0.5)  # 2hz
 
             # also need
             # gps map
