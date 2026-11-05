@@ -1,6 +1,7 @@
 import datetime
 import http.server
 import json
+import math
 import os
 import socketserver
 import threading
@@ -16,6 +17,7 @@ from mil_msgs.msg import AcousticPingerConfig
 from mil_msgs.msg import Heartbeat as RosHeartbeat
 from mil_msgs.msg import PipelineSurveyReport as RosPipelineSurveyReport
 from paho.mqtt.enums import CallbackAPIVersion
+from pymavlink.dialects.v20 import ardupilotmega as mavlink
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_srvs.srv import Empty
@@ -39,6 +41,17 @@ from ocs.proto import (
 )
 
 DASHBOARD_DIR = Path(__file__).parent / "dashboard" / "dist"
+
+TARGET_MAV_TYPES = {
+    "HEARTBEAT",
+    "GLOBAL_POSITION_INT",
+    "ATTITUDE",
+    "SYS_STATUS",
+    "EXTENDED_SYS_STATUS",
+}
+
+TEAM_CODE = "UFLO"
+CAAS_NUMBER = 0
 
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
@@ -135,6 +148,9 @@ class OCS(Node):
         #     baud=57600,
         # )
 
+        mav_thread = threading.Thread(target=self.loop_mav).start()
+        mav_thread.start()
+
         web_thread = threading.Thread(target=self.start_dashboard)
         web_thread.start()
 
@@ -201,13 +217,15 @@ class OCS(Node):
 
         # Set boundary parameters on sub/boat (does it need it)
 
+        # TODO send geofence via mav, inset slightly
+
         self.rx_run_declaration(
             vehicle_ids=["UUV", "USV", "UAV"],
             task1_tier=TaskTier.TIER_CORE,
             task2_tier=TaskTier.TIER_CORE,
             task3_tier=TaskTier.TIER_CORE,
             task4_tier=TaskTier.TIER_CORE,
-            uav_geofence=course.corners,
+            uav_geofence=course.corners,  # TODO use sent geofence
         )
 
     current_run_id = None
@@ -316,19 +334,129 @@ class OCS(Node):
                 self.rx_incident_ack("UAV", command.seq)
 
     def loop_mav(self):
-        skip = False  # 1 Hz -> 2 Hz
+        latest_messages = {}
+        mode_map = mavutil.mode_mapping_bynumber(mavlink.MAV_TYPE_QUADROTOR)
+
+        self.mavconn.wait_heartbeat()
+
+        # TODO retry if no ack
+        for TARGET in TARGET_MAV_TYPES:
+            self.mavconn.command_long_send(
+                self.mavconn.target_system,
+                self.mavconn.target_component,
+                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+                0,
+                mavlink[f"MAVLINK_MSG_ID_{TARGET}"],
+                500_000,  # 2hz in microseconds
+                0,
+                0,
+                0,
+                0,
+                0,
+            )
+
         while True:
-            self.mavconn.wait_heartbeat()
-            skip = not skip
-            if skip:
-                continue
+            # ensure mavlink buffer is cleared
+            while True:
+                msg = self.mavconn.recv_match(blocking=False)
+
+                if msg is None:
+                    break
+
+                msg_type = msg.get_type()
+                if msg_type in TARGET_MAV_TYPES:
+                    latest_messages[msg_type] = msg
+
+            latest_heartbeat = latest_messages["HEARTBEAT"]
+            if latest_heartbeat is None:
+                state = RobotState.STATE_KILLED
+            else:
+                armed = latest_heartbeat.base_mode & mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+
+                if armed:
+                    state = RobotState.STATE_KILLED
+                else:
+                    mode = mode_map.get(latest_heartbeat.custom_mode)
+                    if mode == "GUIDED":
+                        state = RobotState.STATE_AUTO
+                    elif mode == "LOITER":
+                        state = RobotState.STATE_LOITER
+                    else:
+                        state = RobotState.STATE_UNKNOWN
+
+            latest_e_sys = latest_messages["EXTENDED_SYS_STATUS"]
+            if latest_e_sys is None:
+                flight_phase = FlightPhase.FLIGHT_PHASE_GROUNDED
+            else:
+                match latest_e_sys.landed_state:
+                    case mavlink.MAV_LANDED_STATE_ON_GROUND:
+                        flight_phase = FlightPhase.FLIGHT_PHASE_GROUNDED
+                    case (
+                        mavlink.MAV_LANDED_STATE_IN_AIR
+                        | mavlink.MAV_LANDED_STATE_TAKEOFF
+                        | mavlink.MAV_LANDED_STATE_LANDING
+                    ):
+                        flight_phase = FlightPhase.FLIGHT_PHASE_AIRBORNE
+                    case _:
+                        flight_phase = FlightPhase.FLIGHT_PHASE_UNKNOWN
+
+            latest_global_pos = latest_messages["GLOBAL_POSITION_INT"]
+            if latest_global_pos is None:
+                altitude = 0
+                position = None
+                speed = 0
+                heading = 0
+            else:
+                altitude = latest_global_pos.relative_alt / 1000.0  # mm -> m
+                position = LatLng(
+                    latitude=latest_global_pos.lat,
+                    longitude=latest_global_pos.lon,
+                )
+
+                # all in cm/s
+                vx = latest_global_pos.vx
+                vy = latest_global_pos.vy
+                vz = latest_global_pos.vz
+
+                speed_cms = math.sqrt(vx**2 + vy**2 + vz**2)
+                speed = speed_cms / 100.0
+
+                heading = latest_global_pos.hdg / 100.0  # cdeg -> deg
+
+            latest_attitude = latest_messages["ATTITUDE"]
+            if latest_attitude is None:
+                roll = 0
+                pitch = 0
+            else:
+                roll = latest_attitude.roll * (180 / math.pi)  # rad -> deg
+                pitch = latest_attitude.pitch * (180 / math.pi)  # rad -> deg
+
             self.rx_heartbeat(
                 vehicle_id="UAV",
-                state=RobotState.STATE_AUTO,
-                current_task=RxTask.TASK_NONE,
+                state=state,
+                current_task=RxTask.TASK_NONE,  # todo
                 vehicle_type=VehicleType.TYPE_UAV,
-                flight_phase=FlightPhase.FLIGHT_PHASE_GROUNDED,
+                flight_phase=flight_phase,
+                position=position,
+                spd_mps=speed,
+                heading_deg=heading,
+                roll_deg=roll,
+                pitch_deg=pitch,
+                altitude_hae_m=altitude,
+                registration=f"{TEAM_CODE}-{CAAS_NUMBER}",
             )
+
+            # also need
+            # gps map
+            # alerts for weak link, geofence violation
+            # buttons for submitting bad geofence
+
+            # if no heartbeat, show
+
+            # global position - pos/altitude
+            # local position - velocity / speed
+            # attitude - roll/pitch
+            # battery - sys status
 
     def start_dashboard(self):
         if not os.path.exists(DASHBOARD_DIR):
