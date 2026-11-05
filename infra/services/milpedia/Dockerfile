@@ -21,7 +21,8 @@ RUN git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-Citoid
     git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-CommonsMetadata /var/www/html/extensions/CommonsMetadata -b REL1_45 && \
     git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-ConfirmAccount /var/www/html/extensions/ConfirmAccount -b REL1_45 && \
     git clone --depth 1 https://github.com/jayktaylor/mw-discord /var/www/html/extensions/Discord && \
-    git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-ExternalData /var/www/html/extensions/ExternalData -b REL1_45 && \
+    # REL1_45 doesn't exist for this extension; 3.7.1 is the most recent release that works with MediaWiki 1.46
+    git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-ExternalData /var/www/html/extensions/ExternalData -b 3.7.1 && \
     git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-JsonConfig /var/www/html/extensions/JsonConfig -b REL1_45 && \
     git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-Lockdown /var/www/html/extensions/Lockdown -b REL1_45 && \
     git clone --depth 1 https://github.com/wikimedia/mediawiki-extensions-MobileFrontend /var/www/html/extensions/MobileFrontend -b REL1_45 && \
