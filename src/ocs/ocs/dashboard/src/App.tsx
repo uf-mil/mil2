@@ -31,10 +31,14 @@ function App() {
 
   return (
     <div className="flex flex-col p-10">
-      <header className="flex gap-5 w-full justify-center items-center mb-10">
+      <header className="flex gap-5 w-full justify-center items-center mb-6">
         <img src="/mil.svg" />
         <p className="text-3xl text-bold">MIL RobotX 2026 Dashboard</p>
       </header>
+
+      <div className="p-5 rounded-md border-2 border-black bg-white flex flex-col justify-center items-center mb-5">
+        <p className="text-xl">No alerts</p>
+      </div>
 
       <div className="grid grid-cols-4 gap-5">
         <div className="p-5 rounded-md border-2 border-black bg-white">

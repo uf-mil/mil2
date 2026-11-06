@@ -538,7 +538,6 @@ class OCS(Node):
             # also need
             # alerts for weak link, geofence violation
             # buttons for submitting bad geofence
-            # battery - sys status
 
     def start_dashboard(self):
         if not os.path.exists(DASHBOARD_DIR):
