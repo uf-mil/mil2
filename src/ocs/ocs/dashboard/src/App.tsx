@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import 'leaflet/dist/leaflet.css';
 
 import { Vehicle } from './Vehicle';
+import { Map } from './Map';
 
 function App() {
   const [robocommand, setRobocommand] = useState(false);
@@ -41,6 +43,8 @@ function App() {
         <Vehicle name="PropaGator" heartbeat={propagatorHeartbeat} />
         <Vehicle name="InvestiGator" heartbeat={investigatorHeartbeat} />
       </div>
+
+      <Map subHeartbeat={subjugatorHeartbeat} boatHeartbeat={propagatorHeartbeat} droneHeartbeat={investigatorHeartbeat} />
     </div>
   )
 }

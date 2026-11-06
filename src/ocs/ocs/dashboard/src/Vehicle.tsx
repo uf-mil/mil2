@@ -1,10 +1,4 @@
-interface Heartbeat {
-    sent_at: string;
-    state: number;
-    current_task: number;
-    altitude_hae_m: number;
-    spd_mps: number;
-}
+import type { Heartbeat } from "./types";
 
 export function Vehicle({ name, heartbeat }: { name: string; heartbeat: Heartbeat; }) {
     return (

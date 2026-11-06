@@ -3,6 +3,7 @@ import http.server
 import json
 import math
 import os
+import re
 import socketserver
 import threading
 import time
@@ -79,6 +80,61 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         if isinstance(o, Message):
             return MessageToDict(o)
         raise TypeError(f"{type(o).__name__} is not JSON serializable")
+
+    def send_head(self):
+        rng = self.headers.get("Range")
+        path = self.translate_path(self.path)
+        if not rng or not os.path.isfile(path):
+            return super().send_head()
+
+        m = re.match(r"bytes=(\d*)-(\d*)$", rng.strip())
+        if not m:
+            return super().send_head()
+
+        size = os.path.getsize(path)
+        start_s, end_s = m.groups()
+        if start_s == "" and end_s == "":
+            return super().send_head()
+        if start_s == "":  # suffix range: last N bytes
+            start = max(size - int(end_s), 0)
+            end = size - 1
+        else:
+            start = int(start_s)
+            end = int(end_s) if end_s else size - 1
+        end = min(end, size - 1)
+
+        if start >= size or start > end:
+            self.send_response(416)
+            self.send_header("Content-Range", f"bytes */{size}")
+            self.end_headers()
+            return None
+
+        f = open(path, "rb")
+        f.seek(start)
+        self.send_response(206)
+        self.send_header("Content-Type", self.guess_type(path))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Content-Length", str(end - start + 1))
+        self.end_headers()
+        self._remaining = end - start + 1
+        return f
+
+    def copyfile(self, source, outputfile):
+        remaining = getattr(self, "_remaining", None)
+        if remaining is None:
+            return super().copyfile(source, outputfile)
+        while remaining > 0:
+            chunk = source.read(min(64 * 1024, remaining))
+            if not chunk:
+                break
+            outputfile.write(chunk)
+            remaining -= len(chunk)
+        self._remaining = None
+
+    def end_headers(self):
+        self.send_header("Accept-Ranges", "bytes")
+        super().end_headers()
 
 
 class OCS(Node):
@@ -418,8 +474,8 @@ class OCS(Node):
             else:
                 altitude = latest_global_pos.relative_alt / 1000.0  # mm -> m
                 position = LatLng(
-                    latitude=latest_global_pos.lat,
-                    longitude=latest_global_pos.lon,
+                    latitude=latest_global_pos.lat / 10**7,
+                    longitude=latest_global_pos.lon / 10**7,
                 )
 
                 # all in cm/s
