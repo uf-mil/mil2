@@ -26,6 +26,8 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from std_srvs.srv import Empty
 
+from ocs.InvestiGator.src.gc_helpers import send_command
+from ocs.InvestiGator.src.InvestiGator.mavconnection import MAVConnection
 from ocs.proto import (
     DockingReport,
     FlightPhase,
@@ -218,13 +220,32 @@ class OCS(Node):
         )
         self.client.loop_start()
 
-        self.mavconn = mavutil.mavlink_connection(
+        self.mavconn = MAVConnection(
             self.get_parameter("mavlink_port").get_parameter_value().string_value,
             baud=57600,
+            source_system=254,
+            source_component=0,
+            mav_type=mavlink.MAV_TYPE_GCS,
+        )
+        self.configure_messages()
+        self.mavconn.subscribe(mavlink.MAVLink_heartbeat_message.msgname)(
+            self.mav_handle_heartbeat,
+        )
+        self.mavconn.subscribe(mavlink.MAVLink_extended_sys_state_message.msgname)(
+            self.mav_handle_extended_sys_state,
+        )
+        self.mavconn.subscribe(mavlink.MAVLink_global_position_int_message.msgname)(
+            self.mav_handle_global_position,
+        )
+        self.mavconn.subscribe(mavlink.MAVLink_attitude_message.msgname)(
+            self.mav_handle_attitude,
+        )
+        self.mavconn.subscribe(mavlink.MAVLink_battery_status_message.msgname)(
+            self.mav_handle_battery_status,
         )
 
-        mav_thread = threading.Thread(target=self.loop_mav)
-        mav_thread.start()
+        mav_heartbeat_thread = threading.Thread(target=self.mav_heartbeat_loop)
+        mav_heartbeat_thread.start()
 
         web_thread = threading.Thread(target=self.start_dashboard)
         web_thread.start()
@@ -293,6 +314,7 @@ class OCS(Node):
         # Set boundary parameters on sub/boat (does it need it)
 
         # TODO send geofence via mav, inset slightly
+        # self.mavconn.mav.
 
         self.rx_run_declaration(
             vehicle_ids=["UUV", "USV", "UAV"],
@@ -338,198 +360,140 @@ class OCS(Node):
                 self.prop_emergency_publisher.publish(msg)
                 self.rx_incident_ack("USV", command.seq)
             elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
-                self.mavconn.mav.command_long_send(
-                    self.mavconn.target_system,
-                    self.mavconn.target_component,
+                send_command(
+                    self.mavconn,
                     mavutil.mavlink.MAV_CMD_USER_4,
-                    0,
-                    4,
-                    command.position.latitude,
-                    command.position.longitude,
-                    10,  # 10 meters above? idk
-                    0,
-                    0,
-                    0,
+                    param1=4,
+                    param2=command.position.latitude,
+                    param3=command.position.longitude,
+                    param4=10,  # 10 meters above
                 )
         elif command.keep_out_zone is not None:
             if command.keep_out_zone.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
             elif command.keep_out_zone.vehicle_type == VehicleType.TYPE_UAV:
-                self.mavconn.mav.command_long_send(
-                    self.mavconn.target_system,
-                    self.mavconn.target_component,
+                send_command(
+                    self.mavconn,
                     mavutil.mavlink.MAV_CMD_USER_4,
-                    0,
-                    8,
-                    command.center.latitude,
-                    command.center.longitude,
-                    command.radius_m,
-                    0,
-                    0,
-                    0,
+                    param1=8,
+                    param2=command.center.latitude,
+                    param3=command.center.longitude,
+                    param4=command.radius_m,
                 )
+
                 self.rx_incident_ack("UAV", command.seq)
         elif command.readiness_confirm is not None:
             if command.readiness_confirm.vehicle_id == "USV":
                 req = Empty.Request()
                 self.prop_all_clear_client.call_async(req)
             elif command.readiness_confirm.vehicle_id == "UAV":
-                self.mavconn.mav.command_long_send(
-                    self.mavconn.target_system,
-                    self.mavconn.target_component,
-                    mavutil.mavlink.MAV_CMD_USER_4,
-                    0,
-                    5,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                )
+                send_command(self.mavconn, mavutil.mavlink.MAV_CMD_USER_4, param1=5)
         elif command.all_clear is not None:
             if command.all_clear.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
             elif command.all_clear.vehicle_type == VehicleType.TYPE_UAV:
-                self.mavconn.mav.command_long_send(
-                    self.mavconn.target_system,
-                    self.mavconn.target_component,
-                    mavutil.mavlink.MAV_CMD_USER_4,
-                    0,
-                    9,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                )
+                send_command(self.mavconn, mavutil.mavlink.MAV_CMD_USER_4, param1=9)
                 self.rx_incident_ack("UAV", command.seq)
+
+    def configure_messages(self):
+        for TARGET in TARGET_MAV_TYPES:
+            send_command(
+                connection=self.mavconn,
+                command=mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+                target_component=1,
+                param1=getattr(mavlink, f"MAVLINK_MSG_ID_{TARGET}"),
+                param2=500_000,
+            )
+
+    drone_state = RobotState.STATE_KILLED
+    drone_task = RxTask.TASK_NONE
+
+    def mav_handle_heartbeat(self, message):
+        if message.base_mode == 0:
+            # Heartbeat from RPI - has robot task
+            self.drone_task = message.custom_mode
+        else:
+            # Heartbeat from ArduPilot
+            armed = message.base_mode & mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+            if not armed:
+                self.drone_state = RobotState.STATE_KILLED
+            else:
+                mode_map = mavutil.mode_mapping_bynumber(mavlink.MAV_TYPE_QUADROTOR)
+                mode = mode_map.get(message.custom_mode)
+                if mode == "GUIDED":
+                    self.drone_state = RobotState.STATE_AUTO
+                elif mode == "LOITER":
+                    self.drone_state = RobotState.STATE_MANUAL
+                else:
+                    self.drone_state = RobotState.STATE_UNKNOWN
+
+    drone_flight_phase = FlightPhase.FLIGHT_PHASE_UNKNOWN
+
+    def mav_handle_extended_sys_state(self, message):
+        match message.landed_state:
+            case mavlink.MAV_LANDED_STATE_ON_GROUND:
+                self.drone_flight_phase = FlightPhase.FLIGHT_PHASE_GROUNDED
+            case (
+                mavlink.MAV_LANDED_STATE_IN_AIR
+                | mavlink.MAV_LANDED_STATE_TAKEOFF
+                | mavlink.MAV_LANDED_STATE_LANDING
+            ):
+                self.drone_flight_phase = FlightPhase.FLIGHT_PHASE_AIRBORNE
+            case _:
+                self.drone_flight_phase = FlightPhase.FLIGHT_PHASE_UNKNOWN
+
+    drone_altitude = 0
+    drone_position = None
+    drone_speed = 0
+    drone_heading = 0
+
+    def mav_handle_global_position(self, message):
+        self.drone_altitude = message.relative_alt / 1000.0  # mm -> m
+        self.drone_position = LatLng(
+            latitude=message.lat / 10**7,
+            longitude=message.lon / 10**7,
+        )
+
+        # all in cm/s
+        vx = message.vx
+        vy = message.vy
+        vz = message.vz
+
+        speed_cms = math.sqrt(vx**2 + vy**2 + vz**2)
+        self.drone_speed = speed_cms / 100.0
+
+        self.drone_heading = message.hdg / 100.0  # cdeg -> deg
+
+    drone_roll = 0
+    drone_pitch = 0
+
+    def mav_handle_attitude(self, message):
+        self.drone_roll = message.roll * (180 / math.pi)  # rad -> deg
+        self.drone_pitch = message.pitch * (180 / math.pi)  # rad -> deg
 
     drone_battery_percentage = 0
     drone_battery_time = 0
 
-    def loop_mav(self):
-        latest_messages = {}
-        mode_map = mavutil.mode_mapping_bynumber(mavlink.MAV_TYPE_QUADROTOR)
+    def mav_handle_battery_status(self, message):
+        self.drone_battery_percentage = message.battery_remaining
+        self.drone_battery_time = message.time_remaining
 
-        self.mavconn.wait_heartbeat()
-        print("Got initial mavlink heartbeat")
-
-        # TODO retry if no ack
-        for TARGET in TARGET_MAV_TYPES:
-            self.mavconn.mav.command_long_send(
-                self.mavconn.target_system,
-                self.mavconn.target_component,
-                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
-                0,
-                getattr(mavlink, f"MAVLINK_MSG_ID_{TARGET}"),
-                500_000,  # 2hz in microseconds
-                0,
-                0,
-                0,
-                0,
-                0,
-            )
-
+    def mav_heartbeat_loop(self):
         while True:
-            # TODO dont reset to zero when missing value, just use last value
-            # TODO alert when no heartbeats in a while
-
-            # ensure mavlink buffer is cleared
-            while True:
-                msg = self.mavconn.recv_match(blocking=False)
-
-                if msg is None:
-                    break
-
-                msg_type = msg.get_type()
-                if msg_type in TARGET_MAV_TYPES:
-                    latest_messages[msg_type] = msg
-
-            latest_heartbeat = latest_messages.get("HEARTBEAT")
-            if latest_heartbeat is None:
-                state = RobotState.STATE_KILLED
-            else:
-                armed = latest_heartbeat.base_mode & mavlink.MAV_MODE_FLAG_SAFETY_ARMED
-
-                if not armed:
-                    state = RobotState.STATE_KILLED
-                else:
-                    mode = mode_map.get(latest_heartbeat.custom_mode)
-                    if mode == "GUIDED":
-                        state = RobotState.STATE_AUTO
-                    elif mode == "LOITER":
-                        state = RobotState.STATE_LOITER
-                    else:
-                        state = RobotState.STATE_UNKNOWN
-
-            latest_e_sys = latest_messages.get("EXTENDED_SYS_STATUS")
-            if latest_e_sys is None:
-                flight_phase = FlightPhase.FLIGHT_PHASE_GROUNDED
-            else:
-                match latest_e_sys.landed_state:
-                    case mavlink.MAV_LANDED_STATE_ON_GROUND:
-                        flight_phase = FlightPhase.FLIGHT_PHASE_GROUNDED
-                    case (
-                        mavlink.MAV_LANDED_STATE_IN_AIR
-                        | mavlink.MAV_LANDED_STATE_TAKEOFF
-                        | mavlink.MAV_LANDED_STATE_LANDING
-                    ):
-                        flight_phase = FlightPhase.FLIGHT_PHASE_AIRBORNE
-                    case _:
-                        flight_phase = FlightPhase.FLIGHT_PHASE_UNKNOWN
-
-            latest_global_pos = latest_messages.get("GLOBAL_POSITION_INT")
-            if latest_global_pos is None:
-                altitude = 0
-                position = None
-                speed = 0
-                heading = 0
-            else:
-                altitude = latest_global_pos.relative_alt / 1000.0  # mm -> m
-                position = LatLng(
-                    latitude=latest_global_pos.lat / 10**7,
-                    longitude=latest_global_pos.lon / 10**7,
-                )
-
-                # all in cm/s
-                vx = latest_global_pos.vx
-                vy = latest_global_pos.vy
-                vz = latest_global_pos.vz
-
-                speed_cms = math.sqrt(vx**2 + vy**2 + vz**2)
-                speed = speed_cms / 100.0
-
-                heading = latest_global_pos.hdg / 100.0  # cdeg -> deg
-
-            latest_attitude = latest_messages.get("ATTITUDE")
-            if latest_attitude is None:
-                roll = 0
-                pitch = 0
-            else:
-                roll = latest_attitude.roll * (180 / math.pi)  # rad -> deg
-                pitch = latest_attitude.pitch * (180 / math.pi)  # rad -> deg
-
-            latest_battery = latest_messages.get("BATTERY_STATUS")
-            if latest_battery is not None:
-                self.drone_battery_percentage = latest_battery.battery_remaining
-                self.drone_battery_time = latest_battery.time_remaining
-
             self.rx_heartbeat(
                 vehicle_id="UAV",
-                state=state,
-                current_task=RxTask.TASK_NONE,  # todo
+                state=self.drone_state,
+                current_task=self.drone_task,
                 vehicle_type=VehicleType.TYPE_UAV,
-                flight_phase=flight_phase,
-                position=position,
-                spd_mps=speed,
-                heading_deg=heading,
-                roll_deg=roll,
-                pitch_deg=pitch,
-                altitude_hae_m=altitude,
+                flight_phase=self.drone_flight_phase,
+                position=self.drone_position,
+                spd_mps=self.drone_speed,
+                heading_deg=self.drone_heading,
+                roll_deg=self.drone_roll,
+                pitch_deg=self.drone_pitch,
+                altitude_hae_m=self.drone_altitude,
                 uav_registration=f"{TEAM_CODE}-{CAAS_NUMBER}",
             )
 
