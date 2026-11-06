@@ -13,6 +13,20 @@ def generate_launch_description():
                 name="infix_sensor_bridge",
                 output="screen",
             ),
+            Node(
+                package="imu_filter_madgwick",
+                executable="imu_filter_madgwick_node",
+                name="imu_filter_madgwick",
+                output="screen",
+                parameters=[
+                    {
+                        "publish_tf": False,
+                        "mag_bias_x": 2.1277e-5,
+                        "mag_bias_y": 1.8647e-5,
+                        "mag_bias_z": -3.4394e-5,
+                    },
+                ],
+            ),
             # SDGPS pipeline
             ExecuteProcess(
                 cmd=[

@@ -4,7 +4,7 @@ PIDController::PIDController() : Node("pid_controller")
 {
     this->is_shutdown = false;
     this->heard_odom = false;
-    this->is_enabled = true;
+    this->is_enabled = false;
 
     // create subscriptions and publishers
     sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>("odometry/filtered/local", 10,
@@ -77,14 +77,14 @@ PIDController::PIDController() : Node("pid_controller")
         RCLCPP_INFO(this->get_logger(), "PID controller is disabled. Call enable_controller service to start.");
     }
     // wait to be enabled
-    while (!this->is_enabled)
+    while (rclcpp::ok() && !this->is_enabled)
     {
         rclcpp::spin_some(this->get_node_base_interface());
     }
 
     // wait to hear odom msg
     RCLCPP_INFO(this->get_logger(), "Waiting for odometry msg...");
-    while (!this->heard_odom)
+    while (rclcpp::ok() && !this->heard_odom)
     {
         rclcpp::spin_some(this->get_node_base_interface());
     }

@@ -25,14 +25,19 @@ void PropThrusters::Configure(gz::sim::Entity const &entity, std::shared_ptr<sdf
     this->thruster_y_ = sdf->Get<double>("thruster_y", this->thruster_y_).first;
     this->max_force_pos_ = sdf->Get<double>("max_force_pos", this->max_force_pos_).first;
     this->max_force_neg_ = sdf->Get<double>("max_force_neg", this->max_force_neg_).first;
+    this->bow_x_ = sdf->Get<double>("bow_x", this->bow_x_).first;
+    this->bow_force_pos_ = sdf->Get<double>("bow_force_pos", this->bow_force_pos_).first;
+    this->bow_force_neg_ = sdf->Get<double>("bow_force_neg", this->bow_force_neg_).first;
 
     auto const left = sdf->Get<std::string>("topic_left", "/prop/thrust/left").first;
     auto const right = sdf->Get<std::string>("topic_right", "/prop/thrust/right").first;
+    auto const bow = sdf->Get<std::string>("topic_bow", "/prop/thrust/bow").first;
     this->node_.Subscribe(left, &PropThrusters::OnLeft, this);
     this->node_.Subscribe(right, &PropThrusters::OnRight, this);
+    this->node_.Subscribe(bow, &PropThrusters::OnBow, this);
 
     gzmsg << "PropThrusters pushing [" << this->model_.Name(ecm) << "::" << this->link_name_ << "] from [" << left
-          << "] and [" << right << "]" << std::endl;
+          << "], [" << right << "] and [" << bow << "]" << std::endl;
 }
 
 void PropThrusters::OnLeft(gz::msgs::Double const &msg)
@@ -45,6 +50,12 @@ void PropThrusters::OnRight(gz::msgs::Double const &msg)
 {
     std::lock_guard<std::mutex> lock(this->mutex_);
     this->right_ = std::clamp(msg.data(), -this->max_force_neg_, this->max_force_pos_);
+}
+
+void PropThrusters::OnBow(gz::msgs::Double const &msg)
+{
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    this->bow_ = std::clamp(msg.data(), -this->bow_force_neg_, this->bow_force_pos_);
 }
 
 void PropThrusters::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityComponentManager &ecm)
@@ -63,17 +74,18 @@ void PropThrusters::PreUpdate(gz::sim::UpdateInfo const &info, gz::sim::EntityCo
 
     double left = 0.0;
     double right = 0.0;
+    double bow = 0.0;
     {
         std::lock_guard<std::mutex> lock(this->mutex_);
         left = this->left_;
         right = this->right_;
+        bow = this->bow_;
     }
 
-    // Both thrusters push along body x. The wrench goes on in world axes, and
-    // is applied at the centre of mass, so the yaw the offset thrusters would
-    // have produced is added as a moment of its own.
-    gz::math::Vector3d const force(left + right, 0.0, 0.0);
-    gz::math::Vector3d const torque(0.0, 0.0, this->thruster_y_ * (right - left));
+    // The wrench goes on in world axes at the centre of mass, so the yaw each
+    // offset thruster would have produced is added as a moment of its own.
+    gz::math::Vector3d const force(left + right, bow, 0.0);
+    gz::math::Vector3d const torque(0.0, 0.0, this->thruster_y_ * (right - left) + this->bow_x_ * bow);
 
     auto const pose = gz::sim::worldPose(entity, ecm);
     gz::sim::Link link(entity);
