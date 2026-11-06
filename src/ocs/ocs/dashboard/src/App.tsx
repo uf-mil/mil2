@@ -10,15 +10,18 @@ function App() {
   const [subjugatorHeartbeat, setSubjugatorHeartbeat] = useState<any>(null);
   const [propagatorHeartbeat, setPropagatorHeartbeat] = useState<any>(null);
   const [investigatorHeartbeat, setInvestigatorHeartbeat] = useState<any>(null);
+  const [droneStatus, setDroneStatus] = useState<any>(null);
 
   useEffect(() => {
     const interval = setInterval(async () => {
       const response = await fetch("/api/status").then(r => r.json());
+      const drone_response = await fetch("/api/drone_status").then(r => r.json());
 
       setRobocommand(response.robocommand);
       setSubjugatorHeartbeat(response.subjugatorHeartbeat);
       setPropagatorHeartbeat(response.propagatorHeartbeat);
       setInvestigatorHeartbeat(response.investigatorHeartbeat);
+      setDroneStatus(drone_response);
     }, 1000);
 
     return () => {
@@ -41,7 +44,7 @@ function App() {
 
         <Vehicle name="SubjuGator" heartbeat={subjugatorHeartbeat} />
         <Vehicle name="PropaGator" heartbeat={propagatorHeartbeat} />
-        <Vehicle name="InvestiGator" heartbeat={investigatorHeartbeat} />
+        <Vehicle name="InvestiGator" heartbeat={investigatorHeartbeat} droneStatus={droneStatus} />
       </div>
 
       <Map subHeartbeat={subjugatorHeartbeat} boatHeartbeat={propagatorHeartbeat} droneHeartbeat={investigatorHeartbeat} />

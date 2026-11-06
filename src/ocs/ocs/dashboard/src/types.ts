@@ -9,3 +9,8 @@ export interface Heartbeat {
         longitude: number;
     }
 }
+
+export interface DroneStatus {
+    battery_percentage: number;
+    battery_time: number;
+}

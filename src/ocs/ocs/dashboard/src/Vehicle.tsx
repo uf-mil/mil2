@@ -1,6 +1,6 @@
-import type { Heartbeat } from "./types";
+import type { Heartbeat, DroneStatus } from "./types";
 
-export function Vehicle({ name, heartbeat }: { name: string; heartbeat: Heartbeat; }) {
+export function Vehicle({ name, heartbeat, droneStatus }: { name: string; heartbeat: Heartbeat; droneStatus?: DroneStatus }) {
     return (
         <div className="p-5 rounded-md border-2 border-black bg-white">
           <p className="font-bold text-2xl text-center">{name}</p>
@@ -15,6 +15,13 @@ export function Vehicle({ name, heartbeat }: { name: string; heartbeat: Heartbea
                 <p><span className="font-semibold">Task:</span> {taskToText(heartbeat.current_task)}</p>
                 <p><span className="font-semibold">Altitude:</span> {heartbeat.altitude_hae_m} m</p>
                 <p><span className="font-semibold">Speed:</span> {heartbeat.spd_mps} m/s</p>
+
+                {droneStatus && (
+                    <>
+                        <p><span className="font-semibold">Battery:</span> {droneStatus.battery_percentage}%</p>
+                        <p><span className="font-semibold">Remaining:</span> {droneStatus.battery_time} s</p>
+                    </>
+                )}
               </div>
             </>
           ) : (

@@ -52,6 +52,7 @@ TARGET_MAV_TYPES = {
     "ATTITUDE",
     "SYS_STATUS",
     "EXTENDED_SYS_STATE",
+    "BATTERY_STATUS",
 }
 
 TEAM_CODE = "UFLO"
@@ -59,8 +60,9 @@ CAAS_NUMBER = 0
 
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, status_handler, *args, **kwargs):
+    def __init__(self, status_handler, drone_status_handler, *args, **kwargs):
         self.status_handler = status_handler
+        self.drone_status_handler = drone_status_handler
         super().__init__(*args, directory=DASHBOARD_DIR, **kwargs)
 
     def do_GET(self):
@@ -73,6 +75,15 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             status_json = json.dumps(status, default=self.json_default)
 
             self.wfile.write(str.encode(status_json))
+        elif self.path.startswith("/api/drone_status"):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+
+            drone_status = self.drone_status_handler()
+            drone_status_json = json.dumps(drone_status)
+
+            self.wfile.write(str.encode(drone_status_json))
         else:
             super().do_GET()
 
@@ -397,6 +408,9 @@ class OCS(Node):
                 )
                 self.rx_incident_ack("UAV", command.seq)
 
+    drone_battery_percentage = 0
+    drone_battery_time = 0
+
     def loop_mav(self):
         latest_messages = {}
         mode_map = mavutil.mode_mapping_bynumber(mavlink.MAV_TYPE_QUADROTOR)
@@ -421,6 +435,9 @@ class OCS(Node):
             )
 
         while True:
+            # TODO dont reset to zero when missing value, just use last value
+            # TODO alert when no heartbeats in a while
+
             # ensure mavlink buffer is cleared
             while True:
                 msg = self.mavconn.recv_match(blocking=False)
@@ -496,6 +513,11 @@ class OCS(Node):
                 roll = latest_attitude.roll * (180 / math.pi)  # rad -> deg
                 pitch = latest_attitude.pitch * (180 / math.pi)  # rad -> deg
 
+            latest_battery = latest_messages.get("BATTERY_STATUS")
+            if latest_battery is not None:
+                self.drone_battery_percentage = latest_battery.battery_remaining
+                self.drone_battery_time = latest_battery.time_remaining
+
             self.rx_heartbeat(
                 vehicle_id="UAV",
                 state=state,
@@ -514,15 +536,8 @@ class OCS(Node):
             time.sleep(0.5)  # 2hz
 
             # also need
-            # gps map
             # alerts for weak link, geofence violation
             # buttons for submitting bad geofence
-
-            # if no heartbeat, show
-
-            # global position - pos/altitude
-            # local position - velocity / speed
-            # attitude - roll/pitch
             # battery - sys status
 
     def start_dashboard(self):
@@ -536,7 +551,11 @@ class OCS(Node):
 
         port = self.get_parameter("dashboard_port").get_parameter_value().integer_value
 
-        handler_class = partial(DashboardHandler, self.get_status)
+        handler_class = partial(
+            DashboardHandler,
+            self.get_status,
+            self.get_drone_status,
+        )
         with socketserver.TCPServer(("", port), handler_class) as httpd:
             httpd.serve_forever()
 
@@ -546,6 +565,12 @@ class OCS(Node):
             "subjugatorHeartbeat": self.latest_heartbeats.get("UUV"),
             "propagatorHeartbeat": self.latest_heartbeats.get("USV"),
             "investigatorHeartbeat": self.latest_heartbeats.get("UAV"),
+        }
+
+    def get_drone_status(self):
+        return {
+            "battery_percentage": self.drone_battery_percentage,
+            "battery_time": self.drone_battery_time,
         }
 
     def on_heartbeat(self, msg):

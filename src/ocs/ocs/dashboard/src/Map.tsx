@@ -71,7 +71,7 @@ export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat }: { subHeartb
         >
           <PmtilesLayer url="/marina-bay.pmtiles" />
 
-          {subHeartbeat && (
+          {subHeartbeat?.position && (
             <Marker
               position={[subHeartbeat.position.latitude, subHeartbeat.position.longitude]}
               icon={subIcon}
@@ -82,7 +82,7 @@ export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat }: { subHeartb
             </Marker>
           )}
 
-          {boatHeartbeat && (
+          {boatHeartbeat?.position && (
             <Marker
               position={[boatHeartbeat.position.latitude, boatHeartbeat.position.longitude]}
               icon={boatIcon}
@@ -93,7 +93,7 @@ export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat }: { subHeartb
             </Marker>
           )}
 
-          {droneHeartbeat && (
+          {droneHeartbeat?.position && (
             <Marker
               position={[droneHeartbeat.position.latitude, droneHeartbeat.position.longitude]}
               icon={droneIcon}
