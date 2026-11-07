@@ -6,8 +6,8 @@ import cv2
 def default_backend():
     if sys.platform.startswith("win"):
         return cv2.CAP_MSMF
-    if sys.platform.startswith("linux"):
-        return cv2.CAP_V4L2
+    # if sys.platform.startswith("linux"):
+    #     return cv2.CAP_V4L2
     return cv2.CAP_ANY
 
 
