@@ -76,3 +76,4 @@ requests>=2.32.2
 # OCS
 paho-mqtt>=2.1.0,<3
 pymavlink>=2.4.49,<3
+shapely>=2.2.0

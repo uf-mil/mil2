@@ -23,6 +23,7 @@ from mil_msgs.msg import PipelineSurveyReport as RosPipelineSurveyReport
 from paho.mqtt.enums import CallbackAPIVersion
 from pymavlink.dialects.v20 import ardupilotmega as mavlink
 from rclpy.node import Node
+from shapely.geometry import Polygon
 from std_msgs.msg import String
 from std_srvs.srv import Empty
 
@@ -344,6 +345,9 @@ class OCS(Node):
             rep.SerializeToString(),
         )
 
+    def to_polygon(self, coords):
+        return Polygon([(p.longitude, p.latitude) for p in coords])
+
     geofence = []
 
     def on_course(self, _client, _, msg):
@@ -361,11 +365,16 @@ class OCS(Node):
 
         # Set boundary parameters on sub/boat (does it need it)
 
-        self.geofence = (
-            course.corners
-            if len(course.uav_transit_area) == 0
-            else course.uav_transit_area
-        )
+        if len(course.uav_transit_area) == 0:
+            self.geofence = course.corners
+        else:
+            corners_poly = self.to_polygon(course.corners)
+            uav_poly = self.to_polygon(course.uav_transit_area)
+            union = corners_poly.union(uav_poly)
+            self.geofence = [
+                LatLng(latitude=lat, longitude=lon)
+                for lon, lat in union.exterior.coords
+            ]
 
         cancel_event = threading.Event()
         self.mavconn.upload_fence_polygon(
