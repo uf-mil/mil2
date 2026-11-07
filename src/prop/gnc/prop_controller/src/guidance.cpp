@@ -28,6 +28,7 @@ Guidance::Guidance() : Node("guidance")
     hold_radius_ = declare_parameter("hold_radius", 1.0);
     yaw_tolerance_ = declare_parameter("yaw_tolerance", 0.09);
     approach_gain_ = declare_parameter("approach_gain", 0.5);
+    reverse_cone_ = declare_parameter("reverse_cone", 0.5);
     double const rate = declare_parameter("rate", 10.0);
 
     rclcpp::QoS latched(1);
@@ -124,6 +125,19 @@ std::pair<double, double> Guidance::follow() const
     {
         double const remaining = std::hypot(position_.first - goal.first, position_.second - goal.second);
         speed = std::min(speed, approach_gain_ * remaining);
+
+        // A final waypoint almost dead astern is backed onto rather than turned
+        // to: aim the stern at it and let the speed go negative, which the
+        // allocator spends as reverse thrust. Only the last leg, because a
+        // waypoint that is driven through should not slow the boat down, and
+        // only inside a cone, because a goal abeam is quicker to turn to. The
+        // stern error is the bow error taken round by half a turn, so the
+        // cross-track correction in it steers the stern just as it steers the bow.
+        double const stern_error = wrap(error - M_PI);
+        if (std::abs(stern_error) < reverse_cone_)
+        {
+            return { -std::min(speed_, approach_gain_ * remaining), stern_error };
+        }
     }
     return { speed, error };
 }
