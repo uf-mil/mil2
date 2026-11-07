@@ -10,3 +10,6 @@
 [submodule "src/prop/gnc/rf2o_laser_odometry"]
 	path = src/prop/gnc/rf2o_laser_odometry
 	url = https://github.com/MAPIRlab/rf2o_laser_odometry.git
+[submodule "src/ocs/ocs/InvestiGator"]
+	path = src/ocs/ocs/InvestiGator
+	url = https://github.com/uf-mil-electrical/InvestiGator
