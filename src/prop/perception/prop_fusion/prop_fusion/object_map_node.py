@@ -7,8 +7,8 @@ Keeps the cameras' classes on the evidence grid, and publishes what that labels.
        labelled_markers    visualization_msgs/MarkerArray, the same objects for RViz
 
 An object's class is in labeled_classification, its pose is the centre of its
-cells and its scale is their extent. Objects are rebuilt from the grid on every
-update, so they carry no lasting id.
+cells and its scale is their extent. Its id stays with it for as long as the
+grid remembers its cells, and is never reused.
 """
 
 import numpy as np
@@ -33,6 +33,7 @@ OBJECT_HEIGHT = 1.0  # m, only how tall it draws
 def perception_object(found, header):
     msg = PerceptionObject()
     msg.header = header
+    msg.id = found.id
     msg.labeled_classification = found.label
     msg.pose.position.x = found.x
     msg.pose.position.y = found.y
@@ -42,13 +43,13 @@ def perception_object(found, header):
 
 
 def object_markers(objects, header):
-    """Each object as a column over its cells, with its class floating above."""
+    """Each object as a column over its cells, with its name floating above."""
     markers = [Marker(header=header, action=Marker.DELETEALL)]
-    for index, found in enumerate(objects):
+    for found in objects:
         column = Marker(
             header=header,
             ns="objects",
-            id=index,
+            id=found.id,
             type=Marker.CYLINDER,
             color=OBJECT_COLOUR,
         )
@@ -62,10 +63,10 @@ def object_markers(objects, header):
         name = Marker(
             header=header,
             ns="names",
-            id=index,
+            id=found.id,
             type=Marker.TEXT_VIEW_FACING,
             color=TEXT_COLOUR,
-            text=found.label,
+            text=f"{found.label} #{found.id}",
         )
         name.pose.position.x = found.x
         name.pose.position.y = found.y

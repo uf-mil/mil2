@@ -114,3 +114,96 @@ def test_two_buoys_of_one_class_are_two_objects():
     object_map.add_label("red_buoy", 0.0, 0.0)
     object_map.add_label("red_buoy", 0.0, 1.8)
     assert len(object_map.objects()) == 2
+
+
+def test_objects_are_counted_up_from_one():
+    object_map = new_map()
+    object_map.update_grid(grid_with([(0.0, 0.0), (0.0, 1.8)]), WINDOW)
+    object_map.add_label("red_buoy", 0.0, 0.0)
+    object_map.add_label("red_buoy", 0.0, 1.8)
+    assert [o.id for o in object_map.objects()] == [1, 2]
+
+
+def test_a_box_on_nothing_uses_up_no_id():
+    object_map = map_with_label(BUOY)
+    object_map.add_label("red_buoy", -5.0, -5.0)
+    object_map.update_grid(grid_with([*BUOY, (0.0, 0.0)]), WINDOW)
+    object_map.add_label("red_buoy", 0.0, 0.0)
+    assert [o.id for o in object_map.objects()] == [1, 2]
+
+
+def test_a_new_track_on_the_same_buoy_keeps_its_id():
+    object_map = map_with_label(BUOY)
+    for box_x in (2.0, 2.3, 2.1):
+        object_map.update_grid(grid_with(BUOY), WINDOW)
+        object_map.add_label("red_buoy", box_x, 1.0)
+    assert [o.id for o in object_map.objects()] == [1]
+
+
+def test_a_buoy_in_two_pieces_is_one_object():
+    pieces = [(2.0, 1.0), (2.5, 1.0)]
+    object_map = new_map()
+    object_map.update_grid(grid_with(pieces), WINDOW)
+    object_map.add_label("red_buoy", 2.0, 1.0)
+    object_map.add_label("red_buoy", 2.5, 1.0)
+    assert [o.id for o in object_map.objects()] == [1]
+
+
+def test_an_id_survives_the_window_moving():
+    object_map = map_with_label(BUOY)
+    moved = Window(WINDOW.x + 2.0, WINDOW.y - 1.0, WINDOW.resolution)
+    object_map.update_grid(grid_with(BUOY, window=moved), moved)
+    object_map.add_label("red_buoy", *BUOY[0])
+    assert [o.id for o in object_map.objects()] == [1]
+
+
+def test_an_id_survives_going_unseen():
+    object_map = map_with_label(BUOY)
+    object_map.update_grid(grid_with(BUOY, evidence=10), WINDOW)
+    object_map.update_grid(grid_with(BUOY), WINDOW)
+    object_map.add_label("red_buoy", *BUOY[0])
+    assert [o.id for o in object_map.objects()] == [1]
+
+
+def test_an_id_follows_a_buoy_that_drifts_over_its_cells():
+    object_map = map_with_label(BUOY)
+    for shift in np.arange(0.25, 2.0, 0.25):
+        drifted = [(x + shift, y) for x, y in BUOY]
+        object_map.update_grid(grid_with(drifted), WINDOW)
+        object_map.add_label("red_buoy", *drifted[0])
+    found = object_map.objects()
+    assert [o.id for o in found] == [1]
+    assert found[0].x == pytest.approx(2.25 + 1.75)
+
+
+def test_changing_class_keeps_the_id_and_changes_the_whole_object():
+    object_map = map_with_label(BUOY)
+    object_map.add_label("green_buoy", *BUOY[0])
+    found = object_map.objects()
+    assert [(o.id, o.label) for o in found] == [(1, "green_buoy")]
+    assert found[0].size_x == pytest.approx(0.5)
+
+
+def test_an_id_is_never_reused():
+    object_map = map_with_label(BUOY)
+    object_map.update_grid(grid_with([]), WINDOW)
+    object_map.update_grid(grid_with(BUOY), WINDOW)
+    object_map.add_label("red_buoy", *BUOY[0])
+    assert [o.id for o in object_map.objects()] == [2]
+
+
+def test_cells_left_behind_do_not_pull_an_object_off_itself():
+    stray = [(2.0, 1.0)]
+    between = [(x, 1.0) for x in np.arange(2.25, 3.0, 0.25)]
+    buoy = [(x, 1.0) for x in np.arange(3.0, 4.0, 0.25)]
+
+    object_map = new_map()
+    object_map.update_grid(grid_with([*stray, *between, *buoy]), WINDOW)
+    for x in np.arange(2.0, 4.0, 0.5):
+        object_map.add_label("red_buoy", x, 1.0)
+    object_map.update_grid(grid_with([*stray, *buoy]), WINDOW)
+
+    found = object_map.objects()
+    assert [o.id for o in found] == [1]
+    assert found[0].x == pytest.approx(3.5)
+    assert found[0].size_x == pytest.approx(1.0)

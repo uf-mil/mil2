@@ -3,14 +3,20 @@ Carries the cameras' classes on the evidence grid, so they share its memory.
 
 The grid already decides what is there: cells build up while the lidar hits them
 and fade only when the lidar should have seen them and did not. Here its solid
-cells are grouped into clusters, a labelled box names the nearby cells of the
-cluster it sits on, and a label lasts until its cell has no evidence left. A buoy
-that is hidden, or out of every camera's view, keeps its class.
+cells are grouped into clusters, and a labelled box makes the nearby cells of the
+cluster it sits on part of an object, until they have no evidence left. A buoy
+that is hidden, or out of every camera's view, keeps its class and its id.
+
+An object's id comes from where it is, not from the tracker: a buoy can go through
+many tracks, and a track can move to something else. A box near an object's cells
+is that object, so the id lasts for as long as the grid remembers those cells.
 
 No ROS here, so it tests on its own.
 """
 
+import math
 from dataclasses import dataclass
+from itertools import count
 
 import numpy as np
 from scipy import ndimage
@@ -61,8 +67,9 @@ class Window:
 
 @dataclass(frozen=True)
 class LabelledObject:
-    """One labelled thing on the grid: its class, and its centre and size in metres."""
+    """One labelled thing on the grid: its id, class, and centre and size in metres."""
 
+    id: int
     label: str
     x: float
     y: float
@@ -89,35 +96,46 @@ class ObjectMap:
         self._evidence = np.zeros((0, 0), dtype=np.int8)
         self._clusters = np.zeros((0, 0), dtype=np.int32)
         self._window = Window(0.0, 0.0, 1.0)
-        self._labels = {}  # world (row, column) -> class name
+        self._object_at = {}  # world (row, column) -> object id
+        self._class_of = {}  # object id -> class name
+        self._new_ids = count(1)
 
     def update_grid(self, evidence, window):
-        """Take a new grid: forget labels on empty cells, then extend the others."""
+        """Take a new grid: let empty cells go, then extend each object."""
         self._evidence = evidence
         self._window = window
         self._clusters = clusters_of(evidence >= self.occupied)
-        self._labels = {
-            cell: label
-            for cell, label in self._labels.items()
+        self._object_at = {
+            cell: object_id
+            for cell, object_id in self._object_at.items()
             if self._has_evidence(cell)
         }
         for found in self.objects():
             for cell in self._cluster_cells_near(found.x, found.y):
-                self._labels.setdefault(cell, found.label)
+                self._object_at.setdefault(cell, found.id)
 
     def add_label(self, label, x, y):
-        """Name the cluster at (x, y). A newer label replaces an older one."""
-        for cell in self._cluster_cells_near(x, y):
-            self._labels[cell] = label
+        """
+        Name the cluster at (x, y), as the object already there or else a new one.
+
+        A newer label replaces an older one, and the object keeps its id.
+        """
+        cells = self._cluster_cells_near(x, y)
+        if not cells:
+            return
+        object_id = self._object_near(x, y)
+        if object_id is None:
+            object_id = next(self._new_ids)
+        self._class_of[object_id] = label
+        for cell in cells:
+            self._object_at[cell] = object_id
 
     def objects(self):
-        """Each touching group of cells sharing a class, as one LabelledObject."""
-        found = []
-        for label in sorted(set(self._labels.values())):
-            groups = clusters_of(self._cells_labelled(label))
-            for group in range(1, groups.max() + 1):
-                found.append(self._describe(label, groups == group))
-        return found
+        """Every object on the grid, oldest first."""
+        cells_of = {}
+        for cell, object_id in self._object_at.items():
+            cells_of.setdefault(object_id, []).append(cell)
+        return [self._describe(i, cells_of[i]) for i in sorted(cells_of)]
 
     def _has_evidence(self, cell):
         row, column = self._window.from_world(cell)
@@ -148,23 +166,41 @@ class ObjectMap:
             for row, column in zip(rows[chosen].tolist(), columns[chosen].tolist())
         ]
 
+    def _object_near(self, x, y):
+        """The object with the closest cell within label_radius of (x, y), if any."""
+        closest, nearest = None, self.label_radius
+        for cell, object_id in self._object_at.items():
+            cell_x, cell_y = self._window.centres(*self._window.from_world(cell))
+            distance = math.hypot(cell_x - x, cell_y - y)
+            if distance <= nearest:
+                closest, nearest = object_id, distance
+        return closest
+
     def _too_wide(self, rows, columns):
         cells_across = max(np.ptp(rows), np.ptp(columns)) + 1
         return cells_across * self._window.resolution > self.max_cluster_size
 
-    def _cells_labelled(self, label):
-        cells = np.zeros(self._evidence.shape, dtype=bool)
-        for cell, name in self._labels.items():
-            if name == label:
-                cells[self._window.from_world(cell)] = True
-        return cells
+    def _largest_piece(self, cells):
+        """
+        The rows and columns of the biggest touching group among an object's cells.
 
-    def _describe(self, label, cells):
-        rows, columns = np.nonzero(cells)
+        odom can swing a buoy a metre or two and back, leaving cells in both
+        places. An average of the two would sit on open water.
+        """
+        rows, columns = np.array([self._window.from_world(c) for c in cells]).T
+        marked = np.zeros(self._evidence.shape, dtype=bool)
+        marked[rows, columns] = True
+        pieces = clusters_of(marked)[rows, columns]
+        largest = pieces == np.argmax(np.bincount(pieces))
+        return rows[largest], columns[largest]
+
+    def _describe(self, object_id, cells):
+        rows, columns = self._largest_piece(cells)
         x, y = self._window.centres(rows, columns)
         resolution = self._window.resolution
         return LabelledObject(
-            label=label,
+            id=object_id,
+            label=self._class_of[object_id],
             x=float(x.mean()),
             y=float(y.mean()),
             size_x=float(x.max() - x.min()) + resolution,
