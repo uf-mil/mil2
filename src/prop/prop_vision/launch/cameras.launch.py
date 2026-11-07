@@ -1,24 +1,29 @@
 """
-The boat's two cameras, one looking ahead and one astern, each undistorted, run
-through the detector and published in its own namespace:
+The boat's cameras, one looking ahead and one astern. Each runs in its own
+namespace: camera_node reads the device, vision_node detects on its frames.
 
-    /front_camera/detections  /front_camera/camera_info  /front_camera/image_rect
-    /back_camera/detections   /back_camera/camera_info   /back_camera/image_rect
+    /front_camera/image_raw  /front_camera/detections  /front_camera/camera_info
+    /back_camera/image_raw   /back_camera/detections   /back_camera/camera_info
 
-    ros2 launch prop_vision cameras.launch.py \
-        front_device:=/dev/v4l/by-path/<port>-video-index0 \
+    ros2 launch prop_vision cameras.launch.py model:=<weights.pt>
+    ros2 launch prop_vision cameras.launch.py detect:=false
+    ros2 launch prop_vision cameras.launch.py model:=<weights.pt> \
         back_device:=/dev/v4l/by-path/<port>-video-index0
+
+detect:=false runs the cameras alone, to look at them or record them.
 
 They are the same model, so /dev/v4l/by-id cannot tell them apart and
 /dev/videoN reorders between boots; by-path names the USB port, which is fixed
-by how they are plugged in. A camera left without a device is not started,
-rather than guessed at: the swap would put the front camera's buoys behind the
-boat.
+by how they are plugged in. If a camera moves to another port, pass its path
+here. v4l2-ctl --list-devices shows the ports, and video-index0 is the node with
+frames. The back camera stays off until it is given a device.
 
 Each camera has a deck line, because the model sees buoys in the boat's own
 fittings. It depends on how the camera is mounted, so measure it again when one
 moves.
 """
+
+import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
@@ -26,47 +31,72 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 CAMERAS = ("front_camera", "back_camera")
+FRONT_DEVICE = "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.4.1:1.0-video-index0"
+
+
+def camera(name, device, width, height):
+    return Node(
+        package="prop_vision",
+        executable="camera_node.py",
+        name="camera",
+        namespace=name,
+        parameters=[
+            {
+                "device": device,
+                "width": width,
+                "height": height,
+                "frame_id": f"{name}_optical_frame",
+            },
+        ],
+        # A camera that drops off the bus comes back when it is reopened.
+        respawn=True,
+        respawn_delay=2.0,
+        output="screen",
+    )
+
+
+def vision(name, model, deck_line, publish_image):
+    parameters = {
+        "frame_id": f"{name}_optical_frame",
+        "publish_image": publish_image,
+        "deck_line": deck_line,
+    }
+    if model:
+        parameters["model"] = os.path.expanduser(model)
+    return Node(
+        package="prop_vision",
+        executable="vision_node.py",
+        name="vision",
+        namespace=name,
+        parameters=[parameters],
+        # Undistorter reports the calibration it scaled with print.
+        additional_env={"PYTHONUNBUFFERED": "1"},
+        output="screen",
+    )
 
 
 def cameras(context):
-    model = LaunchConfiguration("model").perform(context)
-    publish_image = LaunchConfiguration("publish_image").perform(context) == "true"
+    def argument(name):
+        return LaunchConfiguration(name).perform(context)
 
     nodes = []
     for name in CAMERAS:
         side = name.split("_")[0]
-        device = LaunchConfiguration(f"{side}_device").perform(context)
+        device = argument(f"{side}_device")
         if not device:
             continue
-        deck_line = LaunchConfiguration(f"{side}_deck_line").perform(context)
-        parameters = {
-            "device": device,
-            "frame_id": f"{name}_optical_frame",
-            "publish_image": publish_image,
-            "deck_line": float(deck_line),
-        }
-        if model:
-            parameters["model"] = model
         nodes.append(
-            Node(
-                package="prop_vision",
-                executable="vision_node.py",
-                name="vision",
-                namespace=name,
-                parameters=[parameters],
-                # A camera that drops off the bus comes back when it is reopened.
-                respawn=True,
-                respawn_delay=2.0,
-                # Camera reports its resolution with print.
-                additional_env={"PYTHONUNBUFFERED": "1"},
-                output="screen",
-            ),
+            camera(name, device, int(argument("width")), int(argument("height"))),
         )
-
-    if not nodes:
-        raise RuntimeError(
-            "no cameras to start: give front_device, back_device or both",
-        )
+        if argument("detect") == "true":
+            nodes.append(
+                vision(
+                    name,
+                    argument("model"),
+                    float(argument(f"{side}_deck_line")),
+                    argument("publish_image") == "true",
+                ),
+            )
     return nodes
 
 
@@ -75,14 +105,28 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 "front_device",
-                default_value="",
-                description="The camera looking ahead: /dev/v4l/by-path/..., "
-                "or an index. Empty leaves it off.",
+                default_value=FRONT_DEVICE,
+                description="The camera looking ahead: /dev/v4l/by-path/...",
             ),
             DeclareLaunchArgument(
                 "back_device",
                 default_value="",
                 description="The camera looking astern. Empty leaves it off.",
+            ),
+            DeclareLaunchArgument(
+                "width",
+                default_value="640",
+                description="Width to ask the cameras for.",
+            ),
+            DeclareLaunchArgument(
+                "height",
+                default_value="360",
+                description="Height to ask the cameras for.",
+            ),
+            DeclareLaunchArgument(
+                "detect",
+                default_value="true",
+                description="Run the detector. false leaves only the cameras.",
             ),
             DeclareLaunchArgument(
                 "front_deck_line",
@@ -107,8 +151,7 @@ def generate_launch_description():
                 "publish_image",
                 default_value="false",
                 description="Also publish image_rect, for RViz or "
-                "prop_fusion's debug_image. Two 1080p streams are a lot to "
-                "put on the network for nothing.",
+                "prop_fusion's debug_image.",
             ),
             OpaqueFunction(function=cameras),
         ],

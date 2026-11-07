@@ -11,6 +11,7 @@
   <depend>pcd</depend>
   <depend>prop_bringup</depend>
   <depend>prop_fusion</depend>
+  <depend>prop_vision</depend>
   <depend>rf2o_cov_mapper</depend>
   <depend>rf2o_laser_odometry</depend>
 

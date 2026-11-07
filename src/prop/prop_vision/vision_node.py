@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-One camera, undistorted and run through the detector, out over ROS.
+One camera's frames, undistorted and run through the detector, out over ROS.
 
-  in   image_topic  sensor_msgs/Image, only when set, in place of the camera
+  in   image_topic  sensor_msgs/Image, camera_node's image_raw on the boat
   out  detections   yolo_msgs/DetectionArray, in the undistorted image's pixels
        camera_info  sensor_msgs/CameraInfo of that undistorted image
        image_rect   sensor_msgs/Image, the undistorted image, with publish_image
 
 The boat has two, front and back, each its own node in its own namespace
 (cameras.launch.py). frame_id is what tells them apart downstream: it has to be
-that camera's optical frame in prop.urdf, or its detections get projected as if
-they came from the other end of the boat.
+that camera's optical frame in sensors.yaml, or its detections get projected as
+if they came from the other end of the boat.
 
 The pipeline is main.py's, minus the range estimate; the lidar has that.
 """
@@ -20,11 +20,9 @@ import threading
 from pathlib import Path
 
 import rclpy
-from camera import Camera, parse_source
-from config import CAMERA_INDEX
 from cv_bridge import CvBridge
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import CameraInfo, Image
 from tracking import Tracker
@@ -33,6 +31,10 @@ from undistort import Undistorter
 from yolo_msgs.msg import Detection, DetectionArray
 
 HERE = Path(__file__).resolve().parent
+
+# The detector can be slower than the camera. Frames left waiting in a queue
+# would only eat into fusion's max_age, so it always takes the newest one.
+NEWEST_FRAME = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
 
 
 def camera_info(intrinsics):
@@ -69,8 +71,7 @@ def detection(track):
 class VisionNode(Node):
     def __init__(self):
         super().__init__("vision")
-        device = self.declare_parameter("device", str(CAMERA_INDEX)).value
-        image_topic = self.declare_parameter("image_topic", "").value
+        image_topic = self.declare_parameter("image_topic", "image_raw").value
         self.frame_id = self.declare_parameter("frame_id", "camera_optical_frame").value
         model = self.declare_parameter("model", str(HERE / "models" / "best.pt")).value
         calibration = self.declare_parameter(
@@ -81,7 +82,6 @@ class VisionNode(Node):
         self.deck_line = self.declare_parameter("deck_line", 1.0).value
         publish_image = self.declare_parameter("publish_image", False).value
 
-        self.camera = None if image_topic else Camera(parse_source(device))
         self.undistorter = Undistorter(calibration)
         self.tracker = Tracker(YOLO(model), conf=conf)
         self.bridge = CvBridge()
@@ -96,27 +96,11 @@ class VisionNode(Node):
                 "image_rect",
                 qos_profile_sensor_data,
             )
-        if image_topic:
-            self.create_subscription(
-                Image,
-                image_topic,
-                self.on_image,
-                qos_profile_sensor_data,
-            )
+        self.create_subscription(Image, image_topic, self.on_image, NEWEST_FRAME)
 
-        source = image_topic or device
-        self.get_logger().info(f"{source} as {self.frame_id}, detecting with {model}")
-
-    def step(self):
-        """One frame through. False once the camera stops giving them."""
-        ok, frame = self.camera.read()
-        stamp = self.get_clock().now().to_msg()
-        if ok:
-            self.process(frame, stamp)
-        return ok
-
-    def on_image(self, msg):
-        self.process(self.bridge.imgmsg_to_cv2(msg, "bgr8"), msg.header.stamp)
+        self.get_logger().info(
+            f"{image_topic} as {self.frame_id}, detecting with {model}",
+        )
 
     def above_deck(self, track, image_height):
         """
@@ -127,14 +111,14 @@ class VisionNode(Node):
         """
         return track["box"][3] <= self.deck_line * image_height
 
-    def process(self, frame, stamp):
-        rectified = self.undistorter.apply(frame)
+    def on_image(self, msg):
+        rectified = self.undistorter.apply(self.bridge.imgmsg_to_cv2(msg, "bgr8"))
         if self.info is None:
             self.info = camera_info(self.undistorter.intrinsics)
             self.info.header.frame_id = self.frame_id
 
         detections = DetectionArray()
-        detections.header.stamp = stamp
+        detections.header.stamp = msg.header.stamp
         detections.header.frame_id = self.frame_id
         detections.detections = [
             detection(track)
@@ -142,7 +126,7 @@ class VisionNode(Node):
             if self.above_deck(track, rectified.shape[0])
         ]
 
-        self.info.header.stamp = stamp
+        self.info.header.stamp = msg.header.stamp
         self.info_pub.publish(self.info)
         self.detections_pub.publish(detections)
 
@@ -164,17 +148,8 @@ def main():
     node = VisionNode()
     try:
         while not stop.is_set():
-            if node.camera is None:
-                rclpy.spin_once(node, timeout_sec=0.1)
-            elif node.step():
-                rclpy.spin_once(node, timeout_sec=0.0)
-            elif not stop.is_set():
-                # Nonzero, so launch respawns this and the device is reopened.
-                node.get_logger().error("camera stopped returning frames")
-                raise SystemExit(1)
+            rclpy.spin_once(node, timeout_sec=0.1)
     finally:
-        if node.camera is not None:
-            node.camera.release()
         node.destroy_node()
         rclpy.try_shutdown()
 
