@@ -470,8 +470,11 @@ class OCS(Node):
 
     drone_state = RobotState.STATE_KILLED
     drone_task = RxTask.TASK_NONE
+    drone_last_heartbeat_seconds = 0
 
     def mav_handle_heartbeat(self, message):
+        self.drone_last_heartbeat_seconds = time.time()
+
         if message.base_mode == 0:
             # Heartbeat from RPI - has robot task
             self.drone_task = message.custom_mode
@@ -550,20 +553,21 @@ class OCS(Node):
 
     def mav_heartbeat_loop(self):
         while True:
-            self.rx_heartbeat(
-                vehicle_id="UAV",
-                state=self.drone_state,
-                current_task=self.drone_task,
-                vehicle_type=VehicleType.TYPE_UAV,
-                flight_phase=self.drone_flight_phase,
-                position=self.drone_position,
-                spd_mps=self.drone_speed,
-                heading_deg=self.drone_heading,
-                roll_deg=self.drone_roll,
-                pitch_deg=self.drone_pitch,
-                altitude_hae_m=self.drone_altitude,
-                uav_registration=f"{TEAM_CODE}-{CAAS_NUMBER}",
-            )
+            if time.time() - self.drone_last_heartbeat_seconds < 1:
+                self.rx_heartbeat(
+                    vehicle_id="UAV",
+                    state=self.drone_state,
+                    current_task=self.drone_task,
+                    vehicle_type=VehicleType.TYPE_UAV,
+                    flight_phase=self.drone_flight_phase,
+                    position=self.drone_position,
+                    spd_mps=self.drone_speed,
+                    heading_deg=self.drone_heading,
+                    roll_deg=self.drone_roll,
+                    pitch_deg=self.drone_pitch,
+                    altitude_hae_m=self.drone_altitude,
+                    uav_registration=f"{TEAM_CODE}-{CAAS_NUMBER}",
+                )
 
             time.sleep(0.5)  # 2hz
 

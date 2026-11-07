@@ -48,7 +48,7 @@ function PmtilesLayer({ url }: { url: string; }) {
   return null;
 }
 
-function Location({ name, heartbeat, color }: { name: string; heartbeat: Heartbeat; color: string; }) {
+function Location({ name, heartbeat, color }: { name: string; heartbeat?: Heartbeat; color: string; }) {
   return (
     <div>
       <p className="font-bold text-xl" style={{ color }}>{name}</p>
@@ -58,7 +58,7 @@ function Location({ name, heartbeat, color }: { name: string; heartbeat: Heartbe
   );
 }
 
-export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat }: { subHeartbeat: Heartbeat; boatHeartbeat: Heartbeat; droneHeartbeat: Heartbeat; }) {
+export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat }: { subHeartbeat?: Heartbeat; boatHeartbeat?: Heartbeat; droneHeartbeat?: Heartbeat; }) {
     return (
       <div className="flex flex-row items-center justify-center mt-5">
         <MapContainer

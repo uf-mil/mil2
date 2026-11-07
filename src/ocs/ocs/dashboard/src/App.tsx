@@ -4,13 +4,13 @@ import 'leaflet/dist/leaflet.css';
 
 import { Vehicle } from './Vehicle';
 import { Map } from './Map';
-import type { DroneStatus } from './types';
+import type { DroneStatus, Heartbeat } from './types';
 
 function App() {
   const [robocommand, setRobocommand] = useState(false);
-  const [subjugatorHeartbeat, setSubjugatorHeartbeat] = useState<any>(null);
-  const [propagatorHeartbeat, setPropagatorHeartbeat] = useState<any>(null);
-  const [investigatorHeartbeat, setInvestigatorHeartbeat] = useState<any>(null);
+  const [subjugatorHeartbeat, setSubjugatorHeartbeat] = useState<Heartbeat | undefined>(undefined);
+  const [propagatorHeartbeat, setPropagatorHeartbeat] = useState<Heartbeat | undefined>(undefined);
+  const [investigatorHeartbeat, setInvestigatorHeartbeat] = useState<Heartbeat | undefined>(undefined);
   const [droneStatus, setDroneStatus] = useState<DroneStatus | undefined>(undefined);
   const [alerts, setAlerts] = useState<string[]>([]);
 
@@ -31,7 +31,16 @@ function App() {
     }
   }, []);
 
+  useEffect(refreshAlerts, [droneStatus, subjugatorHeartbeat, propagatorHeartbeat, investigatorHeartbeat]);
   useEffect(() => {
+    const interval = setInterval(refreshAlerts, 1000);
+
+    return () => {
+        clearInterval(interval);
+    }
+  }, [droneStatus, subjugatorHeartbeat, propagatorHeartbeat, investigatorHeartbeat]);
+
+  function refreshAlerts() {
     let newAlerts = [];
 
     if (droneStatus) {
@@ -44,8 +53,22 @@ function App() {
       }
     }
 
+    const current_millis = new Date().valueOf();
+
+    if (subjugatorHeartbeat && current_millis - new Date(subjugatorHeartbeat.sent_at).valueOf() > 2000) {
+        newAlerts.push(">2 seconds since last sub heartbeat")
+    }
+
+    if (propagatorHeartbeat && current_millis - new Date(propagatorHeartbeat.sent_at).valueOf() > 2000) {
+        newAlerts.push(">2 seconds since last boat heartbeat")
+    }
+
+    if (investigatorHeartbeat && current_millis - new Date(investigatorHeartbeat.sent_at).valueOf() > 2000) {
+        newAlerts.push(">2 seconds since last drone heartbeat")
+    }
+
     setAlerts(newAlerts);
-  }, [droneStatus]);
+  }
 
   function badGeofence() {
     fetch("/api/bad_drone_geofence", { method: "POST" });

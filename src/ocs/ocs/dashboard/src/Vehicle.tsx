@@ -1,6 +1,6 @@
 import type { Heartbeat, DroneStatus } from "./types";
 
-export function Vehicle({ name, heartbeat, droneStatus }: { name: string; heartbeat: Heartbeat; droneStatus?: DroneStatus }) {
+export function Vehicle({ name, heartbeat, droneStatus }: { name: string; heartbeat?: Heartbeat; droneStatus?: DroneStatus }) {
     return (
         <div className="p-5 rounded-md border-2 border-black bg-white">
           <p className="font-bold text-2xl text-center">{name}</p>
