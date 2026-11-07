@@ -78,6 +78,10 @@ function App() {
     fetch("/api/bad_drone_height", { method: "POST" });
   }
 
+  function goodDrone() {
+    fetch("/api/good_drone", { method: "POST" });
+  }
+
   return (
     <div className="flex flex-col p-10">
       <header className="flex gap-5 w-full justify-center items-center mb-6">
@@ -95,6 +99,7 @@ function App() {
         <div className="flex flex-col gap-1">
           <button className="px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClick={badGeofence}>Bad geofence</button>
           <button className="px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClickCapture={badHeight}>Bad height</button>
+          <button className="px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClickCapture={goodDrone}>Good</button>
         </div>
       </div>
 

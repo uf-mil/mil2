@@ -74,6 +74,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         drone_status_handler,
         bad_drone_geofence_handler,
         bad_drone_height_handler,
+        good_drone_handler,
         *args,
         **kwargs,
     ):
@@ -81,6 +82,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         self.drone_status_handler = drone_status_handler
         self.bad_drone_geofence_handler = bad_drone_geofence_handler
         self.bad_drone_height_handler = bad_drone_height_handler
+        self.good_drone_handler = good_drone_handler
 
         super().__init__(*args, directory=DASHBOARD_DIR, **kwargs)
 
@@ -121,6 +123,14 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
             self.bad_drone_height_handler()
+
+            self.wfile.write(b"ok")
+        elif self.path.startswith("/api/good_drone"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+
+            self.good_drone_handler()
 
             self.wfile.write(b"ok")
 
@@ -600,6 +610,7 @@ class OCS(Node):
             self.get_drone_status,
             self.send_bad_drone_geofence,
             self.send_bad_drone_height,
+            self.send_good_drone,
         )
         with socketserver.TCPServer(("", port), handler_class) as httpd:
             httpd.serve_forever()
@@ -646,6 +657,18 @@ class OCS(Node):
             task4_tier=TaskTier.TIER_CORE,
             uav_geofence=self.geofence,
             uav_geofence_max_altitude_hae_m=100,
+            uav_pilot_callsign=CALLSIGN,
+        )
+
+    def send_good_drone(self):
+        self.rx_run_declaration(
+            vehicle_ids=["UAV"],
+            task1_tier=TaskTier.TIER_CORE,
+            task2_tier=TaskTier.TIER_CORE,
+            task3_tier=TaskTier.TIER_CORE,
+            task4_tier=TaskTier.TIER_CORE,
+            uav_geofence=self.geofence,
+            uav_geofence_max_altitude_hae_m=40,
             uav_pilot_callsign=CALLSIGN,
         )
 
