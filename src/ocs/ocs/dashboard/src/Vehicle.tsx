@@ -20,6 +20,8 @@ export function Vehicle({ name, heartbeat, droneStatus }: { name: string; heartb
                     <>
                         <p><span className="font-semibold">Battery:</span> {droneStatus.battery_percentage}%</p>
                         <p><span className="font-semibold">Remaining:</span> {droneStatus.battery_time} s</p>
+                        <p><span className="font-semibold">Local RSSI Margin:</span> {droneStatus.local_rssi_margin}</p>
+                        <p><span className="font-semibold">Remote RSSI Margin:</span> {droneStatus.remote_rssi_margin}</p>
                     </>
                 )}
               </div>

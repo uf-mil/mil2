@@ -13,4 +13,6 @@ export interface Heartbeat {
 export interface DroneStatus {
     battery_percentage: number;
     battery_time: number;
+    local_rssi_margin: number;
+    remote_rssi_margin: number;
 }

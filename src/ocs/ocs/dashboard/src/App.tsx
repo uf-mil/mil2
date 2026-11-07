@@ -4,13 +4,15 @@ import 'leaflet/dist/leaflet.css';
 
 import { Vehicle } from './Vehicle';
 import { Map } from './Map';
+import type { DroneStatus } from './types';
 
 function App() {
   const [robocommand, setRobocommand] = useState(false);
   const [subjugatorHeartbeat, setSubjugatorHeartbeat] = useState<any>(null);
   const [propagatorHeartbeat, setPropagatorHeartbeat] = useState<any>(null);
   const [investigatorHeartbeat, setInvestigatorHeartbeat] = useState<any>(null);
-  const [droneStatus, setDroneStatus] = useState<any>(null);
+  const [droneStatus, setDroneStatus] = useState<DroneStatus | undefined>(undefined);
+  const [alerts, setAlerts] = useState<string[]>([]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -29,6 +31,22 @@ function App() {
     }
   }, []);
 
+  useEffect(() => {
+    let newAlerts = [];
+
+    if (droneStatus) {
+      if (droneStatus.local_rssi_margin < 20) {
+        newAlerts.push("Low local RSSI margin")
+      }
+
+      if (droneStatus.remote_rssi_margin < 20) {
+        newAlerts.push("Low remote RSSI margin")
+      }
+    }
+
+    setAlerts(newAlerts);
+  }, [droneStatus]);
+
   function badGeofence() {
     fetch("/api/bad_drone_geofence", { method: "POST" });
   }
@@ -45,8 +63,10 @@ function App() {
       </header>
 
       <div className="flex flex-row gap-5">
-        <div className="grow p-5 rounded-md border-2 border-black bg-white flex flex-col justify-center items-center mb-5">
-          <p className="text-xl">No alerts</p>
+        <div className="grow p-5 rounded-md border-2 border-black bg-white flex flex-row gap-10 justify-center items-center mb-5">
+          {alerts.length == 0 ? <p className="text-xl">No alerts</p> : alerts.map(a => (
+            <p className="text-xl">{a}</p>
+          ))}
         </div>
 
         <div className="flex flex-col gap-1">

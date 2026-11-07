@@ -55,6 +55,7 @@ TARGET_MAV_TYPES = {
     "SYS_STATUS",
     "EXTENDED_SYS_STATE",
     "BATTERY_STATUS",
+    "RADIO_STATUS",
 }
 
 TEAM_CODE = "UFLO"
@@ -277,6 +278,9 @@ class OCS(Node):
         )
         self.mavconn.subscribe(mavlink.MAVLink_battery_status_message.msgname)(
             self.mav_handle_battery_status,
+        )
+        self.mavconn.subscribe(mavlink.MAVLink_radio_status_message.msgname)(
+            self.mav_handle_radio_status,
         )
 
         mav_heartbeat_thread = threading.Thread(target=self.mav_heartbeat_loop)
@@ -537,6 +541,13 @@ class OCS(Node):
         self.drone_battery_percentage = message.battery_remaining
         self.drone_battery_time = message.time_remaining
 
+    drone_local_rssi_margin = 0
+    drone_remote_rssi_margin = 0
+
+    def mav_handle_radio_status(self, message):
+        self.drone_local_rssi_margin = message.rssi - message.noise
+        self.drone_remote_rssi_margin = message.remrssi - message.remnoise
+
     def mav_heartbeat_loop(self):
         while True:
             self.rx_heartbeat(
@@ -558,7 +569,6 @@ class OCS(Node):
 
             # also need
             # alerts for weak link, geofence violation
-            # buttons for submitting bad geofence
 
     def start_dashboard(self):
         if not os.path.exists(DASHBOARD_DIR):
@@ -593,6 +603,8 @@ class OCS(Node):
         return {
             "battery_percentage": self.drone_battery_percentage,
             "battery_time": self.drone_battery_time,
+            "local_rssi_margin": self.drone_local_rssi_margin,
+            "remote_rssi_margin": self.drone_remote_rssi_margin,
         }
 
     def send_bad_drone_geofence(self):
