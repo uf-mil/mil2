@@ -15,7 +15,6 @@
 // Construct node class
 ThrusterManager::ThrusterManager() : Node("thruster_manager")
 {
-    reference_wrench_ = Eigen::VectorXd::Zero(6);
     this->declare_parameter("thruster_cap", 0.0);
     thruster_cap_ = this->get_parameter("thruster_cap").as_double();
 
@@ -41,6 +40,7 @@ ThrusterManager::ThrusterManager() : Node("thruster_manager")
                                          "with "
                                          "ros2 launch, and that config values are set.");
     }
+    tam_ = tam_.completeOrthogonalDecomposition().pseudoInverse();
 
     wrench_subscription_ = this->create_subscription<geometry_msgs::msg::Wrench>(
         "cmd_wrench", 1,
@@ -57,13 +57,10 @@ void ThrusterManager::wrench_callback(geometry_msgs::msg::Wrench::SharedPtr msg)
     // RCLCPP_INFO(this->get_logger(), "Heard wrench: [%.2f, %.2f, %.2f], [%.2f, %.2f, %.2f]", msg->force.x,
     // msg->force.y,
     //             msg->force.z, msg->torque.x, msg->torque.y, msg->torque.z);
-    this->reference_wrench_ << msg->force.x, msg->force.y, msg->force.z, msg->torque.x, msg->torque.y, msg->torque.z;
-}
+    Eigen::VectorXd wrench;
+    wrench << msg->force.x, msg->force.y, msg->force.z, msg->torque.x, msg->torque.y, msg->torque.z;
 
-// Compute and publish thruster efforts
-void ThrusterManager::timer_callback()
-{
-    Eigen::VectorXd thrust_values(tam_.completeOrthogonalDecomposition().pseudoInverse() * reference_wrench_);
+    Eigen::VectorXd thrust_values(tam_ * wrench);
 
     // check that the allocated thrust is not over the thruster cap (typically 1.0), and if it is, rescale all thrusters
     double biggest_thrust = 0;
@@ -89,17 +86,20 @@ void ThrusterManager::timer_callback()
         thrust_values = thrust_values * (thruster_cap_ / biggest_thrust);
     }
 
-    auto msg = subjugator_msgs::msg::ThrusterEfforts();
-    msg.thrust_frh = thrust_values[0];
-    msg.thrust_flh = thrust_values[1];
-    msg.thrust_brh = thrust_values[2];
-    msg.thrust_blh = thrust_values[3];
-    msg.thrust_frv = thrust_values[4];
-    msg.thrust_flv = thrust_values[5];
-    msg.thrust_brv = thrust_values[6];
-    msg.thrust_blv = thrust_values[7];
+    efforts_.thrust_frh = thrust_values[0];
+    efforts_.thrust_flh = thrust_values[1];
+    efforts_.thrust_brh = thrust_values[2];
+    efforts_.thrust_blh = thrust_values[3];
+    efforts_.thrust_frv = thrust_values[4];
+    efforts_.thrust_flv = thrust_values[5];
+    efforts_.thrust_brv = thrust_values[6];
+    efforts_.thrust_blv = thrust_values[7];
+}
 
-    this->thrust_publisher_->publish(msg);
+// Compute and publish thruster efforts
+void ThrusterManager::timer_callback()
+{
+    this->thrust_publisher_->publish(efforts_);
 }
 
 int main(int argc, char **argv)
