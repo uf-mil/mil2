@@ -15,7 +15,7 @@ export function Vehicle({ name, heartbeat, droneStatus }: { name: string; heartb
                 <p><span className="font-semibold">Task:</span> {taskToText(heartbeat.current_task)}</p>
                 <p><span className="font-semibold">Altitude:</span> {heartbeat.altitude_hae_m} m</p>
                 <p><span className="font-semibold">Heading:</span> {heartbeat.heading_deg} deg</p>
-                <p><span className="font-semibold">Speed:</span> {heartbeat.spd_mps} m/s</p>
+                <p><span className="font-semibold">Speed:</span> {heartbeat.spd_mps.toFixed(2)} m/s</p>
 
                 {droneStatus && (
                     <>
