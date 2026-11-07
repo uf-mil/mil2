@@ -83,23 +83,22 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col p-10">
-      <header className="flex gap-5 w-full justify-center items-center mb-6">
-        <img src="/mil.svg" />
-        <p className="text-3xl text-bold">MIL RobotX 2026 Dashboard</p>
-      </header>
-
-      <div className="flex flex-row gap-5">
-        <div className="grow p-5 rounded-md border-2 border-black bg-white flex flex-row gap-10 justify-center items-center mb-5">
-          {alerts.length == 0 ? <p className="text-xl">No alerts</p> : alerts.map(a => (
-            <p className="text-xl">{a}</p>
-          ))}
+    <div className="flex flex-col p-5">
+      <div className="flex flex-row gap-2 mb-2">
+        <img src="/mil.svg" className="w-32" />
+        <div className="grow px-5 py-2 min-h-full rounded-md border-2 border-black bg-white flex flex-col gap-2 justify-center items-center">
+          <p className="text-2xl font-semibold">Alerts</p>
+          <div className="flex flex-row justify-center items-center gap-10">
+            {alerts.length == 0 ? <p className="text-xl">No alerts</p> : alerts.map(a => (
+              <p className="text-xl">{a}</p>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col gap-1">
-          <button className="px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClick={badGeofence}>Bad geofence</button>
-          <button className="px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClickCapture={badHeight}>Bad height</button>
-          <button className="px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClickCapture={goodDrone}>Good</button>
+          <button className="grow px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClick={badGeofence}>Send bad geofence RunDecl</button>
+          <button className="grow px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClickCapture={badHeight}>Send bad height RunDecl</button>
+          <button className="grow px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClickCapture={goodDrone}>Send good RunDecl</button>
         </div>
       </div>
 

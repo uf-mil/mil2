@@ -60,7 +60,7 @@ function Location({ name, heartbeat, color }: { name: string; heartbeat?: Heartb
 
 export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat, geofence }: { subHeartbeat?: Heartbeat; boatHeartbeat?: Heartbeat; droneHeartbeat?: Heartbeat; geofence?: LatLng[] }) {
     return (
-      <div className="flex flex-row items-center justify-center mt-5">
+      <div className="flex flex-row items-center justify-center mt-3">
         <MapContainer
           center={[1.2825753, 103.8546459]}
           zoom={17}

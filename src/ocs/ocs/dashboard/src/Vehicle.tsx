@@ -2,7 +2,7 @@ import type { Heartbeat, DroneStatus } from "./types";
 
 export function Vehicle({ name, heartbeat, droneStatus }: { name: string; heartbeat?: Heartbeat; droneStatus?: DroneStatus }) {
     return (
-        <div className="p-5 rounded-md border-2 border-black bg-white">
+        <div className="p-3 rounded-md border-2 border-black bg-white">
           <p className="font-bold text-2xl text-center">{name}</p>
 
           {heartbeat ? (
@@ -10,7 +10,7 @@ export function Vehicle({ name, heartbeat, droneStatus }: { name: string; heartb
               <p className="text-center mb-2">
                 {new Date(heartbeat.sent_at).toTimeString()}
               </p>
-              <div className="text-xl grid grid-cols-2">
+              <div className="text-xl grid grid-cols-2 gap-x-2">
                 <p><span className="font-semibold">State:</span> {stateToText(heartbeat.state)}</p>
                 <p><span className="font-semibold">Task:</span> {taskToText(heartbeat.current_task)}</p>
                 <p><span className="font-semibold">Altitude:</span> {heartbeat.altitude_hae_m} m</p>
