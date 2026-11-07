@@ -271,7 +271,7 @@ class OCS(Node):
             self.get_parameter("mavlink_port").get_parameter_value().string_value,
             baud=57600,
             source_system=254,
-            source_component=1,
+            source_component=0,
             mav_type=mavlink.MAV_TYPE_GCS,
         )
         self.configure_messages()
@@ -393,7 +393,18 @@ class OCS(Node):
             target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
         )
         print("Transmitted geofence")
-        print("test")
+        time.sleep(2)  # give time for fence to go live
+
+        responses = self.mavconn.read_cube_fence(
+            target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
+        )
+
+        self.geofence = []
+
+        for r in responses:
+            self.geofence.append(LatLng(latitude=r.x / 10**7, longitude=r.y / 10**7))
+
+        print("Got geofence")
 
         self.rx_run_declaration(
             vehicle_ids=["UUV", "USV", "UAV"],
