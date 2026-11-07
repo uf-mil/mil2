@@ -204,27 +204,29 @@ class OCS(Node):
 
         self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
-        self.client.subscribe("robocommand/robotx/course")
-        self.client.subscribe(
-            f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/command",
-        )
-
         self.client.message_callback_add("robocommand/robotx/course", self.on_course)
         self.client.message_callback_add(
             f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/command",
             self.on_command,
         )
 
-        self.client.connect(
-            self.get_parameter("host").get_parameter_value().string_value,
-        )
-        self.client.loop_start()
+        def mqtt_on_connect(client, userdata, flags, reason_code, properties=None):
+            if reason_code != 0:
+                self.get_logger().error(f"MQTT connect failed: {reason_code}")
+                return
+
+            self.client.subscribe("robocommand/robotx/course")
+            self.client.subscribe(
+                f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/command",
+            )
+
+        self.client.on_connect = mqtt_on_connect
 
         self.mavconn = MAVConnection(
             self.get_parameter("mavlink_port").get_parameter_value().string_value,
             baud=57600,
             source_system=254,
-            source_component=0,
+            source_component=1,
             mav_type=mavlink.MAV_TYPE_GCS,
         )
         self.configure_messages()
@@ -249,6 +251,13 @@ class OCS(Node):
 
         web_thread = threading.Thread(target=self.start_dashboard)
         web_thread.start()
+
+        self.client.connect(
+            self.get_parameter("host").get_parameter_value().string_value,
+        )
+        self.client.loop_start()
+
+    rx_run_declaration_seq = 0
 
     def rx_run_declaration(self, **kwargs):
         req = RxRequest(
@@ -313,8 +322,13 @@ class OCS(Node):
 
         # Set boundary parameters on sub/boat (does it need it)
 
-        # TODO send geofence via mav, inset slightly
-        # self.mavconn.mav.
+        cancel_event = threading.Event()
+        self.mavconn.upload_fence_polygon(
+            course.corners,
+            cancel_event,
+            target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
+        )
+        print("Transmitted geofence")
 
         self.rx_run_declaration(
             vehicle_ids=["UUV", "USV", "UAV"],
