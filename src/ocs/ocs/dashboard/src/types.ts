@@ -17,4 +17,10 @@ export interface DroneStatus {
     battery_time: number;
     local_rssi_margin: number;
     remote_rssi_margin: number;
+    geofence: LatLng[];
+}
+
+export interface LatLng {
+    latitude: number;
+    longitude: number;
 }

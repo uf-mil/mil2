@@ -114,7 +114,7 @@ function App() {
         <Vehicle name="InvestiGator" heartbeat={investigatorHeartbeat} droneStatus={droneStatus} />
       </div>
 
-      <Map subHeartbeat={subjugatorHeartbeat} boatHeartbeat={propagatorHeartbeat} droneHeartbeat={investigatorHeartbeat} />
+      <Map subHeartbeat={subjugatorHeartbeat} boatHeartbeat={propagatorHeartbeat} droneHeartbeat={investigatorHeartbeat} geofence={droneStatus?.geofence} />
     </div>
   )
 }

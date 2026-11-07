@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { MapContainer, useMap, Marker, Popup } from 'react-leaflet'
+import { MapContainer, useMap, Marker, Popup, Polygon } from 'react-leaflet'
 import { leafletLayer } from 'protomaps-leaflet';
 import L from 'leaflet';
 
-import type { Heartbeat } from "./types";
+import type { Heartbeat, LatLng } from "./types";
 
 import droneImg from "../public/drone.svg";
 import subImg from "../public/sub.svg";
@@ -58,14 +58,14 @@ function Location({ name, heartbeat, color }: { name: string; heartbeat?: Heartb
   );
 }
 
-export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat }: { subHeartbeat?: Heartbeat; boatHeartbeat?: Heartbeat; droneHeartbeat?: Heartbeat; }) {
+export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat, geofence }: { subHeartbeat?: Heartbeat; boatHeartbeat?: Heartbeat; droneHeartbeat?: Heartbeat; geofence?: LatLng[] }) {
     return (
       <div className="flex flex-row items-center justify-center mt-5">
         <MapContainer
           center={[1.2825753, 103.8546459]}
-          zoom={16}
+          zoom={17}
           minZoom={13}
-          maxZoom={17}
+          maxZoom={18}
           maxBounds={[[1.26, 103.83], [1.31, 103.89]]}
           scrollWheelZoom={false}
         >
@@ -102,6 +102,10 @@ export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat }: { subHeartb
                 InvestiGator
               </Popup>
             </Marker>
+          )}
+
+          {geofence && (
+            <Polygon positions={geofence.map(ll => ([ll.latitude, ll.longitude]))} pathOptions={{ color: "green" }} />
           )}
         </MapContainer>
 

@@ -102,7 +102,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
             drone_status = self.drone_status_handler()
-            drone_status_json = json.dumps(drone_status)
+            drone_status_json = json.dumps(drone_status, default=self.json_default)
 
             self.wfile.write(str.encode(drone_status_json))
         else:
@@ -399,6 +399,10 @@ class OCS(Node):
             target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
         )
 
+        if responses is None:
+            print("failed to get geofence")
+            return
+
         self.geofence = []
 
         for r in responses:
@@ -640,6 +644,7 @@ class OCS(Node):
             "battery_time": self.drone_battery_time,
             "local_rssi_margin": self.drone_local_rssi_margin,
             "remote_rssi_margin": self.drone_remote_rssi_margin,
+            "geofence": self.geofence,
         }
 
     def send_bad_drone_geofence(self):
