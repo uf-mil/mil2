@@ -567,8 +567,7 @@ class OCS(Node):
 
             time.sleep(0.5)  # 2hz
 
-            # also need
-            # alerts for weak link, geofence violation
+            # TODO alerts for geofence violation
 
     def start_dashboard(self):
         if not os.path.exists(DASHBOARD_DIR):
