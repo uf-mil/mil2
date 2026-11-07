@@ -383,6 +383,7 @@ class OCS(Node):
             target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
         )
         print("Transmitted geofence")
+        print("test")
 
         self.rx_run_declaration(
             vehicle_ids=["UUV", "USV", "UAV"],
