@@ -1,0 +1,13 @@
+---
+# What a replay changes about the boat's own configuration. Loaded after those
+# files, with the nodes named exactly, because a launch dict does not reliably
+# win over a named entry once use_sim_time is set.
+ekf_local:
+  ros__parameters:
+    # Nobody is there to call enable, and the bag starts mid-run anyway.
+    disabled_at_startup: false
+
+occupancy_grid:
+  ros__parameters:
+    # The same frame pcd's tracks and the EKF's odometry are in.
+    map_frame: odom

@@ -2,6 +2,7 @@
 """
 One camera, undistorted and run through the detector, out over ROS.
 
+  in   image_topic  sensor_msgs/Image, only when set, in place of the camera
   out  detections   yolo_msgs/DetectionArray, in the undistorted image's pixels
        camera_info  sensor_msgs/CameraInfo of that undistorted image
        image_rect   sensor_msgs/Image, the undistorted image, with publish_image
@@ -69,6 +70,7 @@ class VisionNode(Node):
     def __init__(self):
         super().__init__("vision")
         device = self.declare_parameter("device", str(CAMERA_INDEX)).value
+        image_topic = self.declare_parameter("image_topic", "").value
         self.frame_id = self.declare_parameter("frame_id", "camera_optical_frame").value
         model = self.declare_parameter("model", str(HERE / "models" / "best.pt")).value
         calibration = self.declare_parameter(
@@ -79,23 +81,42 @@ class VisionNode(Node):
         self.deck_line = self.declare_parameter("deck_line", 1.0).value
         publish_image = self.declare_parameter("publish_image", False).value
 
-        self.camera = Camera(parse_source(device))
+        self.camera = None if image_topic else Camera(parse_source(device))
         self.undistorter = Undistorter(calibration)
         self.tracker = Tracker(YOLO(model), conf=conf)
+        self.bridge = CvBridge()
         self.info = None
 
         self.detections_pub = self.create_publisher(DetectionArray, "detections", 10)
         self.info_pub = self.create_publisher(CameraInfo, "camera_info", 10)
         self.image_pub = None
         if publish_image:
-            self.bridge = CvBridge()
             self.image_pub = self.create_publisher(
                 Image,
                 "image_rect",
                 qos_profile_sensor_data,
             )
+        if image_topic:
+            self.create_subscription(
+                Image,
+                image_topic,
+                self.on_image,
+                qos_profile_sensor_data,
+            )
 
-        self.get_logger().info(f"{device} as {self.frame_id}, detecting with {model}")
+        source = image_topic or device
+        self.get_logger().info(f"{source} as {self.frame_id}, detecting with {model}")
+
+    def step(self):
+        """One frame through. False once the camera stops giving them."""
+        ok, frame = self.camera.read()
+        stamp = self.get_clock().now().to_msg()
+        if ok:
+            self.process(frame, stamp)
+        return ok
+
+    def on_image(self, msg):
+        self.process(self.bridge.imgmsg_to_cv2(msg, "bgr8"), msg.header.stamp)
 
     def above_deck(self, track, image_height):
         """
@@ -106,13 +127,7 @@ class VisionNode(Node):
         """
         return track["box"][3] <= self.deck_line * image_height
 
-    def step(self):
-        """One frame through. False once the camera stops giving them."""
-        ok, frame = self.camera.read()
-        stamp = self.get_clock().now().to_msg()
-        if not ok:
-            return False
-
+    def process(self, frame, stamp):
         rectified = self.undistorter.apply(frame)
         if self.info is None:
             self.info = camera_info(self.undistorter.intrinsics)
@@ -135,7 +150,6 @@ class VisionNode(Node):
             image = self.bridge.cv2_to_imgmsg(rectified, "bgr8")
             image.header = detections.header
             self.image_pub.publish(image)
-        return True
 
 
 def main():
@@ -150,14 +164,17 @@ def main():
     node = VisionNode()
     try:
         while not stop.is_set():
-            if node.step():
+            if node.camera is None:
+                rclpy.spin_once(node, timeout_sec=0.1)
+            elif node.step():
                 rclpy.spin_once(node, timeout_sec=0.0)
             elif not stop.is_set():
                 # Nonzero, so launch respawns this and the device is reopened.
                 node.get_logger().error("camera stopped returning frames")
                 raise SystemExit(1)
     finally:
-        node.camera.release()
+        if node.camera is not None:
+            node.camera.release()
         node.destroy_node()
         rclpy.try_shutdown()
 

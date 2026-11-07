@@ -1,0 +1,150 @@
+---
+# Opened by bag_replay.launch.py. A top-down view that follows the boat, with
+# the camera's debug image in a panel beside it.
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+      Splitter Ratio: 0.55
+    Tree Height: 400
+Visualization Manager:
+  Class: ""
+  Name: root
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid, 1 m cells
+      Enabled: true
+      Alpha: 0.25
+      Cell Size: 1
+      Color: 80; 90; 110
+      Line Style:
+        Line Width: 0.03
+        Value: Lines
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 200
+      Reference Frame: <Fixed Frame>
+    - Class: rviz_default_plugins/Map
+      Name: Evidence grid
+      Enabled: true
+      Alpha: 0.7
+      Color Scheme: map
+      Draw Behind: true
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /occupancy_grid
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /occupancy_grid_updates
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Filtered lidar
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /filtered_cloud
+      Color: 120; 200; 255
+      Color Transformer: FlatColor
+      Size (m): 0.05
+      Style: Points
+      Decay Time: 0
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Lidar tracks
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /classified_markers
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Labelled objects
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /labelled_markers
+    - Class: rviz_default_plugins/Odometry
+      Name: Boat
+      Enabled: true
+      Angle Tolerance: 0.1
+      Covariance:
+        Value: false
+      Keep: 1
+      Position Tolerance: 0.1
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.1
+        Color: 255; 200; 40
+        Head Length: 0.5
+        Head Radius: 0.3
+        Shaft Length: 1.2
+        Shaft Radius: 0.12
+        Value: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /odometry/filtered/local
+    - Class: rviz_default_plugins/Image
+      Name: Camera, debug
+      Enabled: true
+      Normalize Range: true
+      Topic:
+        Depth: 1
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /fusion/front_camera/debug_image
+  Global Options:
+    Background Color: 22; 26; 34
+    Fixed Frame: odom
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+      Line color: 128; 128; 0
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Angle: 0
+      Invert Z Axis: false
+      Near Clip Distance: 0.01
+      Scale: 28
+      Target Frame: base_link
+      X: 0
+      Y: 0
+    Saved: ~
+Window Geometry:
+  Height: 950
+  Width: 1500
+  Displays:
+    collapsed: false
+  Views:
+    collapsed: true
+  Selection:
+    collapsed: true
+  Time:
+    collapsed: false
+  Tool Properties:
+    collapsed: true

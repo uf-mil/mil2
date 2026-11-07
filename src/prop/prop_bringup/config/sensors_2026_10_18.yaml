@@ -1,0 +1,18 @@
+---
+# The boat as it was on 2026-10-18, for replaying that day's bags. See
+# prop_fusion's sensors.yaml for what the numbers mean.
+#
+# The front camera's pose was not measured: it was fitted from the bag, by
+# lining up YOLO boxes with lidar clusters over the whole run. That is 0.7 deg
+# rms in bearing, and the yaw is why the placeholder mount does not work here.
+base_frame: base_link
+
+lidar:
+  frame: velodyne
+  xyz: [0.0, 0.0, 0.67]
+  rpy: [0.0, 0.0, 0.0]
+
+cameras:
+  front_camera:
+    xyz: [0.24, -0.05, 0.48]
+    rpy: [0.0, 3.2, -8.9]
