@@ -305,16 +305,18 @@ class OCS(Node):
         )
         self.client.loop_start()
 
-    rx_run_declaration_seq = 0
+    rx_run_declaration_seq = -1
 
     def rx_run_declaration(self, **kwargs):
+        self.rx_run_declaration_seq += 1
+
         req = RxRequest(
             team_id=self.get_parameter("team_id").get_parameter_value().string_value,
             seq=self.rx_run_declaration_seq,
             run_declaration=RunDeclaration(**kwargs),
         )
         req.sent_at.GetCurrentTime()
-        self.rx_run_declaration_seq += 1
+
         self.client.publish(
             f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/request",
             req.SerializeToString(),
@@ -410,6 +412,8 @@ class OCS(Node):
 
         for r in responses:
             self.geofence.append(LatLng(latitude=r.x / 10**7, longitude=r.y / 10**7))
+
+        self.geofence.append(self.geofence[0])
 
         print("Got geofence")
 
