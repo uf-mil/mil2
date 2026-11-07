@@ -62,11 +62,24 @@ CAAS_NUMBER = "0"
 PILOT_NAME = "Ethan"
 UAPL_ID = None
 
+CALLSIGN = PILOT_NAME if UAPL_ID is None else f"{PILOT_NAME}-{UAPL_ID}"
+
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, status_handler, drone_status_handler, *args, **kwargs):
+    def __init__(
+        self,
+        status_handler,
+        drone_status_handler,
+        bad_drone_geofence_handler,
+        bad_drone_height_handler,
+        *args,
+        **kwargs,
+    ):
         self.status_handler = status_handler
         self.drone_status_handler = drone_status_handler
+        self.bad_drone_geofence_handler = bad_drone_geofence_handler
+        self.bad_drone_height_handler = bad_drone_height_handler
+
         super().__init__(*args, directory=DASHBOARD_DIR, **kwargs)
 
     def do_GET(self):
@@ -90,6 +103,24 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(str.encode(drone_status_json))
         else:
             super().do_GET()
+
+    def do_POST(self):
+        if self.path.startswith("/api/bad_drone_geofence"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+
+            self.bad_drone_geofence_handler()
+
+            self.wfile.write(b"ok")
+        elif self.path.startswith("/api/bad_drone_height"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+
+            self.bad_drone_height_handler()
+
+            self.wfile.write(b"ok")
 
     def json_default(self, o):
         if isinstance(o, Message):
@@ -309,6 +340,8 @@ class OCS(Node):
             rep.SerializeToString(),
         )
 
+    geofence = []
+
     def on_course(self, _client, _, msg):
         course = RxCourse()
 
@@ -324,7 +357,7 @@ class OCS(Node):
 
         # Set boundary parameters on sub/boat (does it need it)
 
-        geofence = (
+        self.geofence = (
             course.corners
             if len(course.uav_transit_area) == 0
             else course.uav_transit_area
@@ -332,13 +365,11 @@ class OCS(Node):
 
         cancel_event = threading.Event()
         self.mavconn.upload_fence_polygon(
-            geofence,
+            self.geofence,
             cancel_event,
             target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
         )
         print("Transmitted geofence")
-
-        callsign = PILOT_NAME if UAPL_ID is None else f"{PILOT_NAME}-{UAPL_ID}"
 
         self.rx_run_declaration(
             vehicle_ids=["UUV", "USV", "UAV"],
@@ -348,7 +379,7 @@ class OCS(Node):
             task4_tier=TaskTier.TIER_CORE,
             uav_geofence=course.corners,  # TODO use sent geofence,
             uav_geofence_max_altitude_hae_m=40,  # 50m HAE is max, keep it safe at 40.
-            uav_pilot_callsign=callsign,
+            uav_pilot_callsign=CALLSIGN,
         )
 
     current_run_id = None
@@ -544,6 +575,8 @@ class OCS(Node):
             DashboardHandler,
             self.get_status,
             self.get_drone_status,
+            self.send_bad_drone_geofence,
+            self.send_bad_drone_height,
         )
         with socketserver.TCPServer(("", port), handler_class) as httpd:
             httpd.serve_forever()
@@ -561,6 +594,35 @@ class OCS(Node):
             "battery_percentage": self.drone_battery_percentage,
             "battery_time": self.drone_battery_time,
         }
+
+    def send_bad_drone_geofence(self):
+        self.rx_run_declaration(
+            vehicle_ids=["UAV"],
+            task1_tier=TaskTier.TIER_CORE,
+            task2_tier=TaskTier.TIER_CORE,
+            task3_tier=TaskTier.TIER_CORE,
+            task4_tier=TaskTier.TIER_CORE,
+            uav_geofence=[
+                LatLng(latitude=1, longitude=1),
+                LatLng(latitude=2, longitude=1),
+                LatLng(latitude=1.5, longitude=2),
+                LatLng(latitude=1, longitude=1),
+            ],
+            uav_geofence_max_altitude_hae_m=40,
+            uav_pilot_callsign=CALLSIGN,
+        )
+
+    def send_bad_drone_height(self):
+        self.rx_run_declaration(
+            vehicle_ids=["UAV"],
+            task1_tier=TaskTier.TIER_CORE,
+            task2_tier=TaskTier.TIER_CORE,
+            task3_tier=TaskTier.TIER_CORE,
+            task4_tier=TaskTier.TIER_CORE,
+            uav_geofence=self.geofence,
+            uav_geofence_max_altitude_hae_m=100,
+            uav_pilot_callsign=CALLSIGN,
+        )
 
     def on_heartbeat(self, msg):
         self.rx_heartbeat(
