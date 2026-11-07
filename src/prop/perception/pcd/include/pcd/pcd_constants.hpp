@@ -49,7 +49,7 @@ class PcdConstants
         node->declare_parameter("max_distance", 30.0);
 
         // ── Water-surface / height rejection ────────────────────────────────
-        node->declare_parameter("water_z_min", -0.5);
+        node->declare_parameter("water_z_min", -0.40);
         node->declare_parameter("water_z_max", 10.0);
 
         // ── Voxel-grid down-sampling ─────────────────────────────────────────
@@ -59,9 +59,31 @@ class PcdConstants
         node->declare_parameter("cluster_tolerance", 0.5);
         node->declare_parameter("cluster_min_points", 20);
         node->declare_parameter("cluster_max_points", 25000);
+        node->declare_parameter("cluster_flatness_threshold", 3.0);
+
+        // ── EKF tracker ──────────────────────────────────────────────────────
+        /// Max centroid-to-centroid distance [m] for a detection to be
+        /// associated with an existing track. Detections farther away start
+        /// a new track.
+        node->declare_parameter("max_association_dist", 3.0);
+        /// Number of consecutive missed frames before a track is deleted.
+        node->declare_parameter("max_missed_frames", 5);
+        /// Minimum number of consecutive hits before a track is published.
+        /// Suppresses single-frame phantom detections.
+        node->declare_parameter("min_hits", 2);
+        /// Target frame for tracking (e.g. "odom" or "map").
+        node->declare_parameter<std::string>("target_frame", "odom");
+
+        node->declare_parameter("max_tracks", 50);
+        /// Hard cap on detections consumed per frame
+        node->declare_parameter("max_detections", 50);
 
         // ── I/O ──────────────────────────────────────────────────────────────
         node->declare_parameter<std::string>("input_topic", "/velodyne_points");
+
+        // ── Attitude, for levelling the water cut ───────────────────────────
+        node->declare_parameter<std::string>("imu_topic", "/imu");
+        node->declare_parameter("attitude_max_age", 0.1);
 
         // Read them all back into member variables.
         min_distance_ = node->get_parameter("min_distance").as_double();
@@ -72,7 +94,17 @@ class PcdConstants
         cluster_tolerance_ = node->get_parameter("cluster_tolerance").as_double();
         cluster_min_points_ = node->get_parameter("cluster_min_points").as_int();
         cluster_max_points_ = node->get_parameter("cluster_max_points").as_int();
+        cluster_flatness_threshold_ = node->get_parameter("cluster_flatness_threshold").as_double();
+
+        max_association_dist_ = node->get_parameter("max_association_dist").as_double();
+        max_missed_frames_ = node->get_parameter("max_missed_frames").as_int();
+        min_hits_ = node->get_parameter("min_hits").as_int();
+        target_frame_ = node->get_parameter("target_frame").as_string();
         input_topic_ = node->get_parameter("input_topic").as_string();
+        max_tracks_ = node->get_parameter("max_tracks").as_int();
+        max_detections_ = node->get_parameter("max_detections").as_int();
+        imu_topic_ = node->get_parameter("imu_topic").as_string();
+        attitude_max_age_ = node->get_parameter("attitude_max_age").as_double();
     }
 
   protected:
@@ -84,7 +116,7 @@ class PcdConstants
 
     // ── Water-surface rejection ──────────────────────────────────────────────
     /// Lower Z bound [m]. Points below this are treated as water returns.
-    double water_z_min_{ -0.5 };
+    double water_z_min_{ -0.40 };
     /// Upper Z bound [m]. Points above this are treated as sky / mast noise.
     double water_z_max_{ 10.0 };
 
@@ -94,15 +126,37 @@ class PcdConstants
 
     // ── Euclidean cluster extraction ─────────────────────────────────────────
     /// Max distance [m] between two points to be considered neighbours.
-    double cluster_tolerance_{ 0.5 };
+    double cluster_tolerance_{ 0.1 };
     /// Minimum number of points for a cluster to be kept.
-    int cluster_min_points_{ 20 };
+    int cluster_min_points_{ 100 };
     /// Maximum number of points allowed in a single cluster.
     int cluster_max_points_{ 25000 };
+
+    float cluster_flatness_threshold_{ 3.0 };  ///< Max Z extent / XY extent ratio to consider a cluster "flat"
+
+    // ── EKF tracker ──────────────────────────────────────────────────────────
+    /// Max centroid-to-centroid distance [m] for nearest-neighbour association.
+    double max_association_dist_{ 3.0 };
+    /// Frames of consecutive misses before a track is removed.
+    int max_missed_frames_{ 5 };
+    /// Consecutive hits before a track is published (anti-spurious filter).
+    int min_hits_{ 2 };
+    /// Target frame to transform cluster centroids into for tracking (e.g. "odom" or "map").
+    std::string target_frame_{ "odom" };
+
+    int max_tracks_{ 50 };      ///< Hard cap on number of tracks maintained
+    int max_detections_{ 50 };  ///< Hard cap on number of detections consumed per frame
 
     // ── Topics ───────────────────────────────────────────────────────────────
     /// Input PointCloud2 topic name.
     std::string input_topic_{ "/velodyne_points" };
+
+    // ── Attitude, for levelling the water cut ────────────────────────────────
+    /// sensor_msgs/Imu topic supplying roll and pitch for the z-cut levelling.
+    std::string imu_topic_{ "/imu" };
+    /// Max age [s] of an IMU sample matched to a cloud before it is treated as
+    /// missing and the z cut falls back to the raw, unlevelled sensor-frame z.
+    double attitude_max_age_{ 0.1 };
 };
 
 }  // namespace pcd
