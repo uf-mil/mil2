@@ -81,8 +81,10 @@ class VisionNode(Node):
         conf = self.declare_parameter("conf", 0.25).value
         self.deck_line = self.declare_parameter("deck_line", 1.0).value
         publish_image = self.declare_parameter("publish_image", False).value
+        # The rotate camera_node turned these frames by, so the calibration turns too.
+        rotate = self.declare_parameter("rotate", 0).value
 
-        self.undistorter = Undistorter(calibration)
+        self.undistorter = Undistorter(calibration, rotate=rotate)
         self.tracker = Tracker(YOLO(model), conf=conf)
         self.bridge = CvBridge()
         self.info = None

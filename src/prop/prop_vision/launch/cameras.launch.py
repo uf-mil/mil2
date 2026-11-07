@@ -21,6 +21,11 @@ frames. The back camera stays off until it is given a device.
 Each camera has a deck line, because the model sees buoys in the boat's own
 fittings. It depends on how the camera is mounted, so measure it again when one
 moves.
+
+front_rotate is 180 because dean-last-testing's front_cam_driver turned the
+front camera's frames that way, the last time the boat ran properly. If the
+picture comes out upside down, pass front_rotate:=0. Both nodes take it, so the
+calibration turns with the frames.
 """
 
 import os
@@ -34,7 +39,7 @@ CAMERAS = ("front_camera", "back_camera")
 FRONT_DEVICE = "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.4.1:1.0-video-index0"
 
 
-def camera(name, device, width, height):
+def camera(name, device, width, height, rotate):
     return Node(
         package="prop_vision",
         executable="camera_node.py",
@@ -45,6 +50,7 @@ def camera(name, device, width, height):
                 "device": device,
                 "width": width,
                 "height": height,
+                "rotate": rotate,
                 "frame_id": f"{name}_optical_frame",
             },
         ],
@@ -55,11 +61,12 @@ def camera(name, device, width, height):
     )
 
 
-def vision(name, model, deck_line, publish_image):
+def vision(name, model, deck_line, publish_image, rotate):
     parameters = {
         "frame_id": f"{name}_optical_frame",
         "publish_image": publish_image,
         "deck_line": deck_line,
+        "rotate": rotate,
     }
     if model:
         parameters["model"] = os.path.expanduser(model)
@@ -85,8 +92,15 @@ def cameras(context):
         device = argument(f"{side}_device")
         if not device:
             continue
+        rotate = int(argument(f"{side}_rotate"))
         nodes.append(
-            camera(name, device, int(argument("width")), int(argument("height"))),
+            camera(
+                name,
+                device,
+                int(argument("width")),
+                int(argument("height")),
+                rotate,
+            ),
         )
         if argument("detect") == "true":
             nodes.append(
@@ -95,6 +109,7 @@ def cameras(context):
                     argument("model"),
                     float(argument(f"{side}_deck_line")),
                     argument("publish_image") == "true",
+                    rotate,
                 ),
             )
     return nodes
@@ -112,6 +127,17 @@ def generate_launch_description():
                 "back_device",
                 default_value="",
                 description="The camera looking astern. Empty leaves it off.",
+            ),
+            DeclareLaunchArgument(
+                "front_rotate",
+                default_value="180",
+                description="Degrees to turn the front camera's frames, 0 or "
+                "180. 180 is what dean-last-testing ran.",
+            ),
+            DeclareLaunchArgument(
+                "back_rotate",
+                default_value="0",
+                description="The same for the camera looking astern.",
             ),
             DeclareLaunchArgument(
                 "width",

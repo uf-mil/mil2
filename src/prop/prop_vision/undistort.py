@@ -8,15 +8,23 @@ class Undistorter:
     # Loads camera calibration  from camera_params.json  and applies
     # undistorts each frame.
 
-    def __init__(self, params_path="camera_params.json", crop_to_roi=True):
+    def __init__(self, params_path="camera_params.json", crop_to_roi=True, rotate=0):
         with open(params_path) as f:
             params = json.load(f)
 
-        self.mtx = np.array(params["camera_matrix"])
-        self.dist = np.array(params["dist_coeffs"])
+        self.mtx = np.array(params["camera_matrix"], dtype=float)
+        self.dist = np.array(params["dist_coeffs"], dtype=float)
         self.calibrated_width = params.get("calibrated_width")
         self.calibrated_height = params.get("calibrated_height")
         self.crop_to_roi = crop_to_roi
+        if rotate == 180:
+            # Frames turned upside down: the principal point mirrors through the
+            # image centre and the tangential terms change sign.
+            self.mtx[0, 2] = self.calibrated_width - 1 - self.mtx[0, 2]
+            self.mtx[1, 2] = self.calibrated_height - 1 - self.mtx[1, 2]
+            self.dist.flat[2:4] *= -1
+        elif rotate != 0:
+            raise ValueError(f"rotate must be 0 or 180, not {rotate}")
 
         self.mapx = None
         self.mapy = None
