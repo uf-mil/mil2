@@ -103,6 +103,96 @@ TEST(EvidenceGrid, RecoversFromAWildFirstPosition)
     EXPECT_EQ(g.cells[g.index(g.cell_of({ 4.0, 0.0 }))], 25);
 }
 
+TEST(EvidenceGrid, WhatIsHiddenKeepsItsEvidence)
+{
+    EvidenceGrid grid({ 0.25, 20.0, 50, 10, 8.0 });
+    Point const sensor{ 0.0, 0.0 };
+    Point const front{ 3.0, 0.0 };
+    Point const behind{ 5.0, 0.0 };
+    grid.follow(sensor);
+    for (int i = 0; i < 2; ++i)
+    {
+        grid.integrate({ front, behind }, sensor);
+    }
+
+    for (int i = 0; i < 20; ++i)
+    {
+        grid.integrate({ front }, sensor);
+    }
+    Grid const& g = grid.grid();
+    EXPECT_EQ(g.cells[g.index(g.cell_of(behind))], 100);
+}
+
+TEST(EvidenceGrid, WhatWasHiddenFadesOnceTheViewClears)
+{
+    EvidenceGrid grid({ 0.25, 20.0, 50, 10, 8.0 });
+    Point const sensor{ 0.0, 0.0 };
+    Point const front{ 3.0, 0.0 };
+    Point const behind{ 5.0, 0.0 };
+    grid.follow(sensor);
+    for (int i = 0; i < 2; ++i)
+    {
+        grid.integrate({ front, behind }, sensor);
+    }
+
+    // Both gone: the front cell is in clear view and goes first, and the one
+    // behind only starts once the front one has stopped being solid.
+    for (int i = 0; i < 5; ++i)
+    {
+        grid.integrate({}, sensor);
+    }
+    Grid const& g = grid.grid();
+    EXPECT_EQ(g.cells[g.index(g.cell_of(front))], 50);
+    EXPECT_EQ(g.cells[g.index(g.cell_of(behind))], 100);
+
+    for (int i = 0; i < 10; ++i)
+    {
+        grid.integrate({}, sensor);
+    }
+    EXPECT_EQ(g.cells[g.index(g.cell_of(behind))], 0);
+}
+
+TEST(EvidenceGrid, CellsInsideMinRangeKeepTheirEvidence)
+{
+    EvidenceGrid grid({ 0.25, 20.0, 50, 10, 8.0, 1.0 });
+    Point const sensor{ 0.0, 0.0 };
+    Point const inside{ 0.5, 0.0 };
+    Point const outside{ 0.0, 3.0 };
+    grid.follow(sensor);
+    for (int i = 0; i < 2; ++i)
+    {
+        grid.integrate({ inside, outside }, sensor);
+    }
+
+    for (int i = 0; i < 10; ++i)
+    {
+        grid.integrate({}, sensor);
+    }
+    Grid const& g = grid.grid();
+    EXPECT_EQ(g.cells[g.index(g.cell_of(inside))], 100);
+    EXPECT_EQ(g.cells[g.index(g.cell_of(outside))], 0);
+}
+
+TEST(EvidenceGrid, CellsInsideMinRangeHideNothing)
+{
+    EvidenceGrid grid({ 0.25, 20.0, 50, 10, 8.0, 1.0 });
+    Point const sensor{ 0.0, 0.0 };
+    Point const inside{ 0.5, 0.0 };
+    Point const behind{ 3.0, 0.0 };
+    grid.follow(sensor);
+    for (int i = 0; i < 2; ++i)
+    {
+        grid.integrate({ inside, behind }, sensor);
+    }
+
+    for (int i = 0; i < 10; ++i)
+    {
+        grid.integrate({}, sensor);
+    }
+    Grid const& g = grid.grid();
+    EXPECT_EQ(g.cells[g.index(g.cell_of(behind))], 0);
+}
+
 TEST(GridPlanner, KeepsClearanceFromASingleBuoy)
 {
     GridPlanner const planner({});

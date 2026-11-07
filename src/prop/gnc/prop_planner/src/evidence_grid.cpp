@@ -60,6 +60,18 @@ void EvidenceGrid::shift(int dx, int dy)
 
 void EvidenceGrid::integrate(std::vector<Point> const& hits, Point sensor)
 {
+    add_hits(hits);
+    fade_unseen(sensor);
+
+    for (std::size_t i : touched_)
+    {
+        hit_this_frame_[i] = 0;
+    }
+    touched_.clear();
+}
+
+void EvidenceGrid::add_hits(std::vector<Point> const& hits)
+{
     // A cell counts once per frame however many points land in it: evidence
     // builds over time, not with point density.
     for (Point const& hit : hits)
@@ -78,7 +90,10 @@ void EvidenceGrid::integrate(std::vector<Point> const& hits, Point sensor)
         touched_.push_back(i);
         grid_.cells[i] = static_cast<int8_t>(std::min(100, grid_.cells[i] + config_.hit_gain));
     }
+}
 
+void EvidenceGrid::fade_unseen(Point sensor)
+{
     int const reach = static_cast<int>(std::ceil(config_.verify_range / grid_.resolution));
     Cell const at = grid_.cell_of(sensor);
     for (int y = at.y - reach; y <= at.y + reach; ++y)
@@ -86,23 +101,46 @@ void EvidenceGrid::integrate(std::vector<Point> const& hits, Point sensor)
         for (int x = at.x - reach; x <= at.x + reach; ++x)
         {
             Cell const c{ x, y };
-            if (!grid_.contains(c) || distance(grid_.centre_of(c), sensor) > config_.verify_range)
+            if (!grid_.contains(c))
             {
                 continue;
             }
             std::size_t const i = grid_.index(c);
-            if (!hit_this_frame_[i])
+            double const range = distance(grid_.centre_of(c), sensor);
+            bool const in_reach = range >= config_.min_range && range <= config_.verify_range;
+            if (in_reach && grid_.cells[i] > 0 && !hit_this_frame_[i] && !hidden(c, sensor))
             {
-                grid_.cells[i] = static_cast<int8_t>(std::max(0, grid_.cells[i] - config_.miss_loss));
+                fading_.push_back(i);
             }
         }
     }
 
-    for (std::size_t i : touched_)
+    // Applied after the sweep, so a cell fading this frame still hides what is
+    // behind it whichever of the two the sweep reached first.
+    for (std::size_t i : fading_)
     {
-        hit_this_frame_[i] = 0;
+        grid_.cells[i] = static_cast<int8_t>(std::max(0, grid_.cells[i] - config_.miss_loss));
     }
-    touched_.clear();
+    fading_.clear();
+}
+
+bool EvidenceGrid::hidden(Cell cell, Point sensor) const
+{
+    Point const target = grid_.centre_of(cell);
+    double const range = distance(sensor, target);
+
+    // Starts at min_range: a cell closer than that keeps whatever it holds, and
+    // a stale one must not blind the lidar to everything behind it.
+    for (double along = config_.min_range; along < range; along += 0.5 * grid_.resolution)
+    {
+        double const t = along / range;
+        Cell const c = grid_.cell_of({ sensor.x + t * (target.x - sensor.x), sensor.y + t * (target.y - sensor.y) });
+        if (!(c == cell) && grid_.contains(c) && grid_.cells[grid_.index(c)] >= config_.occupied)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 void EvidenceGrid::clear()

@@ -44,11 +44,12 @@ class OccupancyGridNode : public rclcpp::Node
       : Node("occupancy_grid")
       , grid_({ declare_parameter("resolution", 0.25), declare_parameter("size", 80.0),
                 static_cast<int>(declare_parameter("hit_gain", 25)),
-                static_cast<int>(declare_parameter("miss_loss", 10)), declare_parameter("verify_range", 12.0) })
+                static_cast<int>(declare_parameter("miss_loss", 10)), declare_parameter("verify_range", 12.0),
+                declare_parameter("min_range", 1.0), static_cast<int>(declare_parameter("occupied", 60)) })
     {
         map_frame_ = declare_parameter<std::string>("map_frame", "map");
         base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
-        min_range_ = declare_parameter("min_range", 1.0);
+        min_range_ = get_parameter("min_range").as_double();
         max_range_ = declare_parameter("max_range", 12.0);
         z_min_ = declare_parameter("z_min", -0.6);
         z_max_ = declare_parameter("z_max", 2.0);

@@ -8,6 +8,7 @@ occupancy_grid:
     size: 80.0  # m, the window's edge; it follows the boat
 
     # Closer than this is the hull and mast; farther, too sparse to trust.
+    # Cells inside min_range cannot be checked, so they keep their evidence.
     min_range: 0.55  # m
     max_range: 10.0  # m
 
@@ -24,9 +25,14 @@ occupancy_grid:
 
     # Within this range anything real is seen every frame, so going unseen
     # counts against a cell; beyond it nothing is forgotten. Keep it equal to
-    # max_range, or a false hit out past it is never debited and stays
-    # forever.
-    verify_range: 12.0  # m
+    # max_range: shorter, and a false hit out past it is never debited and
+    # stays forever; longer, and everything is erased as it falls astern,
+    # because hits are no longer taken out there but misses still are.
+    verify_range: 10.0  # m
+
+    # Evidence at or above this hides what is behind it, so a buoy behind
+    # another keeps its cells. Keep it equal to the planner's occupied below.
+    occupied: 60
 
 planner:
   ros__parameters:
