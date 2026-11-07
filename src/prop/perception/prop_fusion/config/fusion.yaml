@@ -1,0 +1,28 @@
+---
+fusion:
+  ros__parameters:
+    # Camera and lidar frames further apart than this are not compared.
+    max_age: 0.5  # s
+
+    # How far in bearing a detection may sit from a track's projection and
+    # still be that track. Absorbs error in the camera's measured mount.
+    bearing_tolerance: 3.0  # deg
+
+    # Summed detection confidence the leading class needs over the runner-up
+    # before a track takes it. About three good frames.
+    vote_margin: 2.0
+
+object_map:
+  ros__parameters:
+    # Evidence at or above this makes a cell solid. Keep it equal to occupied
+    # in prop_planner's grid_planner.yaml.
+    occupied: 60
+
+    # How far from a labelled box its class reaches. Covers a buoy and the
+    # error in the box's position, and stays under half a 6 ft gate so one
+    # buoy's label cannot land on the next.
+    label_radius: 0.6  # m
+
+    # The widest cluster that can take a label. Wider is a dock or a shoreline,
+    # so a buoy touching one is left out rather than naming the whole thing.
+    max_cluster_size: 2.5  # m

@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>prop_fusion</name>
+  <version>0.0.0</version>
+  <description>Places the sensors on the hull, labels the lidar's tracks with what the cameras see, and keeps those labels on the evidence grid.</description>
+  <maintainer email="c.chavez@ufl.edu">Carlos Chavez</maintainer>
+  <license>TODO: License declaration</license>
+
+  <depend>geometry_msgs</depend>
+  <depend>mil_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>python3-numpy</depend>
+  <depend>python3-scipy</depend>
+  <depend>python3-yaml</depend>
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>visualization_msgs</depend>
+  <depend>yolo_msgs</depend>
+
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

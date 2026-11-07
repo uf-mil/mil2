@@ -2,6 +2,9 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -11,6 +14,7 @@ def generate_launch_description():
 
     # Publish the static transform base_link → velodyne.
     # This matches the base_to_lidar joint in prop_localization/urdf/prop.urdf.
+    # On the boat, prop_fusion's sensors.yaml owns this instead (lidar_tf:=false).
     # The full point cloud stays in the velodyne sensor frame for filtering and
     # clustering; this transform enables downstream tracker nodes to transform
     # extracted cluster centroids to the global (odom) frame without transforming
@@ -22,6 +26,7 @@ def generate_launch_description():
         name="velodyne_to_base_link_tf",
         # Positional order: x y z roll pitch yaw frame_id child_frame_id
         arguments=["0.0", "0.0", "0.67", "0.0", "0.0", "0.0", "base_link", "velodyne"],
+        condition=IfCondition(LaunchConfiguration("lidar_tf")),
         output="screen",
     )
 
@@ -49,4 +54,13 @@ def generate_launch_description():
         output="screen",
     )
 
-    return LaunchDescription([velodyne_tf, filter_node, clustering_node, tracker_node])
+    lidar_tf = DeclareLaunchArgument(
+        "lidar_tf",
+        default_value="true",
+        description="Publish base_link -> velodyne here. False when "
+        "prop_fusion's sensors.launch.py places the lidar.",
+    )
+
+    return LaunchDescription(
+        [lidar_tf, velodyne_tf, filter_node, clustering_node, tracker_node],
+    )

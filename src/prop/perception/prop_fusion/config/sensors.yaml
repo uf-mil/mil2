@@ -1,0 +1,24 @@
+---
+# Where the sensors sit on the boat. This is the one place to change a mount.
+#
+# xyz is metres from base_frame: x forward, y left, z up.
+# rpy is degrees, about base_frame's axes: roll, then pitch (positive tilts
+# the lens down), then yaw (positive turns it left).
+#
+# Each camera gets <name>_link at its pose, and <name>_optical_frame turned to
+# image axes. prop_vision stamps detections with the optical frame, so names
+# here must match the camera namespaces in cameras.launch.py.
+base_frame: base_link
+
+lidar:
+  frame: velodyne
+  xyz: [0.0, 0.0, 0.67]
+  rpy: [0.0, 0.0, 0.0]
+
+cameras:
+  front_camera:
+    xyz: [0.0, 0.0, 0.5]  # TODO measure
+    rpy: [0.0, 0.0, 0.0]
+  back_camera:
+    xyz: [0.0, 0.0, 0.5]  # TODO measure
+    rpy: [0.0, 0.0, 180.0]

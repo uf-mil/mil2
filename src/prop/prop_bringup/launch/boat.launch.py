@@ -17,6 +17,7 @@ Started here:
 
     prop3              the lidar and the Infix, unless sensors:=false
     prop_localization  rf2o, map -> odom -> base_link, odometry/filtered/global
+    prop_fusion        base_link -> lidar and cameras, from sensors.yaml
     pcd                filter, cluster and track the lidar cloud
     prop_planner       an occupancy grid from the cloud, and a route through it;
                        planner:=visibility for the old capsule map instead
@@ -77,12 +78,14 @@ def generate_launch_description():
             ),
             # include("prop_thrusters", "thrusters.launch.py"),
             include("prop_localization", "localization.launch.py"),
+            include("prop_fusion", "sensors.launch.py"),
             # Both default to the boat already; the topic is passed through so
             # a driver on another name is a launch argument away.
             include(
                 "pcd",
                 "filter.launch.py",
                 input_topic=LaunchConfiguration("lidar_topic"),
+                lidar_tf="false",
             ),
             include(
                 "prop_planner",

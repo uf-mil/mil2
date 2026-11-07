@@ -76,6 +76,7 @@ class VisionNode(Node):
             str(HERE / "camera_params.json"),
         ).value
         conf = self.declare_parameter("conf", 0.25).value
+        self.deck_line = self.declare_parameter("deck_line", 1.0).value
         publish_image = self.declare_parameter("publish_image", False).value
 
         self.camera = Camera(parse_source(device))
@@ -96,6 +97,15 @@ class VisionNode(Node):
 
         self.get_logger().info(f"{device} as {self.frame_id}, detecting with {model}")
 
+    def above_deck(self, track, image_height):
+        """
+        Whether a box stays above deck_line, a fraction of the image's height.
+
+        The model sees buoys in the boat's own deck fittings, and fusion pairs by
+        bearing alone, so those boxes would vote for whatever lies along it.
+        """
+        return track["box"][3] <= self.deck_line * image_height
+
     def step(self):
         """One frame through. False once the camera stops giving them."""
         ok, frame = self.camera.read()
@@ -111,7 +121,11 @@ class VisionNode(Node):
         detections = DetectionArray()
         detections.header.stamp = stamp
         detections.header.frame_id = self.frame_id
-        detections.detections = [detection(t) for t in self.tracker.track(rectified)]
+        detections.detections = [
+            detection(track)
+            for track in self.tracker.track(rectified)
+            if self.above_deck(track, rectified.shape[0])
+        ]
 
         self.info.header.stamp = stamp
         self.info_pub.publish(self.info)

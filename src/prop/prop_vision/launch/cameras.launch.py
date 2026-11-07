@@ -14,6 +14,10 @@ They are the same model, so /dev/v4l/by-id cannot tell them apart and
 by how they are plugged in. A camera left without a device is not started,
 rather than guessed at: the swap would put the front camera's buoys behind the
 boat.
+
+Each camera has a deck line, because the model sees buoys in the boat's own
+fittings. It depends on how the camera is mounted, so measure it again when one
+moves.
 """
 
 from launch import LaunchDescription
@@ -30,13 +34,16 @@ def cameras(context):
 
     nodes = []
     for name in CAMERAS:
-        device = LaunchConfiguration(f"{name.split('_')[0]}_device").perform(context)
+        side = name.split("_")[0]
+        device = LaunchConfiguration(f"{side}_device").perform(context)
         if not device:
             continue
+        deck_line = LaunchConfiguration(f"{side}_deck_line").perform(context)
         parameters = {
             "device": device,
             "frame_id": f"{name}_optical_frame",
             "publish_image": publish_image,
+            "deck_line": float(deck_line),
         }
         if model:
             parameters["model"] = model
@@ -76,6 +83,19 @@ def generate_launch_description():
                 "back_device",
                 default_value="",
                 description="The camera looking astern. Empty leaves it off.",
+            ),
+            DeclareLaunchArgument(
+                "front_deck_line",
+                default_value="0.78",
+                description="Boxes reaching past this fraction of the image's "
+                "height are dropped as the boat's own deck. Measured on the "
+                "2026-10-18 mount.",
+            ),
+            DeclareLaunchArgument(
+                "back_deck_line",
+                default_value="1.0",
+                description="The same for the camera looking astern. 1.0 drops "
+                "nothing, until it is measured.",
             ),
             DeclareLaunchArgument(
                 "model",
