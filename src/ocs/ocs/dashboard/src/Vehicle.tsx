@@ -14,10 +14,12 @@ export function Vehicle({ name, heartbeat, droneStatus }: { name: string; heartb
                 <p><span className="font-semibold">State:</span> {stateToText(heartbeat.state)}</p>
                 <p><span className="font-semibold">Task:</span> {taskToText(heartbeat.current_task)}</p>
                 <p><span className="font-semibold">Altitude:</span> {heartbeat.altitude_hae_m} m</p>
+                <p><span className="font-semibold">Heading:</span> {heartbeat.heading_deg} deg</p>
                 <p><span className="font-semibold">Speed:</span> {heartbeat.spd_mps} m/s</p>
 
                 {droneStatus && (
                     <>
+                        <p><span className="font-semibold">Phase:</span> {flightPhaseToText(heartbeat.flight_phase)}</p>
                         <p><span className="font-semibold">Battery:</span> {droneStatus.battery_percentage}%</p>
                         <p><span className="font-semibold">Remaining:</span> {droneStatus.battery_time} s</p>
                         <p><span className="font-semibold">Local RSSI Margin:</span> {droneStatus.local_rssi_margin}</p>
@@ -61,4 +63,15 @@ function taskToText(taskNum: number) {
     default:
       return "Unknown"
   }
+}
+
+function flightPhaseToText(phaseNum: number){
+    switch (phaseNum) {
+        case 1:
+            return "Grounded"
+        case 2:
+            return "Airborne"
+        default:
+            return "Unknown"
+    }
 }

@@ -8,6 +8,8 @@ export interface Heartbeat {
         latitude: number;
         longitude: number;
     }
+    heading_deg: number;
+    flight_phase: number;
 }
 
 export interface DroneStatus {
