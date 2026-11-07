@@ -322,9 +322,15 @@ class OCS(Node):
 
         # Set boundary parameters on sub/boat (does it need it)
 
+        geofence = (
+            course.corners
+            if len(course.uav_transit_area) == 0
+            else course.uav_transit_area
+        )
+
         cancel_event = threading.Event()
         self.mavconn.upload_fence_polygon(
-            course.corners,
+            geofence,
             cancel_event,
             target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
         )
