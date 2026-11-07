@@ -423,7 +423,7 @@ class OCS(Node):
             task2_tier=TaskTier.TIER_CORE,
             task3_tier=TaskTier.TIER_CORE,
             task4_tier=TaskTier.TIER_CORE,
-            uav_geofence=course.corners,  # TODO use sent geofence,
+            uav_geofence=self.geofence,
             uav_geofence_max_altitude_hae_m=40,  # 50m HAE is max, keep it safe at 40.
             uav_pilot_callsign=CALLSIGN,
         )
