@@ -449,7 +449,6 @@ class OCS(Node):
             self.sub_mission_publisher.publish("PingerSurveyMission")
             # TODO probably want to start prop on task 1 before 3 here
             self.dock_ocs_command_publisher.publish("START")
-            # TODO drone start?
 
         elif command.assistance_request is not None:
             if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
