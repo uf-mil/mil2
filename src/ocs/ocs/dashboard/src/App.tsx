@@ -4,10 +4,10 @@ import 'leaflet/dist/leaflet.css';
 
 import { Vehicle } from './Vehicle';
 import { Map } from './Map';
-import type { DroneStatus, Heartbeat } from './types';
+import type { DroneStatus, Heartbeat, RobocommandStatus } from './types';
 
 function App() {
-  const [robocommand, setRobocommand] = useState(false);
+  const [robocommandStatus, setRobocommandStatus] = useState<RobocommandStatus | undefined>(undefined);
   const [subjugatorHeartbeat, setSubjugatorHeartbeat] = useState<Heartbeat | undefined>(undefined);
   const [propagatorHeartbeat, setPropagatorHeartbeat] = useState<Heartbeat | undefined>(undefined);
   const [investigatorHeartbeat, setInvestigatorHeartbeat] = useState<Heartbeat | undefined>(undefined);
@@ -19,7 +19,7 @@ function App() {
       const response = await fetch("/api/status").then(r => r.json());
       const drone_response = await fetch("/api/drone_status").then(r => r.json());
 
-      setRobocommand(response.robocommand);
+      setRobocommandStatus(response.robocommand);
       setSubjugatorHeartbeat(response.subjugatorHeartbeat);
       setPropagatorHeartbeat(response.propagatorHeartbeat);
       setInvestigatorHeartbeat(response.investigatorHeartbeat);
@@ -106,7 +106,9 @@ function App() {
       <div className="grid grid-cols-4 gap-5">
         <div className="p-5 rounded-md border-2 border-black bg-white">
           <p className="font-bold text-2xl text-center">Robocommand</p>
-          <p className="text-xl text-center">{robocommand ? "Connected" : "Disconnected"}</p>
+          <p className="text-xl text-center">{robocommandStatus?.connected ? "Connected" : "Disconnected"}</p>
+          <p className="text-xl text-center">{robocommandStatus?.course_received ? "Course received" : "No course"}</p>
+          <p className="text-xl text-center">{robocommandStatus?.run_start_received ? "RunStart received" : "Waiting for RunStart"}</p>
         </div>
 
         <Vehicle name="SubjuGator" heartbeat={subjugatorHeartbeat} />

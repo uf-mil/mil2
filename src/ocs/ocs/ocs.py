@@ -359,6 +359,7 @@ class OCS(Node):
         return Polygon([(p.longitude, p.latitude) for p in coords])
 
     geofence = []
+    course_received = False
 
     def on_course(self, _client, _, msg):
         course = RxCourse()
@@ -368,6 +369,8 @@ class OCS(Node):
         except Exception:
             print("failed to parse command protobuf")
             return
+
+        self.course_received = True
 
         config = AcousticPingerConfig()
         config.frequency = course.pinger_freq_hz
@@ -632,7 +635,11 @@ class OCS(Node):
 
     def get_status(self):
         return {
-            "robocommand": self.client.is_connected(),
+            "robocommand": {
+                "connected": self.client.is_connected(),
+                "course_received": self.course_received,
+                "run_start_received": self.current_run_id is not None,
+            },
             "subjugatorHeartbeat": self.latest_heartbeats.get("UUV"),
             "propagatorHeartbeat": self.latest_heartbeats.get("USV"),
             "investigatorHeartbeat": self.latest_heartbeats.get("UAV"),

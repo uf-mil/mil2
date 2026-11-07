@@ -24,3 +24,9 @@ export interface LatLng {
     latitude: number;
     longitude: number;
 }
+
+export interface RobocommandStatus {
+    connected: boolean;
+    course_received: boolean;
+    run_start_received: boolean;
+}
