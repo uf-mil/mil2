@@ -58,7 +58,9 @@ TARGET_MAV_TYPES = {
 }
 
 TEAM_CODE = "UFLO"
-CAAS_NUMBER = 0
+CAAS_NUMBER = "0"
+PILOT_NAME = "Ethan"
+UAPL_ID = None
 
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
@@ -336,13 +338,17 @@ class OCS(Node):
         )
         print("Transmitted geofence")
 
+        callsign = PILOT_NAME if UAPL_ID is None else f"{PILOT_NAME}-{UAPL_ID}"
+
         self.rx_run_declaration(
             vehicle_ids=["UUV", "USV", "UAV"],
             task1_tier=TaskTier.TIER_CORE,
             task2_tier=TaskTier.TIER_CORE,
             task3_tier=TaskTier.TIER_CORE,
             task4_tier=TaskTier.TIER_CORE,
-            uav_geofence=course.corners,  # TODO use sent geofence
+            uav_geofence=course.corners,  # TODO use sent geofence,
+            uav_geofence_max_altitude_hae_m=40,  # 50m HAE is max, keep it safe at 40.
+            uav_pilot_callsign=callsign,
         )
 
     current_run_id = None
