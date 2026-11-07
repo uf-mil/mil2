@@ -13,4 +13,3 @@
 [submodule "src/ocs/ocs/InvestiGator"]
 	path = src/ocs/ocs/InvestiGator
 	url = https://github.com/uf-mil-electrical/InvestiGator
-	branch = geofence-upload
