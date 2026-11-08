@@ -133,3 +133,21 @@ def test_an_unturned_frame_puts_x_east():
     geo.turn = 0.0
     lat, lon = geo.latlon(10.0, 0.0)
     assert math.isclose(lat, 1.2891) and lon > 103.8612
+
+
+def test_one_mismatched_reading_barely_moves_the_turn():
+    geo = GeoReference(NoNode())
+    for _ in range(50):
+        geo.add_turn(math.radians(30.0))
+    geo.add_turn(math.radians(120.0))
+    assert abs(math.degrees(geo.turn) - 30.0) < 4.0
+    for _ in range(100):
+        geo.add_turn(math.radians(30.0))
+    assert abs(math.degrees(geo.turn) - 30.0) < 0.1
+
+
+def test_the_turn_averages_across_plus_minus_pi():
+    geo = GeoReference(NoNode())
+    for i in range(200):
+        geo.add_turn(math.pi - 0.01 if i % 2 else -math.pi + 0.01)
+    assert abs(abs(geo.turn) - math.pi) < 0.02

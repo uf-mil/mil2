@@ -28,8 +28,12 @@ class GeoReference:
 
     The local frame need not point east: ekf_local's yaw starts at zero wherever
     the boat faced. The IMU's yaw is east-referenced, so the difference between
-    the two is how far the local frame is turned from east.
+    the two is how far the local frame is turned from east. It should not change,
+    so it is averaged: an IMU reading paired with odometry from a moment earlier,
+    mid-turn, would otherwise swing every reported position.
     """
+
+    SMOOTHING = 0.05  # how much each IMU reading moves the average
 
     def __init__(self, node, gps_topic="gps/fix", imu_topic="imu/data"):
         self.fix = None  # (latitude, longitude, x, y)
@@ -53,8 +57,16 @@ class GeoReference:
 
     def on_imu(self, msg):
         if self.pose is not None:
-            turn = yaw_of(msg.orientation) - self.pose[2]
+            self.add_turn(yaw_of(msg.orientation) - self.pose[2])
+
+    def add_turn(self, turn):
+        if self.turn is None:
             self.turn = math.atan2(math.sin(turn), math.cos(turn))
+            return
+        a = self.SMOOTHING
+        c = (1 - a) * math.cos(self.turn) + a * math.cos(turn)
+        s = (1 - a) * math.sin(self.turn) + a * math.sin(turn)
+        self.turn = math.atan2(s, c)
 
     def ready(self):
         return self.fix is not None and self.turn is not None
