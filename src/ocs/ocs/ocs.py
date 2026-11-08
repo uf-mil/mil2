@@ -294,6 +294,9 @@ class OCS(Node):
         self.mavconn.subscribe(mavlink.MAVLink_radio_status_message.msgname)(
             self.mav_handle_radio_status,
         )
+        self.mavconn.subscribe(mavlink.MAVLink_statustext_message.msgname)(
+            self.mav_handle_statustext,
+        )
 
         mav_heartbeat_thread = threading.Thread(target=self.mav_heartbeat_loop)
         mav_heartbeat_thread.start()
@@ -594,6 +597,11 @@ class OCS(Node):
         self.drone_local_rssi_margin = message.rssi - message.noise
         self.drone_remote_rssi_margin = message.remrssi - message.remnoise
 
+    drone_status_text = None
+
+    def mav_handle_statustext(self, message):
+        self.drone_status_text = message.text
+
     def mav_heartbeat_loop(self):
         while True:
             if time.time() - self.drone_last_heartbeat_seconds < 1:
@@ -657,6 +665,7 @@ class OCS(Node):
             "local_rssi_margin": self.drone_local_rssi_margin,
             "remote_rssi_margin": self.drone_remote_rssi_margin,
             "geofence": self.geofence,
+            "status_text": self.drone_status_text,
         }
 
     def send_bad_drone_geofence(self):

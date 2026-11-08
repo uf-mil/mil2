@@ -24162,7 +24162,7 @@ function qi()
         let e = [];
         c &&
             (c.local_rssi_margin < 20 && e.push(`Low local RSSI margin`),
-             c.remote_rssi_margin < 20 && e.push(`Low remote RSSI margin`));
+             c.remote_rssi_margin < 20 && e.push(`Low remote RSSI margin`), c.status_text && e.push(c.status_text));
         let t = new Date().valueOf();
         n && t - new Date(n.sent_at).valueOf() > 2e3 && e.push(`>2 seconds since last sub heartbeat`),
             i && t - new Date(i.sent_at).valueOf() > 2e3 && e.push(`>2 seconds since last boat heartbeat`),

@@ -51,6 +51,10 @@ function App() {
       if (droneStatus.remote_rssi_margin < 20) {
         newAlerts.push("Low remote RSSI margin")
       }
+
+      if (droneStatus.status_text) {
+        newAlerts.push(droneStatus.status_text)
+      }
     }
 
     const current_millis = new Date().valueOf();
