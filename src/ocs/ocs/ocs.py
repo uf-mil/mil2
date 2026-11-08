@@ -200,6 +200,7 @@ class OCS(Node):
         super().__init__("ocs")
 
         self.declare_parameter("team_id", "UFLO")
+        self.declare_parameter("port", 1883)
         self.declare_parameter("host", "localhost")
         self.declare_parameter(
             "mavlink_port",
@@ -302,6 +303,7 @@ class OCS(Node):
 
         self.client.connect(
             self.get_parameter("host").get_parameter_value().string_value,
+            self.get_parameter("port").get_parameter_value().integer_value,
         )
         self.client.loop_start()
 
