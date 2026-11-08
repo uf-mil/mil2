@@ -397,11 +397,15 @@ class OCS(Node):
             ]
 
         cancel_event = threading.Event()
-        self.mavconn.upload_fence_polygon(
+        geofence_transmitted = self.mavconn.upload_fence_polygon(
             self.geofence,
             cancel_event,
             target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
         )
+
+        if not geofence_transmitted:
+            return
+
         print("Transmitted geofence")
         time.sleep(2)  # give time for fence to go live
 
