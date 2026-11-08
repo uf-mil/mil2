@@ -1,9 +1,11 @@
 """
 The boat's cameras, one looking ahead and one astern. Each runs in its own
-namespace: camera_node reads the device, vision_node detects on its frames.
+namespace: camera_node reads the device, vision_node detects on its frames. One
+beacon_node watches the Task 1 lights on object_map's buoys in all of them.
 
     /front_camera/image_raw  /front_camera/detections  /front_camera/camera_info
     /back_camera/image_raw   /back_camera/detections   /back_camera/camera_info
+    /beacons
 
     ros2 launch prop_vision cameras.launch.py model:=<weights.pt>
     ros2 launch prop_vision cameras.launch.py detect:=false
@@ -87,12 +89,14 @@ def cameras(context):
         return LaunchConfiguration(name).perform(context)
 
     nodes = []
+    started = []
     for name in CAMERAS:
         side = name.split("_")[0]
         device = argument(f"{side}_device")
         if not device:
             continue
         rotate = int(argument(f"{side}_rotate"))
+        started.append((name, rotate))
         nodes.append(
             camera(
                 name,
@@ -112,7 +116,26 @@ def cameras(context):
                     rotate,
                 ),
             )
+    if started and argument("beacons") == "true":
+        nodes.append(beacons(started, argument("publish_image") == "true"))
     return nodes
+
+
+def beacons(started, debug_image):
+    """One beacon watcher for every camera started, turned the way each one is."""
+    return Node(
+        package="prop_vision",
+        executable="beacon_node.py",
+        name="beacons",
+        parameters=[
+            {
+                "cameras": [name for name, _ in started],
+                "rotate": [rotate for _, rotate in started],
+                "debug_image": debug_image,
+            },
+        ],
+        output="screen",
+    )
 
 
 def generate_launch_description():
@@ -155,6 +178,12 @@ def generate_launch_description():
                 description="Run the detector. false leaves only the cameras.",
             ),
             DeclareLaunchArgument(
+                "beacons",
+                default_value="true",
+                description="Watch the Task 1 light beacons on object_map's "
+                "buoys, out on /beacons.",
+            ),
+            DeclareLaunchArgument(
                 "front_deck_line",
                 default_value="0.78",
                 description="Boxes reaching past this fraction of the image's "
@@ -177,7 +206,7 @@ def generate_launch_description():
                 "publish_image",
                 default_value="false",
                 description="Also publish image_rect, for RViz or "
-                "prop_fusion's debug_image.",
+                "prop_fusion's debug_image, and the beacons' debug_image.",
             ),
             OpaqueFunction(function=cameras),
         ],

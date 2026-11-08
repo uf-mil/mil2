@@ -1,7 +1,7 @@
 import json
 
 import cv2
-import numpy as np
+from prop_vision.calibration import load
 
 
 class Undistorter:
@@ -11,20 +11,14 @@ class Undistorter:
     def __init__(self, params_path="camera_params.json", crop_to_roi=True, rotate=0):
         with open(params_path) as f:
             params = json.load(f)
+        if rotate not in (0, 180):
+            raise ValueError(f"rotate must be 0 or 180, not {rotate}")
 
-        self.mtx = np.array(params["camera_matrix"], dtype=float)
-        self.dist = np.array(params["dist_coeffs"], dtype=float)
+        self.params_path = params_path
+        self.rotate = rotate
         self.calibrated_width = params.get("calibrated_width")
         self.calibrated_height = params.get("calibrated_height")
         self.crop_to_roi = crop_to_roi
-        if rotate == 180:
-            # Frames turned upside down: the principal point mirrors through the
-            # image centre and the tangential terms change sign.
-            self.mtx[0, 2] = self.calibrated_width - 1 - self.mtx[0, 2]
-            self.mtx[1, 2] = self.calibrated_height - 1 - self.mtx[1, 2]
-            self.dist.flat[2:4] *= -1
-        elif rotate != 0:
-            raise ValueError(f"rotate must be 0 or 180, not {rotate}")
 
         self.mapx = None
         self.mapy = None
@@ -33,7 +27,6 @@ class Undistorter:
         self.intrinsics = None
 
     def _build_maps(self, w, h):
-        mtx = self.mtx.copy()
         if (self.calibrated_width, self.calibrated_height) != (w, h):
             sx = w / self.calibrated_width
             sy = h / self.calibrated_height
@@ -42,22 +35,21 @@ class Undistorter:
                     f"WARNING: aspect ratio differs from calibration "
                     f"({self.calibrated_width}x{self.calibrated_height} vs {w}x{h}).",
                 )
-            mtx[0] *= sx
-            mtx[1] *= sy
             print(
                 f"scaled calibration from {self.calibrated_width}x{self.calibrated_height} to {w}x{h}.",
             )
+        mtx, dist = load(self.params_path, w, h, self.rotate)
 
         newcammtx, roi = cv2.getOptimalNewCameraMatrix(
             mtx,
-            self.dist,
+            dist,
             (w, h),
             alpha=1,
             newImgSize=(w, h),
         )
         self.mapx, self.mapy = cv2.initUndistortRectifyMap(
             mtx,
-            self.dist,
+            dist,
             None,
             newcammtx,
             (w, h),

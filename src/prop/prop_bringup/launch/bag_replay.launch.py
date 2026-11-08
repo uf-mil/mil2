@@ -12,6 +12,7 @@ fresh by the code in this workspace, on the bag's clock:
     vision_node    /front_cam/image_raw -> /front_camera/detections
     fusion         tracks and detections -> classified_markers
     object_map     classified_markers and the grid -> labelled_objects
+    beacon_node    labelled_objects and the image -> /beacons
 
 Pass rviz:=false to run without a window.
 """
@@ -115,6 +116,24 @@ def vision(model, image_topic, deck_line):
     )
 
 
+def beacons(image_topic):
+    """The bags' frames were never turned, so the calibration is not either."""
+    return Node(
+        package="prop_vision",
+        executable="beacon_node.py",
+        name="beacons",
+        parameters=[
+            {
+                "cameras": [CAMERA],
+                "image_topics": [image_topic],
+                "rotate": [0],
+                "debug_image": True,
+            },
+        ],
+        output="screen",
+    )
+
+
 def replay(context):
     def argument(name):
         return LaunchConfiguration(name).perform(context)
@@ -156,6 +175,7 @@ def replay(context):
             sensors_file=sensors_file,
             debug_image="true",
         ),
+        beacons(image_topic),
         viewer(),
         TimerAction(period=STARTUP_TIME, actions=[play]),
     ]
