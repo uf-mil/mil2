@@ -27,7 +27,10 @@ from shapely.geometry import Polygon
 from std_msgs.msg import String
 from std_srvs.srv import Empty
 
-from ocs.InvestiGator.src.gc_helpers import send_command
+from ocs.InvestiGator.src.gc_helpers import (
+    send_command,
+    send_mission_message_wait_ack,
+)
 from ocs.InvestiGator.src.InvestiGator.mavconnection import MAVConnection
 from ocs.proto import (
     DockingReport,
@@ -75,6 +78,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         bad_drone_geofence_handler,
         bad_drone_height_handler,
         good_drone_handler,
+        mission_handler,
         *args,
         **kwargs,
     ):
@@ -83,6 +87,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         self.bad_drone_geofence_handler = bad_drone_geofence_handler
         self.bad_drone_height_handler = bad_drone_height_handler
         self.good_drone_handler = good_drone_handler
+        self.mission_handler = mission_handler
 
         super().__init__(*args, directory=DASHBOARD_DIR, **kwargs)
 
@@ -132,6 +137,25 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
             self.good_drone_handler()
 
+            self.wfile.write(b"ok")
+        elif self.path.startswith("/api/mission"):
+            length = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(length)
+            try:
+                data = json.loads(raw.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"error": "invalid JSON"}')
+                return
+
+            print(data)
+            self.mission_handler(data["mission"])
+
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
             self.wfile.write(b"ok")
 
     def json_default(self, o):
@@ -646,6 +670,7 @@ class OCS(Node):
             self.send_bad_drone_geofence,
             self.send_bad_drone_height,
             self.send_good_drone,
+            self.send_drone_mission,
         )
         with socketserver.TCPServer(("", port), handler_class) as httpd:
             httpd.serve_forever()
@@ -712,6 +737,9 @@ class OCS(Node):
             uav_geofence_max_altitude_hae_m=40,
             uav_pilot_callsign=CALLSIGN,
         )
+
+    def send_drone_mission(self, mission):
+        send_mission_message_wait_ack(self.mavconn, mission)
 
     def on_heartbeat(self, msg):
         self.rx_heartbeat(
