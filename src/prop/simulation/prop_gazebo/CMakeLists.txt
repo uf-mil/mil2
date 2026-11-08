@@ -49,9 +49,11 @@ add_custom_target(expand_models ALL DEPENDS ${generated_models})
 # models/ carries the model.config files; model.sdf is installed above.
 install(DIRECTORY config launch models worlds DESTINATION share/${PROJECT_NAME})
 
-install(PROGRAMS scripts/sim_thrusters.py scripts/sim_sensors.py
-                 scripts/sim_autostart.py scripts/sim_truth_tf.py
-                 scripts/step_response.py DESTINATION lib/${PROJECT_NAME})
+install(
+  PROGRAMS scripts/sim_thrusters.py scripts/sim_sensors.py
+           scripts/sim_autostart.py scripts/sim_truth_tf.py
+           scripts/step_response.py scripts/docking_evaluator.py
+  DESTINATION lib/${PROJECT_NAME})
 
 ament_environment_hooks(
   "${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.dsv.in")
@@ -59,6 +61,8 @@ ament_environment_hooks(
   "${CMAKE_CURRENT_SOURCE_DIR}/hooks/${PROJECT_NAME}.sh.in")
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(docking_evaluator test/test_docking_evaluator.py)
   find_package(ament_lint_auto REQUIRED)
   list(
     APPEND

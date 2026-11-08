@@ -123,7 +123,12 @@ def generate_launch_description():
             pkg_share("ros_gz_sim", "launch", "gz_sim.launch.py"),
         ),
         launch_arguments={
-            "gz_args": [world, " -r ", LaunchConfiguration("gz_args"), headless],
+            "gz_args": [
+                LaunchConfiguration("world_path"),
+                " -r ",
+                LaunchConfiguration("gz_args"),
+                headless,
+            ],
         }.items(),
     )
 
@@ -160,6 +165,7 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument("world", default_value="prop_lake.world"),
+            DeclareLaunchArgument("world_path", default_value=world),
             DeclareLaunchArgument(
                 "world_pkg",
                 default_value="prop_gazebo",

@@ -123,6 +123,29 @@
         </material>
       </visual>
 
+      <!-- RGB camera: +X forward, +Y left, +Z up, beside the lidar mast.
+           Optical image axes are right/down; perception uses CameraInfo. -->
+      <sensor name="dock_camera" type="camera">
+        <pose>0.1 0 0.45 0 0 0</pose>
+        <topic>/camera/image</topic>
+        <update_rate>10</update_rate>
+        <always_on>1</always_on>
+        <camera>
+          <!-- Real boat camera: fx 832.7 px at 1920 px wide. -->
+          <horizontal_fov>1.712</horizontal_fov>
+          <image>
+            <width>1280</width>
+            <height>720</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>60</far>
+          </clip>
+          <camera_info_topic>/camera/camera_info</camera_info_topic>
+        </camera>
+      </sensor>
+
       <sensor name="imu" type="imu">
         <pose>0.422165 -0.349025 -0.069291 0 0 3.141592653589793</pose>
         <topic>sim/imu</topic>
