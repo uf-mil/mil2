@@ -693,7 +693,7 @@ class OCS(Node):
             "battery_time": self.drone_battery_time,
             "local_rssi_margin": self.drone_local_rssi_margin,
             "remote_rssi_margin": self.drone_remote_rssi_margin,
-            "geofence": self.geofence,
+            "geofence": list(self.geofence),
             "status_text": self.drone_status_text,
         }
 
