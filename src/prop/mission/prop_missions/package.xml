@@ -2,12 +2,15 @@
 <package format="3">
   <name>prop_missions</name>
   <version>0.0.0</version>
-  <description>Sensor-driven docking mission for the prop boat.</description>
+  <description>The prop boat's RobotX missions: Safe Passage and docking.</description>
   <maintainer email="software@mil.ufl.edu">UF MIL</maintainer>
   <license>TODO: License declaration</license>
   <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>geographic_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>mil_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>prop_ocs_interfaces</exec_depend>
   <exec_depend>prop_vision</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>rclpy</exec_depend>
@@ -15,6 +18,7 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>sensor_msgs_py</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
   <test_depend>python3-pytest</test_depend>
   <export>
     <build_type>ament_python</build_type>

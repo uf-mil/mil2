@@ -8,6 +8,7 @@ Watches each buoy's Task 1 light in the cameras' raw frames.
                             objects, labeled_classification set to their light:
                             a prop_vision.beacons state, or UNKNOWN
        ~/<camera>/debug_image  the windows and lights drawn, with debug_image
+  srv  ~/reset              std_srvs/Trigger, forget every light seen so far
 
 Every frame, each buoy within max_range is projected into the raw image,
 distortion and all, as a window where its beacon should light up: beacon_low to
@@ -19,6 +20,9 @@ skipped rather than counted as dark.
 
 rotate must be what camera_node turned each camera's frames by, so the
 calibration turns with them; cameras.launch.py passes both from one setting.
+
+The lights only come on once the boat says it is attempting Task 1, so the
+mission calls reset then: until it does, every close buoy votes OFF.
 """
 
 import math
@@ -38,6 +42,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from rclpy.signals import SignalHandlerOptions
 from rclpy.time import Time
 from sensor_msgs.msg import Image
+from std_srvs.srv import Trigger
 from tf2_ros import Buffer, TransformException, TransformListener
 
 HERE = Path(__file__).resolve().parent
@@ -184,6 +189,7 @@ class BeaconNode(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.pub = self.create_publisher(PerceptionObjectArray, "/beacons", 10)
+        self.create_service(Trigger, "~/reset", self.on_reset)
         self.create_subscription(
             PerceptionObjectArray,
             "/labelled_objects",
@@ -199,6 +205,12 @@ class BeaconNode(Node):
             "watching beacons in "
             + ", ".join(f"{c.name} (rotated {c.rotate})" for c in self.cameras),
         )
+
+    def on_reset(self, _, response):
+        self.beacons.forget(set())
+        self.get_logger().info("forgot every light seen so far")
+        response.success = True
+        return response
 
     def on_objects(self, msg):
         self.objects = [

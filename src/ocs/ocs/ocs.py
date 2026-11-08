@@ -24,7 +24,6 @@ from paho.mqtt.enums import CallbackAPIVersion
 from prop_ocs_interfaces.msg import SafePassageReport as RosSafePassageReport
 from pymavlink.dialects.v20 import ardupilotmega as mavlink
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile
 from shapely.geometry import Polygon
 from std_msgs.msg import String, UInt32
 from std_srvs.srv import Empty
@@ -225,11 +224,12 @@ class OCS(Node):
             self.on_safe_passage_report,
             10,
         )
-        # Latched, so a boat mission started after RunStart still gets it.
+        # Not latched: a mission started later must not take an old run's
+        # start for its own, so the boat's mission waits before the run.
         self.prop_run_start_publisher = self.create_publisher(
             UInt32,
             "/prop/run_start",
-            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+            10,
         )
         self.create_subscription(
             RosPipelineSurveyReport,

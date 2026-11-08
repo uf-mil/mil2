@@ -1,0 +1,39 @@
+---
+safe_passage:
+  ros__parameters:
+    # Where the Task 1 field is, if it is not around where the boat starts.
+    # [0.0, 0.0] surveys around the start instead.
+    field_latlon: [0.0, 0.0]
+
+    # How long after saying the task to wait for the lights to come on.
+    light_delay: 5.0  # s
+
+    # Buoys this far from the field, or the start, are surveyed and reported.
+    survey_radius: 60.0  # m
+    # Once the entry and exit are known, the survey only looks at buoys this
+    # close to the way between them.
+    passage_margin: 10.0  # m
+    # After this long, stop looking for more lights and go with what is known.
+    survey_time: 300.0  # s
+
+    # How far from a buoy to stop and look at it, and for how long. Lights are
+    # judged over a few seconds, and OFF only counts within 8 m.
+    look_distance: 5.0  # m
+    look_time: 8.0  # s
+
+    # Circles around the entry and exit.
+    circle_radius: 3.0  # m
+
+    # How far beside a red or green buoy to pass it. Small enough that it is the
+    # nearest buoy on that side when abeam, which is how passing is judged.
+    gate_offset: 2.0  # m
+
+    # Waypoints closer than this to any buoy are skipped.
+    clearance: 1.2  # m
+
+    # A waypoint is reached within this, and abandoned after goal_timeout.
+    reach: 1.5  # m
+    goal_timeout: 60.0  # s
+
+    # The whole task gives up after this.
+    max_time: 900.0  # s
