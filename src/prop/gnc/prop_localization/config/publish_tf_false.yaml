@@ -1,0 +1,10 @@
+---
+# Loaded after the EKF config when localization.launch.py is given
+# publish_tf:=false, for a sim that publishes map -> odom -> base_link from
+# ground truth. rcl takes the last file's word, so this has to come after.
+ekf_local:
+  ros__parameters:
+    publish_tf: false
+ekf_global:
+  ros__parameters:
+    publish_tf: false

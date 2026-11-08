@@ -98,8 +98,30 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         pcl::toROSMsg(*filtered, filtered_msg);
         filtered_msg.header = msg->header;
 
-        // Publish in the sensor frame; the tracker transforms centroids to target_frame.
-        pub_->publish(filtered_msg);
+        // Transform from velodyne frame into target_frame (odom).
+        sensor_msgs::msg::PointCloud2 out_msg;
+        try
+        {
+            out_msg = tf_buffer_->transform(filtered_msg, target_frame_, tf2::durationFromSec(0.1));
+        }
+        catch (tf2::TransformException const& ex)
+        {
+            try
+            {
+                // Fall back to latest available transform (zero timestamp).
+                filtered_msg.header.stamp = rclcpp::Time(0, 0, RCL_ROS_TIME);
+                out_msg = tf_buffer_->transform(filtered_msg, target_frame_, tf2::durationFromSec(0.0));
+            }
+            catch (tf2::TransformException const& ex2)
+            {
+                RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                                     "TF transform '%s'→'%s' failed: %s — dropping cloud", msg->header.frame_id.c_str(),
+                                     target_frame_.c_str(), ex2.what());
+                return;
+            }
+        }
+
+        pub_->publish(out_msg);
     }
 
     // ── Filter helpers ────────────────────────────────────────────────────────
