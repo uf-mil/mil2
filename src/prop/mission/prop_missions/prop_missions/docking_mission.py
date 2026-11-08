@@ -3,6 +3,12 @@
 
 No simulator ground truth, world files, dock pose parameters, or bay-order tables
 are available to this node. The separate evaluator owns those.
+
+Once the OCS starts it, the task is COORDINATED_LOGISTICS on
+/mission/current_task, which is what starts the attempt on RoboCommand, and the
+grid planner is switched off so that only this node's plan is followed. The plan
+is in the odometry's frame: on the boat that must be the local estimate's, odom,
+because trajectory_planner follows plans against it.
 """
 
 import json
@@ -20,8 +26,11 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2
 from sensor_msgs_py.point_cloud2 import read_points_numpy
 from std_msgs.msg import String
+from std_srvs.srv import SetBool
 
 from prop_missions.ocs_protocol import Exchange, decode
+
+LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
 
 
 def stamp(msg):
@@ -55,6 +64,8 @@ class DockingMission(Node):
         )
         self.ocs_status = self.create_publisher(String, "/dock/ocs/status", 10)
         self.ocs_result = self.create_publisher(String, "/dock/ocs/result", 10)
+        self.task_pub = self.create_publisher(String, "/mission/current_task", LATCHED)
+        self.planner = self.create_client(SetBool, "/planner/enable")
         self.create_subscription(
             String,
             "/dock/ocs/command",
@@ -106,7 +117,6 @@ class DockingMission(Node):
             sensor_qos,
         )
         self.create_timer(0.2, self.step)
-        self.pub.publish(Path())
         self.create_timer(0.5, self.exchange_tick)
         self.report("WAIT_START: waiting for OCS command; no docking plan")
 
@@ -115,6 +125,8 @@ class DockingMission(Node):
         if action == "STARTED":
             self.start = self.seconds()
             self.state = "SEARCH"
+            self.task_pub.publish(String(data="COORDINATED_LOGISTICS"))
+            self.planner.call_async(SetBool.Request(data=False))
             self.report("STARTED: accepted OCS command")
         elif action == "CANCELLED":
             self.fail("OCS cancelled task")
@@ -155,13 +167,15 @@ class DockingMission(Node):
 
     def fail(self, reason):
         self.exchange.close()
+        if self.start is not None:
+            self.task_pub.publish(String(data="NONE"))
         self.state = "FAIL"
         self.pub.publish(Path())
         self.report("FAIL: " + reason + "; cleared plan")
 
     def plan(self, point):
         msg = Path()
-        msg.header.frame_id = "map"
+        msg.header.frame_id = self.odom[-1].header.frame_id
         msg.header.stamp = self.get_clock().now().to_msg()
         waypoint = PoseStamped()
         waypoint.header = msg.header

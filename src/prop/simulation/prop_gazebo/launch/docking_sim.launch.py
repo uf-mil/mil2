@@ -38,11 +38,6 @@ def launch_trial(context):
         return LaunchConfiguration(name).perform(context)
 
     share = get_package_share_directory("prop_gazebo")
-    controller = os.path.join(
-        get_package_share_directory("prop_controller"),
-        "config",
-        "controller.yaml",
-    )
     rng = random.Random(int(value("seed")))
     dx, dy, yaw = rng.uniform(0, 3), rng.uniform(-1.5, 1.5), rng.uniform(-0.15, 0.15)
     colors = ["red", "red", "green"]
@@ -101,7 +96,6 @@ def launch_trial(context):
             ),
             launch_arguments={
                 "world_path": world_path,
-                "control": "false",
                 "rviz": value("rviz"),
                 "gz_args": value("gz_args"),
             }.items(),
@@ -119,29 +113,6 @@ def launch_trial(context):
             period=15.0,
             actions=[
                 Node(
-                    package="prop_controller",
-                    executable="guidance",
-                    name="guidance",
-                    parameters=[
-                        controller,
-                        {
-                            "use_sim_time": True,
-                            "speed": 0.3,
-                            "lookahead": 0.7,
-                            "accept_radius": 0.2,
-                            "approach_gain": 0.25,
-                        },
-                    ],
-                    output="screen",
-                ),
-                Node(
-                    package="prop_controller",
-                    executable="thruster_manager",
-                    name="thruster_manager",
-                    parameters=[controller, {"use_sim_time": True}],
-                    output="screen",
-                ),
-                Node(
                     package="prop_missions",
                     executable="docking_mission",
                     parameters=[
@@ -150,6 +121,12 @@ def launch_trial(context):
                             "timeout": float(value("timeout")),
                             "sensor_timeout": 1.5,
                         },
+                    ],
+                    # prop_sim's stack, trajectory_planner included, runs on
+                    # ground truth, so the plan must be in its coordinates.
+                    remappings=[
+                        ("/lidar/points", "/velodyne_points"),
+                        ("odometry/filtered/global", "/sim/ground_truth"),
                     ],
                     output="screen",
                 ),

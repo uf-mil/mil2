@@ -1,4 +1,11 @@
-"""Launch the docking mission against an already running vehicle stack."""
+"""
+Launch the docking mission against an already running vehicle stack.
+
+The topic defaults are the boat's. The camera ones need cameras.launch.py with
+publish_image:=true, so the undistorted front image and its calibration go out.
+Odometry has to be the local estimate's: trajectory_planner follows plans in
+odom.
+"""
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -15,6 +22,16 @@ def generate_launch_description():
             DeclareLaunchArgument("vehicle_id", default_value="USV"),
             DeclareLaunchArgument("ack_timeout", default_value="15.0"),
             DeclareLaunchArgument("sensor_timeout", default_value="1.0"),
+            DeclareLaunchArgument("image", default_value="/front_camera/image_rect"),
+            DeclareLaunchArgument(
+                "camera_info",
+                default_value="/front_camera/camera_info",
+            ),
+            DeclareLaunchArgument("lidar", default_value="/velodyne_points"),
+            DeclareLaunchArgument(
+                "odometry",
+                default_value="/odometry/filtered/local",
+            ),
             Node(
                 package="prop_missions",
                 executable="docking_mission",
@@ -41,6 +58,12 @@ def generate_launch_description():
                             value_type=bool,
                         ),
                     },
+                ],
+                remappings=[
+                    ("/camera/image", LaunchConfiguration("image")),
+                    ("/camera/camera_info", LaunchConfiguration("camera_info")),
+                    ("/lidar/points", LaunchConfiguration("lidar")),
+                    ("odometry/filtered/global", LaunchConfiguration("odometry")),
                 ],
                 output="screen",
             ),

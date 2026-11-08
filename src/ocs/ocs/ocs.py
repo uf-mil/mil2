@@ -7,6 +7,7 @@ import re
 import socketserver
 import threading
 import time
+import uuid
 from collections import defaultdict
 from functools import partial
 from pathlib import Path
@@ -21,9 +22,11 @@ from mil_msgs.msg import AcousticPingerConfig
 from mil_msgs.msg import Heartbeat as RosHeartbeat
 from mil_msgs.msg import PipelineSurveyReport as RosPipelineSurveyReport
 from paho.mqtt.enums import CallbackAPIVersion
+from prop_missions.ocs_protocol import decode
 from prop_ocs_interfaces.msg import SafePassageReport as RosSafePassageReport
 from pymavlink.dialects.v20 import ardupilotmega as mavlink
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from shapely.geometry import Polygon
 from std_msgs.msg import String, UInt32
 from std_srvs.srv import Empty
@@ -244,10 +247,24 @@ class OCS(Node):
             10,
         )
 
+        # The docking mission's exchange (prop_missions/ocs_protocol.py): it
+        # says it is waiting on status, a START bound to its session starts
+        # it, and it repeats its result until a receipt comes back.
         self.create_subscription(
             String,
             "/dock/ocs/result",
             self.on_dock_ocs_result,
+            10,
+        )
+        self.create_subscription(String, "/dock/ocs/status", self.on_dock_status, 10)
+        self.dock_command_publisher = self.create_publisher(
+            String,
+            "/dock/ocs/command",
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
+        self.dock_receipt_publisher = self.create_publisher(
+            String,
+            "/dock/ocs/receipt",
             10,
         )
 
@@ -485,11 +502,17 @@ class OCS(Node):
                 return
 
             self.current_run_id = command.run_start.run_id
+            self.dock_wanted = self.tier(3) != TaskTier.TIER_NONE
+            self.dock_command = None
+            self.docked_events = set()
 
-            # The boat runs its tasks in order from here, so docking waits
-            # for Safe Passage instead of starting at the same time.
+            # The boat's tasks go in order: Safe Passage starts here, and
+            # docking once the boat says Safe Passage is over, or now when
+            # Safe Passage is not being attempted.
             self.prop_run_start_publisher.publish(UInt32(data=self.current_run_id))
             self.sub_mission_publisher.publish(String(data="PingerSurveyMission"))
+            if self.tier(1) == TaskTier.TIER_NONE:
+                self.start_docking()
 
         elif body == "assistance_request":
             request = command.assistance_request
@@ -747,6 +770,9 @@ class OCS(Node):
         fields = {}
         if msg.type == "USV":
             fields = usv_heartbeat_fields(msg)
+            if self.boat_task == "SAFE_PASSAGE" and msg.task == "NONE":
+                self.start_docking()
+            self.boat_task = msg.task
         self.rx_heartbeat(
             vehicle_id=msg.type,
             state=RobotState.Value(f"STATE_{msg.state}"),
@@ -770,9 +796,62 @@ class OCS(Node):
             ),
         )
 
+    boat_task = "NONE"
+    dock_wanted = False
+    dock_status = None
+    dock_command = None
+    docked_events = set()
+
+    def on_dock_status(self, msg):
+        status = decode(msg.data)
+        if status is None or status["kind"] != "status":
+            return
+        self.dock_status = status
+        if self.dock_command == "PENDING":
+            self.start_docking()
+
+    def start_docking(self):
+        """START the docking mission waiting on the boat, for this run."""
+        if not self.dock_wanted or self.current_run_id is None:
+            return
+        status = self.dock_status
+        if status is None or status.get("state") != "WAIT_START":
+            self.dock_command = "PENDING"
+            print("docking: waiting for the docking mission to say it is ready")
+            return
+        self.dock_command = {
+            "version": status["version"],
+            "kind": "command",
+            "vehicle_id": status["vehicle_id"],
+            "session_id": status["session_id"],
+            "run_id": str(self.current_run_id),
+            "command_id": uuid.uuid4().hex,
+            "action": "START",
+        }
+        self.dock_command_publisher.publish(String(data=json.dumps(self.dock_command)))
+        print(f"docking: started session {status['session_id']}")
+
     def on_dock_ocs_result(self, msg):
-        bay = json.loads(msg.data)["bay_number"]
-        self.rx_report("USV", docking=DockingReport(bay_id=bay))
+        result = decode(msg.data)
+        command = self.dock_command
+        if (
+            result is None
+            or result["kind"] != "docking_result"
+            or not isinstance(command, dict)
+            or any(result.get(k) != command[k] for k in ("session_id", "run_id"))
+            or result.get("bay_number") not in (1, 2, 3)
+        ):
+            return
+        # The mission repeats a result until it hears back; report it once.
+        if result["event_id"] not in self.docked_events:
+            self.docked_events.add(result["event_id"])
+            self.rx_report("USV", docking=DockingReport(bay_id=result["bay_number"]))
+        receipt = {
+            k: result[k]
+            for k in ("version", "vehicle_id", "session_id", "run_id", "event_id")
+        }
+        receipt.update(kind="receipt", status="RECEIVED")
+        self.dock_receipt_publisher.publish(String(data=json.dumps(receipt)))
 
 
 def usv_heartbeat_fields(msg):

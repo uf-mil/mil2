@@ -9,6 +9,7 @@
 
   <exec_depend>geographic_msgs</exec_depend>
   <exec_depend>mil_msgs</exec_depend>
+  <exec_depend>prop_missions</exec_depend>
   <exec_depend>prop_ocs_interfaces</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
