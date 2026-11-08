@@ -21,15 +21,19 @@ from mil_msgs.msg import AcousticPingerConfig
 from mil_msgs.msg import Heartbeat as RosHeartbeat
 from mil_msgs.msg import PipelineSurveyReport as RosPipelineSurveyReport
 from paho.mqtt.enums import CallbackAPIVersion
+from prop_ocs_interfaces.msg import SafePassageReport as RosSafePassageReport
 from pymavlink.dialects.v20 import ardupilotmega as mavlink
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from shapely.geometry import Polygon
-from std_msgs.msg import String
+from std_msgs.msg import String, UInt32
 from std_srvs.srv import Empty
 
 from ocs.InvestiGator.src.gc_helpers import send_command
 from ocs.InvestiGator.src.InvestiGator.mavconnection import MAVConnection
 from ocs.proto import (
+    BeaconState,
+    BuoyDetection,
     DockingReport,
     FlightPhase,
     Heartbeat,
@@ -43,6 +47,7 @@ from ocs.proto import (
     RxReport,
     RxRequest,
     RxTask,
+    SafePassageReport,
     TaskTier,
     VehicleType,
 )
@@ -206,8 +211,26 @@ class OCS(Node):
             "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_BG00HS6A-if00-port0",
         )
         self.declare_parameter("dashboard_port", 3000)
+        # What this run declares. RoboCommand starts a run only once every
+        # declared vehicle reports AUTO, so a boat-only test declares only USV.
+        # The drone's radio is opened only when UAV is declared.
+        self.declare_parameter("vehicles", ["UUV", "USV", "UAV"])
+        for task in range(1, 5):
+            self.declare_parameter(f"task{task}_tier", "CORE")
 
         self.create_subscription(RosHeartbeat, "/heartbeats", self.on_heartbeat, 10)
+        self.create_subscription(
+            RosSafePassageReport,
+            "/prop/safe_passage_report",
+            self.on_safe_passage_report,
+            10,
+        )
+        # Latched, so a boat mission started after RunStart still gets it.
+        self.prop_run_start_publisher = self.create_publisher(
+            UInt32,
+            "/prop/run_start",
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
         self.create_subscription(
             RosPipelineSurveyReport,
             "/pipeline_survey_report_received",
@@ -221,11 +244,6 @@ class OCS(Node):
             10,
         )
 
-        self.dock_ocs_command_publisher = self.create_publisher(
-            String,
-            "/dock/ocs/command",
-            10,
-        )
         self.create_subscription(
             String,
             "/dock/ocs/result",
@@ -267,6 +285,36 @@ class OCS(Node):
 
         self.client.on_connect = mqtt_on_connect
 
+        self.mavconn = None
+        if "UAV" in self.vehicles():
+            self.connect_drone()
+
+        web_thread = threading.Thread(target=self.start_dashboard)
+        web_thread.start()
+
+        # connect_async and the loop thread keep retrying until RoboCommand is
+        # reachable, and reconnect after a drop, as the handbook asks. An error
+        # in a handler is logged instead of ending the loop thread, which would
+        # silently stop every heartbeat.
+        self.client.suppress_exceptions = True
+        self.client.enable_logger()
+        self.client.reconnect_delay_set(min_delay=1, max_delay=5)
+        self.client.connect_async(
+            self.get_parameter("host").get_parameter_value().string_value,
+        )
+        self.client.loop_start()
+
+    def team_id(self):
+        return self.get_parameter("team_id").get_parameter_value().string_value
+
+    def vehicles(self):
+        return list(self.get_parameter("vehicles").value)
+
+    def tier(self, task):
+        name = self.get_parameter(f"task{task}_tier").value
+        return TaskTier.Value(f"TIER_{name}")
+
+    def connect_drone(self):
         self.mavconn = MAVConnection(
             self.get_parameter("mavlink_port").get_parameter_value().string_value,
             baud=57600,
@@ -297,14 +345,6 @@ class OCS(Node):
         mav_heartbeat_thread = threading.Thread(target=self.mav_heartbeat_loop)
         mav_heartbeat_thread.start()
 
-        web_thread = threading.Thread(target=self.start_dashboard)
-        web_thread.start()
-
-        self.client.connect(
-            self.get_parameter("host").get_parameter_value().string_value,
-        )
-        self.client.loop_start()
-
     rx_run_declaration_seq = -1
 
     def rx_run_declaration(self, **kwargs):
@@ -325,37 +365,30 @@ class OCS(Node):
     rx_report_seqs = defaultdict(int)
     latest_heartbeats = {}
 
-    def rx_heartbeat(self, *, vehicle_id, **kwargs):
+    def rx_report(self, vehicle_id, **body):
+        """One RxReport about vehicle_id, on its own topic and sequence."""
         rep = RxReport(
-            team_id=self.get_parameter("team_id").get_parameter_value().string_value,
+            team_id=self.team_id(),
             vehicle_id=vehicle_id,
             seq=self.rx_report_seqs[vehicle_id],
-            heartbeat=Heartbeat(**kwargs),
+            **body,
         )
         rep.sent_at.GetCurrentTime()
         self.rx_report_seqs[vehicle_id] += 1
         self.client.publish(
-            f"robocommand/robotx/{vehicle_id}/report",
+            f"robocommand/robotx/{self.team_id()}/{vehicle_id}/report",
             rep.SerializeToString(),
         )
+
+    def rx_heartbeat(self, *, vehicle_id, **kwargs):
+        self.rx_report(vehicle_id, heartbeat=Heartbeat(**kwargs))
         self.latest_heartbeats[vehicle_id] = {
             "sent_at": datetime.datetime.now().isoformat(),
             **kwargs,
         }
 
     def rx_incident_ack(self, vehicle_id, command_seq):
-        rep = RxReport(
-            team_id=self.get_parameter("team_id").get_parameter_value().string_value,
-            vehicle_id=vehicle_id,
-            seq=self.rx_report_seqs[vehicle_id],
-            incident_ack=IncidentAck(command_seq=command_seq),
-        )
-        rep.sent_at.GetCurrentTime()
-        self.rx_report_seqs[vehicle_id] += 1
-        self.client.publish(
-            f"robocommand/robotx/{vehicle_id}/report",
-            rep.SerializeToString(),
-        )
+        self.rx_report(vehicle_id, incident_ack=IncidentAck(command_seq=command_seq))
 
     def to_polygon(self, coords):
         return Polygon([(p.longitude, p.latitude) for p in coords])
@@ -379,6 +412,13 @@ class OCS(Node):
         self.acoustic_frequency_config_publisher.publish(config)
 
         # Set boundary parameters on sub/boat (does it need it)
+
+        if "UAV" not in self.vehicles():
+            self.rx_run_declaration(
+                vehicle_ids=self.vehicles(),
+                **{f"task{task}_tier": self.tier(task) for task in range(1, 5)},
+            )
+            return
 
         if len(course.uav_transit_area) == 0:
             self.geofence = course.corners
@@ -418,11 +458,8 @@ class OCS(Node):
         print("Got geofence")
 
         self.rx_run_declaration(
-            vehicle_ids=["UUV", "USV", "UAV"],
-            task1_tier=TaskTier.TIER_CORE,
-            task2_tier=TaskTier.TIER_CORE,
-            task3_tier=TaskTier.TIER_CORE,
-            task4_tier=TaskTier.TIER_CORE,
+            vehicle_ids=self.vehicles(),
+            **{f"task{task}_tier": self.tier(task) for task in range(1, 5)},
             uav_geofence=self.geofence,
             uav_geofence_max_altitude_hae_m=40,  # 50m HAE is max, keep it safe at 40.
             uav_pilot_callsign=CALLSIGN,
@@ -439,63 +476,71 @@ class OCS(Node):
             print("failed to parse command payload")
             return
 
-        if command.run_start is not None:
+        # A protobuf sub-message is never None, so the body that was sent is
+        # the one WhichOneof names.
+        body = command.WhichOneof("body")
+        if body == "run_start":
             if command.run_start.declaration_seq != self.rx_run_declaration_seq:
                 print("mismatched RunStart")
                 return
 
             self.current_run_id = command.run_start.run_id
 
-            self.sub_mission_publisher.publish("PingerSurveyMission")
-            # TODO probably want to start prop on task 1 before 3 here
-            self.dock_ocs_command_publisher.publish("START")
+            # The boat runs its tasks in order from here, so docking waits
+            # for Safe Passage instead of starting at the same time.
+            self.prop_run_start_publisher.publish(UInt32(data=self.current_run_id))
+            self.sub_mission_publisher.publish(String(data="PingerSurveyMission"))
 
-        elif command.assistance_request is not None:
-            if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
+        elif body == "assistance_request":
+            request = command.assistance_request
+            if request.vehicle_type == VehicleType.TYPE_USV:
                 msg = GeoPose()
 
                 point = GeoPoint()
-                point.latitude = command.position.latitude
-                point.longitude = command.position.longitude
+                point.latitude = request.position.latitude
+                point.longitude = request.position.longitude
 
-                msg.point = point
+                msg.position = point
                 self.prop_emergency_publisher.publish(msg)
                 self.rx_incident_ack("USV", command.seq)
-            elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
+            elif request.vehicle_type == VehicleType.TYPE_UAV and self.mavconn:
                 send_command(
                     self.mavconn,
                     mavutil.mavlink.MAV_CMD_USER_4,
                     param1=4,
-                    param2=command.position.latitude,
-                    param3=command.position.longitude,
+                    param2=request.position.latitude,
+                    param3=request.position.longitude,
                     param4=10,  # 10 meters above
                 )
-        elif command.keep_out_zone is not None:
-            if command.keep_out_zone.vehicle_type == VehicleType.TYPE_USV:
+        elif body == "keep_out_zone":
+            zone = command.keep_out_zone
+            if zone.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
-            elif command.keep_out_zone.vehicle_type == VehicleType.TYPE_UAV:
+            elif zone.vehicle_type == VehicleType.TYPE_UAV and self.mavconn:
                 send_command(
                     self.mavconn,
                     mavutil.mavlink.MAV_CMD_USER_4,
                     param1=8,
-                    param2=command.center.latitude,
-                    param3=command.center.longitude,
-                    param4=command.radius_m,
+                    param2=zone.center.latitude,
+                    param3=zone.center.longitude,
+                    param4=zone.radius_m,
                 )
 
                 self.rx_incident_ack("UAV", command.seq)
-        elif command.readiness_confirm is not None:
+        elif body == "readiness_confirm":
             if command.readiness_confirm.vehicle_id == "USV":
                 req = Empty.Request()
                 self.prop_all_clear_client.call_async(req)
-            elif command.readiness_confirm.vehicle_id == "UAV":
+            elif command.readiness_confirm.vehicle_id == "UAV" and self.mavconn:
                 send_command(self.mavconn, mavutil.mavlink.MAV_CMD_USER_4, param1=5)
-        elif command.all_clear is not None:
+        elif body == "all_clear":
             if command.all_clear.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
-            elif command.all_clear.vehicle_type == VehicleType.TYPE_UAV:
+            elif (
+                command.all_clear.vehicle_type == VehicleType.TYPE_UAV and self.mavconn
+            ):
                 send_command(self.mavconn, mavutil.mavlink.MAV_CMD_USER_4, param1=9)
                 self.rx_incident_ack("UAV", command.seq)
 
@@ -699,18 +744,23 @@ class OCS(Node):
         )
 
     def on_heartbeat(self, msg):
+        fields = {}
+        if msg.type == "USV":
+            fields = usv_heartbeat_fields(msg)
         self.rx_heartbeat(
             vehicle_id=msg.type,
             state=RobotState.Value(f"STATE_{msg.state}"),
             current_task=RxTask.Value(f"TASK_{msg.task}"),
             vehicle_type=VehicleType.Value(f"TYPE_{msg.type}"),
+            **fields,
         )
 
+    def on_safe_passage_report(self, msg):
+        self.rx_report("USV", safe_passage=safe_passage_report(msg))
+
     def on_pipeline_survey_report(self, msg):
-        rep = RxReport(
-            team_id=self.get_parameter("team_id").get_parameter_value().string_value,
-            vehicle_id="USV",
-            seq=self.rx_report_seqs["UUV"],
+        self.rx_report(
+            "UUV",
             pipeline_survey=PipelineSurveyReport(
                 active_buoy_position=LatLng(
                     latitude=msg.active_buoy_position.y,
@@ -719,27 +769,52 @@ class OCS(Node):
                 segments=[s.status for s in msg.segments],
             ),
         )
-        rep.sent_at.GetCurrentTime()
-        self.rx_report_seqs["UUV"] += 1
-        self.client.publish(
-            "robocommand/robotx/UUV/report",
-            rep.SerializeToString(),
-        )
 
     def on_dock_ocs_result(self, msg):
-        rep = RxReport(
-            team_id=self.get_parameter("team_id").get_parameter_value().string_value,
-            vehicle_id="USV",
-            seq=self.rx_report_seqs["USV"],
-            docking=DockingReport(bay_id=json.loads(msg)["bay_number"]),
-        )
+        bay = json.loads(msg.data)["bay_number"]
+        self.rx_report("USV", docking=DockingReport(bay_id=bay))
 
-        rep.sent_at.GetCurrentTime()
-        self.rx_report_seqs["USV"] += 1
-        self.client.publish(
-            "robocommand/robotx/USV/report",
-            rep.SerializeToString(),
-        )
+
+def usv_heartbeat_fields(msg):
+    """
+    The rest of RoboCommand's heartbeat, from prop_heartbeat's: position is
+    longitude and latitude in x and y, angles are radians, and heading is ENU
+    yaw. A NaN means the boat does not know it yet, so it is left out.
+    """
+    fields = {}
+    if math.isfinite(msg.position.x) and math.isfinite(msg.position.y):
+        fields["position"] = LatLng(latitude=msg.position.y, longitude=msg.position.x)
+    if math.isfinite(msg.heading):
+        fields["heading_deg"] = (90.0 - math.degrees(msg.heading)) % 360.0
+    if math.isfinite(msg.roll):
+        fields["roll_deg"] = math.degrees(msg.roll)
+    if math.isfinite(msg.pitch):
+        fields["pitch_deg"] = math.degrees(msg.pitch)
+    if math.isfinite(msg.speed):
+        fields["spd_mps"] = msg.speed
+    return fields
+
+
+def safe_passage_report(msg):
+    """RoboCommand's SafePassageReport from the boat's. NaN entry or exit: not found."""
+
+    def latlng(point):
+        return LatLng(latitude=point.latitude, longitude=point.longitude)
+
+    report = SafePassageReport(
+        buoys=[
+            BuoyDetection(
+                position=latlng(buoy.position),
+                state=BeaconState.Value(f"BEACON_STATE_{buoy.state}"),
+            )
+            for buoy in msg.buoys
+        ],
+    )
+    if math.isfinite(msg.entry_position.latitude):
+        report.entry_position.CopyFrom(latlng(msg.entry_position))
+    if math.isfinite(msg.exit_position.latitude):
+        report.exit_position.CopyFrom(latlng(msg.exit_position))
+    return report
 
 
 def main():

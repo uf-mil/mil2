@@ -309,6 +309,11 @@ alias prop-start-localization="ros2 service call /ekf_local/enable std_srvs/srv/
 alias start-planning='ros2 service call /planner/enable std_srvs/srv/SetBool "{data: true}"'
 alias stop-planning='ros2 service call /planner/enable std_srvs/srv/SetBool "{data: false}"'
 
+# The boat's mode, for piss_tower (the RF kill board and light tower) and the
+# heartbeat RoboCommand sees. A run starts once the heartbeat says AUTO.
+alias prop-auto='ros2 topic pub --once --qos-durability transient_local --qos-reliability reliable /manual_control std_msgs/msg/Bool "{data: false}"'
+alias prop-manual='ros2 topic pub --once --qos-durability transient_local --qos-reliability reliable /manual_control std_msgs/msg/Bool "{data: true}"'
+
 # Launch the start-wand node, optionally choosing which mission it runs.
 # Usage: start-wand [mission_name]   (defaults to the node's built-in mission)
 start-wand() {

@@ -3,9 +3,15 @@
 <package format="3">
   <name>prop_heartbeat</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>The boat's 2 Hz heartbeat for the OCS.</description>
   <maintainer email="me@sfernandez.dev">samuel</maintainer>
   <license>TODO: License declaration</license>
+
+  <exec_depend>mil_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

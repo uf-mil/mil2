@@ -11,6 +11,7 @@
   <depend>pcd</depend>
   <depend>prop_bringup</depend>
   <depend>prop_fusion</depend>
+  <depend>prop_heartbeat</depend>
   <depend>prop_missions</depend>
   <depend>prop_vision</depend>
   <depend>rf2o_cov_mapper</depend>

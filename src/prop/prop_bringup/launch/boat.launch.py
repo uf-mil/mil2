@@ -12,6 +12,7 @@ fixed and nothing drives until you say so:
     stop-controller          zero wrench, controller out of the loop
     reset-controller         zero wrench, reload gains, hold where it is now
     start-planning           clear the map and start routing
+    prop-auto / prop-manual  the mode piss_tower and the heartbeat report
 
 Started here:
 
@@ -24,6 +25,7 @@ Started here:
     trajectory_planner plan -> goal/trajectory, one waypoint at a time
     pid_controller     subjugator_controller_again, goal/trajectory -> cmd_wrench
     thruster_mapper    prop_controller, cmd_wrench -> thrusters/left, right, bow
+    prop_heartbeat     /heartbeats for the OCS: GPS position, mode and task
 
 The thruster driver is not: it runs on the Pi, against the Navigator board.
 """
@@ -71,6 +73,11 @@ def generate_launch_description():
                 description="grid: occupancy grid and A*. visibility: the "
                 "capsule obstacle map from tracked_markers.",
             ),
+            DeclareLaunchArgument(
+                "gps_topic",
+                default_value="/gps/fix",
+                description="NavSatFix from the GPS, for the heartbeat.",
+            ),
             include(
                 "prop_bringup",
                 "prop3.launch.py",
@@ -102,5 +109,14 @@ def generate_launch_description():
             ),
             include("subjugator_controller_again", "pid_controller.launch.py"),
             include("prop_controller", "thruster_mapper.launch.py"),
+            Node(
+                package="prop_heartbeat",
+                executable="prop_heartbeat",
+                remappings=[
+                    ("gps/fix", LaunchConfiguration("gps_topic")),
+                    ("odometry", "/odometry/filtered/local"),
+                ],
+                output="screen",
+            ),
         ],
     )
