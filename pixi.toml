@@ -23,6 +23,9 @@ ros2-ros-core = ">=0.11.0,<0.12"
 ros2-rmw-zenoh-cpp = ">=0.2.10,<0.3"
 ros2-geometry2 = ">=0.36.22,<0.37"
 scipy = ">=1.18.1,<2"
+ultralytics = ">=8.4.208,<9"
+torchvision = ">=0.29.2,<0.30"
+lap = ">=0.5.14,<0.6"
 
 [environments.sub-jetson.dependencies]
 # binutils = ">=2.46.1,<3"
