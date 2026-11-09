@@ -391,6 +391,7 @@ class OCS(Node):
 
     course_geofence = []
     geofence = []
+    max_height = 0
     course_received = False
 
     def on_course(self, _client, _, msg):
@@ -429,7 +430,12 @@ class OCS(Node):
             cancel_event,
             target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
         )
-        # TODO transmit max_height
+        send_command(
+            self.mavconn,
+            mavutil.mavlink.MAV_CMD_USER_4,
+            param1=4,
+            param2=max_height_hae_m,
+        )
 
         if not geofence_transmitted:
             return
@@ -449,11 +455,11 @@ class OCS(Node):
 
         for r in responses:
             self.geofence.append(LatLng(latitude=r.x / 10**7, longitude=r.y / 10**7))
+            self.max_height = r.z
 
         self.geofence.append(self.geofence[0])
 
         print("Got geofence")
-        # TODO get max_height
 
         self.rx_run_declaration(
             vehicle_ids=["UUV", "USV", "UAV"],
@@ -462,7 +468,7 @@ class OCS(Node):
             task3_tier=TaskTier.TIER_CORE,
             task4_tier=TaskTier.TIER_CORE,
             uav_geofence=self.geofence,
-            uav_geofence_max_altitude_hae_m=max_height_hae_m,
+            uav_geofence_max_altitude_hae_m=self.max_height,
             uav_pilot_callsign=CALLSIGN,
         )
 
