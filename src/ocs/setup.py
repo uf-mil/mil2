@@ -10,6 +10,8 @@ setup(
     packages=find_namespace_packages(
         include=["ocs", "ocs.proto*", "ocs.InvestiGator", "ocs.InvestiGator.src*"]
     ),
+    # ship the prebuilt dashboard (ocs.py serves it from ocs/dashboard/dist)
+    package_data={"ocs": ["dashboard/dist/*", "dashboard/dist/assets/*"]},
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
