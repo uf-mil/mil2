@@ -18,6 +18,12 @@
   <depend>rf2o_cov_mapper</depend>
   <depend>rf2o_laser_odometry</depend>
   <depend>yolo_ros</depend>
+  <depend>prop_localization</depend>
+  <depend>prop_planner</depend>
+  <depend>subjugator_controller_again</depend>
+  <depend>prop_controller</depend>
+  <depend>lidar_mapper</depend>
+  <depend>mil_acoutstic_modem</depend>
   <export>
     <build_type>ament_cmake</build_type>
   </export>
