@@ -462,7 +462,8 @@ class OCS(Node):
         print("Got geofence")
 
         self.rx_run_declaration(
-            vehicle_ids=["UUV", "USV", "UAV"],
+            # vehicle_ids=["UUV", "USV", "UAV"],
+            vehicle_ids=["UAV"],
             task1_tier=TaskTier.TIER_CORE,
             task2_tier=TaskTier.TIER_CORE,
             task3_tier=TaskTier.TIER_CORE,
