@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 # generate detections on buoys from camera frames
+import json
 import os
 
 import rclpy
 from ament_index_python.packages import get_package_share_directory
 from cv_bridge import CvBridge
 from detection import Detector
+from light_detection import Light_Detector
 from localization import Localizer
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 from tracking import Tracker
 from undistort import Undistorter
 from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
@@ -28,6 +31,8 @@ class DetectionNode(Node):
         self.declare_parameter("model_path", os.path.expanduser("~/buoy_buoy10-13.pt"))
         self.declare_parameter("conf", 0.25)
         self.declare_parameter("image_topic", "camera/img_raw")
+        self.declare_parameter("light_padding_above", 0.25)
+        self.declare_parameter("light_max_gap", 0.5)
 
         model_path = self.get_parameter("model_path").value
         if not model_path:
@@ -39,10 +44,20 @@ class DetectionNode(Node):
         self.tracker = Tracker(self.detector.model, conf=conf)
         self.localizer = Localizer()
         self.bridge = CvBridge()
+        self.light_detector = Light_Detector(
+            padding_above=self.get_parameter("light_padding_above").value,
+            max_gap=self.get_parameter("light_max_gap").value,
+        )
 
         self.detect_publisher = self.create_publisher(
             Detection2DArray,
             "camera/detections",
+            10,
+        )
+
+        self.light_publisher = self.create_publisher(
+            String,
+            "camera/lights",
             10,
         )
         self.img_publisher = self.create_publisher(Image, "camera/detections/image", 10)
@@ -69,6 +84,25 @@ class DetectionNode(Node):
             t.update(self.localizer.locate(t, self.undistorter.intrinsics))
 
         self.detect_publisher.publish(self.to_msg(tracks, msg.header))
+
+        # detect lights on buoys
+        stamp = msg.header.stamp
+        lights = self.light_detector.detect_light(
+            corrected,
+            tracks,
+            stamp.sec + stamp.nanosec * 1e-9,
+        )
+        self.light_publisher.publish(
+            String(
+                data=json.dumps(
+                    {
+                        "stamp": {"sec": stamp.sec, "nanosec": stamp.nanosec},
+                        "frame_id": msg.header.frame_id,
+                        "lights": lights,
+                    },
+                ),
+            ),
+        )
 
         annotated = self.bridge.cv2_to_imgmsg(
             self.detector.draw(corrected, tracks),
