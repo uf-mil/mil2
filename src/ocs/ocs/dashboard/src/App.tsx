@@ -51,6 +51,10 @@ function App() {
       if (droneStatus.remote_rssi_margin < 20) {
         newAlerts.push("Low remote RSSI margin")
       }
+
+      if (droneStatus.status_text) {
+        newAlerts.push(droneStatus.status_text)
+      }
     }
 
     const current_millis = new Date().valueOf();
@@ -82,6 +86,16 @@ function App() {
     fetch("/api/good_drone", { method: "POST" });
   }
 
+  function droneMission(mission: number) {
+    fetch("/api/mission", {
+      method: "POST",
+      body: JSON.stringify({ mission }),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  }
+
   return (
     <div className="flex flex-col p-5">
       <div className="flex flex-row gap-2 mb-2">
@@ -99,6 +113,10 @@ function App() {
           <button className="grow px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClick={badGeofence}>Send bad geofence RunDecl</button>
           <button className="grow px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClickCapture={badHeight}>Send bad height RunDecl</button>
           <button className="grow px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClickCapture={goodDrone}>Send good RunDecl</button>
+        </div>
+        <div className="flex flex-col gap-1">
+          <button className="grow px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClick={() => droneMission(12)}>Drone hover</button>
+          <button className="grow px-5 py-1 border-black border-2 bg-white rounded-md cursor-pointer" onClick={() => droneMission(2)}>Drone square</button>
         </div>
       </div>
 

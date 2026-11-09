@@ -18,6 +18,7 @@ export interface DroneStatus {
     local_rssi_margin: number;
     remote_rssi_margin: number;
     geofence: LatLng[];
+    status_text?: string;
 }
 
 export interface LatLng {

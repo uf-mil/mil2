@@ -22,8 +22,22 @@ messages need protobuf 7.36.1), with the course's RoboCommand address
 (Alpha 192.168.65.2, Bravo .66.2, Charlie .67.2, Delta .68.2):
 
 ```sh
+colcon build --packages-select ocs --symlink-install
 ros2 run ocs ocs --ros-args -p host:=192.168.65.2 -p "vehicles:=['USV']" \
     -p task2_tier:=NONE -p task4_tier:=NONE
+```
+
+The OCS has to be built with `--symlink-install`: a plain install leaves out the
+InvestiGator submodule and the dashboard. The dashboard is on port 3000
+(`dashboard_port`), and the broker's port is `port` (1883).
+
+To try the OCS without the course network, run an MQTT broker (`mosquitto`),
+the OCS with `host:=localhost`, and `scripts/robocommand_standin.py`, which
+publishes a course, prints every report, and sends RunStart once the boat is
+AUTO:
+
+```sh
+PYTHONPATH=src/ocs python3 scripts/robocommand_standin.py
 ```
 
 Then `prop-auto` on the boat. Its heartbeat turns AUTO, RoboCommand sends

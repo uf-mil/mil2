@@ -31,7 +31,10 @@ from shapely.geometry import Polygon
 from std_msgs.msg import String, UInt32
 from std_srvs.srv import Empty
 
-from ocs.InvestiGator.src.gc_helpers import send_command
+from ocs.InvestiGator.src.gc_helpers import (
+    send_command,
+    send_mission_message_wait_ack,
+)
 from ocs.InvestiGator.src.InvestiGator.mavconnection import MAVConnection
 from ocs.proto import (
     BeaconState,
@@ -67,8 +70,8 @@ TARGET_MAV_TYPES = {
 }
 
 TEAM_CODE = "UFLO"
-CAAS_NUMBER = "0"
-PILOT_NAME = "Ethan"
+CAAS_NUMBER = "53581"
+PILOT_NAME = "EthanM"
 UAPL_ID = None
 
 CALLSIGN = PILOT_NAME if UAPL_ID is None else f"{PILOT_NAME}-{UAPL_ID}"
@@ -82,6 +85,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         bad_drone_geofence_handler,
         bad_drone_height_handler,
         good_drone_handler,
+        mission_handler,
         *args,
         **kwargs,
     ):
@@ -90,6 +94,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         self.bad_drone_geofence_handler = bad_drone_geofence_handler
         self.bad_drone_height_handler = bad_drone_height_handler
         self.good_drone_handler = good_drone_handler
+        self.mission_handler = mission_handler
 
         super().__init__(*args, directory=DASHBOARD_DIR, **kwargs)
 
@@ -139,6 +144,25 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
             self.good_drone_handler()
 
+            self.wfile.write(b"ok")
+        elif self.path.startswith("/api/mission"):
+            length = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(length)
+            try:
+                data = json.loads(raw.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"error": "invalid JSON"}')
+                return
+
+            print(data)
+            self.mission_handler(data["mission"])
+
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
             self.wfile.write(b"ok")
 
     def json_default(self, o):
@@ -207,6 +231,7 @@ class OCS(Node):
         super().__init__("ocs")
 
         self.declare_parameter("team_id", "UFLO")
+        self.declare_parameter("port", 1883)
         self.declare_parameter("host", "localhost")
         self.declare_parameter(
             "mavlink_port",
@@ -318,6 +343,7 @@ class OCS(Node):
         self.client.reconnect_delay_set(min_delay=1, max_delay=5)
         self.client.connect_async(
             self.get_parameter("host").get_parameter_value().string_value,
+            self.get_parameter("port").get_parameter_value().integer_value,
         )
         self.client.loop_start()
 
@@ -357,6 +383,9 @@ class OCS(Node):
         )
         self.mavconn.subscribe(mavlink.MAVLink_radio_status_message.msgname)(
             self.mav_handle_radio_status,
+        )
+        self.mavconn.subscribe(mavlink.MAVLink_statustext_message.msgname)(
+            self.mav_handle_statustext,
         )
 
         mav_heartbeat_thread = threading.Thread(target=self.mav_heartbeat_loop)
@@ -410,10 +439,13 @@ class OCS(Node):
     def to_polygon(self, coords):
         return Polygon([(p.longitude, p.latitude) for p in coords])
 
+    course_geofence = []
     geofence = []
+    max_height = 0
     course_received = False
 
     def on_course(self, _client, _, msg):
+        print("Got RxCourse from RoboCommand")
         course = RxCourse()
 
         try:
@@ -428,8 +460,6 @@ class OCS(Node):
         config.frequency = course.pinger_freq_hz
         self.acoustic_frequency_config_publisher.publish(config)
 
-        # Set boundary parameters on sub/boat (does it need it)
-
         if "UAV" not in self.vehicles():
             self.rx_run_declaration(
                 vehicle_ids=self.vehicles(),
@@ -438,22 +468,38 @@ class OCS(Node):
             return
 
         if len(course.uav_transit_area) == 0:
-            self.geofence = course.corners
+            self.course_geofence = course.corners
         else:
             corners_poly = self.to_polygon(course.corners)
             uav_poly = self.to_polygon(course.uav_transit_area)
             union = corners_poly.union(uav_poly)
-            self.geofence = [
+            self.course_geofence = [
                 LatLng(latitude=lat, longitude=lon)
                 for lon, lat in union.exterior.coords
             ]
 
+        self.drone_geofence_and_run_decl(self.course_geofence, 40)
+
+    def drone_geofence_and_run_decl(self, geofence, max_height_hae_m):
+        if self.mavconn is None:
+            print("UAV is not declared, so there is no drone to send a geofence")
+            return
         cancel_event = threading.Event()
-        self.mavconn.upload_fence_polygon(
-            self.geofence,
+        geofence_transmitted = self.mavconn.upload_fence_polygon(
+            geofence,
             cancel_event,
             target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
         )
+        send_command(
+            self.mavconn,
+            mavutil.mavlink.MAV_CMD_USER_4,
+            param1=11,
+            param2=max_height_hae_m,
+        )
+
+        if not geofence_transmitted:
+            return
+
         print("Transmitted geofence")
         time.sleep(2)  # give time for fence to go live
 
@@ -469,6 +515,7 @@ class OCS(Node):
 
         for r in responses:
             self.geofence.append(LatLng(latitude=r.x / 10**7, longitude=r.y / 10**7))
+            self.max_height = r.z
 
         self.geofence.append(self.geofence[0])
 
@@ -478,7 +525,7 @@ class OCS(Node):
             vehicle_ids=self.vehicles(),
             **{f"task{task}_tier": self.tier(task) for task in range(1, 5)},
             uav_geofence=self.geofence,
-            uav_geofence_max_altitude_hae_m=40,  # 50m HAE is max, keep it safe at 40.
+            uav_geofence_max_altitude_hae_m=self.max_height,
             uav_pilot_callsign=CALLSIGN,
         )
 
@@ -660,6 +707,11 @@ class OCS(Node):
         self.drone_local_rssi_margin = message.rssi - message.noise
         self.drone_remote_rssi_margin = message.remrssi - message.remnoise
 
+    drone_status_text = None
+
+    def mav_handle_statustext(self, message):
+        self.drone_status_text = message.text
+
     def mav_heartbeat_loop(self):
         while True:
             if time.time() - self.drone_last_heartbeat_seconds < 1:
@@ -700,6 +752,7 @@ class OCS(Node):
             self.send_bad_drone_geofence,
             self.send_bad_drone_height,
             self.send_good_drone,
+            self.send_drone_mission,
         )
         with socketserver.TCPServer(("", port), handler_class) as httpd:
             httpd.serve_forever()
@@ -722,49 +775,32 @@ class OCS(Node):
             "battery_time": self.drone_battery_time,
             "local_rssi_margin": self.drone_local_rssi_margin,
             "remote_rssi_margin": self.drone_remote_rssi_margin,
-            "geofence": self.geofence,
+            "geofence": list(self.geofence),
+            "status_text": self.drone_status_text,
         }
 
     def send_bad_drone_geofence(self):
-        self.rx_run_declaration(
-            vehicle_ids=["UAV"],
-            task1_tier=TaskTier.TIER_CORE,
-            task2_tier=TaskTier.TIER_CORE,
-            task3_tier=TaskTier.TIER_CORE,
-            task4_tier=TaskTier.TIER_CORE,
-            uav_geofence=[
+        self.drone_geofence_and_run_decl(
+            [
                 LatLng(latitude=1, longitude=1),
                 LatLng(latitude=2, longitude=1),
                 LatLng(latitude=1.5, longitude=2),
                 LatLng(latitude=1, longitude=1),
             ],
-            uav_geofence_max_altitude_hae_m=40,
-            uav_pilot_callsign=CALLSIGN,
+            40,
         )
 
     def send_bad_drone_height(self):
-        self.rx_run_declaration(
-            vehicle_ids=["UAV"],
-            task1_tier=TaskTier.TIER_CORE,
-            task2_tier=TaskTier.TIER_CORE,
-            task3_tier=TaskTier.TIER_CORE,
-            task4_tier=TaskTier.TIER_CORE,
-            uav_geofence=self.geofence,
-            uav_geofence_max_altitude_hae_m=100,
-            uav_pilot_callsign=CALLSIGN,
-        )
+        self.drone_geofence_and_run_decl(self.course_geofence, 100)
 
     def send_good_drone(self):
-        self.rx_run_declaration(
-            vehicle_ids=["UAV"],
-            task1_tier=TaskTier.TIER_CORE,
-            task2_tier=TaskTier.TIER_CORE,
-            task3_tier=TaskTier.TIER_CORE,
-            task4_tier=TaskTier.TIER_CORE,
-            uav_geofence=self.geofence,
-            uav_geofence_max_altitude_hae_m=40,
-            uav_pilot_callsign=CALLSIGN,
-        )
+        self.drone_geofence_and_run_decl(self.course_geofence, 40)
+
+    def send_drone_mission(self, mission):
+        if self.mavconn is None:
+            print("UAV is not declared, so there is no drone to send a mission")
+            return
+        send_mission_message_wait_ack(self.mavconn, mission)
 
     def on_heartbeat(self, msg):
         fields = {}
