@@ -6,6 +6,7 @@ The boat's heartbeat, which the OCS turns into RoboCommand's, at 2 Hz.
        imu/data               sensor_msgs/Imu        heading, roll, pitch
        odometry               nav_msgs/Odometry      speed
        /manual_control        std_msgs/Bool          true manual, false autonomous
+       /rf_kill/manual        std_msgs/Bool          the same, as the RF kill board reports it
        /mission/current_task  std_msgs/String        SAFE_PASSAGE, NONE, ...
   out  /heartbeats            mil_msgs/Heartbeat
 
@@ -14,8 +15,10 @@ NaN until there is a fix. heading, roll and pitch are radians, heading being the
 IMU's ENU yaw: the IMU, not odometry, because ekf_local's yaw starts at zero
 wherever the boat pointed when it came up.
 
-/manual_control is the topic piss_tower switches the RF kill board with, so the
-light tower and the heartbeat agree. The state is MANUAL until it says false.
+/manual_control is what prop-auto and prop-manual set, and piss_tower passes on
+to the RF kill board; /rf_kill/manual is the mode piss_tower hears back from the
+board, which also changes when the remote does. Whichever said something last
+is the state, which is MANUAL until one says false.
 Nothing on the boat reports the kill switch, so KILLED is never sent.
 
 A mission says which task it is on with /mission/current_task, latched, and the
@@ -56,6 +59,7 @@ class PropHeartbeat(Node):
         self.create_subscription(Imu, "imu/data", self.on_imu, 10)
         self.create_subscription(Odometry, "odometry", self.on_odom, 10)
         self.create_subscription(Bool, "/manual_control", self.on_manual, LATCHED)
+        self.create_subscription(Bool, "/rf_kill/manual", self.on_manual, LATCHED)
         self.create_subscription(String, "/mission/current_task", self.on_task, LATCHED)
         self.create_timer(0.5, self.publish)
 

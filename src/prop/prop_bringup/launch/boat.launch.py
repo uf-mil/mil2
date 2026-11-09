@@ -26,6 +26,7 @@ Started here:
     pid_controller     subjugator_controller_again, goal/trajectory -> cmd_wrench
     thruster_mapper    prop_controller, cmd_wrench -> thrusters/left, right, bow
     prop_heartbeat     /heartbeats for the OCS: GPS position, mode and task
+    piss_tower         the RF kill board: sets the mode, reports the board's back
 
 The thruster driver is not: it runs on the Pi, against the Navigator board.
 """
@@ -39,6 +40,7 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def pkg_share(pkg, *path):
@@ -72,6 +74,18 @@ def generate_launch_description():
                 choices=["grid", "visibility"],
                 description="grid: occupancy grid and A*. visibility: the "
                 "capsule obstacle map from tracked_markers.",
+            ),
+            DeclareLaunchArgument(
+                "rf_kill_port",
+                default_value="/dev/serial/by-id/"
+                "usb-Raspberry_Pi_Pico_E6635C08CB725C2C-if00",
+                description="The RF kill board's serial port.",
+            ),
+            DeclareLaunchArgument(
+                "board_mode",
+                default_value="true",
+                description="Report the mode the RF kill board sends back. "
+                "false if its packets turn out not to be the mode.",
             ),
             DeclareLaunchArgument(
                 "gps_topic",
@@ -115,6 +129,20 @@ def generate_launch_description():
                 remappings=[
                     ("gps/fix", LaunchConfiguration("gps_topic")),
                     ("odometry", "/odometry/filtered/local"),
+                ],
+                output="screen",
+            ),
+            Node(
+                package="piss_tower",
+                executable="piss_tower",
+                parameters=[
+                    {
+                        "serial_port": LaunchConfiguration("rf_kill_port"),
+                        "report_mode": ParameterValue(
+                            LaunchConfiguration("board_mode"),
+                            value_type=bool,
+                        ),
+                    },
                 ],
                 output="screen",
             ),

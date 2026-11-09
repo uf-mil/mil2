@@ -9,6 +9,7 @@
 
   <depend>infix_sensor_bridge</depend>
   <depend>pcd</depend>
+  <depend>piss_tower</depend>
   <depend>prop_bringup</depend>
   <depend>prop_fusion</depend>
   <depend>prop_heartbeat</depend>

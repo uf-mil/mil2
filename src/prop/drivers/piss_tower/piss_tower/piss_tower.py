@@ -1,134 +1,214 @@
 #!/usr/bin/env python3
+"""
+The RF kill board, over its USB serial port: sets the mode, and passes on the
+mode the board says it is in.
 
-"""ROS2 node to set/unset manual mode on the RF Kill Controller via USB."""
+  in   /manual_control  std_msgs/Bool  true manual, false autonomous; sent to the board
+  out  /rf_kill/manual  std_msgs/Bool  latched, the mode the board reports
 
+The board speaks MIL's electrical packets: sync 37 01, class, subclass,
+little-endian payload length, payload, and a Fletcher-16 of everything after the
+sync. Setting the mode is class 0x10, subclass 0x02, one byte, 1 for manual.
+
+The board is assumed to report its mode the same way: a packet of mode_class and
+mode_subclass whose first payload byte is 1 for manual. That has not been seen
+on the boat, so every packet is logged; read the real one off the log and set
+the parameters, or report_mode:=false if the board's packets are not the mode.
+
+Uses the standard library only, so it runs where pyserial is missing, and keeps
+trying to open the port, so it can start before the board is plugged in.
+"""
+
+import contextlib
+import os
 import struct
+import termios
+import tty
 
 import rclpy
-import serial
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from std_msgs.msg import Bool
 
-# ---------------------------------------------------------------------------- #
-#                                   FUNCTIONS                                  #
-# ---------------------------------------------------------------------------- #
+SYNC = b"\x37\x01"
+SET_MODE = (0x10, 0x02)
+LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+RETRY_EVERY = 2.0  # s
 
 
-def fletcher16(data: bytes) -> int:
-    """Compute the Fletcher-16 checksum of a byte sequence."""
-    sum1 = 0
-    sum2 = 0
+def fletcher16(data):
+    sum1 = sum2 = 0
     for byte in data:
         sum1 = (sum1 + byte) % 255
         sum2 = (sum2 + sum1) % 255
     return (sum2 << 8) | sum1
 
 
-def make_msg(class_id: int, subclass_id: int, payload: bytes) -> bytes:
-    """Create a message packet to send via USB."""
-    sync = b"\x37\x01"
-    cid_byte = struct.pack("<B", class_id)
-    scid_byte = struct.pack("<B", subclass_id)
-    length = struct.pack("<H", len(payload))
-
-    data1 = cid_byte + scid_byte + length + payload
-    checksum = fletcher16(data1)
-    checksum_bytes = struct.pack("<H", checksum)
-
-    return sync + data1 + checksum_bytes
+def make_msg(class_id, subclass_id, payload):
+    body = struct.pack("<BBH", class_id, subclass_id, len(payload)) + payload
+    return SYNC + body + struct.pack("<H", fletcher16(body))
 
 
-def msg_to_string(msg: bytes) -> str:
-    """Convert a message to a hex string for logging."""
-    return " ".join(f"{byte:02x}" for byte in msg)
+def packets(buffer):
+    """
+    The complete packets at the front of buffer, as (class, subclass, payload,
+    checksum ok), and what is left over.
+    """
+    found = []
+    while True:
+        start = buffer.find(SYNC)
+        if start < 0:
+            return found, buffer[-1:]
+        buffer = buffer[start:]
+        if len(buffer) < 6:
+            return found, buffer
+        class_id, subclass_id, length = struct.unpack_from("<BBH", buffer, 2)
+        end = 6 + length + 2
+        if len(buffer) < end:
+            return found, buffer
+        (checksum,) = struct.unpack_from("<H", buffer, 6 + length)
+        ok = checksum == fletcher16(buffer[2 : 6 + length])
+        found.append((class_id, subclass_id, buffer[6 : 6 + length], ok))
+        buffer = buffer[end:]
 
 
-# ---------------------------------------------------------------------------- #
-#                                    NODE                                      #
-# ---------------------------------------------------------------------------- #
+def hex_of(data):
+    return " ".join(f"{byte:02x}" for byte in data)
+
+
+def open_port(path, baud):
+    fd = os.open(path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+    tty.setraw(fd)
+    attrs = termios.tcgetattr(fd)
+    attrs[2] |= termios.CLOCAL | termios.CREAD
+    attrs[4] = attrs[5] = getattr(termios, f"B{baud}")
+    termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    return fd
 
 
 class ManualModeNode(Node):
-
-    CLASS_ID = 0x10
-    SUBCLASS_ID = 0x02  # Set move / manual mode subclass
-
     def __init__(self):
         super().__init__("rf_kill_manual_mode")
-
-        self.declare_parameter(
+        p = self.declare_parameter
+        self.port = p(
             "serial_port",
             "/dev/serial/by-id/usb-Raspberry_Pi_Pico_E6635C08CB725C2C-if00",
-        )
-        self.declare_parameter("baud_rate", 115200)
+        ).value
+        self.baud = p("baud_rate", 115200).value
+        self.mode_packet = (p("mode_class", 0x10).value, p("mode_subclass", 0x02).value)
+        self.report_mode = p("report_mode", True).value
 
-        port = self.get_parameter("serial_port").get_parameter_value().string_value
-        baud = self.get_parameter("baud_rate").get_parameter_value().integer_value
+        self.fd = None
+        self.last_try = None
+        self.buffer = b""
+        self.wanted = None  # the mode last asked for, sent again on reconnect
+        self.reported = None
 
-        try:
-            self.ser = serial.Serial(port, baud, timeout=1)
-            self.get_logger().info(f"Connected to serial port: {port} at {baud} baud")
-        except serial.SerialException as e:
-            self.get_logger().fatal(f"Failed to open serial port: {e}")
-            raise
-
-        qos = QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL)
-
-        self.subscription = self.create_subscription(
+        self.mode_pub = self.create_publisher(Bool, "/rf_kill/manual", LATCHED)
+        self.create_subscription(
             Bool,
             "/manual_control",
-            self.manual_control_callback,
-            qos,
+            self.on_manual_control,
+            LATCHED,
         )
+        self.create_timer(0.05, self.poll)
+        self.get_logger().info(f"RF kill board on {self.port}")
 
-        self.get_logger().info("ManualModeNode started, listening on /manual_control")
+    def now(self):
+        return self.get_clock().now().nanoseconds * 1e-9
 
-    def manual_control_callback(self, msg: Bool):
-        """Send manual/autonomous mode command over serial when topic updates."""
-        is_manual = 1 if msg.data else 0
-        payload = struct.pack("<B", is_manual)
-        packet = make_msg(self.CLASS_ID, self.SUBCLASS_ID, payload)
-
-        mode_str = "MANUAL" if is_manual else "AUTONOMOUS"
-        self.get_logger().info(
-            f"Setting mode: {mode_str} | Packet: {msg_to_string(packet)}",
-        )
-
+    def connect(self):
+        if self.last_try is not None and self.now() - self.last_try < RETRY_EVERY:
+            return
+        self.last_try = self.now()
         try:
-            self.ser.write(packet)
-            response = self.ser.read(1000)
-            if response:
-                self.get_logger().info(f"Response: {msg_to_string(response)}")
-            else:
-                self.get_logger().warn("No response received from device")
-        except serial.SerialException as e:
-            self.get_logger().error(f"Serial write failed: {e}")
+            self.fd = open_port(self.port, self.baud)
+        except OSError as e:
+            self.get_logger().warn(
+                f"cannot open {self.port}: {e}; trying again",
+                throttle_duration_sec=30.0,
+            )
+            return
+        self.buffer = b""
+        self.get_logger().info(f"connected to {self.port}")
+        if self.wanted is not None:
+            self.send_mode(self.wanted)
+
+    def disconnect(self, why):
+        self.get_logger().error(f"lost {self.port}: {why}")
+        with contextlib.suppress(OSError):
+            os.close(self.fd)
+        self.fd = None
+
+    def on_manual_control(self, msg):
+        self.wanted = msg.data
+        if self.fd is None:
+            self.get_logger().warn(
+                f"board not connected; will set {self.mode_name(msg.data)} once it is",
+            )
+            return
+        self.send_mode(msg.data)
+
+    def send_mode(self, manual):
+        packet = make_msg(*SET_MODE, struct.pack("<B", int(manual)))
+        self.get_logger().info(f"setting {self.mode_name(manual)}: {hex_of(packet)}")
+        try:
+            os.write(self.fd, packet)
+        except OSError as e:
+            self.disconnect(e)
+
+    def poll(self):
+        if self.fd is None:
+            self.connect()
+            return
+        try:
+            data = os.read(self.fd, 1024)
+        except BlockingIOError:
+            return
+        except OSError as e:
+            self.disconnect(e)
+            return
+        if not data:
+            self.disconnect("end of file")
+            return
+        found, self.buffer = packets(self.buffer + data)
+        for class_id, subclass_id, payload, ok in found:
+            self.get_logger().info(
+                f"board sent class 0x{class_id:02x} subclass 0x{subclass_id:02x}"
+                f" payload [{hex_of(payload)}]" + ("" if ok else " BAD CHECKSUM"),
+            )
+            if ok and payload and (class_id, subclass_id) == self.mode_packet:
+                self.on_board_mode(payload[0] != 0)
+
+    def on_board_mode(self, manual):
+        if not self.report_mode:
+            return
+        if manual != self.reported:
+            self.get_logger().info(f"board says {self.mode_name(manual)}")
+        self.reported = manual
+        self.mode_pub.publish(Bool(data=manual))
+
+    @staticmethod
+    def mode_name(manual):
+        return "MANUAL" if manual else "AUTONOMOUS"
 
     def destroy_node(self):
-        """Clean up serial connection on shutdown."""
-        if self.ser.is_open:
-            self.ser.read(1000)  # drain any remaining messages
-            self.ser.close()
-            self.get_logger().info("Serial port closed")
+        if self.fd is not None:
+            os.close(self.fd)
         super().destroy_node()
 
 
-# ---------------------------------------------------------------------------- #
-#                                     MAIN                                     #
-# ---------------------------------------------------------------------------- #
-
-
-def main(args=None):
-    rclpy.init(args=args)
+def main():
+    rclpy.init()
     node = ManualModeNode()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == "__main__":
