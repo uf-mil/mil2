@@ -6,8 +6,9 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from tf_transformations import euler_from_quaternion
 
+from rclpy.node import Node
 
-class PropHeartbeat(rclpy.Node):
+class PropHeartbeat(Node):
     def __init__(self):
         super().__init__("prop_heartbeat")
 
