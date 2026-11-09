@@ -454,8 +454,12 @@ class OCS(Node):
         self.geofence = []
 
         for r in responses:
-            self.geofence.append(LatLng(latitude=r.x / 10**7, longitude=r.y / 10**7))
+            l_x = r.x / 10**7
+            l_y = r.y / 10**7
+            self.geofence.append(LatLng(latitude=l_x, longitude=l_y))
             self.max_height = r.z
+
+            print(f"adding geofence corner {l_x}, {l_y}")
 
         self.geofence.append(self.geofence[0])
 
