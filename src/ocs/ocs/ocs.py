@@ -433,7 +433,7 @@ class OCS(Node):
         send_command(
             self.mavconn,
             mavutil.mavlink.MAV_CMD_USER_4,
-            param1=4,
+            param1=11,
             param2=max_height_hae_m,
         )
 
