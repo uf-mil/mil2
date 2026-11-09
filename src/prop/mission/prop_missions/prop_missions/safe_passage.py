@@ -10,8 +10,8 @@ Task 1, Safe Passage, at the Core tier.
        /mission/current_task      std_msgs/String, latched, for the heartbeat
        /prop/safe_passage_report  prop_ocs_interfaces/SafePassageReport
 
-Start it before the run: once RunStart reaches the boat, or straight away with
-start_now, it will
+Start it before the run. It does nothing until the OCS passes on RunStart, then
+it will
 
   1. say the task is SAFE_PASSAGE, which is what turns the lights on, and drive
      to field_latlon if it was given
@@ -122,7 +122,7 @@ class SafePassage(Node):
     def __init__(self):
         super().__init__("safe_passage")
         p = self.declare_parameter
-        self.start_now = p("start_now", False).value
+        self.run_id = None
         self.field_latlon = list(p("field_latlon", [0.0, 0.0]).value)
         self.light_delay = p("light_delay", 5.0).value
         self.survey_radius = p("survey_radius", 60.0).value
@@ -167,7 +167,7 @@ class SafePassage(Node):
         self.create_subscription(Odometry, "odometry", self.on_odometry, 10)
         self.create_subscription(UInt32, "/prop/run_start", self.on_run_start, 10)
         self.create_timer(0.2, self.step)
-        self.get_logger().info("starting" if self.start_now else "waiting for RunStart")
+        self.get_logger().info("waiting for RunStart")
 
     def now(self):
         return self.get_clock().now().nanoseconds * 1e-9
@@ -175,7 +175,7 @@ class SafePassage(Node):
     def on_run_start(self, msg):
         if self.phase == "WAIT":
             self.get_logger().info(f"RunStart for run {msg.data}")
-            self.start_now = True
+            self.run_id = msg.data
 
     def on_odometry(self, msg):
         self.geo.on_odometry(msg)
@@ -222,7 +222,7 @@ class SafePassage(Node):
     # ----- the phases -----
 
     def step_wait(self):
-        if not self.start_now:
+        if self.run_id is None:
             return
         self.started = self.now()
         self.task_pub.publish(String(data="SAFE_PASSAGE"))

@@ -2,10 +2,9 @@
 Task 1, Safe Passage, against the running boat (or sim) stack.
 
     ros2 launch prop_missions safe_passage.launch.py
-    ros2 launch prop_missions safe_passage.launch.py start_now:=true
 
-Start it before the run: it waits for the OCS to pass on RunStart, unless
-start_now:=true. Settings are in config/safe_passage.yaml.
+Start it before the run: it waits for the OCS to pass on RunStart. Settings are
+in config/safe_passage.yaml.
 """
 
 import os
@@ -27,11 +26,6 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                "start_now",
-                default_value="false",
-                description="Start without waiting for RunStart.",
-            ),
-            DeclareLaunchArgument(
                 "odometry",
                 default_value="/odometry/filtered/local",
                 description="Odometry in the buoys' frame: the planner's.",
@@ -44,10 +38,6 @@ def generate_launch_description():
                 parameters=[
                     config,
                     {
-                        "start_now": ParameterValue(
-                            LaunchConfiguration("start_now"),
-                            value_type=bool,
-                        ),
                         "use_sim_time": ParameterValue(
                             LaunchConfiguration("use_sim_time"),
                             value_type=bool,

@@ -52,8 +52,12 @@ and beacons, and scores the run when it ends:
 
 ```sh
 ros2 run prop_missions fake_field --ros-args -p layout:=zigzag
-ros2 launch prop_missions safe_passage.launch.py start_now:=true
+ros2 launch prop_missions safe_passage.launch.py
 ```
+
+`fake_field` sends the RunStart itself. On the boat without RoboCommand, start
+it by hand with
+`ros2 topic pub --once /prop/run_start std_msgs/msg/UInt32 "{data: 0}"`.
 
 ## Docking
 

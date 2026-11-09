@@ -4,9 +4,9 @@ Safe Passage without the boat or Gazebo: a stand-in for the boat, the planner
 and beacon_node, and a judge.
 
     ros2 run prop_missions fake_field --ros-args -p layout:=zigzag
-    ros2 launch prop_missions safe_passage.launch.py start_now:=true
+    ros2 launch prop_missions safe_passage.launch.py
 
-The boat drives straight at each /goal_pose at 1 m/s, so obstacles are not
+It also stands in for the OCS, sending RunStart until the mission starts. The boat drives straight at each /goal_pose at 1 m/s, so obstacles are not
 avoided. A buoy's light becomes known once the boat has been within 10 m of it
 for 2 s since /beacons/reset. GPS and IMU follow the boat.
 
@@ -26,7 +26,7 @@ from prop_ocs_interfaces.msg import SafePassageReport
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from sensor_msgs.msg import Imu, NavSatFix, NavSatStatus
-from std_msgs.msg import String
+from std_msgs.msg import String, UInt32
 from std_srvs.srv import SetBool, Trigger
 
 from prop_missions.geo import EARTH_RADIUS, offset_latlon
@@ -105,6 +105,7 @@ class FakeField(Node):
         self.fix_pub = self.create_publisher(NavSatFix, "/gps/fix", 10)
         self.imu_pub = self.create_publisher(Imu, "/imu/data", 10)
         self.beacons_pub = self.create_publisher(PerceptionObjectArray, "/beacons", 10)
+        self.run_start_pub = self.create_publisher(UInt32, "/prop/run_start", 10)
         self.create_subscription(PoseStamped, "/goal_pose", self.on_goal, 10)
         self.create_subscription(String, "/mission/current_task", self.on_task, LATCHED)
         self.create_subscription(
@@ -116,6 +117,11 @@ class FakeField(Node):
         self.create_service(SetBool, "/planner/enable", self.on_enable)
         self.create_service(Trigger, "/beacons/reset", self.on_reset)
         self.create_timer(0.1, self.tick)
+        self.create_timer(1.0, self.send_run_start)
+
+    def send_run_start(self):
+        if self.task is None:
+            self.run_start_pub.publish(UInt32(data=1))
 
     def on_enable(self, _, response):
         response.success = True
