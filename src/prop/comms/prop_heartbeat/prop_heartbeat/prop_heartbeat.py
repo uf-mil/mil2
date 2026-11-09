@@ -3,6 +3,7 @@ from math import hypot
 import rclpy
 from mil_msgs.msg import Heartbeat, Point2D
 from nav_msgs.msg import Odometry
+from std_msgs.msg import String
 from tf_transformations import euler_from_quaternion
 
 
@@ -18,14 +19,21 @@ class PropHeartbeat(rclpy.Node):
             self.odometry_callback,
             1,
         )
+        self.state_subscriber = self.create_subscription(
+            String,
+            "/prop/state",
+            self.state_callback,
+            1,
+        )
 
         self.latest_odometry = Odometry()
+        self.latest_state = "UNKNOWN"
 
         self.timer = self.create_timer(0.5, self.publish_heartbeat)
 
     def publish_heartbeat(self):
         heartbeat = Heartbeat()
-        heartbeat.state = "AUTO"  # TODO
+        heartbeat.state = self.latest_state
 
         position = Point2D()
         position.x = self.latest_odometry.pose.pose.position.x
@@ -57,6 +65,9 @@ class PropHeartbeat(rclpy.Node):
 
     def odometry_callback(self, msg):
         self.latest_odometry = msg
+
+    def state_callback(self, msg):
+        self.latest_state = msg
 
 
 def main():
