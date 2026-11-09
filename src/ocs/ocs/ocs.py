@@ -63,8 +63,8 @@ TARGET_MAV_TYPES = {
 }
 
 TEAM_CODE = "UFLO"
-CAAS_NUMBER = "0"
-PILOT_NAME = "Ethan"
+CAAS_NUMBER = "53581"
+PILOT_NAME = "EthanM"
 UAPL_ID = None
 
 CALLSIGN = PILOT_NAME if UAPL_ID is None else f"{PILOT_NAME}-{UAPL_ID}"
@@ -364,7 +364,7 @@ class OCS(Node):
         rep.sent_at.GetCurrentTime()
         self.rx_report_seqs[vehicle_id] += 1
         self.client.publish(
-            f"robocommand/robotx/{vehicle_id}/report",
+            f"robocommand/robotx/{TEAM_CODE}/{vehicle_id}/report",
             rep.SerializeToString(),
         )
         self.latest_heartbeats[vehicle_id] = {
@@ -389,6 +389,7 @@ class OCS(Node):
     def to_polygon(self, coords):
         return Polygon([(p.longitude, p.latitude) for p in coords])
 
+    course_geofence = []
     geofence = []
     course_received = False
 
@@ -407,25 +408,27 @@ class OCS(Node):
         config.frequency = course.pinger_freq_hz
         self.acoustic_frequency_config_publisher.publish(config)
 
-        # Set boundary parameters on sub/boat (does it need it)
-
         if len(course.uav_transit_area) == 0:
-            self.geofence = course.corners
+            self.course_geofence = course.corners
         else:
             corners_poly = self.to_polygon(course.corners)
             uav_poly = self.to_polygon(course.uav_transit_area)
             union = corners_poly.union(uav_poly)
-            self.geofence = [
+            self.course_geofence = [
                 LatLng(latitude=lat, longitude=lon)
                 for lon, lat in union.exterior.coords
             ]
 
+        self.drone_geofence_and_run_decl(self.course_geofence, 40)
+
+    def drone_geofence_and_run_decl(self, geofence, max_height_hae_m):
         cancel_event = threading.Event()
         geofence_transmitted = self.mavconn.upload_fence_polygon(
-            self.geofence,
+            geofence,
             cancel_event,
             target_component=mavlink.MAV_COMP_ID_ONBOARD_COMPUTER,
         )
+        # TODO transmit max_height
 
         if not geofence_transmitted:
             return
@@ -449,6 +452,7 @@ class OCS(Node):
         self.geofence.append(self.geofence[0])
 
         print("Got geofence")
+        # TODO get max_height
 
         self.rx_run_declaration(
             vehicle_ids=["UUV", "USV", "UAV"],
@@ -457,7 +461,7 @@ class OCS(Node):
             task3_tier=TaskTier.TIER_CORE,
             task4_tier=TaskTier.TIER_CORE,
             uav_geofence=self.geofence,
-            uav_geofence_max_altitude_hae_m=40,  # 50m HAE is max, keep it safe at 40.
+            uav_geofence_max_altitude_hae_m=max_height_hae_m,
             uav_pilot_callsign=CALLSIGN,
         )
 
@@ -698,45 +702,21 @@ class OCS(Node):
         }
 
     def send_bad_drone_geofence(self):
-        self.rx_run_declaration(
-            vehicle_ids=["UAV"],
-            task1_tier=TaskTier.TIER_CORE,
-            task2_tier=TaskTier.TIER_CORE,
-            task3_tier=TaskTier.TIER_CORE,
-            task4_tier=TaskTier.TIER_CORE,
-            uav_geofence=[
+        self.drone_geofence_and_run_decl(
+            [
                 LatLng(latitude=1, longitude=1),
                 LatLng(latitude=2, longitude=1),
                 LatLng(latitude=1.5, longitude=2),
                 LatLng(latitude=1, longitude=1),
             ],
-            uav_geofence_max_altitude_hae_m=40,
-            uav_pilot_callsign=CALLSIGN,
+            40,
         )
 
     def send_bad_drone_height(self):
-        self.rx_run_declaration(
-            vehicle_ids=["UAV"],
-            task1_tier=TaskTier.TIER_CORE,
-            task2_tier=TaskTier.TIER_CORE,
-            task3_tier=TaskTier.TIER_CORE,
-            task4_tier=TaskTier.TIER_CORE,
-            uav_geofence=self.geofence,
-            uav_geofence_max_altitude_hae_m=100,
-            uav_pilot_callsign=CALLSIGN,
-        )
+        self.drone_geofence_and_run_decl(self.course_geofence, 100)
 
     def send_good_drone(self):
-        self.rx_run_declaration(
-            vehicle_ids=["UAV"],
-            task1_tier=TaskTier.TIER_CORE,
-            task2_tier=TaskTier.TIER_CORE,
-            task3_tier=TaskTier.TIER_CORE,
-            task4_tier=TaskTier.TIER_CORE,
-            uav_geofence=self.geofence,
-            uav_geofence_max_altitude_hae_m=40,
-            uav_pilot_callsign=CALLSIGN,
-        )
+        self.drone_geofence_and_run_decl(self.course_geofence, 40)
 
     def send_drone_mission(self, mission):
         send_mission_message_wait_ack(self.mavconn, mission)
