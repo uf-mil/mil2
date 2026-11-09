@@ -392,9 +392,9 @@ class OCS(Node):
     course_geofence = []
     geofence = []
     course_received = False
-    auto_geofence_sent = False
 
     def on_course(self, _client, _, msg):
+        print("Got RxCourse from RoboCommand")
         course = RxCourse()
 
         try:
@@ -420,9 +420,7 @@ class OCS(Node):
                 for lon, lat in union.exterior.coords
             ]
 
-        if not self.auto_geofence_sent:
-            self.drone_geofence_and_run_decl(self.course_geofence, 40)
-            self.auto_geofence_sent = True
+        self.drone_geofence_and_run_decl(self.course_geofence, 40)
 
     def drone_geofence_and_run_decl(self, geofence, max_height_hae_m):
         cancel_event = threading.Event()
