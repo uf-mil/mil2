@@ -223,9 +223,14 @@ class OCS(Node):
     def __init__(self):
         super().__init__("ocs")
 
+        # RoboCommand MQTT broker. Defaults are for the RobotX 2026 TEST course
+        # over Wi-Fi (network RN-TeamTest): UFLO's assigned port is 1907.
+        #   Test course, cable at registration booth: host rc-test.local, port 1883
+        #   If rc-test.local doesn't resolve on Wi-Fi: host 192.168.70.74, port 1907
+        #   Main competition course: override with -p host:=... -p port:=...
         self.declare_parameter("team_id", "UFLO")
-        self.declare_parameter("port", 1883)
-        self.declare_parameter("host", "localhost")
+        self.declare_parameter("port", 1907)
+        self.declare_parameter("host", "rc-test.local")
         self.declare_parameter(
             "mavlink_port",
             "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_BG00HS6A-if00-port0",
@@ -292,38 +297,52 @@ class OCS(Node):
 
         self.client.on_connect = mqtt_on_connect
 
-        self.mavconn = MAVConnection(
-            self.get_parameter("mavlink_port").get_parameter_value().string_value,
-            baud=57600,
-            source_system=254,
-            source_component=0,
-            mav_type=mavlink.MAV_TYPE_GCS,
-        )
-        self.configure_messages()
-        self.mavconn.subscribe(mavlink.MAVLink_heartbeat_message.msgname)(
-            self.mav_handle_heartbeat,
-        )
-        self.mavconn.subscribe(mavlink.MAVLink_extended_sys_state_message.msgname)(
-            self.mav_handle_extended_sys_state,
-        )
-        self.mavconn.subscribe(mavlink.MAVLink_global_position_int_message.msgname)(
-            self.mav_handle_global_position,
-        )
-        self.mavconn.subscribe(mavlink.MAVLink_attitude_message.msgname)(
-            self.mav_handle_attitude,
-        )
-        self.mavconn.subscribe(mavlink.MAVLink_battery_status_message.msgname)(
-            self.mav_handle_battery_status,
-        )
-        self.mavconn.subscribe(mavlink.MAVLink_radio_status_message.msgname)(
-            self.mav_handle_radio_status,
-        )
-        self.mavconn.subscribe(mavlink.MAVLink_statustext_message.msgname)(
-            self.mav_handle_statustext,
-        )
+        # Drone (UAV) link is optional: if the radio isn't plugged in (or
+        # mavlink_port is set to ""), keep running without it.
+        self.mavconn = None
+        mavlink_port = self.get_parameter("mavlink_port").get_parameter_value().string_value
+        if mavlink_port:
+            try:
+                self.mavconn = MAVConnection(
+                    mavlink_port,
+                    baud=57600,
+                    source_system=254,
+                    source_component=0,
+                    mav_type=mavlink.MAV_TYPE_GCS,
+                )
+            except Exception as e:
+                self.get_logger().warning(
+                    f"Could not open drone MAVLink port {mavlink_port!r} ({e}); running without drone",
+                )
+        else:
+            self.get_logger().info("mavlink_port is empty; running without drone")
 
-        mav_heartbeat_thread = threading.Thread(target=self.mav_heartbeat_loop)
-        mav_heartbeat_thread.start()
+        if self.mavconn is not None:
+            self.configure_messages()
+            self.mavconn.subscribe(mavlink.MAVLink_heartbeat_message.msgname)(
+                self.mav_handle_heartbeat,
+            )
+            self.mavconn.subscribe(mavlink.MAVLink_extended_sys_state_message.msgname)(
+                self.mav_handle_extended_sys_state,
+            )
+            self.mavconn.subscribe(mavlink.MAVLink_global_position_int_message.msgname)(
+                self.mav_handle_global_position,
+            )
+            self.mavconn.subscribe(mavlink.MAVLink_attitude_message.msgname)(
+                self.mav_handle_attitude,
+            )
+            self.mavconn.subscribe(mavlink.MAVLink_battery_status_message.msgname)(
+                self.mav_handle_battery_status,
+            )
+            self.mavconn.subscribe(mavlink.MAVLink_radio_status_message.msgname)(
+                self.mav_handle_radio_status,
+            )
+            self.mavconn.subscribe(mavlink.MAVLink_statustext_message.msgname)(
+                self.mav_handle_statustext,
+            )
+
+            mav_heartbeat_thread = threading.Thread(target=self.mav_heartbeat_loop)
+            mav_heartbeat_thread.start()
 
         web_thread = threading.Thread(target=self.start_dashboard)
         web_thread.start()
@@ -364,7 +383,7 @@ class OCS(Node):
         rep.sent_at.GetCurrentTime()
         self.rx_report_seqs[vehicle_id] += 1
         self.client.publish(
-            f"robocommand/robotx/{TEAM_CODE}/{vehicle_id}/report",
+            f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/{vehicle_id}/report",
             rep.SerializeToString(),
         )
         self.latest_heartbeats[vehicle_id] = {
@@ -382,7 +401,7 @@ class OCS(Node):
         rep.sent_at.GetCurrentTime()
         self.rx_report_seqs[vehicle_id] += 1
         self.client.publish(
-            f"robocommand/robotx/{vehicle_id}/report",
+            f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/{vehicle_id}/report",
             rep.SerializeToString(),
         )
 
@@ -424,6 +443,17 @@ class OCS(Node):
         self.drone_geofence_and_run_decl(self.course_geofence, 40)
 
     def drone_geofence_and_run_decl(self, geofence, max_height_hae_m):
+        if self.mavconn is None:
+            print("No drone connected; sending run declaration without UAV")
+            self.rx_run_declaration(
+                vehicle_ids=["UUV", "USV"],
+                task1_tier=TaskTier.TIER_CORE,
+                task2_tier=TaskTier.TIER_CORE,
+                task3_tier=TaskTier.TIER_CORE,
+                task4_tier=TaskTier.TIER_CORE,
+            )
+            return
+
         cancel_event = threading.Event()
         geofence_transmitted = self.mavconn.upload_fence_polygon(
             geofence,
@@ -506,8 +536,7 @@ class OCS(Node):
                 self.prop_emergency_publisher.publish(msg)
                 self.rx_incident_ack("USV", command.seq)
             elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
-                send_command(
-                    self.mavconn,
+                self.drone_send_command(
                     mavutil.mavlink.MAV_CMD_USER_4,
                     param1=4,
                     param2=command.position.latitude,
@@ -519,8 +548,7 @@ class OCS(Node):
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
             elif command.keep_out_zone.vehicle_type == VehicleType.TYPE_UAV:
-                send_command(
-                    self.mavconn,
+                self.drone_send_command(
                     mavutil.mavlink.MAV_CMD_USER_4,
                     param1=8,
                     param2=command.center.latitude,
@@ -534,14 +562,20 @@ class OCS(Node):
                 req = Empty.Request()
                 self.prop_all_clear_client.call_async(req)
             elif command.readiness_confirm.vehicle_id == "UAV":
-                send_command(self.mavconn, mavutil.mavlink.MAV_CMD_USER_4, param1=5)
+                self.drone_send_command(mavutil.mavlink.MAV_CMD_USER_4, param1=5)
         elif command.all_clear is not None:
             if command.all_clear.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
             elif command.all_clear.vehicle_type == VehicleType.TYPE_UAV:
-                send_command(self.mavconn, mavutil.mavlink.MAV_CMD_USER_4, param1=9)
+                self.drone_send_command(mavutil.mavlink.MAV_CMD_USER_4, param1=9)
                 self.rx_incident_ack("UAV", command.seq)
+
+    def drone_send_command(self, *args, **kwargs):
+        if self.mavconn is None:
+            print("Ignoring drone command: no drone connected")
+            return
+        send_command(self.mavconn, *args, **kwargs)
 
     def configure_messages(self):
         for TARGET in TARGET_MAV_TYPES:
@@ -726,6 +760,9 @@ class OCS(Node):
         self.drone_geofence_and_run_decl(self.course_geofence, 40)
 
     def send_drone_mission(self, mission):
+        if self.mavconn is None:
+            print("Ignoring drone mission: no drone connected")
+            return
         send_mission_message_wait_ack(self.mavconn, mission)
 
     def on_heartbeat(self, msg):
@@ -752,7 +789,7 @@ class OCS(Node):
         rep.sent_at.GetCurrentTime()
         self.rx_report_seqs["UUV"] += 1
         self.client.publish(
-            "robocommand/robotx/UUV/report",
+            f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/UUV/report",
             rep.SerializeToString(),
         )
 
@@ -761,13 +798,13 @@ class OCS(Node):
             team_id=self.get_parameter("team_id").get_parameter_value().string_value,
             vehicle_id="USV",
             seq=self.rx_report_seqs["USV"],
-            docking=DockingReport(bay_id=json.loads(msg)["bay_number"]),
+            docking=DockingReport(bay_id=json.loads(msg.data)["bay_number"]),
         )
 
         rep.sent_at.GetCurrentTime()
         self.rx_report_seqs["USV"] += 1
         self.client.publish(
-            "robocommand/robotx/USV/report",
+            f"robocommand/robotx/{self.get_parameter("team_id").get_parameter_value().string_value}/USV/report",
             rep.SerializeToString(),
         )
 

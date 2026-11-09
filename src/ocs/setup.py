@@ -1,11 +1,15 @@
-from setuptools import find_packages, setup
+from setuptools import find_namespace_packages, setup
 
 package_name = "ocs"
 
 setup(
     name=package_name,
     version="0.0.0",
-    packages=find_packages(exclude=["test"]),
+    # namespace packages so folders without __init__.py (e.g. the InvestiGator
+    # submodule and proto/robotx) are still installed
+    packages=find_namespace_packages(
+        include=["ocs", "ocs.proto*", "ocs.InvestiGator", "ocs.InvestiGator.src*"]
+    ),
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
