@@ -300,7 +300,9 @@ class OCS(Node):
         # Drone (UAV) link is optional: if the radio isn't plugged in (or
         # mavlink_port is set to ""), keep running without it.
         self.mavconn = None
-        mavlink_port = self.get_parameter("mavlink_port").get_parameter_value().string_value
+        mavlink_port = (
+            self.get_parameter("mavlink_port").get_parameter_value().string_value
+        )
         if mavlink_port:
             try:
                 self.mavconn = MAVConnection(
@@ -768,6 +770,13 @@ class OCS(Node):
     def on_heartbeat(self, msg):
         self.rx_heartbeat(
             vehicle_id=msg.type,
+            # state=RoboState.Value(f"STATE_{msg.state}"),
+            position=LatLng(latitude=msg.position.y, longitude=msg.position.x),
+            spd_mps=msg.speed,
+            heading_deg=msg.heading,
+            roll_deg=msg.roll,
+            pitch_deg=msg.pitch,
+            depth_m=msg.depth,
             state=RobotState.Value(f"STATE_{msg.state}"),
             current_task=RxTask.Value(f"TASK_{msg.task}"),
             vehicle_type=VehicleType.Value(f"TYPE_{msg.type}"),
