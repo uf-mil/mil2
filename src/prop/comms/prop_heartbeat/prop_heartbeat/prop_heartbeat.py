@@ -21,6 +21,9 @@ form of the same thing. Whichever said something last is the state, which is
 MANUAL until one says otherwise. Heartbeat.state is a string: it must never be
 given a bool.
 
+prop-auto and prop-manual set /manual_control, piss_tower passes it on to the RF
+kill board, and /prop/state is the state piss_tower makes of what the board says
+back. The state is MANUAL until piss_tower says otherwise.
 A mission says which task it is on with /mission/current_task, latched, and the
 change into a task is what starts that task's attempt on RoboCommand.
 """
@@ -33,7 +36,7 @@ from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from sensor_msgs.msg import Imu, NavSatFix, NavSatStatus
-from std_msgs.msg import Bool, String
+from std_msgs.msg import String
 
 LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
 STALE_AFTER = 2.0  # s
@@ -82,7 +85,7 @@ class PropHeartbeat(Node):
             self.get_logger().warn(f"ignoring unknown /prop/state {msg.data!r}")
 
     def on_rf_manual(self, msg):
-        self.state = "MANUAL" if msg.data else "AUTO"
+        self.state = msg.data
 
     def on_task(self, msg):
         self.task = msg.data

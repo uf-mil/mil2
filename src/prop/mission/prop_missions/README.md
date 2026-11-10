@@ -5,17 +5,17 @@ The boat's RobotX 2026 missions: `safe_passage` (Task 1) and `docking_mission`
 
 ## A run, start to finish
 
-On the boat, in this order:
+On the boat:
 
 ```sh
-ros2 launch prop_bringup boat.launch.py            # gps_topic:=... if not /gps/fix
-ros2 launch prop_vision cameras.launch.py model:=<weights.pt> publish_image:=true
-ros2 launch prop_fusion fusion.launch.py           # labelled_objects
-ros2 launch prop_missions safe_passage.launch.py   # waits for RunStart
-ros2 launch prop_missions docking.launch.py        # waits for the OCS
+ros2 launch prop_bringup behold.launch.py          # model:=... if not ~/buoy_buoy10-13.pt
 prop-start-localization
 start-controller                                   # holds position
 ```
+
+`behold.launch.py` starts `boat.launch.py`, the cameras, fusion, `safe_passage`
+(waits for RunStart) and `docking_mission` (waits for the OCS). `perception:=false`
+or `missions:=false` leaves those out, to run them in their own terminals.
 
 On the OCS laptop, after `pip install -r requirements.txt` (the RoboCommand
 messages need protobuf 7.36.1), with the course's RoboCommand address
