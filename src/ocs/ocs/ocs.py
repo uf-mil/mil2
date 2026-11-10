@@ -493,6 +493,7 @@ class OCS(Node):
                 print("mismatched RunStart")
                 return
 
+            print("Got RunStart")
             self.current_run_id = command.run_start.run_id
 
             sub_mission = String()
@@ -504,6 +505,8 @@ class OCS(Node):
             dock_ocs_command = String()
             dock_ocs_command.data = "START"
             self.dock_ocs_command_publisher.publish(dock_ocs_command)
+
+            self.send_drone_mission(12)  # drone loiters at 5m for 120s
 
         elif command.assistance_request is not None:
             if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
