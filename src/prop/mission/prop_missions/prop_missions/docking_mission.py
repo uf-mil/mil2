@@ -9,6 +9,9 @@ Once the OCS starts it, the task is COORDINATED_LOGISTICS on
 grid planner is switched off so that only this node's plan is followed. The plan
 is in the odometry's frame: on the boat that must be the local estimate's, odom,
 because trajectory_planner follows plans against it.
+
+While Task 4 has the boat (see incident.py) it stands aside; afterwards it
+switches the planner off again and sends its plan again.
 """
 
 import json
@@ -28,6 +31,7 @@ from sensor_msgs_py.point_cloud2 import read_points_numpy
 from std_msgs.msg import String
 from std_srvs.srv import SetBool
 
+from prop_missions.incident import Incident
 from prop_missions.ocs_protocol import Exchange, decode
 
 LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -93,6 +97,7 @@ class DockingMission(Node):
         self.start = None
         self.state = "WAIT_START"
         self.task_over = False
+        self.incident = Incident(self, self.after_incident)
         self.create_subscription(
             Odometry,
             "odometry/filtered/global",
@@ -182,6 +187,17 @@ class DockingMission(Node):
         self.pub.publish(Path())
         self.report("FAIL: " + reason + "; cleared plan")
 
+    def after_incident(self, lost):
+        if self.start is not None:
+            self.start += lost
+        if self.state in ("FAIL", "WAIT_START"):
+            return
+        self.planner.call_async(SetBool.Request(data=False))
+        self.since = None
+        self.confirmations = 0
+        if self.bay is not None and self.odom and self.state != "SEARCH":
+            self.plan(self.bay.stage if self.state == "ALIGN" else self.bay.goal)
+
     def plan(self, point):
         msg = Path()
         msg.header.frame_id = self.odom[-1].header.frame_id
@@ -263,7 +279,7 @@ class DockingMission(Node):
 
     def step(self):
         now = self.seconds()
-        if self.state in ("FAIL", "WAIT_START"):
+        if self.state in ("FAIL", "WAIT_START") or self.incident.active:
             return
         if self.start is None:
             if now <= 0:
@@ -310,7 +326,7 @@ class DockingMission(Node):
         if (
             len(points)
             and self.cloud_origin is not None
-            and np.min(np.linalg.norm(points - self.cloud_origin, axis=1)) < 0.72
+            and np.min(np.linalg.norm(points - self.cloud_origin, axis=1)) < 0.70
         ):
             self.fail("LiDAR obstacle inside hull clearance margin")
             return

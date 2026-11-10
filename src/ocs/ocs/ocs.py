@@ -45,6 +45,7 @@ from ocs.proto import (
     IncidentAck,
     LatLng,
     PipelineSurveyReport,
+    ReadinessReport,
     RobotState,
     RunDeclaration,
     RxCommand,
@@ -311,6 +312,13 @@ class OCS(Node):
         )
 
         self.prop_all_clear_client = self.create_client(Empty, "/latlon_goal/all_clear")
+        # boat_timeout's state; HOLDING means it is there, so report readiness.
+        self.create_subscription(
+            String,
+            "/latlon_goal/state",
+            self.on_assistance_state,
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
 
         # The course boundary, for the boat's survey; latched so a boat that
         # comes up after the course arrives still gets it.
@@ -596,6 +604,7 @@ class OCS(Node):
         elif body == "assistance_request":
             request = command.assistance_request
             if request.vehicle_type == VehicleType.TYPE_USV:
+                self.assistance_seq = command.seq
                 msg = GeoPose()
 
                 point = GeoPoint()
@@ -859,6 +868,18 @@ class OCS(Node):
             vehicle_type=VehicleType.Value(f"TYPE_{msg.type}"),
             **fields,
         )
+
+    assistance_seq = None
+    assistance_state = "IDLE"
+
+    def on_assistance_state(self, msg):
+        arrived = msg.data == "HOLDING" and self.assistance_state != "HOLDING"
+        self.assistance_state = msg.data
+        if arrived and self.assistance_seq is not None:
+            self.rx_report(
+                "USV",
+                readiness=ReadinessReport(command_seq=self.assistance_seq),
+            )
 
     def on_safe_passage_report(self, msg):
         self.rx_report("USV", safe_passage=safe_passage_report(msg))

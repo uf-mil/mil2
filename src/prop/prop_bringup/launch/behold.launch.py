@@ -13,6 +13,8 @@ Started here:
     fusion.launch.py       classified_markers and labelled_objects
     safe_passage           waits for RunStart from the OCS
     docking_mission        waits for the OCS's START
+    boat_timeout           Task 4: goes where an AssistanceRequest says, and
+                           the missions stand aside until it is back
     survey                 only with survey:=true; waits for /survey/start
 
 Nothing moves until it is told to. Afterwards, as with boat.launch.py:
@@ -35,6 +37,7 @@ from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDesc
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 
 
 def include(pkg, launch_file, switch=None):
@@ -65,7 +68,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "missions",
                 default_value="true",
-                description="Start safe_passage and docking_mission.",
+                description="Start safe_passage, docking_mission and boat_timeout.",
             ),
             DeclareLaunchArgument(
                 "survey",
@@ -87,6 +90,12 @@ def generate_launch_description():
             include("prop_fusion", "fusion.launch.py", "perception"),
             include("prop_missions", "safe_passage.launch.py", "missions"),
             include("prop_missions", "docking.launch.py", "missions"),
+            Node(
+                package="boat_timeout",
+                executable="boat_timeout",
+                output="screen",
+                condition=IfCondition(LaunchConfiguration("missions")),
+            ),
             include("prop_missions", "survey.launch.py", "survey"),
         ],
     )
