@@ -25,12 +25,26 @@ def generate_launch_description():
         output="screen",
     )
 
-    # Reuse the already-built Subjugator yolo_ros stack; do not rebuild it here.
+    detection_node = Node(
+        package="object_classifier",
+        executable="detection_node.py",
+        name="detection_node",
+        parameters=[
+            {
+                "image_topic": LaunchConfiguration("image_topic"),
+                "undistorted_image_topic": LaunchConfiguration("undistorted_image_topic"),
+                "yolo_detections_topic": LaunchConfiguration("yolo_detections_topic"),
+            },
+        ],
+        output="screen",
+    )
+
+    # Reuse the already-built Subjugator yolo_ros stack (ONNX on CPU).
     yolo_node = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(yolo_launch),
         launch_arguments={
             "model": LaunchConfiguration("model"),
-            "input_image_topic": LaunchConfiguration("input_image_topic"),
+            "input_image_topic": LaunchConfiguration("undistorted_image_topic"),
             "image_reliability": LaunchConfiguration("image_reliability"),
             "namespace": LaunchConfiguration("namespace"),
             "device": LaunchConfiguration("device"),
@@ -57,16 +71,24 @@ def generate_launch_description():
             DeclareLaunchArgument("camera_source", default_value=""),
             DeclareLaunchArgument(
                 "model",
-                default_value="/prop/prop_vision/models/best.pt",
-                description="Path to the YOLO .pt weights",
+                default_value="/prop/prop_vision/models/best.onnx",
+                description="Path to YOLO ONNX weights (CPU / ONNX Runtime)",
             ),
             DeclareLaunchArgument(
-                "input_image_topic",
+                "image_topic",
                 default_value="/cam/image/raw",
+            ),
+            DeclareLaunchArgument(
+                "undistorted_image_topic",
+                default_value="/cam/image/undistorted",
+            ),
+            DeclareLaunchArgument(
+                "yolo_detections_topic",
+                default_value="/yolo/tracking",
             ),
             DeclareLaunchArgument("image_reliability", default_value="1"),
             DeclareLaunchArgument("namespace", default_value="yolo"),
-            DeclareLaunchArgument("device", default_value="cuda:0"),
+            DeclareLaunchArgument("device", default_value="cpu"),
             DeclareLaunchArgument("enable", default_value="True"),
             DeclareLaunchArgument("half", default_value="False"),
             DeclareLaunchArgument("threshold", default_value="0.5"),
@@ -76,6 +98,7 @@ def generate_launch_description():
             DeclareLaunchArgument("use_camera", default_value="true"),
             DeclareLaunchArgument("rqt", default_value="true"),
             frame_capture_node,
+            detection_node,
             yolo_node,
             rqt_node,
         ],

@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-# generate detections on buoys from camera frames
+# Undistort camera frames for yolo_ros, then attach range estimates to its detections.
 import os
 
 import rclpy
 from ament_index_python.packages import get_package_share_directory
 from cv_bridge import CvBridge
-from detection import Detector
 from localization import Localizer
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy
+from rclpy.qos import QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
 from sensor_msgs.msg import Image
-from tracking import Tracker
 from undistort import Undistorter
 from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
+from yolo_msgs.msg import DetectionArray
 
 
 class DetectionNode(Node):
@@ -25,29 +24,30 @@ class DetectionNode(Node):
             "cam.yaml",
         )
         self.declare_parameter("config_file", default_config)
-        self.declare_parameter("model_path", os.path.expanduser("~/buoy_buoy10-13.pt"))
-        self.declare_parameter("conf", 0.25)
-        self.declare_parameter("image_topic", "camera/img_raw")
-
-        model_path = self.get_parameter("model_path").value
-        if not model_path:
-            raise RuntimeError("model_path parameter is required")
-        conf = self.get_parameter("conf").value
+        self.declare_parameter("image_topic", "cam/image/raw")
+        self.declare_parameter("undistorted_image_topic", "cam/image/undistorted")
+        self.declare_parameter("yolo_detections_topic", "yolo/tracking")
 
         self.undistorter = Undistorter(self.get_parameter("config_file").value)
-        self.detector = Detector(model_path, conf=conf)
-        self.tracker = Tracker(self.detector.model, conf=conf)
         self.localizer = Localizer()
         self.bridge = CvBridge()
 
+        qos = QoSProfile(
+            depth=1,
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            history=QoSHistoryPolicy.KEEP_LAST,
+        )
+
+        self.undistorted_pub = self.create_publisher(
+            Image,
+            self.get_parameter("undistorted_image_topic").value,
+            qos,
+        )
         self.detect_publisher = self.create_publisher(
             Detection2DArray,
             "camera/detections",
             10,
         )
-        self.img_publisher = self.create_publisher(Image, "camera/detections/image", 10)
-
-        qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
 
         self.create_subscription(
             Image,
@@ -55,33 +55,50 @@ class DetectionNode(Node):
             self.on_img,
             qos,
         )
+        self.create_subscription(
+            DetectionArray,
+            self.get_parameter("yolo_detections_topic").value,
+            self.on_yolo_detections,
+            10,
+        )
         self.get_logger().info(
-            f"loaded {model_path}, classes: {self.detector.model.names}",
+            "undistorting "
+            f"{self.get_parameter('image_topic').value} -> "
+            f"{self.get_parameter('undistorted_image_topic').value}; "
+            "localizing "
+            f"{self.get_parameter('yolo_detections_topic').value}",
         )
 
     def on_img(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+        corrected = self.undistorter.apply(frame)
+        out = self.bridge.cv2_to_imgmsg(corrected, encoding="bgr8")
+        out.header = msg.header
+        self.undistorted_pub.publish(out)
 
-        corrected = self.undistorter.apply(frame)  # undistort
-        tracks = self.tracker.track(corrected)  # detect and track
+    def on_yolo_detections(self, msg):
+        if self.undistorter.intrinsics is None:
+            return
 
-        for t in tracks:  # depth estimation
-            t.update(self.localizer.locate(t, self.undistorter.intrinsics))
+        tracks = []
+        for det in msg.detections:
+            cx = det.bbox.center.position.x
+            cy = det.bbox.center.position.y
+            w = det.bbox.size.x
+            h = det.bbox.size.y
+            track = {
+                "box": [cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0],
+                "label": det.class_name,
+                "conf": det.score,
+                "track_id": det.id or det.class_name,
+            }
+            track.update(self.localizer.locate(track, self.undistorter.intrinsics))
+            tracks.append(track)
 
         self.detect_publisher.publish(self.to_msg(tracks, msg.header))
 
-        annotated = self.bridge.cv2_to_imgmsg(
-            self.detector.draw(corrected, tracks),
-            encoding="bgr8",
-        )
-        annotated.header = msg.header
-
-        # publish
-        self.img_publisher.publish(annotated)
-
     @staticmethod
     def to_msg(tracks, header):
-        # transform annotations dictionary into Detection2DArray
         out = Detection2DArray(header=header)
         for t in tracks:
             x1, y1, x2, y2 = t["box"]
