@@ -495,9 +495,15 @@ class OCS(Node):
 
             self.current_run_id = command.run_start.run_id
 
-            self.sub_mission_publisher.publish("PingerSurveyMission")
+            sub_mission = String()
+            sub_mission.data = "PingerSurveyMission"
+            self.sub_mission_publisher.publish(sub_mission)
+
             # TODO probably want to start prop on task 1 before 3 here
-            self.dock_ocs_command_publisher.publish("START")
+
+            dock_ocs_command = String()
+            dock_ocs_command.data = "START"
+            self.dock_ocs_command_publisher.publish(dock_ocs_command)
 
         elif command.assistance_request is not None:
             if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
