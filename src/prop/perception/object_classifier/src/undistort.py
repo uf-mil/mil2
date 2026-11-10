@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+
 from utils import CAM_CONFIG_PATH, load_config
 
 

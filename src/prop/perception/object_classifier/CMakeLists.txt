@@ -3,7 +3,9 @@ project(object_classifier)
 
 find_package(ament_cmake REQUIRED)
 
-install(PROGRAMS src/frame_capture_node.py src/detection_node.py
+install(PROGRAMS
+        src/frame_capture_node.py
+        src/detection_node.py
         DESTINATION lib/${PROJECT_NAME})
 
 install(
