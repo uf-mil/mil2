@@ -92,6 +92,7 @@ class DockingMission(Node):
         self.last_log = -100.0
         self.start = None
         self.state = "WAIT_START"
+        self.task_over = False
         self.create_subscription(
             Odometry,
             "odometry/filtered/global",
@@ -141,6 +142,14 @@ class DockingMission(Node):
         outgoing = self.exchange.outgoing(self.seconds())
         if outgoing is not None:
             self.ocs_result.publish(String(data=json.dumps(outgoing)))
+        if (
+            self.state == "DOCKED"
+            and self.exchange.receipt in ("RECEIVED", "TIMED_OUT")
+            and not self.task_over
+        ):
+            self.task_over = True
+            self.task_pub.publish(String(data="NONE"))
+            self.report(f"task over: bay result {self.exchange.receipt}")
         msg = dict(
             self.exchange.envelope("status"),
             state=self.state,
