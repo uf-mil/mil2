@@ -27,6 +27,7 @@ setup(
             "fake_field = prop_missions.fake_field:main",
             "mock_ocs = prop_missions.mock_ocs:main",
             "safe_passage = prop_missions.safe_passage:main",
+            "survey = prop_missions.survey:main",
         ],
     },
 )

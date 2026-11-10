@@ -7,6 +7,11 @@ RunDeclaration, prints every report, and sends RunStart once every declared
 vehicle has reported AUTO, as RoboCommand does.
 
     PYTHONPATH=src/ocs python3 scripts/robocommand_standin.py [--host H] [--port 1883]
+
+--corners gives the course boundary as lat,lon pairs in order, for example the
+practice area's, instead of the default square in Marina Bay:
+
+    ... robocommand_standin.py --corners 29.6481,-82.3438 29.6481,-82.3430 ...
 """
 
 import argparse
@@ -40,6 +45,13 @@ def main():
     parser.add_argument("--port", type=int, default=1883)
     parser.add_argument("--team", default="UFLO")
     parser.add_argument("--pinger", type=int, default=30000)
+    parser.add_argument(
+        "--corners",
+        nargs="+",
+        metavar="LAT,LON",
+        type=lambda pair: tuple(float(v) for v in pair.split(",")),
+        default=CORNERS,
+    )
     args = parser.parse_args()
 
     declaration = None
@@ -95,7 +107,9 @@ def main():
     course = RxCourse(
         course_id="standin",
         pinger_freq_hz=args.pinger,
-        corners=[LatLng(latitude=a, longitude=b) for a, b in CORNERS + CORNERS[:1]],
+        corners=[
+            LatLng(latitude=a, longitude=b) for a, b in args.corners + args.corners[:1]
+        ],
     )
     course.sent_at.GetCurrentTime()
     client.publish("robocommand/robotx/course", course.SerializeToString(), retain=True)

@@ -15,7 +15,7 @@ from pathlib import Path
 import paho.mqtt.client as mqtt
 import pymavlink.mavutil as mavutil
 import rclpy
-from geographic_msgs.msg import GeoPoint, GeoPose
+from geographic_msgs.msg import GeoPath, GeoPoint, GeoPose, GeoPoseStamped
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import Message
 from mil_msgs.msg import AcousticPingerConfig
@@ -307,6 +307,14 @@ class OCS(Node):
 
         self.prop_all_clear_client = self.create_client(Empty, "/latlon_goal/all_clear")
 
+        # The course boundary, for the boat's survey; latched so a boat that
+        # comes up after the course arrives still gets it.
+        self.course_boundary_publisher = self.create_publisher(
+            GeoPath,
+            "/prop/course_boundary",
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
+
         self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
         self.client.message_callback_add("robocommand/robotx/course", self.on_course)
@@ -455,6 +463,7 @@ class OCS(Node):
             return
 
         self.course_received = True
+        self.course_boundary_publisher.publish(course_boundary(course))
 
         config = AcousticPingerConfig()
         config.frequency = course.pinger_freq_hz
@@ -908,6 +917,21 @@ def usv_heartbeat_fields(msg):
     if math.isfinite(msg.speed):
         fields["spd_mps"] = msg.speed
     return fields
+
+
+def course_boundary(course):
+    """RxCourse's corners, the course boundary, as a GeoPath."""
+    path = GeoPath()
+    path.header.frame_id = "wgs84"
+    for corner in course.corners:
+        pose = GeoPoseStamped()
+        pose.pose.position = GeoPoint(
+            latitude=corner.latitude,
+            longitude=corner.longitude,
+        )
+        pose.pose.orientation.w = 1.0
+        path.poses.append(pose)
+    return path
 
 
 def safe_passage_report(msg):

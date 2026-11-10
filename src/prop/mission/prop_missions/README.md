@@ -73,6 +73,30 @@ ros2 launch prop_missions safe_passage.launch.py
 it by hand with
 `ros2 topic pub --once /prop/run_start std_msgs/msg/UInt32 "{data: 0}"`.
 
+## Survey
+
+`survey` drives back and forth over an area, and the grid planner steers round
+whatever is in the way. With `area: course` (the default) it surveys inside the
+course boundary: RoboCommand sends the OCS its corners, the OCS passes them on
+`/prop/course_boundary`, and the lanes keep `margin` inside them. `boundary` in
+`config/survey.yaml` sets the corners by hand instead. With `area: here` it
+surveys a rectangle from the boat.
+
+Positions are reached the way `boat_timeout` reaches a lat/lon: through
+`/fromLL` into map, sent to the planner in odom, judged in map. So it needs
+localization started.
+
+```sh
+ros2 launch prop_missions survey.launch.py
+ros2 param set /survey spacing 8.0                      # optional, before starting
+ros2 service call /survey/start std_srvs/srv/Trigger
+ros2 service call /survey/stop std_srvs/srv/Trigger     # hold where it is
+```
+
+Nothing moves until `~/start`, which also turns the planner on. The pattern is
+on `/survey/route` for RViz. Waypoints inside an obstacle are skipped, and so is
+one not reached in `goal_timeout`.
+
 ## Docking
 
 `docking_mission` owns the docking state machine. It uses the

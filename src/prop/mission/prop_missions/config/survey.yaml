@@ -1,0 +1,42 @@
+---
+survey:
+  ros__parameters:
+    # course: inside the course boundary the OCS forwards from RoboCommand, or
+    # inside boundary below if it is set. here: a rectangle from the boat.
+    area: "course"
+
+    # [lat, lon, lat, lon, ...], three corners or more, in order. [0.0, 0.0]
+    # uses the OCS's boundary instead.
+    boundary: [0.0, 0.0]
+
+    # How far inside the boundary the lanes stay.
+    margin: 5.0  # m
+
+    # area here: length ahead of the boat when ~/start is called, width to side
+    # (port or starboard).
+    length: 30.0  # m
+    width: 20.0  # m
+    side: "starboard"
+
+    # Lanes at most spacing apart, cut into waypoints at most step apart. The
+    # lidar sees about 10 m to each side.
+    spacing: 10.0  # m
+    step: 5.0  # m
+
+    # A waypoint with an occupied cell this close is skipped. occupied should
+    # match the planner's.
+    clearance: 1.5  # m
+    occupied: 60
+
+    # A waypoint is reached within reach, judged in map, and abandoned after
+    # goal_timeout. The goal is sent again when odom drifts it more than
+    # drift_threshold, as boat_timeout does.
+    reach: 1.5  # m
+    drift_threshold: 0.7  # m
+    goal_timeout: 60.0  # s
+
+    # Drive back to where the survey started once it is done.
+    return_home: true
+
+    map_frame: "map"
+    odom_frame: "odom"
