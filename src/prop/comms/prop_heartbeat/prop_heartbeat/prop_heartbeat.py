@@ -63,7 +63,7 @@ class PropHeartbeat(Node):
         self.create_subscription(Imu, "imu/data", self.on_imu, 10)
         self.create_subscription(Odometry, "/odometry/filtered/local", self.on_odom, 10)
         self.create_subscription(String, "/prop/state", self.on_state, LATCHED)
-        self.create_subscription(Bool, "/rf_kill/manual", self.on_rf_manual, LATCHED)
+        #self.create_subscription(Bool, "/rf_kill/manual", self.on_rf_manual, LATCHED)
         self.create_subscription(String, "/mission/current_task", self.on_task, LATCHED)
         self.create_timer(0.1, self.publish)
 
