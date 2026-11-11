@@ -11,7 +11,7 @@ def generate_launch_description():
                 name="front_cam",
                 parameters=[
                     {
-                        "camera-id": "/dev/video2",
+                        "camera-id": "/dev/video0",
                         "camera-topic": "front_cam/image_raw",
                     },
                 ],

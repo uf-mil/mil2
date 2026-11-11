@@ -44,7 +44,7 @@ class FrontCamDriver(Node):
         # say params exist
         self.declare_parameter(
             "camera-id",
-            "/dev/video2",
+            "/dev/video0",
         )
         self.declare_parameter("camera-topic", "front_cam/image_raw")
 
