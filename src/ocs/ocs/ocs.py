@@ -45,7 +45,6 @@ from ocs.proto import (
     IncidentAck,
     LatLng,
     PipelineSurveyReport,
-    ReadinessReport,
     RobotState,
     RunDeclaration,
     RxCommand,
@@ -54,6 +53,7 @@ from ocs.proto import (
     RxRequest,
     RxTask,
     SafePassageReport,
+    ReadinessReport,
     TaskTier,
     VehicleType,
 )
@@ -311,14 +311,8 @@ class OCS(Node):
             10,
         )
 
+        self.create_subscription(UInt32, "/prop/readiness_report", self.on_readiness, 10)
         self.prop_all_clear_client = self.create_client(Empty, "/latlon_goal/all_clear")
-        # boat_timeout's state; HOLDING means it is there, so report readiness.
-        self.create_subscription(
-            String,
-            "/latlon_goal/state",
-            self.on_assistance_state,
-            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
-        )
 
         # The course boundary, for the boat's survey; latched so a boat that
         # comes up after the course arrives still gets it.
@@ -377,6 +371,9 @@ class OCS(Node):
     def tier(self, task):
         name = self.get_parameter(f"task{task}_tier").value
         return TaskTier.Value(f"TIER_{name}")
+
+    def on_readiness(self, msg):
+        self.rx_readiness_report("USV", self.usv_command_seq)
 
     def connect_drone(self):
         """Open the drone's radio. Without it, the OCS runs on without the drone."""
@@ -470,8 +467,12 @@ class OCS(Node):
     def rx_incident_ack(self, vehicle_id, command_seq):
         self.rx_report(vehicle_id, incident_ack=IncidentAck(command_seq=command_seq))
 
+    def rx_readiness_report(self, vehicle_id, command_seq):
+        self.rx_report(vehicle_id, readiness=ReadinessReport(command_seq=command_seq))
+    
     def to_polygon(self, coords):
         return Polygon([(p.longitude, p.latitude) for p in coords])
+
 
     course_geofence = []
     geofence = []
@@ -489,6 +490,10 @@ class OCS(Node):
             return
 
         self.course_received = True
+        print("Course corners")
+        for c in course.corners: 
+            print(c.latitude, " ", c.longitude)
+
         self.course_boundary_publisher.publish(course_boundary(course))
 
         config = AcousticPingerConfig()
@@ -512,6 +517,7 @@ class OCS(Node):
                 LatLng(latitude=lat, longitude=lon)
                 for lon, lat in union.exterior.coords
             ]
+
 
         self.drone_geofence_and_run_decl(self.course_geofence, 40)
 
@@ -604,7 +610,6 @@ class OCS(Node):
         elif body == "assistance_request":
             request = command.assistance_request
             if request.vehicle_type == VehicleType.TYPE_USV:
-                self.assistance_seq = command.seq
                 msg = GeoPose()
 
                 point = GeoPoint()
@@ -614,6 +619,7 @@ class OCS(Node):
                 msg.position = point
                 self.prop_emergency_publisher.publish(msg)
                 self.rx_incident_ack("USV", command.seq)
+                self.usv_command_seq = command.seq
             elif request.vehicle_type == VehicleType.TYPE_UAV:
                 self.drone_send_command(
                     mavutil.mavlink.MAV_CMD_USER_4,
@@ -869,18 +875,6 @@ class OCS(Node):
             **fields,
         )
 
-    assistance_seq = None
-    assistance_state = "IDLE"
-
-    def on_assistance_state(self, msg):
-        arrived = msg.data == "HOLDING" and self.assistance_state != "HOLDING"
-        self.assistance_state = msg.data
-        if arrived and self.assistance_seq is not None:
-            self.rx_report(
-                "USV",
-                readiness=ReadinessReport(command_seq=self.assistance_seq),
-            )
-
     def on_safe_passage_report(self, msg):
         self.rx_report("USV", safe_passage=safe_passage_report(msg))
 
@@ -984,7 +978,6 @@ def course_boundary(course):
             latitude=corner.latitude,
             longitude=corner.longitude,
         )
-        print(corner.latitude, " ", corner.longitude, "\n")
         pose.pose.orientation.w = 1.0
         path.poses.append(pose)
     return path
