@@ -107,8 +107,13 @@ class PropHeartbeat(Node):
             heartbeat.position.x = self.fix[1].longitude
             heartbeat.position.y = self.fix[1].latitude
 
+            # in course
             #heartbeat.position.x = 103.8548400
             #heartbeat.position.y = 1.2809600
+
+            # for t4
+            #heartbeat.position.x = 103.85502294718724
+            #heartbeat.position.y = 1.2811053770150949
 
         heartbeat.heading = heartbeat.roll = heartbeat.pitch = math.nan
         if self.fresh(self.imu):

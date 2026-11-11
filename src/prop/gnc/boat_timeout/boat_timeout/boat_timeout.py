@@ -36,7 +36,7 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from robot_localization.srv import FromLL
-from std_msgs.msg import String
+from std_msgs.msg import String, UInt32
 from std_srvs.srv import Empty, SetBool
 
 
@@ -52,8 +52,10 @@ class LatLonGoalNode(Node):
 
     def __init__(self):
         super().__init__("latlon_goal_node")
-
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+
+        self._readiness_pub = self.create_publisher(UInt32, "prop/readiness_report", latched)
+
         self._state_pub = self.create_publisher(String, "latlon_goal/state", latched)
         self._state = self.IDLE
         self._state_lock = threading.Lock()
@@ -233,6 +235,8 @@ class LatLonGoalNode(Node):
                         # never on arrival at the emergency coordinates.
                         self._current_task_pub.publish(String(data="NONE"))
                     else:
+                        le_msg = Unit32()
+                        self._readiness_pub.publish(le_msg)
                         self.get_logger().info(
                             f"Arrived at goal (dist={dist:.2f} m). Entering HOLDING state.",
                         )
