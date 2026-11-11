@@ -13,7 +13,13 @@ def drive(static_objects, kayak=None, flicker=False, seconds=2.0):
     With flicker, each static object is missing from every third scan, staggered.
     """
     heading = GyroHeading(kept_s=3.0)
-    vote = ObjectVote(window=1.0, match_gate=0.5, min_agreeing=3, agree_speed=0.3)
+    vote = ObjectVote(
+        heading,
+        window=1.0,
+        match_gate=0.5,
+        min_agreeing=3,
+        agree_speed=0.3,
+    )
     x = y = yaw = 0.0
     result = None
     for ms in range(int(seconds * 1000) + 1):
@@ -31,7 +37,7 @@ def drive(static_objects, kayak=None, flicker=False, seconds=2.0):
                 (kx, ky), (kvx, kvy) = kayak
                 objects.append((kx + kvx * t, ky + kvy * t))
             seen = [rotate(px - x, py - y, -yaw) for px, py in objects]
-            result = vote.update(t, seen, heading.at)
+            result = vote.update(t, seen)
         dx, dy = rotate(VX, VY, yaw)
         x, y, yaw = x + dx / 1000, y + dy / 1000, yaw + WZ / 1000
     return result
@@ -44,19 +50,19 @@ KAYAK = ((5.0, 10.0), (1.0, -0.5))
 def test_static_objects_give_our_velocity_while_turning():
     result = drive(BUOYS)
     assert (result.vx, result.vy) == pytest.approx((VX, VY), abs=0.01)
-    assert (result.agreeing, result.voters) == (4, 4)
+    assert result.agreeing == 4
 
 
 def test_objects_missing_from_some_scans_still_vote():
     result = drive(BUOYS, flicker=True)
     assert (result.vx, result.vy) == pytest.approx((VX, VY), abs=0.01)
-    assert result.agreeing == result.voters >= 3
+    assert result.agreeing >= 3
 
 
 def test_a_moving_object_is_outvoted_only_with_three_static_ones_in_view():
     result = drive(BUOYS[:3], KAYAK)
     assert (result.vx, result.vy) == pytest.approx((VX, VY), abs=0.01)
-    assert (result.agreeing, result.voters) == (3, 4)
+    assert result.agreeing == 3
     assert drive(BUOYS[:2], KAYAK) is None
 
 

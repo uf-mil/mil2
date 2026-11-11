@@ -58,7 +58,6 @@ class Vote:
     start: float
     end: float
     agreeing: int
-    voters: int
 
 
 def object_velocity(t0, p0, t1, p1, turned) -> tuple[float, float]:
@@ -77,11 +76,13 @@ class ObjectVote:
 
     def __init__(
         self,
+        heading: GyroHeading,
         window: float,
         match_gate: float,
         min_agreeing: int,
         agree_speed: float,
     ) -> None:
+        self._heading = heading
         self._window = window
         self._match_gate = match_gate
         self._min_agreeing = min_agreeing
@@ -89,21 +90,16 @@ class ObjectVote:
         self._tracks: dict[int, deque[tuple[float, tuple[float, float]]]] = {}
         self._next_id = 0
 
-    def update(
-        self,
-        t: float,
-        points: list[tuple[float, float]],
-        heading_at,
-    ) -> Vote | None:
-        """points are this scan's object centres in base_link; heading_at(t) is GyroHeading.at."""
-        heading = heading_at(t)
+    def update(self, t: float, points: list[tuple[float, float]]) -> Vote | None:
+        """points are this scan's object centres in base_link."""
+        heading = self._heading.at(t)
         if heading is None:
             return None
         for track_id in [
             k for k, track in self._tracks.items() if t - track[-1][0] > self._window
         ]:
             del self._tracks[track_id]
-        self._match(t, points, heading, heading_at)
+        self._match(t, points, heading)
 
         votes = []
         for track in self._tracks.values():
@@ -111,18 +107,18 @@ class ObjectVote:
                 track.popleft()
             t0, p0 = track[0]
             t1, p1 = track[-1]
-            start_heading = heading_at(t0)
+            start_heading = self._heading.at(t0)
             if t1 != t or t1 - t0 < self._window / 2 or start_heading is None:
                 continue
             votes.append((t0, object_velocity(t0, p0, t1, p1, heading - start_heading)))
         return self._tally(t, votes)
 
-    def _match(self, t, points, heading, heading_at) -> None:
+    def _match(self, t, points, heading) -> None:
         # Buoys drop out of single scans as the laser rings cross them, so a
         # track continues from its last sighting, not only from the last scan.
         previous = {}
         for track_id, track in self._tracks.items():
-            seen_heading = heading_at(track[-1][0])
+            seen_heading = self._heading.at(track[-1][0])
             if seen_heading is not None:
                 previous[track_id] = rotate(*track[-1][1], seen_heading - heading)
 
@@ -162,5 +158,4 @@ class ObjectVote:
             start=min(t0 for t0, _ in agreeing),
             end=t,
             agreeing=len(agreeing),
-            voters=len(votes),
         )

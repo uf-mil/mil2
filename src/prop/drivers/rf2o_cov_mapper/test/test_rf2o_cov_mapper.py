@@ -83,6 +83,7 @@ LIMITS = TrustLimits(
     full_trust_beams=50,
     max_scan_gap=0.5,
     max_clump_share=0.5,
+    agree_speed=0.3,
     max_reading_gap=0.6,
 )
 
@@ -104,8 +105,9 @@ def test_stale_and_repeated_readings_are_dropped():
 
 
 def test_one_dominant_object_lowers_trust_unless_the_objects_vouch_for_rf2o():
-    agree = Referee(end=0.0, agrees=True, gap=0.05, objects=4, vx=1.0, vy=0.0)
-    disagree = Referee(end=0.0, agrees=False, gap=0.6, objects=4, vx=1.0, vy=0.0)
+    vote = Vote(vx=1.0, vy=0.0, start=-1.0, end=0.0, agreeing=4)
+    agree = Referee(vote, gap=0.05)
+    disagree = Referee(vote, gap=0.6)
     assert judge(shares=(0.3, 0.77)) == "low trust: one object is 77% of the scan"
     assert judge(shares=(0.3, 0.77), referee=agree) == "full trust"
     assert (
@@ -120,11 +122,10 @@ def test_one_dominant_object_lowers_trust_unless_the_objects_vouch_for_rf2o():
 
 
 def test_referee_compares_rf2o_over_the_votes_own_window():
-    vote = Vote(vx=1.0, vy=0.0, start=10.0, end=11.0, agreeing=3, voters=4)
+    vote = Vote(vx=1.0, vy=0.0, start=10.0, end=11.0, agreeing=3)
     # Readings before the window must not count, and one wild reading inside it
     # must not carry the window off.
     readings = [(9.5, 5.0, 5.0), (10.2, 1.1, 0.0), (10.5, 9.0, 4.0), (10.8, 0.7, 0.0)]
-    referee = referee_from(vote, readings, agree_speed=0.3)
-    assert referee.agrees and referee.gap == pytest.approx(0.1)
-    assert not referee_from(vote, [(10.5, 0.5, 0.0)], agree_speed=0.3).agrees
-    assert referee_from(vote, readings[:1], agree_speed=0.3) is None
+    assert referee_from(vote, readings).gap == pytest.approx(0.1)
+    assert referee_from(vote, [(10.5, 0.5, 0.0)]).gap == pytest.approx(0.5)
+    assert referee_from(vote, readings[:1]) is None

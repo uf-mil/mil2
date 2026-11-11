@@ -25,6 +25,7 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import Imu, LaserScan
+from tf2_geometry_msgs import do_transform_pose
 from tf2_ros import Buffer, TransformException, TransformListener
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -93,7 +94,7 @@ def sideways_speed(previous: Odometry, current: Odometry, dt: float) -> float:
     dy = current.pose.pose.position.y - previous.pose.pose.position.y
     turn = yaw_of(current) - yaw_of(previous)
     yaw = yaw_of(previous) + math.atan2(math.sin(turn), math.cos(turn)) / 2
-    return (-math.sin(yaw) * dx + math.cos(yaw) * dy) / dt
+    return rotate(dx, dy, -yaw)[1] / dt
 
 
 def stamp_ns(msg) -> int:
@@ -102,18 +103,14 @@ def stamp_ns(msg) -> int:
 
 @dataclass
 class Referee:
-    """What the object vote says about rf2o over the same stretch of time."""
+    """The object vote, and how far rf2o's median velocity over its window is from it [m/s]."""
 
-    end: float
-    agrees: bool
+    vote: Vote
     gap: float
-    objects: int
-    vx: float
-    vy: float
 
 
-def referee_from(vote: Vote, readings, agree_speed: float) -> Referee | None:
-    """Compare rf2o's median velocity over the vote's window with the vote [m/s].
+def referee_from(vote: Vote, readings) -> Referee | None:
+    """Compare rf2o's median velocity over the vote's window with the vote.
 
     The median, so one wild reading cannot carry the window away from the vote
     and drop the good readings that follow it; a steady drag still moves it.
@@ -125,15 +122,7 @@ def referee_from(vote: Vote, readings, agree_speed: float) -> Referee | None:
         return None
     vx = median(v[0] for v in inside)
     vy = median(v[1] for v in inside)
-    gap = math.hypot(vx - vote.vx, vy - vote.vy)
-    return Referee(
-        end=vote.end,
-        agrees=gap <= agree_speed,
-        gap=gap,
-        objects=vote.agreeing,
-        vx=vote.vx,
-        vy=vote.vy,
-    )
+    return Referee(vote, math.hypot(vx - vote.vx, vy - vote.vy))
 
 
 @dataclass
@@ -142,6 +131,7 @@ class TrustLimits:
     full_trust_beams: int
     max_scan_gap: float
     max_clump_share: float
+    agree_speed: float
     max_reading_gap: float
 
 
@@ -170,12 +160,13 @@ def verdict(
     if min(beams) < limits.min_beams:
         return "dropped: too few beams"
     if referee is not None:
-        if not referee.agrees:
-            return f"dropped: rf2o's last second is {referee.gap:.2f} m/s off what {referee.objects} objects say"
+        vote = referee.vote
+        if referee.gap > limits.agree_speed:
+            return f"dropped: rf2o's last second is {referee.gap:.2f} m/s off what {vote.agreeing} objects say"
         # The window can agree on average around one wild reading.
-        gap = math.hypot(velocity[0] - referee.vx, velocity[1] - referee.vy)
+        gap = math.hypot(velocity[0] - vote.vx, velocity[1] - vote.vy)
         if gap > limits.max_reading_gap:
-            return f"dropped: this reading is {gap:.2f} m/s off what {referee.objects} objects say"
+            return f"dropped: this reading is {gap:.2f} m/s off what {vote.agreeing} objects say"
     # Agreeing objects outrank the clump check: a dock fills the scan but does not move.
     if referee is None and max(shares) > limits.max_clump_share:
         return f"low trust: one object is {max(shares):.0%} of the scan"
@@ -244,12 +235,12 @@ class Rf2oCovarianceRelay(Node):
             full_trust_beams=param("full_trust_beams"),
             max_scan_gap=param("max_scan_gap"),
             max_clump_share=param("max_clump_share"),
+            agree_speed=param("agree_speed"),
             max_reading_gap=param("max_reading_gap"),
         )
         self._clump_range_jump = param("clump_range_jump")
         self._base_frame = param("base_frame")
         self._max_object_size = param("max_object_size")
-        self._agree_speed = param("agree_speed")
         self._max_vote_age = param("max_vote_age")
         self._frame_id = param("frame_id")
         self._child_frame_id = param("child_frame_id")
@@ -257,10 +248,11 @@ class Rf2oCovarianceRelay(Node):
         window = param("vote_window")
         self._heading = GyroHeading(kept_s=3 * window)
         self._vote = ObjectVote(
+            heading=self._heading,
             window=window,
             match_gate=param("match_gate"),
             min_agreeing=param("min_agreeing_objects"),
-            agree_speed=self._agree_speed,
+            agree_speed=self._limits.agree_speed,
         )
         self._readings: deque[tuple[float, float, float]] = deque()
         self._readings_kept_s = 2 * window
@@ -334,23 +326,16 @@ class Rf2oCovarianceRelay(Node):
                 throttle_duration_sec=5.0,
             )
             return
-        q = mount.transform.rotation
-        mount_yaw = math.atan2(
-            2 * (q.w * q.z + q.x * q.y),
-            1 - 2 * (q.y * q.y + q.z * q.z),
-        )
-        shift = mount.transform.translation
-
         points = []
         for box in boxes:
             if max(box.scale.x, box.scale.y) > self._max_object_size:
                 continue
-            x, y = rotate(box.pose.position.x, box.pose.position.y, mount_yaw)
-            points.append((x + shift.x, y + shift.y))
+            centre = do_transform_pose(box.pose, mount).position
+            points.append((centre.x, centre.y))
 
-        vote = self._vote.update(stamp_ns(boxes[0]) * 1e-9, points, self._heading.at)
+        vote = self._vote.update(stamp_ns(boxes[0]) * 1e-9, points)
         if vote is not None:
-            self._referee = referee_from(vote, self._readings, self._agree_speed)
+            self._referee = referee_from(vote, self._readings)
 
     def _on_odom(self, msg: Odometry) -> None:
         previous, self._previous = self._previous, msg
@@ -379,7 +364,7 @@ class Rf2oCovarianceRelay(Node):
                 self._readings.popleft()
 
         referee = self._referee
-        if referee is not None and abs(t - referee.end) > self._max_vote_age:
+        if referee is not None and abs(t - referee.vote.end) > self._max_vote_age:
             referee = None
         velocity = (msg.twist.twist.linear.x, msg.twist.twist.linear.y)
         result = verdict(dt, velocity, beams, shares, referee, self._limits)
@@ -422,7 +407,9 @@ class Rf2oCovarianceRelay(Node):
             "beams_previous": str(beams[0]),
             "beams_current": str(beams[1]),
             "largest_clump": "none" if None in shares else f"{max(shares):.2f}",
-            "objects_agreeing": "none" if referee is None else str(referee.objects),
+            "objects_agreeing": (
+                "none" if referee is None else str(referee.vote.agreeing)
+            ),
             "gap_to_objects": "none" if referee is None else f"{referee.gap:.3f}",
             "vx": f"{msg.twist.twist.linear.x:.3f}",
             "vy": f"{msg.twist.twist.linear.y:.3f}",
