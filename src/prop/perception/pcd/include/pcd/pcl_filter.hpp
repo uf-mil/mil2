@@ -25,7 +25,6 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <cmath>
-#include <optional>
 #include <string>
 
 #include <rclcpp/rclcpp.hpp>
@@ -91,13 +90,8 @@ class PclFilter : public rclcpp::Node, public PcdConstants
             return;
         }
 
-        auto const lidar_height = lidar_height_above_water(msg->header.frame_id);
-        if (!lidar_height)
-        {
-            return;
-        }
         auto filtered = apply_distance_filter(cloud);
-        filtered = apply_height_filter(filtered, msg->header, *lidar_height);
+        filtered = apply_height_filter(filtered, msg->header);
         filtered = apply_voxel(filtered);
 
         if (filtered->empty())
@@ -171,21 +165,6 @@ class PclFilter : public rclcpp::Node, public PcdConstants
         return out;
     }
 
-    // base_link sits on the waterline, so the lidar mount's height above it is its height above the water.
-    std::optional<double> lidar_height_above_water(std::string const &cloud_frame) const
-    {
-        try
-        {
-            return tf_buffer_->lookupTransform(kBaseFrame, cloud_frame, tf2::TimePointZero).transform.translation.z;
-        }
-        catch (tf2::TransformException const &ex)
-        {
-            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000, "no %s -> %s, dropping the cloud: %s", kBaseFrame,
-                                 cloud_frame.c_str(), ex.what());
-            return std::nullopt;
-        }
-    }
-
     tf2::Vector3 up_in_lidar(std_msgs::msg::Header const &cloud) const
     {
         tf2::Vector3 const level{ 0.0, 0.0, 1.0 };
@@ -230,15 +209,14 @@ class PclFilter : public rclcpp::Node, public PcdConstants
     }
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr apply_height_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr const &in,
-                                                            std_msgs::msg::Header const &cloud,
-                                                            double const lidar_height) const
+                                                            std_msgs::msg::Header const &cloud) const
     {
         tf2::Vector3 const up = up_in_lidar(cloud);
         pcl::PointCloud<pcl::PointXYZ>::Ptr out(new pcl::PointCloud<pcl::PointXYZ>);
         out->reserve(in->size());
         for (auto const &pt : *in)
         {
-            double const height = pt.x * up.x() + pt.y * up.y() + pt.z * up.z() + lidar_height;
+            double const height = pt.x * up.x() + pt.y * up.y() + pt.z * up.z() + lidar_height_;
             if (height >= min_height_above_water_ && height <= max_height_above_water_)
             {
                 out->push_back(pt);
@@ -271,8 +249,6 @@ class PclFilter : public rclcpp::Node, public PcdConstants
     }
 
     // ── Members ───────────────────────────────────────────────────────────────
-    static constexpr char const *kBaseFrame = "base_link";
-
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;

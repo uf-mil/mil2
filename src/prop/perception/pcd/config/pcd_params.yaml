@@ -18,6 +18,7 @@
     # Not via odom TF: the EKFs run two_d_mode, so odom is always level.
     min_height_above_water: 0.15  # [m]
     max_height_above_water: 10.0  # [m]
+    lidar_height: 0.67            # [m] above the waterline
     imu_topic: "/imu/data"
     # -1 if the IMU is turned 180 deg from its messages' frame_id. The real
     # bridge says "base_link" though prop.urdf mounts it turned; unverified.

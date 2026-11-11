@@ -43,6 +43,7 @@ class PcdConstants
     static constexpr double kDefaultMaxDistance = 30.0;
     static constexpr double kDefaultMinHeightAboveWater = 0.15;
     static constexpr double kDefaultMaxHeightAboveWater = 10.0;
+    static constexpr double kDefaultLidarHeight = 0.67;
     static constexpr double kDefaultMaxImuAge = 0.5;
     static constexpr double kDefaultVoxelLeafSize = 0.1;
     static constexpr double kDefaultClusterTolerance = 0.5;
@@ -72,6 +73,7 @@ class PcdConstants
         // ── Water-surface / height rejection ────────────────────────────────
         node->declare_parameter("min_height_above_water", kDefaultMinHeightAboveWater);
         node->declare_parameter("max_height_above_water", kDefaultMaxHeightAboveWater);
+        node->declare_parameter("lidar_height", kDefaultLidarHeight);
         node->declare_parameter<std::string>("imu_topic", "/imu/data");
         node->declare_parameter("imu_facing", 1);
         node->declare_parameter("max_imu_age", kDefaultMaxImuAge);
@@ -116,6 +118,7 @@ class PcdConstants
         max_distance_ = node->get_parameter("max_distance").as_double();
         min_height_above_water_ = node->get_parameter("min_height_above_water").as_double();
         max_height_above_water_ = node->get_parameter("max_height_above_water").as_double();
+        lidar_height_ = node->get_parameter("lidar_height").as_double();
         imu_topic_ = node->get_parameter("imu_topic").as_string();
         auto const facing = node->get_parameter("imu_facing").as_int();
         if (facing != 1 && facing != -1)
@@ -159,6 +162,9 @@ class PcdConstants
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
     double max_height_above_water_{
         kDefaultMaxHeightAboveWater
+    };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
+    double lidar_height_{
+        kDefaultLidarHeight
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
     std::string imu_topic_{
         "/imu/data"
