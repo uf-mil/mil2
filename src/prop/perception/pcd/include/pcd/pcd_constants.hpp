@@ -18,13 +18,6 @@
 namespace pcd
 {
 
-/// Which way the IMU's x/y axes point relative to the frame its messages are stamped with.
-enum class ImuFacing : int
-{
-    AsLabelled = 1,
-    TurnedAround = -1,
-};
-
 /**
  * @class PcdConstants
  * @brief Mixin base that declares and caches all perception parameters.
@@ -82,7 +75,7 @@ class PcdConstants
         node->declare_parameter("max_height_above_water", kDefaultMaxHeightAboveWater);
         node->declare_parameter("lidar_height", kDefaultLidarHeight);
         node->declare_parameter<std::string>("imu_topic", "/imu/data");
-        node->declare_parameter("imu_facing", static_cast<int>(ImuFacing::AsLabelled));
+        node->declare_parameter("imu_facing", 1);
         node->declare_parameter("max_imu_age", kDefaultMaxImuAge);
 
         // ── Voxel-grid down-sampling ─────────────────────────────────────────
@@ -132,7 +125,7 @@ class PcdConstants
         {
             throw std::invalid_argument("imu_facing must be 1 or -1");
         }
-        imu_facing_ = static_cast<ImuFacing>(facing);
+        imu_facing_ = static_cast<double>(facing);
         max_imu_age_ = node->get_parameter("max_imu_age").as_double();
         voxel_leaf_size_ = node->get_parameter("voxel_leaf_size").as_double();
         cluster_tolerance_ = node->get_parameter("cluster_tolerance").as_double();
@@ -176,8 +169,9 @@ class PcdConstants
     std::string imu_topic_{
         "/imu/data"
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
-    ImuFacing imu_facing_{
-        ImuFacing::AsLabelled
+    /// -1 if the IMU's x/y axes point opposite to the frame its messages are stamped with.
+    double imu_facing_{
+        1.0
     };  // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes,misc-non-private-member-variables-in-classes)
     double max_imu_age_{
         kDefaultMaxImuAge

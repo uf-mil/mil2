@@ -196,9 +196,8 @@ class PclFilter : public rclcpp::Node, public PcdConstants
             tf2::Quaternion imu_in_lidar;
             tf2::fromMsg(mount.transform.rotation, imu_in_lidar);
             tf2::Vector3 up_in_imu = tf2::quatRotate(imu_in_world.normalized().inverse(), level);
-            double const facing = static_cast<double>(static_cast<int>(imu_facing_));
-            up_in_imu.setX(facing * up_in_imu.x());
-            up_in_imu.setY(facing * up_in_imu.y());
+            up_in_imu.setX(imu_facing_ * up_in_imu.x());
+            up_in_imu.setY(imu_facing_ * up_in_imu.y());
             return tf2::quatRotate(imu_in_lidar, up_in_imu);
         }
         catch (tf2::TransformException const &ex)

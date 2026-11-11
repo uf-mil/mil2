@@ -2,7 +2,12 @@ import math
 
 import pytest
 from nav_msgs.msg import Odometry
-from rf2o_cov_mapper.rf2o_cov_mapper import beam_count, sideways_speed, verdict
+from rf2o_cov_mapper.rf2o_cov_mapper import (
+    TrustLimits,
+    beam_count,
+    sideways_speed,
+    verdict,
+)
 from sensor_msgs.msg import LaserScan
 
 
@@ -44,8 +49,11 @@ def test_straight_ahead_while_turning_is_not_sideways():
     )
 
 
+LIMITS = TrustLimits(min_beams=10, full_trust_beams=50, max_scan_gap=0.5)
+
+
 def judge(dt=0.1, beams=(90, 90)):
-    return verdict(dt, list(beams), min_beams=10, full_trust_beams=50, max_scan_gap=0.5)
+    return verdict(dt, list(beams), LIMITS)
 
 
 def test_trust_follows_the_sparser_of_the_two_matched_scans():

@@ -9,6 +9,7 @@ to record when checking the relay on the boat.
 """
 
 import math
+from dataclasses import dataclass
 
 import rclpy
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
@@ -53,7 +54,14 @@ def stamp_ns(msg) -> int:
     return Time.from_msg(msg.header.stamp).nanoseconds
 
 
-def verdict(dt, beams, min_beams, full_trust_beams, max_scan_gap) -> str:
+@dataclass
+class TrustLimits:
+    min_beams: int
+    full_trust_beams: int
+    max_scan_gap: float
+
+
+def verdict(dt, beams, limits: TrustLimits) -> str:
     """Why a reading is dropped, or which trust tier it gets.
 
     beams holds the counts of the two scans rf2o matched; None if one was not seen.
@@ -61,14 +69,14 @@ def verdict(dt, beams, min_beams, full_trust_beams, max_scan_gap) -> str:
     # When a scan match fails, rf2o still publishes: the previous estimate, with its stamp.
     if dt <= 0.0:
         return "dropped: repeated stamp"
-    if dt > max_scan_gap:
+    if dt > limits.max_scan_gap:
         return f"dropped: {dt:.1f} s since the last reading"
     if None in beams:
         return "dropped: no matching scan"
     # rf2o's estimate comes from matching two scans, so it is only as good as the sparser one.
-    if min(beams) < min_beams:
+    if min(beams) < limits.min_beams:
         return "dropped: too few beams"
-    return "full trust" if min(beams) >= full_trust_beams else "low trust"
+    return "full trust" if min(beams) >= limits.full_trust_beams else "low trust"
 
 
 class Rf2oCovarianceRelay(Node):
@@ -104,28 +112,31 @@ class Rf2oCovarianceRelay(Node):
         self.declare_parameter("frame_id", "")
         self.declare_parameter("child_frame_id", "")
 
-        self._pose_var = list(self.get_parameter("pose_variances").value)
-        self._twist_var = list(self.get_parameter("twist_variances").value)
-        self._sparse_twist_var = list(
-            self.get_parameter("sparse_twist_variances").value,
-        )
-        self._full_trust_beams = self.get_parameter("full_trust_beams").value
-        self._min_beams = self.get_parameter("min_beams").value
-        self._max_scan_gap = self.get_parameter("max_scan_gap").value
-        self._frame_id = self.get_parameter("frame_id").value
-        self._child_frame_id = self.get_parameter("child_frame_id").value
+        def param(name):
+            return self.get_parameter(name).value
 
-        self._beams_by_stamp: dict[int, int] = {}
+        self._pose_var = list(param("pose_variances"))
+        self._twist_var = list(param("twist_variances"))
+        self._sparse_twist_var = list(param("sparse_twist_variances"))
+        self._limits = TrustLimits(
+            min_beams=param("min_beams"),
+            full_trust_beams=param("full_trust_beams"),
+            max_scan_gap=param("max_scan_gap"),
+        )
+        self._frame_id = param("frame_id")
+        self._child_frame_id = param("child_frame_id")
+
+        self._scans_by_stamp: dict[int, int] = {}
         self._previous: Odometry | None = None
 
-        out_topic = self.get_parameter("output_topic").value
-        in_topic = self.get_parameter("input_topic").value
-        scan_topic = self.get_parameter("scan_topic").value
+        out_topic = param("output_topic")
+        in_topic = param("input_topic")
+        scan_topic = param("scan_topic")
 
         self._pub = self.create_publisher(Odometry, out_topic, 10)
         self._trust_pub = self.create_publisher(
             DiagnosticStatus,
-            self.get_parameter("trust_topic").value,
+            param("trust_topic"),
             10,
         )
         self.create_subscription(
@@ -141,23 +152,17 @@ class Rf2oCovarianceRelay(Node):
         )
 
     def _on_scan(self, scan: LaserScan) -> None:
-        self._beams_by_stamp[stamp_ns(scan)] = beam_count(scan)
-        while len(self._beams_by_stamp) > SCANS_KEPT:
-            del self._beams_by_stamp[next(iter(self._beams_by_stamp))]
+        self._scans_by_stamp[stamp_ns(scan)] = beam_count(scan)
+        while len(self._scans_by_stamp) > SCANS_KEPT:
+            del self._scans_by_stamp[next(iter(self._scans_by_stamp))]
 
     def _on_odom(self, msg: Odometry) -> None:
         previous, self._previous = self._previous, msg
         if previous is None:
             return
         dt = (stamp_ns(msg) - stamp_ns(previous)) * 1e-9
-        beams = [self._beams_by_stamp.get(stamp_ns(m)) for m in (previous, msg)]
-        result = verdict(
-            dt,
-            beams,
-            self._min_beams,
-            self._full_trust_beams,
-            self._max_scan_gap,
-        )
+        beams = [self._scans_by_stamp.get(stamp_ns(m)) for m in (previous, msg)]
+        result = verdict(dt, beams, self._limits)
         if result.startswith("dropped"):
             if result == "dropped: no matching scan":
                 self.get_logger().warning(
