@@ -11,6 +11,8 @@
 
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>lidar_mapper</exec_depend>
+  <exec_depend>pcd</exec_depend>
   <exec_depend>rf2o_cov_mapper</exec_depend>
   <exec_depend>rf2o_laser_odometry</exec_depend>
   <exec_depend>robot_localization</exec_depend>

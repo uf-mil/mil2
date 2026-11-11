@@ -18,8 +18,10 @@ ekf_local:
       true, true, true,    # roll, pitch, yaw
       false, false, false, # vx, vy, vz
       true, true, true,    # vroll, vpitch, vyaw
-      true, true, true     # ax, ay, az
+      false, false, false  # ax, ay, az
     ]
+    # No accelerations: robot_localization takes a turn's pull (speed x
+    # turn rate) as sideways acceleration and invents sideways speed.
     imu0_differential: false
     imu0_relative: true
     imu0_remove_gravitational_acceleration: true
@@ -37,6 +39,8 @@ ekf_local:
     odom0_differential: false
     odom0_relative: true
     odom0_queue_size: 10
+    # Rejects rf2o readings more than 3 sigma from the EKF's estimate.
+    odom0_twist_rejection_threshold: 3.0
 
     disabled_at_startup: true
 
@@ -60,8 +64,10 @@ ekf_global:
       true, true, true,    # roll, pitch, yaw
       false, false, false, # vx, vy, vz
       true, true, true,    # vroll, vpitch, vyaw
-      true, true, true     # ax, ay, az
+      false, false, false  # ax, ay, az
     ]
+    # No accelerations: robot_localization takes a turn's pull (speed x
+    # turn rate) as sideways acceleration and invents sideways speed.
     imu0_differential: false
     imu0_relative: true
     imu0_remove_gravitational_acceleration: true
@@ -79,6 +85,8 @@ ekf_global:
     odom0_differential: false
     odom0_relative: true
     odom0_queue_size: 10
+    # Rejects rf2o readings more than 3 sigma from the EKF's estimate.
+    odom0_twist_rejection_threshold: 3.0
 
     # GPS odometry from navsat_transform
     odom1: "/odometry/gps"

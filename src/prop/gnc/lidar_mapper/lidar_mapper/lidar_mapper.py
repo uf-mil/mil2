@@ -87,7 +87,6 @@ class PointCloudToLaserScan(Node):
 
         scan.ranges = ranges
 
-        print("I pubbed")
         self.publisher.publish(scan)
 
 
