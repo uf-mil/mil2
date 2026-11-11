@@ -58,6 +58,14 @@ class LatLonGoalNode(Node):
         self._state = self.IDLE
         self._state_lock = threading.Lock()
 
+        # Tell the rest of the stack this node is running Task 4.
+        self._current_task_pub = self.create_publisher(
+            String,
+            "/mission/current_task",
+            latched,
+        )
+        self._current_task_pub.publish(String(data="DYNAMIC_INCIDENT"))
+
         self._map_goal_pose: PoseStamped | None = None
         self._map_goal_pose_lock = threading.Lock()
 
@@ -221,6 +229,9 @@ class LatLonGoalNode(Node):
                             f"Returned to original position (dist={dist:.2f} m). IDLE.",
                         )
                         self._state = self.IDLE
+                        # Only reached on the return leg after all clear,
+                        # never on arrival at the emergency coordinates.
+                        self._current_task_pub.publish(String(data="NONE"))
                     else:
                         self.get_logger().info(
                             f"Arrived at goal (dist={dist:.2f} m). Entering HOLDING state.",
@@ -369,6 +380,7 @@ class LatLonGoalNode(Node):
             )
             with self._state_lock:
                 self._state = self.IDLE
+            self._current_task_pub.publish(String(data="NONE"))
             with self._map_goal_pose_lock:
                 self._map_goal_pose = None
 
@@ -410,3 +422,4 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
+

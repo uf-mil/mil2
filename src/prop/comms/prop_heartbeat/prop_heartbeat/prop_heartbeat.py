@@ -107,6 +107,9 @@ class PropHeartbeat(Node):
             heartbeat.position.x = self.fix[1].longitude
             heartbeat.position.y = self.fix[1].latitude
 
+            #heartbeat.position.x = 103.8548400
+            #heartbeat.position.y = 1.2809600
+
         heartbeat.heading = heartbeat.roll = heartbeat.pitch = math.nan
         if self.fresh(self.imu):
             roll, pitch, yaw = euler(self.imu[1].orientation)

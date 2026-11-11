@@ -984,6 +984,7 @@ def course_boundary(course):
             latitude=corner.latitude,
             longitude=corner.longitude,
         )
+        print(corner.latitude, " ", corner.longitude, "\n")
         pose.pose.orientation.w = 1.0
         path.poses.append(pose)
     return path
