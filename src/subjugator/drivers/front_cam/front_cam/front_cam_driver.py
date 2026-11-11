@@ -23,7 +23,7 @@ def rotate_front_cam(frame: MatLike) -> MatLike:
     # )
 
     # magic numbers:
-    rotation_angle = 180
+    rotation_angle = 0
 
     # Get new dimensions
     (h, w) = frame.shape[:2]
@@ -44,7 +44,7 @@ class FrontCamDriver(Node):
         # say params exist
         self.declare_parameter(
             "camera-id",
-            "/dev/video0",
+            "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.1.1:1.0-video-index0",
         )
         self.declare_parameter("camera-topic", "front_cam/image_raw")
 
