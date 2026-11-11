@@ -94,7 +94,8 @@ def generate_launch_description():
                 ],
                 output="screen",
             ),
-            # Objects out to the scan's 30 m, for the relay's one-vote-per-object check on rf2o.
+            # Objects for the relay's one-vote-per-object check on rf2o. Past ~14 m the
+            # rings are more than cluster_tolerance apart, so farther buoys never cluster.
             Node(
                 package="pcd",
                 executable="pcl_clustering_node",
