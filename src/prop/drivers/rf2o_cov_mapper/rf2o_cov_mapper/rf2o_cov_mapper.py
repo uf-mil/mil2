@@ -159,6 +159,7 @@ class Rf2oCovarianceRelay(Node):
     def _on_odom(self, msg: Odometry) -> None:
         previous, self._previous = self._previous, msg
         if previous is None:
+            self._report(msg, [None, None], "dropped: first reading", sd=None)
             return
         dt = (stamp_ns(msg) - stamp_ns(previous)) * 1e-9
         beams = [self._scans_by_stamp.get(stamp_ns(m)) for m in (previous, msg)]
