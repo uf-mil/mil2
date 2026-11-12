@@ -1,22 +1,26 @@
-# how to send the emergency coords
 """
-ros2 topic pub --once /latlon_goal/coordinate geographic_msgs/msg/GeoPose \
-  "{position: {latitude: 29.6481, longitude: -82.3438, altitude: 0.0}}"
-"""
-# your coords will vary — get them from the map frame like so:
-"""
-ros2 service call /toLL robot_localization/srv/ToLL "{map_point: {x: 0.0, y: 0.0, z: 0.0}}"
-"""
+Task 4: go where an AssistanceRequest says, hold there, and come back on
+ReadinessConfirm.
 
-# send the all clear:
-"""
-ros2 service call /latlon_goal/all_clear std_srvs/srv/Empty {}
-"""
+The OCS publishes the coordinate on an AssistanceRequest and calls all_clear on
+ReadinessConfirm. The state goes out on /latlon_goal/state (latched): the OCS
+sends the ReadinessReport on HOLDING, and the missions stand aside while it is
+anything but IDLE (prop_missions/incident.py).
 
-# worth noting!!!!
-# this doesn't
-# 1. shut anything else down <- other missions running might try and fight it :(
-# 2. listen to ocs, we still need a node that connects to ocs and publishes the topic automagically
+By hand, send a coordinate:
+
+    ros2 topic pub --once /latlon_goal/coordinate geographic_msgs/msg/GeoPose \
+      "{position: {latitude: 29.6481, longitude: -82.3438, altitude: 0.0}}"
+
+Coordinates will vary; get one from the map frame like so:
+
+    ros2 service call /toLL robot_localization/srv/ToLL \
+      "{map_point: {x: 0.0, y: 0.0, z: 0.0}}"
+
+and send the all clear:
+
+    ros2 service call /latlon_goal/all_clear std_srvs/srv/Empty {}
+"""
 
 import math
 import threading
@@ -30,8 +34,10 @@ from nav_msgs.msg import Odometry
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from robot_localization.srv import FromLL
-from std_srvs.srv import Empty
+from std_msgs.msg import String, UInt32
+from std_srvs.srv import Empty, SetBool
 
 
 class LatLonGoalNode(Node):
@@ -42,13 +48,25 @@ class LatLonGoalNode(Node):
     RETURNING = "RETURNING"
 
     ARRIVAL_THRESHOLD = 0.7  # metres (euclidean)
-    DRIFT_THRESHOLD = 0.7    # metres — re-issue goal if drift exceeds this
+    DRIFT_THRESHOLD = 0.7  # metres — re-issue goal if drift exceeds this
 
     def __init__(self):
         super().__init__("latlon_goal_node")
+        latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
 
+        self._readiness_pub = self.create_publisher(UInt32, "prop/readiness_report", latched)
+
+        self._state_pub = self.create_publisher(String, "latlon_goal/state", latched)
         self._state = self.IDLE
         self._state_lock = threading.Lock()
+
+        # Tell the rest of the stack this node is running Task 4.
+        self._current_task_pub = self.create_publisher(
+            String,
+            "/mission/current_task",
+            latched,
+        )
+        self._current_task_pub.publish(String(data="DYNAMIC_INCIDENT"))
 
         self._map_goal_pose: PoseStamped | None = None
         self._map_goal_pose_lock = threading.Lock()
@@ -91,12 +109,27 @@ class LatLonGoalNode(Node):
 
         # --- Service clients ---
         self._from_ll_client = self.create_client(FromLL, "/fromLL", callback_group=cb)
+        self._planner_client = self.create_client(
+            SetBool,
+            "/planner/enable",
+            callback_group=cb,
+        )
 
         # --- TF ---
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
 
         self.get_logger().info("LatLonGoalNode ready.")
+
+    @property
+    def _state(self):
+        return self._state_value
+
+    @_state.setter
+    def _state(self, value):
+        """Every change goes out at once, before any goal that follows it."""
+        self._state_value = value
+        self._state_pub.publish(String(data=value))
 
     # ------------------------------------------------------------------
     # Coordinate topic callback — emergency entry point
@@ -106,7 +139,7 @@ class LatLonGoalNode(Node):
         lon = msg.position.longitude
         alt = msg.position.altitude
         self.get_logger().info(
-            f"Emergency coord received via topic: {lat}, {lon}, alt={alt}"
+            f"Emergency coord received via topic: {lat}, {lon}, alt={alt}",
         )
         self.send_latlon_goal(lat, lon, alt)
 
@@ -126,13 +159,16 @@ class LatLonGoalNode(Node):
                     self.get_logger().info(
                         f"Return pose saved: "
                         f"({self._return_pose.pose.position.x:.2f}, "
-                        f"{self._return_pose.pose.position.y:.2f})"
+                        f"{self._return_pose.pose.position.y:.2f})",
                     )
                 else:
                     self.get_logger().warn(
-                        "No odometry available yet — return pose not saved."
+                        "No odometry available yet — return pose not saved.",
                     )
             self._state = self.NAVIGATING
+
+        # Docking switches the grid planner off.
+        self._planner_client.call_async(SetBool.Request(data=True))
 
         threading.Thread(
             target=self._navigate_to_latlon,
@@ -164,8 +200,10 @@ class LatLonGoalNode(Node):
     # ------------------------------------------------------------------
     def _arrival_loop(self):
         rate = self.create_rate(2)  # 2 Hz
+        ticks = 0
 
         while rclpy.ok():
+            ticks += 1
             with self._state_lock:
                 current_state = self._state
                 if current_state not in (self.NAVIGATING, self.RETURNING):
@@ -190,12 +228,17 @@ class LatLonGoalNode(Node):
                 with self._state_lock:
                     if self._state == self.RETURNING:
                         self.get_logger().info(
-                            f"Returned to original position (dist={dist:.2f} m). IDLE."
+                            f"Returned to original position (dist={dist:.2f} m). IDLE.",
                         )
                         self._state = self.IDLE
+                        # Only reached on the return leg after all clear,
+                        # never on arrival at the emergency coordinates.
+                        self._current_task_pub.publish(String(data="NONE"))
                     else:
+                        le_msg = Unit32()
+                        self._readiness_pub.publish(le_msg)
                         self.get_logger().info(
-                            f"Arrived at goal (dist={dist:.2f} m). Entering HOLDING state."
+                            f"Arrived at goal (dist={dist:.2f} m). Entering HOLDING state.",
                         )
                         self._state = self.HOLDING
                 return
@@ -209,8 +252,11 @@ class LatLonGoalNode(Node):
                 )
                 if drift > self.DRIFT_THRESHOLD:
                     self.get_logger().info(
-                        f"Odom drift detected ({drift:.2f} m) — re-issuing goal."
+                        f"Odom drift detected ({drift:.2f} m) — re-issuing goal.",
                     )
+                    self._publish_goal_in_odom(goal_map)
+                elif ticks == 3:
+                    # Once more after a second, in case a mission's goal crossed ours.
                     self._publish_goal_in_odom(goal_map)
 
             rate.sleep()
@@ -274,7 +320,7 @@ class LatLonGoalNode(Node):
         self.get_logger().info(
             f"Published goal in odom frame: "
             f"({odom_pose.pose.position.x:.2f}, {odom_pose.pose.position.y:.2f}, "
-            f"z={odom_pose.pose.position.z:.2f})"
+            f"z={odom_pose.pose.position.z:.2f})",
         )
         return True
 
@@ -323,7 +369,7 @@ class LatLonGoalNode(Node):
         if return_pose is not None:
             self.get_logger().info(
                 f"All-clear received (was {prev}). Returning to "
-                f"({return_pose.pose.position.x:.2f}, {return_pose.pose.position.y:.2f})."
+                f"({return_pose.pose.position.x:.2f}, {return_pose.pose.position.y:.2f}).",
             )
             with self._map_goal_pose_lock:
                 self._map_goal_pose = _copy_pose_stamped(return_pose)
@@ -334,10 +380,11 @@ class LatLonGoalNode(Node):
             threading.Thread(target=self._arrival_loop, daemon=True).start()
         else:
             self.get_logger().warn(
-                f"All-clear received (was {prev}) but no return pose was saved — going IDLE."
+                f"All-clear received (was {prev}) but no return pose was saved — going IDLE.",
             )
             with self._state_lock:
                 self._state = self.IDLE
+            self._current_task_pub.publish(String(data="NONE"))
             with self._map_goal_pose_lock:
                 self._map_goal_pose = None
 
@@ -379,3 +426,4 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
+

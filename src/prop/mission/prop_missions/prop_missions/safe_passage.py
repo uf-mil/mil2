@@ -5,6 +5,7 @@ Task 1, Safe Passage, at the Core tier.
   in   /beacons                   mil_msgs/PerceptionObjectArray, beacon_node's buoys
        odometry                   nav_msgs/Odometry, in the buoys' frame
        /prop/run_start            std_msgs/UInt32, from the OCS at RunStart
+       /latlon_goal/state         std_msgs/String, Task 4 has the boat unless IDLE
        gps/fix, imu/data          for the report's latitudes and longitudes
   out  /goal_pose                 geometry_msgs/PoseStamped, for the planner
        /mission/current_task      std_msgs/String, latched, for the heartbeat
@@ -46,6 +47,7 @@ from std_msgs.msg import String, UInt32
 from std_srvs.srv import SetBool, Trigger
 
 from prop_missions.geo import GeoReference, yaw_of
+from prop_missions.incident import Incident
 
 LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
 ENTRY, EXIT = "FLASHING_BLUE", "STEADY_BLUE"
@@ -166,6 +168,7 @@ class SafePassage(Node):
         self.create_subscription(PerceptionObjectArray, "/beacons", self.on_beacons, 10)
         self.create_subscription(Odometry, "odometry", self.on_odometry, 10)
         self.create_subscription(UInt32, "/prop/run_start", self.on_run_start, 10)
+        self.incident = Incident(self, self.after_incident)
         self.create_timer(0.2, self.step)
         self.get_logger().info("waiting for RunStart")
 
@@ -205,13 +208,20 @@ class SafePassage(Node):
             self.report()
 
     def step(self):
-        if self.pose is None or self.frame is None:
+        if self.pose is None or self.frame is None or self.incident.active:
             return
         running = self.started is not None and self.phase != "DONE"
         if running and self.now() - self.started > self.max_time:
             self.finish("out of time")
             return
         getattr(self, f"step_{self.phase.lower()}")()
+
+    def after_incident(self, lost):
+        if self.started is not None:
+            self.started += lost
+        if self.since is not None:
+            self.since += lost
+        self.goal_sent = None
 
     def enter(self, phase, route=()):
         self.get_logger().info(f"{self.phase} -> {phase}")

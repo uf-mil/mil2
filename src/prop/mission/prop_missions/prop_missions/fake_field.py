@@ -10,6 +10,10 @@ It also stands in for the OCS, sending RunStart until the mission starts. The bo
 avoided. A buoy's light becomes known once the boat has been within 10 m of it
 for 2 s since /beacons/reset. GPS and IMU follow the boat.
 
+It also stands in for localization, for boat_timeout and survey: the odometry
+goes out on /odometry/filtered/global too, map -> odom is the identity, and
+/fromLL turns a latitude and longitude into map.
+
 When the mission says the task is over, it prints how the run would score: how
 far round each circle went, which side each red and green buoy passed on, and
 whether the last report had every buoy right.
@@ -19,15 +23,17 @@ import math
 
 import numpy as np
 import rclpy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from mil_msgs.msg import PerceptionObject, PerceptionObjectArray
 from nav_msgs.msg import Odometry
 from prop_ocs_interfaces.msg import SafePassageReport
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
+from robot_localization.srv import FromLL
 from sensor_msgs.msg import Imu, NavSatFix, NavSatStatus
 from std_msgs.msg import String, UInt32
 from std_srvs.srv import SetBool, Trigger
+from tf2_ros import StaticTransformBroadcaster
 
 from prop_missions.geo import EARTH_RADIUS, offset_latlon
 
@@ -102,6 +108,11 @@ class FakeField(Node):
         self.last_report = None
 
         self.odom_pub = self.create_publisher(Odometry, "/odometry/filtered/local", 10)
+        self.global_pub = self.create_publisher(
+            Odometry,
+            "/odometry/filtered/global",
+            10,
+        )
         self.fix_pub = self.create_publisher(NavSatFix, "/gps/fix", 10)
         self.imu_pub = self.create_publisher(Imu, "/imu/data", 10)
         self.beacons_pub = self.create_publisher(PerceptionObjectArray, "/beacons", 10)
@@ -116,6 +127,12 @@ class FakeField(Node):
         )
         self.create_service(SetBool, "/planner/enable", self.on_enable)
         self.create_service(Trigger, "/beacons/reset", self.on_reset)
+        self.create_service(FromLL, "/fromLL", self.on_from_ll)
+        identity = TransformStamped()
+        identity.header.frame_id, identity.child_frame_id = "map", "odom"
+        identity.transform.rotation.w = 1.0
+        self.static_tf = StaticTransformBroadcaster(self)
+        self.static_tf.sendTransform(identity)
         self.create_timer(0.1, self.tick)
         self.create_timer(1.0, self.send_run_start)
 
@@ -131,6 +148,16 @@ class FakeField(Node):
         self.reset = True
         self.seen = [0.0] * len(self.buoys)
         response.success = True
+        return response
+
+    def on_from_ll(self, request, response):
+        lat, lon = request.ll_point.latitude, request.ll_point.longitude
+        response.map_point.y = math.radians(lat - DATUM[0]) * EARTH_RADIUS
+        response.map_point.x = (
+            math.radians(lon - DATUM[1])
+            * EARTH_RADIUS
+            * math.cos(math.radians(DATUM[0]))
+        )
         return response
 
     def on_goal(self, msg):
@@ -163,6 +190,7 @@ class FakeField(Node):
         odom.pose.pose.position.x, odom.pose.pose.position.y = self.x, self.y
         odom.pose.pose.orientation.z, odom.pose.pose.orientation.w = q
         self.odom_pub.publish(odom)
+        self.global_pub.publish(odom)
 
         imu = Imu()
         imu.header.stamp = stamp

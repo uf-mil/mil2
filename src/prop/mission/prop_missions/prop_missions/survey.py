@@ -6,6 +6,7 @@ round whatever is in the way.
   in   /odometry/filtered/global  nav_msgs/Odometry, the global estimate, in map
        /prop/course_boundary      geographic_msgs/GeoPath, latched, from the OCS
        /occupancy_grid            nav_msgs/OccupancyGrid, what the planner steers by
+       /latlon_goal/state         std_msgs/String, Task 4 has the boat unless IDLE
   out  /goal_pose                 geometry_msgs/PoseStamped, in odom, for the planner
        ~/route                    nav_msgs/Path, the whole pattern in map, for RViz
   srv  ~/start                    std_srvs/Trigger, start surveying
@@ -49,6 +50,7 @@ from robot_localization.srv import FromLL
 from std_srvs.srv import SetBool, Trigger
 
 from prop_missions.geo import yaw_of
+from prop_missions.incident import Incident
 
 LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
 SIDES = {"port": 1.0, "starboard": -1.0}
@@ -246,6 +248,7 @@ class Survey(Node):
         )
         self.create_service(Trigger, "~/start", self.on_start)
         self.create_service(Trigger, "~/stop", self.on_stop)
+        self.incident = Incident(self, self.after_incident)
         self.create_timer(0.5, self.step)
         self.get_logger().info("ready; call ~/start to survey")
 
@@ -388,7 +391,7 @@ class Survey(Node):
         if self.converting is not None:
             self.converted()
             return
-        if not self.active or self.pose is None:
+        if not self.active or self.pose is None or self.incident.active:
             return
         if not self.route:
             self.finish()
@@ -429,6 +432,9 @@ class Survey(Node):
         if drift > self.param("drift_threshold"):
             self.get_logger().info(f"odom drift ({drift:.2f} m); re-issuing goal")
             self.publish(odom)
+
+    def after_incident(self, _lost):
+        self.goal_sent = None
 
     def next(self, reached):
         self.route.pop(0)

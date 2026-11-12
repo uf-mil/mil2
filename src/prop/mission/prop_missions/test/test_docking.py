@@ -189,6 +189,7 @@ class PerceptionTests(unittest.TestCase):
         node.sensor_timeout = 1.0
         node.state = "ALIGN"
         node.paused = False
+        node.incident.active = False
         old = Odometry()
         old.header.stamp.sec = 2
         node.odom = [old]

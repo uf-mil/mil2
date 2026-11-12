@@ -2,12 +2,11 @@ import sys
 
 import cv2
 from camera import Camera, parse_source
+from prop.perception.object_classifier.src.detection import Detector
+from prop.perception.object_classifier.src.localization import Localizer
 from tracking import Tracker
 from undistort import Undistorter
 from utils import load_config
-
-from prop.perception.object_classifier.src.detection import Detector
-from prop.perception.object_classifier.src.localization import Localizer
 
 
 def print_estimates(tracks):
@@ -23,11 +22,7 @@ def print_estimates(tracks):
 
 
 def main():
-    source = (
-        parse_source(sys.argv[1])
-        if len(sys.argv) > 1
-        else load_config()["camera_index"]
-    )
+    source = parse_source(sys.argv[1]) if len(sys.argv) > 1 else load_config()["camera_index"]
     cam = Camera(source, width=1920, height=1080)
     undistorter = Undistorter()
     detector = Detector("models/best.pt")
