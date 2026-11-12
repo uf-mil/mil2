@@ -540,6 +540,13 @@ class OCS(Node):
                 self.rx_incident_ack("USV", command.seq)
             elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
                 print("got assistance request for uav")
+                start_pos = self.drone_position
+                target = command.assistance_request.position
+                if start_pos is not None:
+                    print(
+                        f"UAV move from:\n\tlat {start_pos.latitude:.7f}\n\tlon {start_pos.longitude:.7f}\n"
+                        f"to:\n\tlat {target.latitude:.7f}\n\tlon {target.longitude:.7f}",
+                    )
                 self.drone_at_incident = False
                 self.assistance_request_id = command.seq
                 send_command(
@@ -594,6 +601,7 @@ class OCS(Node):
     drone_task = RxTask.TASK_NONE
     drone_last_heartbeat_seconds = 0
     drone_at_incident = False
+    drone_armed = False
 
     def mav_handle_heartbeat(self, message):
         self.drone_last_heartbeat_seconds = time.time()
@@ -610,6 +618,12 @@ class OCS(Node):
         else:
             # Heartbeat from ArduPilot
             armed = message.base_mode & mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+            start_pos = self.drone_position
+            if armed and not self.drone_armed and start_pos is not None:
+                print(
+                    f"UAV armed at:\n\tlat {start_pos.latitude:.7f}\n\tlon {start_pos.longitude:.7f}",
+                )
+            self.drone_armed = bool(armed)
             if not armed:
                 self.drone_state = RobotState.STATE_KILLED
             else:
