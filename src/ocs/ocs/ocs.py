@@ -504,6 +504,8 @@ class OCS(Node):
             print("failed to parse command payload")
             return
 
+        print(command)
+
         if command.run_start is not None:
             if command.run_start.declaration_seq != self.rx_run_declaration_seq:
                 print("mismatched RunStart")
@@ -526,6 +528,7 @@ class OCS(Node):
 
         elif command.assistance_request is not None:
             if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
+                print("got assistance request for usv")
                 msg = GeoPose()
 
                 point = GeoPoint()
@@ -536,6 +539,7 @@ class OCS(Node):
                 self.prop_emergency_publisher.publish(msg)
                 self.rx_incident_ack("USV", command.seq)
             elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
+                print("got assistance request for uav")
                 self.drone_at_incident = False
                 self, assistance_request_id = command.seq
                 send_command(
@@ -546,6 +550,7 @@ class OCS(Node):
                     param3=command.position.longitude,
                     param4=10,  # 10 meters above
                 )
+                self.rx_incident_ack("UAV", command.seq)
         elif command.keep_out_zone is not None:
             if command.keep_out_zone.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
@@ -599,6 +604,7 @@ class OCS(Node):
 
             # 15 == MIL_STATE_AT_INCIDENT
             if not self.drone_at_incident and message.system_status == 15:
+                print("uav at incident")
                 self.rx_readiness_report("UAV", self.assistance_request_id)
 
         else:
