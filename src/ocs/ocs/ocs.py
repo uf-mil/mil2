@@ -506,7 +506,7 @@ class OCS(Node):
 
         print(command)
 
-        if command.run_start is not None:
+        if command.HasField("run_start"):
             if command.run_start.declaration_seq != self.rx_run_declaration_seq:
                 print("mismatched RunStart")
                 return
@@ -526,14 +526,14 @@ class OCS(Node):
 
             self.send_drone_mission(11)  # drone loiters at 5m for 120s
 
-        elif command.assistance_request is not None:
+        elif command.HasField("assistance_request"):
             if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
                 print("got assistance request for usv")
                 msg = GeoPose()
 
                 point = GeoPoint()
-                point.latitude = command.position.latitude
-                point.longitude = command.position.longitude
+                point.latitude = command.assistance_request.position.latitude
+                point.longitude = command.assistance_request.position.longitude
 
                 msg.point = point
                 self.prop_emergency_publisher.publish(msg)
@@ -546,12 +546,12 @@ class OCS(Node):
                     self.mavconn,
                     mavutil.mavlink.MAV_CMD_USER_4,
                     param1=4,
-                    param2=command.position.latitude,
-                    param3=command.position.longitude,
+                    param2=command.assistance_request.position.latitude,
+                    param3=command.assistance_request.position.longitude,
                     param4=10,  # 10 meters above
                 )
                 self.rx_incident_ack("UAV", command.seq)
-        elif command.keep_out_zone is not None:
+        elif command.HasField("keep_out_zone"):
             if command.keep_out_zone.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
@@ -560,19 +560,19 @@ class OCS(Node):
                     self.mavconn,
                     mavutil.mavlink.MAV_CMD_USER_4,
                     param1=8,
-                    param2=command.center.latitude,
-                    param3=command.center.longitude,
-                    param4=command.radius_m,
+                    param2=command.keep_out_zone.center.latitude,
+                    param3=command.keep_out_zone.center.longitude,
+                    param4=command.keep_out_zone.radius_m,
                 )
 
                 self.rx_incident_ack("UAV", command.seq)
-        elif command.readiness_confirm is not None:
+        elif command.HasField("readiness_confirm"):
             if command.readiness_confirm.vehicle_id == "USV":
                 req = Empty.Request()
                 self.prop_all_clear_client.call_async(req)
             elif command.readiness_confirm.vehicle_id == "UAV":
                 send_command(self.mavconn, mavutil.mavlink.MAV_CMD_USER_4, param1=5)
-        elif command.all_clear is not None:
+        elif command.HasField("all_clear"):
             if command.all_clear.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
