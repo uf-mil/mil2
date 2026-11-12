@@ -39,6 +39,7 @@ from ocs.proto import (
     IncidentAck,
     LatLng,
     PipelineSurveyReport,
+    ReadinessReport,
     RobotState,
     RunDeclaration,
     RxCommand,
@@ -386,6 +387,20 @@ class OCS(Node):
             rep.SerializeToString(),
         )
 
+    def rx_readiness_report(self, vehicle_id, assistance_seq):
+        rep = RxReport(
+            team_id=self.get_parameter("team_id").get_parameter_value().string_value,
+            vehicle_id=vehicle_id,
+            seq=self.rx_report_seqs[vehicle_id],
+            readiness_report=ReadinessReport(command_seq=assistance_seq),
+        )
+        rep.sent_at.GetCurrentTime()
+        self.rx_report_seqs[vehicle_id] += 1
+        self.client.publish(
+            f"robocommand/robotx/{vehicle_id}/report",
+            rep.SerializeToString(),
+        )
+
     def to_polygon(self, coords):
         return Polygon([(p.longitude, p.latitude) for p in coords])
 
@@ -478,6 +493,7 @@ class OCS(Node):
         )
 
     current_run_id = None
+    assistance_request_id = None
 
     def on_command(self, _client, _, msg):
         command = RxCommand()
@@ -487,8 +503,6 @@ class OCS(Node):
         except Exception:
             print("failed to parse command payload")
             return
-
-        print(command)
 
         if command.run_start is not None:
             if command.run_start.declaration_seq != self.rx_run_declaration_seq:
@@ -522,6 +536,8 @@ class OCS(Node):
                 self.prop_emergency_publisher.publish(msg)
                 self.rx_incident_ack("USV", command.seq)
             elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
+                self.drone_at_incident = False
+                self, assistance_request_id = command.seq
                 send_command(
                     self.mavconn,
                     mavutil.mavlink.MAV_CMD_USER_4,
@@ -572,6 +588,7 @@ class OCS(Node):
     drone_state = RobotState.STATE_KILLED
     drone_task = RxTask.TASK_NONE
     drone_last_heartbeat_seconds = 0
+    drone_at_incident = False
 
     def mav_handle_heartbeat(self, message):
         self.drone_last_heartbeat_seconds = time.time()
@@ -579,6 +596,11 @@ class OCS(Node):
         if message.base_mode == 0:
             # Heartbeat from RPI - has robot task
             self.drone_task = message.custom_mode
+
+            # 15 == MIL_STATE_AT_INCIDENT
+            if not self.drone_at_incident and message.system_status == 15:
+                self.rx_readiness_report("UAV", self.assistance_request_id)
+
         else:
             # Heartbeat from ArduPilot
             armed = message.base_mode & mavlink.MAV_MODE_FLAG_SAFETY_ARMED
