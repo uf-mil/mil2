@@ -488,6 +488,8 @@ class OCS(Node):
             print("failed to parse command payload")
             return
 
+        print(command)
+
         if command.run_start is not None:
             if command.run_start.declaration_seq != self.rx_run_declaration_seq:
                 print("mismatched RunStart")
