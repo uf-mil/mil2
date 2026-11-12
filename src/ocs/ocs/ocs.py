@@ -541,7 +541,7 @@ class OCS(Node):
             elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
                 print("got assistance request for uav")
                 self.drone_at_incident = False
-                self, assistance_request_id = command.seq
+                self.assistance_request_id = command.seq
                 send_command(
                     self.mavconn,
                     mavutil.mavlink.MAV_CMD_USER_4,
