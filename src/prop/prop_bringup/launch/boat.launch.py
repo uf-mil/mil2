@@ -123,28 +123,28 @@ def generate_launch_description():
             ),
             include("subjugator_controller_again", "pid_controller.launch.py"),
             include("prop_controller", "thruster_mapper.launch.py"),
-            Node(
-                package="prop_heartbeat",
-                executable="prop_heartbeat",
-                remappings=[
-                    ("gps/fix", LaunchConfiguration("gps_topic")),
-                    ("odometry", "/odometry/filtered/local"),
-                ],
-                output="screen",
-            ),
-            Node(
-                package="piss_tower",
-                executable="piss_tower",
-                parameters=[
-                    {
-                        "serial_port": LaunchConfiguration("rf_kill_port"),
-                        "report_mode": ParameterValue(
-                            LaunchConfiguration("board_mode"),
-                            value_type=bool,
-                        ),
-                    },
-                ],
-                output="screen",
-            ),
+            #Node(
+                #package="prop_heartbeat",
+                #executable="prop_heartbeat",
+                #remappings=[
+                    #("gps/fix", LaunchConfiguration("gps_topic")),
+                    #("odometry", "/odometry/filtered/local"),
+                #],
+                #output="screen",
+            #),
+            #Node(
+                #package="piss_tower",
+                #executable="piss_tower",
+                #parameters=[
+                    #{
+                        #"serial_port": LaunchConfiguration("rf_kill_port"),
+                        #"report_mode": ParameterValue(
+                            #LaunchConfiguration("board_mode"),
+                            #value_type=bool,
+                        #),
+                    #},
+                #],
+                #output="screen",
+            #),
         ],
     )
