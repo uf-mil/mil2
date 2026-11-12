@@ -524,7 +524,7 @@ class OCS(Node):
             dock_ocs_command.data = "START"
             self.dock_ocs_command_publisher.publish(dock_ocs_command)
 
-            self.send_drone_mission(11)  # drone loiters at 5m for 120s
+            self.send_drone_mission(12)  # drone loiters at 5m for 120s
 
         elif command.HasField("assistance_request"):
             if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
@@ -555,7 +555,7 @@ class OCS(Node):
                     param1=4,
                     param2=command.assistance_request.position.latitude,
                     param3=command.assistance_request.position.longitude,
-                    param4=10,  # 10 meters above
+                    param4=5,  # 5 meters above
                 )
                 self.rx_incident_ack("UAV", command.seq)
         elif command.HasField("keep_out_zone"):
@@ -624,7 +624,7 @@ class OCS(Node):
                     f"UAV armed at:\n\tlat {start_pos.latitude:.7f}\n\tlon {start_pos.longitude:.7f}",
                 )
             self.drone_armed = bool(armed)
-            if not armed:
+            if not armed and self.drone_flight_phase == FlightPhase.FLIGHT_PHASE_AIRBORNE:
                 self.drone_state = RobotState.STATE_KILLED
             else:
                 mode_map = mavutil.mode_mapping_bynumber(mavlink.MAV_TYPE_QUADROTOR)
