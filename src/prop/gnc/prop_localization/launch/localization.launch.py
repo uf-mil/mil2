@@ -2,7 +2,8 @@
 Localization stack: robot_state_publisher + rf2o + dual EKF + navsat_transform.
 
   scan       : /velodyne_points   -> /lidar/above_water_scan (pcl_filter, lidar_mapper)
-  rf2o       : above-water scan   -> /lidar/odom (via rf2o_cov_mapper)
+  votes      : above-water cloud  -> /lidar/vote_clusters (pcl_clustering)
+  rf2o       : above-water scan   -> /lidar/odom (via rf2o_cov_mapper, checked against votes)
   ekf_local  : IMU + lidar odom   -> odometry/filtered/local  + TF odom -> base_link
   ekf_global : local + GPS odom   -> odometry/filtered/global + TF map  -> odom
   navsat     : GPS + IMU + global odom <-> odometry/gps
@@ -90,6 +91,20 @@ def generate_launch_description():
                         "init_pose_from_topic": "",
                         "freq": 20.0,
                     },
+                ],
+                output="screen",
+            ),
+            # Objects for the relay's one-vote-per-object check on rf2o. Past ~14 m the
+            # rings are more than cluster_tolerance apart, so farther buoys never cluster.
+            Node(
+                package="pcd",
+                executable="pcl_clustering_node",
+                name="vote_clustering",
+                parameters=[pcd_params],
+                remappings=[
+                    ("filtered_cloud", "/lidar/above_water_cloud"),
+                    ("cluster_markers", "/lidar/vote_clusters"),
+                    ("clusters_cloud", "/lidar/vote_clusters_cloud"),
                 ],
                 output="screen",
             ),
