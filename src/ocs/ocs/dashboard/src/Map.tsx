@@ -66,10 +66,10 @@ export function Map({ subHeartbeat, boatHeartbeat, droneHeartbeat, geofence }: {
           zoom={17}
           minZoom={13}
           maxZoom={18}
-          maxBounds={[[1.26, 103.83], [1.31, 103.89]]}
+          maxBounds={[[1.23, 103.59], [1.35, 103.895]]}
           scrollWheelZoom={false}
         >
-          <PmtilesLayer url="/marina-bay.pmtiles" />
+          <PmtilesLayer url="/marina-tuas.pmtiles" />
 
           {subHeartbeat?.position && (
             <Marker

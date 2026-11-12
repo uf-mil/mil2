@@ -45,6 +45,7 @@ from ocs.proto import (
     IncidentAck,
     LatLng,
     PipelineSurveyReport,
+    ReadinessReport,
     RobotState,
     RunDeclaration,
     RxCommand,
@@ -53,7 +54,6 @@ from ocs.proto import (
     RxRequest,
     RxTask,
     SafePassageReport,
-    ReadinessReport,
     TaskTier,
     VehicleType,
 )
@@ -311,7 +311,12 @@ class OCS(Node):
             10,
         )
 
-        self.create_subscription(UInt32, "/prop/readiness_report", self.on_readiness, 10)
+        self.create_subscription(
+            UInt32,
+            "/prop/readiness_report",
+            self.on_readiness,
+            10,
+        )
         self.prop_all_clear_client = self.create_client(Empty, "/latlon_goal/all_clear")
 
         # The course boundary, for the boat's survey; latched so a boat that
@@ -469,10 +474,9 @@ class OCS(Node):
 
     def rx_readiness_report(self, vehicle_id, command_seq):
         self.rx_report(vehicle_id, readiness=ReadinessReport(command_seq=command_seq))
-    
+
     def to_polygon(self, coords):
         return Polygon([(p.longitude, p.latitude) for p in coords])
-
 
     course_geofence = []
     geofence = []
@@ -491,7 +495,7 @@ class OCS(Node):
 
         self.course_received = True
         print("Course corners")
-        for c in course.corners: 
+        for c in course.corners:
             print(c.latitude, " ", c.longitude)
 
         self.course_boundary_publisher.publish(course_boundary(course))
@@ -517,7 +521,6 @@ class OCS(Node):
                 LatLng(latitude=lat, longitude=lon)
                 for lon, lat in union.exterior.coords
             ]
-
 
         self.drone_geofence_and_run_decl(self.course_geofence, 40)
 
@@ -560,16 +563,23 @@ class OCS(Node):
         self.geofence = []
 
         for r in responses:
-            self.geofence.append(LatLng(latitude=r.x / 10**7, longitude=r.y / 10**7))
+            l_x = r.x / 10**7
+            l_y = r.y / 10**7
+            self.geofence.append(LatLng(latitude=l_x, longitude=l_y))
             self.max_height = r.z
+
+            print(f"adding geofence corner {l_x}, {l_y}")
 
         self.geofence.append(self.geofence[0])
 
         print("Got geofence")
 
         self.rx_run_declaration(
-            vehicle_ids=self.vehicles(),
-            **{f"task{task}_tier": self.tier(task) for task in range(1, 5)},
+            vehicle_ids=["USV", "UAV"],
+            task1_tier=TaskTier.TIER_CORE,
+            task2_tier=TaskTier.TIER_CORE,
+            task3_tier=TaskTier.TIER_CORE,
+            task4_tier=TaskTier.TIER_CORE,
             uav_geofence=self.geofence,
             uav_geofence_max_altitude_hae_m=self.max_height,
             uav_pilot_callsign=CALLSIGN,
@@ -594,6 +604,7 @@ class OCS(Node):
                 print("mismatched RunStart")
                 return
 
+            print("Got RunStart")
             self.current_run_id = command.run_start.run_id
             self.dock_wanted = self.tier(3) != TaskTier.TIER_NONE
             self.dock_command = None
@@ -603,9 +614,18 @@ class OCS(Node):
             # docking once the boat says Safe Passage is over, or now when
             # Safe Passage is not being attempted.
             self.prop_run_start_publisher.publish(UInt32(data=self.current_run_id))
-            self.sub_mission_publisher.publish(String(data="PingerSurveyMission"))
-            if self.tier(1) == TaskTier.TIER_NONE:
-                self.start_docking()
+
+            sub_mission = String()
+            sub_mission.data = "PingerSurveyMission"
+            self.sub_mission_publisher.publish(sub_mission)
+
+            # TODO probably want to start prop on task 1 before 3 here
+
+            dock_ocs_command = String()
+            dock_ocs_command.data = "START"
+            self.dock_ocs_command_publisher.publish(dock_ocs_command)
+
+            self.send_drone_mission(12)  # drone loiters at 5m for 120s
 
         elif body == "assistance_request":
             request = command.assistance_request
