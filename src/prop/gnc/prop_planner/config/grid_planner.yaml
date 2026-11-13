@@ -1,0 +1,55 @@
+---
+occupancy_grid:
+  ros__parameters:
+    # Frame the grid is kept in; the launch file's frame argument overrides it.
+    map_frame: "map"
+
+    resolution: 0.25  # m per cell
+    size: 80.0  # m, the window's edge; it follows the boat
+
+    # Closer than this is the hull and mast; farther, too sparse to trust.
+    min_range: 1.0  # m
+    max_range: 12.0  # m
+
+    # Height band kept, relative to the lidar in a level frame (the IMU's
+    # roll and pitch are taken out first). Below is water, above is nothing
+    # the hull can hit.
+    z_min: -0.6  # m
+    z_max: 2.0  # m
+
+    # Evidence per frame, on a 0..100 scale: a cell that is hit gains this,
+    # a cell within verify_range that is not loses this.
+    hit_gain: 25
+    miss_loss: 10
+
+    # Within this range anything real is seen every frame, so going unseen
+    # counts against a cell; beyond it nothing is forgotten. Keep it equal to
+    # max_range, or a false hit out past it is never debited and stays
+    # forever.
+    verify_range: 12.0  # m
+
+planner:
+  ros__parameters:
+    map_frame: "map"
+
+    # Evidence at or above this is solid.
+    occupied: 60
+
+    # Never driven inside: half the beam (0.3 m) plus a margin, around every
+    # solid cell. A 6 ft gate leaves 0.7 m a side past the buoys, so there is
+    # not much room to grow this; the clearance cost below does the centring.
+    lethal_radius: 0.6  # m
+
+    # Out to this a route pays extra for passing close, so it centres itself
+    # between a gate's buoys. clearance_weight is the extra per metre at the
+    # margin's edge, falling to nothing at clearance.
+    clearance: 2.0  # m
+    clearance_weight: 2.0
+
+    rate: 2.0  # Hz
+
+    # The route in hand is kept until a fresh one is this much cheaper, or it
+    # is blocked. Guidance restarts its leg on every plan it receives.
+    replan_gain: 0.15
+
+    start_enabled: false

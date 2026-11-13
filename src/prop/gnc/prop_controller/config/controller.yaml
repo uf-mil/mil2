@@ -22,3 +22,14 @@ thruster_manager:
     ki_surge: 15.0
     kp_yaw: 30.0
     ki_yaw: 15.0
+
+# cmd_wrench from pid_controller -> an effort per thruster. The same numbers
+# are on the Gazebo model, prop_gazebo/xacro/prop.sdf.xacro.
+thruster_mapper:
+  ros__parameters:
+    thruster_y: 0.27305 # m off the centreline, the aft pair
+    bow_x: 0.4 # m ahead of the centre of mass, the bow thruster
+    max_force_pos: 55.21 # N, an aft thruster ahead
+    max_force_neg: 27.56 # N, astern
+    bow_force_pos: 51.5 # N, the bow T200 at 16 V to port
+    bow_force_neg: 40.2 # N, to starboard

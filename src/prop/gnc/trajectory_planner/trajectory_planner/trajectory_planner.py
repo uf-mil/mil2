@@ -44,7 +44,7 @@ class TrajectoryFollower(Node):
     # ------------------------------------------------------------------ #
     #  Tunable parameters
     # ------------------------------------------------------------------ #
-    GOAL_XY_TOLERANCE = 0.15  # metres  consider a waypoint reached
+    GOAL_XY_TOLERANCE = 0.5  # metres  consider a waypoint reached
     GOAL_YAW_TOLERANCE = 0.15  # radians  consider heading aligned
     PUBLISH_RATE_HZ = 10.0  # how often we re-publish the current goal
 
@@ -65,6 +65,11 @@ class TrajectoryFollower(Node):
         #                     "drive"  → move to the waypoint
         self._phase: str = "idle"  # "idle" | "rotate" | "drive"
 
+        # Heading to finish on (None: any), and the one held on the final
+        # waypoint (None: not holding)
+        self._final_yaw: float | None = None
+        self._hold_yaw: float | None = None
+
         # Latest odometry in the odom frame (used for progress checks)
         self._odom_local: Odometry | None = None
         self._odom_global: Odometry | None = None
@@ -79,7 +84,7 @@ class TrajectoryFollower(Node):
         # ---- Subscribers ---------------------------------------------- #
         self.create_subscription(
             Path,
-            "/goal_trajectory",
+            "/plan",
             self._trajectory_callback,
             reliable_qos,
         )
@@ -97,7 +102,7 @@ class TrajectoryFollower(Node):
         )
 
         # ---- Publisher ------------------------------------------------ #
-        self._goal_pub = self.create_publisher(Pose, "/goal_pose", reliable_qos)
+        self._goal_pub = self.create_publisher(Pose, "/goal/trajectory", reliable_qos)
 
         # ---- Control loop timer --------------------------------------- #
         self.create_timer(1.0 / self.PUBLISH_RATE_HZ, self._control_loop)
@@ -107,11 +112,30 @@ class TrajectoryFollower(Node):
     # ================================================================== #
     #  Callbacks
     # ================================================================== #
+    def _publish_goal(self, x: float, y: float, yaw: float) -> None:
+        """Publish a goal pose, but only if it differs from the last one sent."""
+        KEY_ROUND = 2  # round to cm / ~0.01 rad to avoid float noise
+        key = (round(x, KEY_ROUND), round(y, KEY_ROUND), round(yaw, KEY_ROUND))
+        if key == getattr(self, "_last_goal_key", None):
+            return
+        self._last_goal_key = key
+        goal = Pose()
+        goal.position.x = x
+        goal.position.y = y
+        goal.position.z = 0.0
+        goal.orientation = quaternion_from_yaw(yaw)
+        self._goal_pub.publish(goal)
+        self.get_logger().info(
+            f"Published goal ({x:.2f}, {y:.2f}, yaw={math.degrees(yaw):.1f}°)",
+        )
 
     def _trajectory_callback(self, msg: Path) -> None:
-        """Queue incoming paths; never discard a path that is in progress."""
+        """A new path replaces the current one: the planner only republishes
+        when the route has changed, so the old one is stale."""
         with self._lock:
+            self._path_queue.clear()
             self._path_queue.append(deepcopy(msg))
+            self._phase = "idle"
             self.get_logger().info(
                 f"Received path with {len(msg.poses)} poses. "
                 f"Queue depth: {len(self._path_queue)}",
@@ -143,7 +167,7 @@ class TrajectoryFollower(Node):
             └─ heading aligned   → drive
           drive
             └─ position reached  → next waypoint → rotate
-                                 → no more waypoints → next queued path / idle
+                                 → final waypoint    → hold station on it
         """
         # ---- Nothing to do -------------------------------------------- #
         if self._phase == "idle":
@@ -169,6 +193,7 @@ class TrajectoryFollower(Node):
         # ---- Desired heading toward the current waypoint -------------- #
         dx = target.position.x - robot_x
         dy = target.position.y - robot_y
+        dist = math.hypot(dx, dy)
         desired_yaw = math.atan2(dy, dx)
 
         # ---- ROTATE phase --------------------------------------------- #
@@ -180,40 +205,45 @@ class TrajectoryFollower(Node):
                     f"Switching to drive phase.",
                 )
                 self._phase = "drive"
+                self._publish_goal(robot_x, robot_y, desired_yaw)
             else:
-                # Publish a rotation-only goal at the robot's current position
-                rotate_goal = Pose()
-                rotate_goal.position.x = robot_x
-                rotate_goal.position.y = robot_y
-                rotate_goal.position.z = 0.0
-                rotate_goal.orientation = quaternion_from_yaw(desired_yaw)
-                self._goal_pub.publish(rotate_goal)
-                return
+                self._publish_goal(robot_x, robot_y, desired_yaw)
+            return
 
         # ---- DRIVE phase ---------------------------------------------- #
         if self._phase == "drive":
-            dist = math.hypot(dx, dy)
+            final = self._waypoint_index == len(self._waypoints) - 1
 
-            # Publish drive goal with orientation already facing the target
-            drive_goal = Pose()
-            drive_goal.position.x = target.position.x
-            drive_goal.position.y = target.position.y
-            drive_goal.position.z = 0.0
-            drive_goal.orientation = quaternion_from_yaw(desired_yaw)
-            self._goal_pub.publish(drive_goal)
+            holding = self._hold_yaw is not None
+            if final and dist <= self.GOAL_XY_TOLERANCE * (2.0 if holding else 1.0):
+                if not holding:
+                    self._hold_yaw = (
+                        self._final_yaw if self._final_yaw is not None else robot_yaw
+                    )
+                    self.get_logger().info("Holding station on the final waypoint.")
+                    self._publish_goal(
+                        target.position.x,
+                        target.position.y,
+                        self._hold_yaw,
+                    )
+                else:
+                    self._finish_path()
+                return
+            else:
+                self._hold_yaw = None
+                desired_yaw = robot_yaw + math.remainder(
+                    desired_yaw - robot_yaw,
+                    math.pi,
+                )
+                self._publish_goal(target.position.x, target.position.y, desired_yaw)
 
-            if dist <= self.GOAL_XY_TOLERANCE:
+            if not final and dist <= self.GOAL_XY_TOLERANCE:
                 self.get_logger().info(
                     f"Reached waypoint {self._waypoint_index + 1}/"
                     f"{len(self._waypoints)}.",
                 )
                 self._waypoint_index += 1
-
-                if self._waypoint_index >= len(self._waypoints):
-                    self._finish_path()
-                else:
-                    # Begin rotation toward the next waypoint
-                    self._phase = "rotate"
+                self._phase = "rotate"
 
     # ================================================================== #
     #  Helpers
@@ -225,6 +255,13 @@ class TrajectoryFollower(Node):
 
         self._waypoints = [deepcopy(ps.pose) for ps in path.poses if path.poses]
         self._waypoint_index = 0
+
+        # Only the last pose's orientation means anything; a zero quaternion
+        # asks for no particular heading.
+        q = path.poses[-1].pose.orientation if path.poses else Quaternion()
+        has_heading = math.hypot(q.x, q.y, q.z, q.w) > 1e-6
+        self._final_yaw = yaw_from_quaternion(q) if has_heading else None
+        self._hold_yaw = None
 
         if not self._waypoints:
             self.get_logger().warn("Received empty path — skipping.")

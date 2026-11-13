@@ -44,7 +44,7 @@ class FrontCamDriver(Node):
         # say params exist
         self.declare_parameter(
             "camera-id",
-            "/dev/v4l/by-path/platform-3610000.usb-usb-0:2.3:1.0-video-index0",
+            "/dev/video0",
         )
         self.declare_parameter("camera-topic", "front_cam/image_raw")
 
@@ -58,6 +58,10 @@ class FrontCamDriver(Node):
         self.get_logger().warn(topic_name)
 
         self.cv_bridge = CvBridge()
+        self.cap = cv2.VideoCapture(camera_id, cv2.CAP_V4L2)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+        """
         self.cap = cv2.VideoCapture(
             camera_id,
             cv2.CAP_V4L,
@@ -68,6 +72,7 @@ class FrontCamDriver(Node):
                 360,
             ),
         )
+        """
         if not self.cap.isOpened():
             self.get_logger().error("could not open camera")
             return
@@ -81,8 +86,9 @@ class FrontCamDriver(Node):
             ret, frame = self.cap.read()
             if not ret:
                 self.get_logger().warn("no frame from camera")
+                continue
 
-            # frame = rotate_front_cam(frame)
+            frame = rotate_front_cam(frame)
 
             # publish frame to "camera/rgb/camera_raw"
             try:

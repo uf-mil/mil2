@@ -3,7 +3,8 @@
 Puts covariances back onto the simulated IMU and GPS.
 
     in   sim/imu, sim/gps_raw   straight off the Gazebo bridge
-    out  imu, gps_raw           the same messages, with covariance filled in
+    out  imu/data, gps/fix      the same messages, with covariance filled in,
+                                on the topics the boat's localization reads
 
 The Gazebo sensor messages have nowhere to carry covariance, so ros_gz_bridge
 hands over matrices of zeros and the EKFs then treat every measurement as
@@ -31,8 +32,8 @@ class SimSensors(Node):
     def __init__(self):
         super().__init__("sim_sensors")
 
-        self.imu_pub = self.create_publisher(Imu, "imu", 10)
-        self.gps_pub = self.create_publisher(NavSatFix, "gps_raw", 10)
+        self.imu_pub = self.create_publisher(Imu, "imu/data", 10)
+        self.gps_pub = self.create_publisher(NavSatFix, "gps/fix", 10)
 
         self.create_subscription(Imu, "sim/imu", self.imu_cb, 10)
         self.create_subscription(NavSatFix, "sim/gps_raw", self.gps_cb, 10)
