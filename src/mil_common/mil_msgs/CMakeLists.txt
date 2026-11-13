@@ -18,7 +18,9 @@ set(action_files "action/MoveTo.action" "action/BagOnline.action")
 
 # File name is in CamelCase, but must import in snake_case
 set(msg_files
+    "msg/AcousticPingerConfig.msg"
     "msg/DepthStamped.msg"
+    "msg/Heartbeat.msg"
     "msg/ObjectInImage.msg"
     "msg/ObjectsInImage.msg"
     "msg/PerceptionObject.msg"

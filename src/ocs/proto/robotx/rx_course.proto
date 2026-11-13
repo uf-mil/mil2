@@ -1,0 +1,39 @@
+edition = "2024";
+
+package robocommand.robotx.v1;
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+/**
+ * RxCourse is published by RoboCommand on startup and received by the team's
+ * Operator Control Station (OCS) — vehicles do not connect to RoboCommand
+ * directly. Published as a retained message so the OCS gets the current
+ * course configuration immediately on subscribe, without waiting for the
+ * next publish. How the OCS distributes course information to its vehicles
+ * is up to the team.
+ *
+ * course_id:      unique identifier for this course configuration
+ * pinger_freq_hz: acoustic pinger frequency in Hz (for UUV homing)
+ * corners:        ordered lat/lng vertices of the course boundary polygon
+ *   The first and last points will be the same
+ * sent_at:        timestamp when this configuration was published
+ *
+ * Where a declared UAV's geofence (RunDeclaration.uav_geofence) may be —
+ * RoboCommand refuses a declaration whose geofence breaks this:
+ * uav_transit_area: ordered lat/lng vertices of the area a UAV may also use
+ *   beyond the course boundary — Garuda's transit area for this course
+ *   (takeoff, landing and the way to and from the course). Closed like
+ *   corners. Every point of the geofence must lie within corners or within
+ *   this. Empty: within corners alone.
+ *
+ * MQTT topic: robocommand/robotx/course  (retained, RC → OCS)
+ */
+message RxCourse
+{
+    string course_id = 1;
+    uint32 pinger_freq_hz = 2;
+    repeated robocommand.common.v1.LatLng corners = 3;
+    google.protobuf.Timestamp sent_at = 4;
+    repeated robocommand.common.v1.LatLng uav_transit_area = 5;
+}
