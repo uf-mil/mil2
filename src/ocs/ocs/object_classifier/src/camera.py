@@ -69,9 +69,11 @@ if __name__ == "__main__":
     from utils import load_config
 
     cam = Camera(
-        parse_source(sys.argv[1])
-        if len(sys.argv) > 1
-        else load_config()["camera_index"],
+        (
+            parse_source(sys.argv[1])
+            if len(sys.argv) > 1
+            else load_config()["camera_index"]
+        ),
     )
     try:
         while True:
