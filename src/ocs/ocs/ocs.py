@@ -65,7 +65,8 @@ TARGET_MAV_TYPES = {
 
 TEAM_CODE = "UFLO"
 CAAS_NUMBER = "53581"
-PILOT_NAME = "EthanM"
+PILOT_NAME = "Ethan-U2636903"
+#PILOT_NAME = "Erik-U2637004"
 UAPL_ID = None
 
 CALLSIGN = PILOT_NAME if UAPL_ID is None else f"{PILOT_NAME}-{UAPL_ID}"
@@ -392,7 +393,7 @@ class OCS(Node):
             team_id=self.get_parameter("team_id").get_parameter_value().string_value,
             vehicle_id=vehicle_id,
             seq=self.rx_report_seqs[vehicle_id],
-            readiness_report=ReadinessReport(command_seq=assistance_seq),
+            readiness=ReadinessReport(command_seq=assistance_seq),
         )
         rep.sent_at.GetCurrentTime()
         self.rx_report_seqs[vehicle_id] += 1
@@ -484,8 +485,8 @@ class OCS(Node):
             # vehicle_ids=["UUV", "USV", "UAV"],
             vehicle_ids=["UAV"],
             task1_tier=TaskTier.TIER_CORE,
-            task2_tier=TaskTier.TIER_CORE,
-            task3_tier=TaskTier.TIER_CORE,
+            task2_tier=TaskTier.TIER_NONE,
+            task3_tier=TaskTier.TIER_NONE,
             task4_tier=TaskTier.TIER_CORE,
             uav_geofence=self.geofence,
             uav_geofence_max_altitude_hae_m=self.max_height,
@@ -790,7 +791,8 @@ class OCS(Node):
         self.rx_heartbeat(
             vehicle_id=msg.type,
             state=RobotState.Value(f"STATE_{msg.state}"),
-            current_task=RxTask.Value(f"TASK_{msg.task}"),
+            #current_task=RxTask.Value(f"TASK_{msg.task"),
+            current_task=RxTask.Value("TASK_DYNAMIC_INCIDENT"),
             vehicle_type=VehicleType.Value(f"TYPE_{msg.type}"),
         )
 
