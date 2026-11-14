@@ -317,6 +317,11 @@ class OCS(Node):
             self.on_readiness,
             10,
         )
+        self.dock_ocs_command_publisher = self.create_publisher(
+            String,
+            "/prop/dock_ocs_command",
+            10,
+        )
         self.prop_all_clear_client = self.create_client(Empty, "/latlon_goal/all_clear")
 
         # The course boundary, for the boat's survey; latched so a boat that
