@@ -72,7 +72,8 @@ TARGET_MAV_TYPES = {
 
 TEAM_CODE = "UFLO"
 CAAS_NUMBER = "53581"
-PILOT_NAME = "EthanM"
+PILOT_NAME = "Ethan-U2636903"
+# PILOT_NAME = "Erik-U2637004"
 UAPL_ID = None
 
 CALLSIGN = PILOT_NAME if UAPL_ID is None else f"{PILOT_NAME}-{UAPL_ID}"
@@ -480,6 +481,20 @@ class OCS(Node):
     def rx_readiness_report(self, vehicle_id, command_seq):
         self.rx_report(vehicle_id, readiness=ReadinessReport(command_seq=command_seq))
 
+    def rx_readiness_report(self, vehicle_id, assistance_seq):
+        rep = RxReport(
+            team_id=self.get_parameter("team_id").get_parameter_value().string_value,
+            vehicle_id=vehicle_id,
+            seq=self.rx_report_seqs[vehicle_id],
+            readiness=ReadinessReport(command_seq=assistance_seq),
+        )
+        rep.sent_at.GetCurrentTime()
+        self.rx_report_seqs[vehicle_id] += 1
+        self.client.publish(
+            f"robocommand/robotx/{vehicle_id}/report",
+            rep.SerializeToString(),
+        )
+
     def to_polygon(self, coords):
         return Polygon([(p.longitude, p.latitude) for p in coords])
 
@@ -582,8 +597,8 @@ class OCS(Node):
         self.rx_run_declaration(
             vehicle_ids=["USV", "UAV"],
             task1_tier=TaskTier.TIER_CORE,
-            task2_tier=TaskTier.TIER_CORE,
-            task3_tier=TaskTier.TIER_CORE,
+            task2_tier=TaskTier.TIER_NONE,
+            task3_tier=TaskTier.TIER_NONE,
             task4_tier=TaskTier.TIER_CORE,
             uav_geofence=self.geofence,
             uav_geofence_max_altitude_hae_m=self.max_height,
@@ -591,6 +606,7 @@ class OCS(Node):
         )
 
     current_run_id = None
+    assistance_request_id = None
 
     def on_command(self, _client, _, msg):
         command = RxCommand()
@@ -601,10 +617,9 @@ class OCS(Node):
             print("failed to parse command payload")
             return
 
-        # A protobuf sub-message is never None, so the body that was sent is
-        # the one WhichOneof names.
-        body = command.WhichOneof("body")
-        if body == "run_start":
+        print(command)
+
+        if command.HasField("run_start"):
             if command.run_start.declaration_seq != self.rx_run_declaration_seq:
                 print("mismatched RunStart")
                 return
@@ -632,49 +647,59 @@ class OCS(Node):
 
             self.send_drone_mission(12)  # drone loiters at 5m for 120s
 
-        elif body == "assistance_request":
-            request = command.assistance_request
-            if request.vehicle_type == VehicleType.TYPE_USV:
+        elif command.HasField("assistance_request"):
+            if command.assistance_request.vehicle_type == VehicleType.TYPE_USV:
+                print("got assistance request for usv")
                 msg = GeoPose()
 
                 point = GeoPoint()
-                point.latitude = request.position.latitude
-                point.longitude = request.position.longitude
+                point.latitude = command.assistance_request.position.latitude
+                point.longitude = command.assistance_request.position.longitude
 
                 msg.position = point
                 self.prop_emergency_publisher.publish(msg)
                 self.rx_incident_ack("USV", command.seq)
-                self.usv_command_seq = command.seq
-            elif request.vehicle_type == VehicleType.TYPE_UAV:
-                self.drone_send_command(
+            elif command.assistance_request.vehicle_type == VehicleType.TYPE_UAV:
+                print("got assistance request for uav")
+                start_pos = self.drone_position
+                target = command.assistance_request.position
+                if start_pos is not None:
+                    print(
+                        f"UAV move from:\n\tlat {start_pos.latitude:.7f}\n\tlon {start_pos.longitude:.7f}\n"
+                        f"to:\n\tlat {target.latitude:.7f}\n\tlon {target.longitude:.7f}",
+                    )
+                self.drone_at_incident = False
+                self.assistance_request_id = command.seq
+                send_command(
+                    self.mavconn,
                     mavutil.mavlink.MAV_CMD_USER_4,
                     param1=4,
-                    param2=request.position.latitude,
-                    param3=request.position.longitude,
-                    param4=10,  # 10 meters above
+                    param2=command.assistance_request.position.latitude,
+                    param3=command.assistance_request.position.longitude,
+                    param4=5,  # 5 meters above
                 )
-        elif body == "keep_out_zone":
-            zone = command.keep_out_zone
-            if zone.vehicle_type == VehicleType.TYPE_USV:
+                self.rx_incident_ack("UAV", command.seq)
+        elif command.HasField("keep_out_zone"):
+            if command.keep_out_zone.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
-            elif zone.vehicle_type == VehicleType.TYPE_UAV:
-                self.drone_send_command(
+            elif command.keep_out_zone.vehicle_type == VehicleType.TYPE_UAV:
+                send_command(
                     mavutil.mavlink.MAV_CMD_USER_4,
                     param1=8,
-                    param2=zone.center.latitude,
-                    param3=zone.center.longitude,
-                    param4=zone.radius_m,
+                    param2=command.keep_out_zone.center.latitude,
+                    param3=command.keep_out_zone.center.longitude,
+                    param4=command.keep_out_zone.radius_m,
                 )
 
                 self.rx_incident_ack("UAV", command.seq)
-        elif body == "readiness_confirm":
+        elif command.HasField("readiness_confirm"):
             if command.readiness_confirm.vehicle_id == "USV":
                 req = Empty.Request()
                 self.prop_all_clear_client.call_async(req)
             elif command.readiness_confirm.vehicle_id == "UAV":
-                self.drone_send_command(mavutil.mavlink.MAV_CMD_USER_4, param1=5)
-        elif body == "all_clear":
+                send_command(self.mavconn, mavutil.mavlink.MAV_CMD_USER_4, param1=5)
+        elif command.HasField("all_clear"):
             if command.all_clear.vehicle_type == VehicleType.TYPE_USV:
                 # TODO prop advanced tier not implemented yet
                 self.rx_incident_ack("USV", command.seq)
@@ -701,6 +726,8 @@ class OCS(Node):
     drone_state = RobotState.STATE_KILLED
     drone_task = RxTask.TASK_NONE
     drone_last_heartbeat_seconds = 0
+    drone_at_incident = False
+    drone_armed = False
 
     def mav_handle_heartbeat(self, message):
         self.drone_last_heartbeat_seconds = time.time()
@@ -708,10 +735,25 @@ class OCS(Node):
         if message.base_mode == 0:
             # Heartbeat from RPI - has robot task
             self.drone_task = message.custom_mode
+
+            # 15 == MIL_STATE_AT_INCIDENT
+            if not self.drone_at_incident and message.system_status == 15:
+                print("uav at incident")
+                self.rx_readiness_report("UAV", self.assistance_request_id)
+
         else:
             # Heartbeat from ArduPilot
             armed = message.base_mode & mavlink.MAV_MODE_FLAG_SAFETY_ARMED
-            if not armed:
+            start_pos = self.drone_position
+            if armed and not self.drone_armed and start_pos is not None:
+                print(
+                    f"UAV armed at:\n\tlat {start_pos.latitude:.7f}\n\tlon {start_pos.longitude:.7f}",
+                )
+            self.drone_armed = bool(armed)
+            if (
+                not armed
+                and self.drone_flight_phase == FlightPhase.FLIGHT_PHASE_AIRBORNE
+            ):
                 self.drone_state = RobotState.STATE_KILLED
             else:
                 mode_map = mavutil.mode_mapping_bynumber(mavlink.MAV_TYPE_QUADROTOR)
@@ -895,7 +937,8 @@ class OCS(Node):
         self.rx_heartbeat(
             vehicle_id=msg.type,
             state=RobotState.Value(f"STATE_{msg.state}"),
-            current_task=RxTask.Value(f"TASK_{msg.task}"),
+            # current_task=RxTask.Value(f"TASK_{msg.task"),
+            current_task=RxTask.Value("TASK_DYNAMIC_INCIDENT"),
             vehicle_type=VehicleType.Value(f"TYPE_{msg.type}"),
             **fields,
         )
